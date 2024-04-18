@@ -2,27 +2,29 @@
 import Article from "../Articles/Article.astro"
 import ArticleMedium from "../Articles/ArticleMedium.astro"
 import ArticleTemplate from "../Articles/ArticleTemplate.astro"
+import HeaderContent from "../Articles/HeaderContent.astro"
 
 ---
 
 
-<div class="w-full ">
-    <header>
-
+<div class="relative w-screen h-screen bg-red-500">
+    <header class="relative">
+        <HeaderContent/>
     </header>
 
-    <section class=" w-full flex flex-col justify-center items-center gap-5  bg-[#000000] p-5">
-        <article class=" w-full flex justify-start gap-5 items-center p-4 bg-[#383838]">
-            <ArticleMedium/>
-            <ArticleMedium/>
-            <ArticleMedium/>
-            <ArticleTemplate/>
-        </article>
-
-        <article  class=" w-full flex justify-start gap-5 items-center p-4 bg-[#383838]">
-            <Article/>
-            <Article/>
-            <Article/>
+    <section id="content_articles" class="relative w-full flex flex-col justify-start items-center gap-5 bg-[#161616] p-5">
+        <article class="w-full h-60 grid grid-cols-4 max-xl:grid-cols-3 max-[980px]:grid-cols-2 max-md:grid-cols-1 grid-rows-1 gap-3 p-4 bg-[#383838]">
+            <ArticleMedium class_article="max-xl:hidden"/>
+            <ArticleMedium class_article="max-[980px]:hidden"/>
+            <ArticleMedium class_article="max-md:hidden"/>
+            <ArticleTemplate class_article=""/>
         </article>
     </section>
 </div>
+
+
+<style>
+    #content_articles{
+        height: calc(100% - 5rem);
+    }
+</style>

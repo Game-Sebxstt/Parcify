@@ -1,12 +1,15 @@
 ---
+interface Props{
+    class_article: string;
+}
 
+const {class_article} = Astro.props;
 ---
 
-<div>
-    <div class="bg-[#E6E6E6] w-40 h-24 rounded-sm ">
+<div class=`cursor-pointer hover:scale-105 transition-all duration-200 ease-in w-full h-full ${Astro.props.class_article}`>
+    <div class="relative bg-[#E6E6E6] w-full h-full rounded-sm">
+        <footer class="absolute bottom-0 bg-[#1E1E1E] w-full h-fit flex px-2 py-1 items-center justify-center rounded-sm">
+            <p class="text-white text-lg font-bold">Parcelador Básico</p>
+        </footer>
     </div>
-    <footer class="bg-[#1E1E1E] w-40 flex justify-center rounded-sm">
-        <p class="text-white">Parcelador Básico</p>
-        
-    </footer>
 </div>
