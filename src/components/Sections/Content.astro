@@ -7,24 +7,86 @@ import HeaderContent from "../Articles/HeaderContent.astro"
 ---
 
 
-<div class="relative w-screen h-screen bg-red-500">
-    <header class="relative">
+<div id="content" class="absolute right-0 h-fit">
+    <header class="relative z-10 w-full">
         <HeaderContent/>
     </header>
 
-    <section id="content_articles" class="relative w-full flex flex-col justify-start items-center gap-5 bg-[#161616] p-5">
-        <article class="w-full h-60 grid grid-cols-4 max-xl:grid-cols-3 max-[980px]:grid-cols-2 max-md:grid-cols-1 grid-rows-1 gap-3 p-4 bg-[#383838]">
+    <section id="content_articles" class="relative w-full h-fit flex flex-col justify-start items-center gap-5 bg-[#161616] p-5">
+        <article class="w-full h-64 grid grid-cols-4 max-xl:grid-cols-3 max-[980px]:grid-cols-2 max-md:grid-cols-1 grid-rows-1 gap-3 p-4 bg-[#383838]">
             <ArticleMedium class_article="max-xl:hidden"/>
             <ArticleMedium class_article="max-[980px]:hidden"/>
             <ArticleMedium class_article="max-md:hidden"/>
             <ArticleTemplate class_article=""/>
+        </article>
+
+        <article class="w-full p-4 bg-[#383838] flex flex-col gap-5">
+
+            <div class="flex justify-between">
+                <div class="relative w-fit flex flex-col gap-1">
+                    <div id="filter-index" class="flex items-end gap-2 cursor-pointer">
+                        <div class="w-fit h-fit flex items-center gap-2">
+                            <span class="text-gray-300 font-semibold text-xl w-fit h-fit">
+                                Filter:
+                            </span>
+                            <span class="text-white font-bold text-lg cursor-pointer w-fit h-fit">
+                                All files
+                            </span>
+                        </div>
+    
+                        <svg id="arrow-down-filter" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-down h-6 cursor-pointer transition-all duration-200 ease-in">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M6 9l6 6l6 -6"/>
+                        </svg>
+                    </div>
+                    
+                    <ul id="more-options-filter" class="absolute mt-10 bg-slate-900 shadow-lg shadow-slate-800 w-full py-1.5 hidden flex-col justify-center item-start text-white rounded-[4px] animate-deployment">
+                        <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+                        <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+                        <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+                        <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+                    </ul>
+                </div>
+
+                <div class="flex gap-3 items-center justify-center">
+                    <svg id="order-chart" class="h-6 cursor-pointer scale-125 transition-all duration-200 ease-in" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12">
+                        <path fill="white" fill-opacity="1" fill-rule="evenodd" stroke="none" d="M1 1h3v3H1V1zM0 0h5v5H0V0zm1 8h3v3H1V8zM0 7h5v5H0V7zm11-6H8v3h3V1zM8 0H7v5h5V0H8zm0 8h3v3H8V8zM7 7h5v5H7V7z"></path>
+                    </svg>
+
+                    <svg id="order-line" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-menu-2 h-9 cursor-pointer transition-all duration-200 ease-in">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M4 6l16 0" />
+                        <path d="M4 12l16 0" />
+                        <path d="M4 18l16 0" />
+                    </svg>
+                </div>
+            </div>
+
+            <div id="content_grid" class="w-full grid gap-3">
+                <Article class_article="max-xl:hidden"/>
+                <Article class_article="max-[980px]:hidden"/>
+                <Article class_article=""/>
+                <Article class_article=""/>
+                <Article class_article=""/>
+            </div>
         </article>
     </section>
 </div>
 
 
 <style>
-    #content_articles{
-        height: calc(100% - 5rem);
+    #content{
+        width: calc(100vw - 23rem);
     }
+
+    #content_grid{
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    @media (max-width: 640px) {
+        #content{
+            width: calc(100vw - 4rem);
+        }
+    }
+
 </style>
