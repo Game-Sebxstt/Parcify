@@ -11,3 +11,11 @@ filter_index?.addEventListener("click", () => {
         arrow_down_filter.style.transform = 'rotate(0deg)';
     }
 })
+
+const items_slide = document.querySelectorAll("#items-slide");
+
+items_slide.forEach((element) => {
+    element.addEventListener("click", () => {
+        window.location.href = element.getAttribute("data-uri");
+    });
+})

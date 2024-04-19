@@ -3,9 +3,9 @@
 ---
 
 
-<div class="fixed z-10 w-[23rem] max-sm:w-[4rem] h-screen bg-[#1E1E1E] flex flex-col justify-between">
+<div class="fixed z-10 w-[23rem] max-lg:w-[20rem] max-md:w-[4rem] h-screen bg-[#1E1E1E] flex flex-col justify-between">
     <header class="flex flex-col">
-        <div class="flex justify-between items-center w-full py-2.5 px-7 max-sm:hidden">
+        <div class="flex justify-between items-center w-full py-2.5 px-7 max-md:hidden">
             <div class="flex gap-3 justify-center items-center ">
                 <img src="/Logo.jpg" class="h-12 rounded-lg"/>
 
@@ -22,7 +22,7 @@
             </div>
         </div>
 
-        <div class="hidden justify-between items-center w-full max-sm:flex">
+        <div class="hidden justify-between items-center w-full max-md:flex">
             <div class="cursor-pointer w-full h-full flex items-center justify-center hover:bg-[#353535] transition-all duration-150 ease-in p-1 py-2.5 rounded-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-menu-2 h-8">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -36,9 +36,9 @@
         <hr class="border-slate-500">
     </header>
 
-    <section class="flex flex-col overflow-y-auto h-full justify-evenly">
-        <article class="flex flex-col px-7 py-3 gap-3 justify-center max-sm:hidden">
-            <div class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
+    <section class="flex flex-col overflow-y-auto h-full justify-start">
+        <article class="flex flex-col px-7 py-3 gap-3 justify-center max-md:hidden">
+            <div id="items-slide" data-uri="/" class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
                 <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-home h-6">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                     <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
@@ -49,7 +49,7 @@
                 <h3 class="text-lg text-white">Home</h3>
             </div>
 
-            <div class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
+            <div id="items-slide" data-uri="/parcellers" class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
                 <svg  xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-circle-check h-6">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                     <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
@@ -59,7 +59,7 @@
                 <h3 class="text-lg text-white">My Parcellers</h3>
             </div>
 
-            <div class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
+            <div id="items-slide" data-uri="/templates" class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
                 <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-template h-6">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                     <path d="M4 4m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" />
@@ -74,7 +74,7 @@
 
             <h3 class="text-lg text-white py-3 px-5">Reporting</h3>
 
-            <div class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
+            <div id="items-slide" data-uri="/projects" class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
                 <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-timeline h-6">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                     <path d="M4 16l6 -7l5 5l5 -6" />
@@ -88,7 +88,7 @@
             </div>
         </article>
 
-        <article class="hidden flex-col w-full py-3 gap-3 justify-center items-center max-sm:flex">
+        <article class="hidden flex-col w-full py-3 gap-3 justify-center items-center max-md:flex">
             <div class="flex gap-3 items-center justify-center w-fit hover:bg-[#353535] transition-all duration-150 ease-in cursor-pointer px-4 py-2 rounded-sm">
                 <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-home h-8">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -131,7 +131,7 @@
 
         <hr class="border-slate-500">
 
-        <article class="flex flex-col max-sm:hidden">
+        <article class="flex flex-col max-md:hidden">
             <h3 class="text-lg text-white/50 py-3 px-5 ">Favorites</h3>
             <div class="py-3 px-6 text-white font-semibold flex flex-col gap-4">
                 <div class="flex justify-start items-center gap-3 p-2 cursor-pointer transition-all hover:bg-[#353535]">
@@ -161,7 +161,7 @@
             </div>
         </article>
 
-        <article class="hidden max-sm:flex">
+        <article class="hidden max-md:flex">
             <div class="w-full flex flex-col items-center gap-4">
                 <div class="flex justify-center items-center p-2 cursor-pointer transition-all hover:bg-[#353535]">
                     <i class="w-8 h-8 bg-slate-500"></i>
@@ -185,7 +185,7 @@
         </article>
     </section>
 
-    <footer class="flex flex-col justify-center max-sm:hidden">
+    <footer class="flex flex-col justify-center max-md:hidden">
         <hr class="border-slate-500">
 
         <div class="flex items-center justify-start gap-5 px-7 py-3 cursor-pointer transition-all hover:bg-[#353535]">
@@ -194,7 +194,7 @@
         </div>
     </footer>
     
-    <footer class="hidden flex-col justify-center max-sm:flex w-full">
+    <footer class="hidden flex-col justify-center max-md:flex w-full">
         <hr class="border-slate-500">
 
         <div class="flex items-center justify-center gap-5 w-full py-3 cursor-pointer transition-all hover:bg-[#353535]">

@@ -25,8 +25,31 @@ const { title } = Astro.props;
 	:root {
 
 	}
+
+	*{
+		padding: 0;
+		margin: 0;
+		list-style: none;
+		text-decoration: none;
+	}
+
 	html {
-		font-family: system-ui, sans-serif;
-		background-size: 224px;
+		font-family: 'Poppins', system-ui, sans-serif;
+		color-scheme: dark light;
+		scroll-behavior: smooth;
+	}
+
+	body{
+		min-width: 100vw;
+		min-height: 100vh;
+		overflow-x:hidden;
+		background-color: #161616;
+	}
+
+	input[type="number"]::-webkit-inner-spin-button,
+	input[type="number"]::-webkit-outer-spin-button,
+	input[type="number"]::-webkit-clear-button {
+		-webkit-appearance: none;
+		margin: 0;
 	}
 </style>

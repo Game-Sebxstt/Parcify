@@ -1,0 +1,70 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Slide from '../components/Sections/Slide.astro';
+import Content from '../components/Sections/Content.astro';
+import Article from "../components//Articles/Article.astro"
+import ArticleMedium from "../components//Articles/ArticleMedium.astro"
+import ArticleTemplate from "../components//Articles/ArticleTemplate.astro"
+
+---
+
+<Layout title="Parcify">
+	<div class="w-full h-fit flex">
+		<Slide/>
+		<Content title_header='My Parcellers' color='bg-purple-600'>
+			<article class="w-full p-4 bg-[#383838]">
+
+				<div class="w-full flex justify-between items-center py-2 mb-2">
+					<ul class="grid_filter grid grid-cols-3 gap-3 max-md:text-sm pr-2 place-items-center">
+						<li class="bg-[#585858] w-full h-fit py-1 px-2 rounded-[3px] cursor-pointer hover:bg-[#484848] flex justify-center items-center text-center">
+							Rencently viewed
+						</li>
+
+						<li class="w-full h-fit py-1 px-2 rounded-[3px] cursor-pointer hover:bg-[#484848] flex justify-center items-center text-center">
+							Shared Parcellers
+						</li>
+
+						<li class="w-full h-fit py-1 px-2 rounded-[3px] cursor-pointer hover:bg-[#484848] flex justify-center items-center text-center">
+							Shared projects
+						</li>
+					</ul>
+
+					<div class="flex gap-3 items-center justify-center">
+						<svg id="order-chart" class="h-5 max-md:h-4 cursor-pointer scale-125 transition-all duration-200 ease-in" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12">
+							<path fill="white" fill-opacity="1" fill-rule="evenodd" stroke="none" d="M1 1h3v3H1V1zM0 0h5v5H0V0zm1 8h3v3H1V8zM0 7h5v5H0V7zm11-6H8v3h3V1zM8 0H7v5h5V0H8zm0 8h3v3H8V8zM7 7h5v5H7V7z"></path>
+						</svg>
+	
+						<svg id="order-line" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-menu-2 h-9 max-md:h-7 cursor-pointer transition-all duration-200 ease-in">
+							<path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+							<path d="M4 6l16 0" />
+							<path d="M4 12l16 0" />
+							<path d="M4 18l16 0" />
+						</svg>
+					</div>
+				</div>
+
+				<div class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-3">
+					<Article/>
+					<Article/>
+					<Article/>
+					<Article/>
+					<Article/>
+				</div>
+			</article>
+		</Content>
+	</div>
+</Layout>
+
+<style>
+	@media (max-width:600px) {
+		.grid_filter{
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width:480px) {
+		.grid_filter{
+			grid-template-columns: repeat(1, minmax(0, 1fr));
+		}
+	}
+</style>

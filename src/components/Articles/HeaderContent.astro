@@ -1,17 +1,22 @@
 ---
+interface Props{
+    class_color: string,
+    title: string,
+}
 
+const {class_color, title} = Astro.props;
 ---
 
 <div class="w-full h-20 bg-[#383838] flex justify-between items-center px-4">
     <div class="flex justify-start items-center gap-3">
-        <span class="w-fit h-fit bg-purple-600 rounded-sm">
+        <span class=`w-fit h-fit rounded-sm ${Astro.props.class_color}`>
             <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="white"  class="icon icon-tabler icons-tabler-filled icon-tabler-point h-12 max-sm:h-8">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                 <path d="M12 7a5 5 0 1 1 -4.995 5.217l-.005 -.217l.005 -.217a5 5 0 0 1 4.995 -4.783z" />
             </svg>
         </span>
 
-        <h3 class="text-3xl text-white font-semibold max-md:text-2xl max-sm:text-xl">Management Parceller</h3>
+        <h3 class="text-3xl text-white font-semibold max-md:text-2xl max-sm:text-xl">{title}</h3>
     </div>
 
     <div class="cursor-pointer">
