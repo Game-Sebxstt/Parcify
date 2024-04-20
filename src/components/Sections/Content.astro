@@ -1,22 +1,9 @@
 ---
-import HeaderContent from "../Articles/HeaderContent.astro"
-
-interface Props{
-    color: string,
-    title_header: string,
-}
-
-const { color, title_header } = Astro.props;
-
 ---
 
 
-<div id="content" class="absolute right-0 h-fit z-10">
-    <header class="relative z-10 w-full">
-        <HeaderContent title={title_header} class_color={color}/>
-    </header>
-
-    <section id="content_articles" class="w-full max-w-full h-fit flex flex-col justify-center items-center gap-5 bg-[#161616] p-3">
+<div id="content" class="absolute top-20 right-0 h-fit w-full">
+    <section id="content_articles" class="w-full h-fit flex flex-col justify-center items-center gap-5 bg-[transparent] p-3 mx-0">
         <slot/>
     </section>
 </div>
@@ -24,18 +11,12 @@ const { color, title_header } = Astro.props;
 
 <style>
     #content{
-        width: calc(100vw - 23rem);
-    }
-
-    @media (max-width: 1024px) {
-        #content{
-            width: calc(100vw - 20rem);
-        }
+        width: calc(100vw - 21rem);
     }
 
     @media (max-width: 768px) {
         #content{
-            width: calc(100vw - 4rem);
+            width: 100%;
         }
     }
 

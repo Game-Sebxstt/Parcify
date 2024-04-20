@@ -6,9 +6,9 @@ interface Props{
 const {class_article} = Astro.props;
 ---
 
-<div class=`cursor-pointer w-full h-full ${Astro.props.class_article}`>
-    <div class="relative bg-[#E6E6E6] w-full h-full rounded-sm">
-        <footer class="absolute bottom-0 bg-[#1E1E1E] w-full h-fit flex px-2 py-1 items-center justify-center rounded-sm">
+<div class=`cursor-pointer hover:scale-[1.03] transition-all duration-200 ease-in w-full h-full ${Astro.props.class_article}`>
+    <div class="relative bg-[#E6E6E6] w-full h-full rounded-md shadow-md shadow-black">
+        <footer class="absolute bottom-0 bg-[#000000] rounded-b-sm w-full h-fit flex px-2 py-2 items-center justify-center">
             <p class="text-white text-lg font-bold">Parcelador Básico</p>
         </footer>
     </div>

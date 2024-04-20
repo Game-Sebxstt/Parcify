@@ -19,3 +19,15 @@ items_slide.forEach((element) => {
         window.location.href = element.getAttribute("data-uri");
     });
 })
+
+const menu_header = document.querySelector("#menu-header");
+
+menu_header?.addEventListener("click", () => {
+    const slide = document.querySelector("#slide");
+    console.log(window.getComputedStyle(slide).left)
+    if(window.getComputedStyle(slide).left == "0px"){
+        slide.style.left = "-100%"
+    }else{
+        slide.style.left = "0%"
+    }
+});
