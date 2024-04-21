@@ -15,16 +15,16 @@ import ArticleTemplate from "../components//Articles/ArticleTemplate.astro"
 		<Slide/>
 		<Content>
 			<article class="w-full h-64 grid grid-cols-4 max-xl:grid-cols-3 max-[980px]:grid-cols-2 max-sm:grid-cols-1 grid-rows-1 gap-3">
-				<ArticleMedium class_article="max-xl:hidden"/>
-				<ArticleMedium class_article="max-[980px]:hidden"/>
-				<ArticleMedium class_article="max-sm:hidden"/>
-				<ArticleTemplate class_article=""/>
+				<ArticleMedium class_article="max-xl:hidden" first_text='Parcelador Básico'/>
+				<ArticleMedium class_article="max-[980px]:hidden" first_text='Parcelador Básico'/>
+				<ArticleMedium class_article="max-sm:hidden" first_text='Parcelador Básico'/>
+				<ArticleTemplate class_article="" first_text='Parcelador Básico'/>
 			</article>
 	
 			<article class="w-full flex flex-col p-4 bg-[#383838] rounded-md shadow-lg shadow-[#181818]">
 				<div class="flex items-center justify-between">
 					<div class="relative w-fit flex flex-col gap-1">
-						<div id="filter-index" class="flex items-end gap-2 cursor-pointer">
+						<div id="filter" class="flex items-end gap-2 cursor-pointer">
 							<div class="w-fit h-fit flex items-center gap-2">
 								<span class="text-gray-300 font-semibold text-xl w-fit h-fit">
 									Filter:
@@ -65,12 +65,12 @@ import ArticleTemplate from "../components//Articles/ArticleTemplate.astro"
 
 			<article class="w-full">
 				<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-					<Article/>
-					<Article/>
-					<Article/>
-					<Article/>
-					<Article/>
-					<Article/>
+					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
+					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
+					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
+					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
+					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
+					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
 				</div>
 			</article>
 		</Content>

@@ -1,0 +1,12 @@
+---
+interface Props{
+    letter: string;
+    color: string;
+}
+
+const {letter, color} = Astro.props;
+---
+
+<div class=`w-8 h-8 rounded-full flex justify-center items-center text-center text-white font-semibold text-base cursor-pointer ${Astro.props.color}`>
+    {letter}
+</div>

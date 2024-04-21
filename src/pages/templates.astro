@@ -11,19 +11,46 @@ import ArticleTemplate from "../components/Articles/ArticleTemplate.astro"
 
 <Layout title="Parcify">
 	<div class="w-full h-fit flex">
-		<Header header_text='Templates' color='bg-yellow-500'></Header>
+		<Header header_text='Templates Parcellers' color='bg-yellow-500'></Header>
 		<Slide/>
 		<Content>
 			<article class="w-full">
-				<div class="w-full flex justify-between items-center p-4 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
-					<ul class="grid_filter grid grid-cols-1 gap-3 max-md:text-sm pr-2 place-items-center">
+				<div class="w-full flex justify-between items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
+					<ul class="grid_filter grid grid-cols-2 max-lg:grid-cols-1 gap-2 max-md:text-sm pr-2 place-items-center">
 						<li class="relative w-full h-fit py-1 px-2  cursor-pointer flex justify-center items-center text-center">
 							<svg  class="icon icon-tabler icons-tabler-outline icon-tabler-search h-6 absolute left-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
 								<path stroke="none" d="M0 0h24v24H0z" fill="none"/>
 								<path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
 								<path d="M21 21l-6 -6" />
 							</svg>
-							<input type="search" placeholder="Search templates" class="bg-[#484848] rounded-sm py-3 text-lg outline-none pl-11 pr-3">
+							<input type="search" placeholder="Search templates" class="bg-[#484848] rounded-sm py-1.5 text-lg outline-none pl-11 pr-3 text-white">
+						</li>
+
+						<li class="relative w-full flex items-start justify-start pl-3">
+							<div class="relative w-fit flex flex-col gap-1">
+								<div id="filter" class="flex items-end gap-2 cursor-pointer">
+									<div class="w-fit h-fit flex items-center gap-2">
+										<span class="text-gray-300 font-semibold text-xl w-fit h-fit">
+											Filter:
+										</span>
+										<span class="text-white font-bold text-lg cursor-pointer w-fit h-fit">
+											All files
+										</span>
+									</div>
+				
+									<svg id="arrow-down-filter" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-down h-6 cursor-pointer transition-all duration-200 ease-in">
+										<path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+										<path d="M6 9l6 6l6 -6"/>
+									</svg>
+								</div>
+								
+								<ul id="more-options-filter" class="absolute mt-10 bg-[#2b2929] rounded-md shadow-lg shadow-[#181818] w-full hidden flex-col justify-center item-start text-white animate-deployment">
+									<li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-t-md" data-filter="test">Prueba</li>
+									<li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+									<li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+									<li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-b-md" data-filter="test">Prueba</li>
+								</ul>
+							</div>
 						</li>
 					</ul>
 
@@ -43,12 +70,12 @@ import ArticleTemplate from "../components/Articles/ArticleTemplate.astro"
 
 				<article class="w-full">
 					<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-						<Template/>
-						<Template/>
-						<Template/>
-						<Template/>
-						<Template/>
-						<Template/>
+						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
 					</div>
 				</article>
 			</article>

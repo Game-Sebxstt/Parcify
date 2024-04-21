@@ -1,0 +1,85 @@
+---
+import ProfileInvite from "../Articles/ProfileInvite.astro";
+---
+
+<div id="popup-invite" class="w-screen h-screen fixed z-50 hidden justify-center items-center max-sm:px-3">
+    <div id="bg-close-invite" class="absolute left-0 bg-close w-full h-full bg-black/50 cursor-pointer"></div>
+
+    <div class="w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10 shadow-lg shadow-black">
+        <header class="w-full flex justify-between items-center p-2 border-b-[1px] border-slate-300">
+            <h3 class="text-xl text-white font-bold">
+                Share the parcellers with your friends
+            </h3>
+
+            <span id="x-close-invite" class="w-fit h-fit p-1 hover:bg-slate-300/30 transition-all duration-150 ease-in rounded-sm cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-x h-8">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M18 6l-12 12" />
+                    <path d="M6 6l12 12" />
+                </svg>
+            </span>
+        </header>
+
+        <section class="flex flex-col gap-5 ml-5 py-7">
+            <div class="flex flex-col gap-5">
+                <h2 class="text-gray-300 text-base font-bold">
+                    Collaborators in your Parceller
+                </h2>
+                
+                <div class="flex gap-2 border-l-2 border-[#575757] pl-3 ml-5">
+                    <ProfileInvite color="bg-green-500" letter="S"/>
+                    <ProfileInvite color="bg-purple-500" letter="D"/>
+                    <ProfileInvite color="bg-red-500" letter="Y"/>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-5 w-full pl-3">
+                <h2 class="-ml-3 text-gray-300 text-base font-bold">
+                    Members Access
+                </h2>
+
+                <div class="flex gap-16 max-[430px]:gap-6 border-l-2 border-[#575757] px-3 w-full justify-start items-center">
+                    <div class="flex gap-3 items-center justify-center">
+                        <ProfileInvite color="bg-[#F222C4]" letter="N"/>
+
+                        <span class="text-white text-lg max-sm:text-base font-semibold">
+                            New member
+                        </span>
+                    </div>
+
+                    <div class="flex items-end">
+                        <div class="relative w-fit flex flex-col gap-1">
+                            <div id="filter" class="flex items-end gap-2 cursor-pointer bg-[#555555] px-3 py-0.5 rounded-sm">
+                                <div class="w-fit h-fit flex items-center gap-2">
+                                    <span class="text-white font-bold text-base cursor-pointer w-fit h-fit">
+                                        View
+                                    </span>
+                                </div>
+            
+                                <svg id="arrow-down-filter" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-down h-6 cursor-pointer transition-all duration-200 ease-in">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M6 9l6 6l6 -6"/>
+                                </svg>
+                            </div>
+                            
+                            <ul id="more-options-filter" class="absolute mt-8 bg-[#2b2929] rounded-sm shadow-lg shadow-[#181818] w-full hidden flex-col justify-center item-start text-white animate-deployment">
+                                <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-t-sm" data-filter="test">
+                                    Can view
+                                </li>
+                                <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-b-sm" data-filter="test">
+                                    Can edit
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="w-full h-fit py-5 justify-start items-center px-3 border-t-[1px] border-gray-300">
+            <button class="bg-purple-500 hover:bg-purple-500/90 active:bg-purple-500/70 text-white px-3 py-1.5 rounded-sm">
+                Copy Link
+            </button>
+        </footer>
+    </div>
+</div>
