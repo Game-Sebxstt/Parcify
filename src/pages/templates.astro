@@ -1,11 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Slide from '../components/Sections/Slide.astro';
+import Slide from '../components/Sections/SlideDesktop.astro';
 import Content from '../components/Sections/Content.astro';
 import Header from '../components/Sections/Header.astro';
 import Template from "../components/Articles/Template.astro"
-import ArticleMedium from "../components/Articles/ArticleMedium.astro"
-import ArticleTemplate from "../components/Articles/ArticleTemplate.astro"
+import Invite from '../components/Popups/Invite.astro';
+import SlideMobile from '../components/Sections/SlideMobile.astro';
 
 ---
 
@@ -13,6 +13,8 @@ import ArticleTemplate from "../components/Articles/ArticleTemplate.astro"
 	<div class="w-full h-fit flex">
 		<Header header_text='Templates Parcellers' color='bg-yellow-500'></Header>
 		<Slide/>
+		<SlideMobile/>
+		<Invite/>
 		<Content>
 			<article class="w-full">
 				<div class="w-full flex justify-between items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">

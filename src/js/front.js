@@ -25,8 +25,7 @@ items_slide.forEach((element) => {
 const menu_header = document.querySelector("#menu-header");
 
 menu_header?.addEventListener("click", () => {
-    const slide = document.querySelector("#slide");
-    console.log(window.getComputedStyle(slide).left)
+    const slide = document.querySelector("#slideMobile");
     if(window.getComputedStyle(slide).left == "0px"){
         slide.style.left = "-100%"
     }else{
@@ -52,8 +51,14 @@ x_close_invite?.addEventListener("click", () => {
     document.querySelector("#popup-invite").style.display = "none";
 })
 
-const invite_btn = document.querySelector("#invite-btn");
+const invite_btn = document.querySelectorAll("#invite-btn");
 
-invite_btn?.addEventListener("click", () => {
-    document.querySelector("#popup-invite").style.display = "flex";
+invite_btn?.forEach((element) => {
+    element.addEventListener("click", () => {
+        document.querySelector("#popup-invite").style.display = "flex";
+    })
 });
+
+// invite_btn?.addEventListener("click", () => {
+//     document.querySelector("#popup-invite").style.display = "flex";
+// });

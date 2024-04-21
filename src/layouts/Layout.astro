@@ -4,6 +4,8 @@ interface Props {
 }
 
 const { title } = Astro.props;
+
+import '@fontsource/roboto';
 ---
 
 <!doctype html>
@@ -34,7 +36,7 @@ const { title } = Astro.props;
 	}
 
 	html {
-		font-family: 'Poppins', system-ui, sans-serif;
+		font-family: 'Roboto', sans-serif;
 		color-scheme: dark light;
 		scroll-behavior: smooth;
 	}
