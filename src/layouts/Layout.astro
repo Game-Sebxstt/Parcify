@@ -21,6 +21,7 @@ import '@fontsource/roboto';
 	<body>
 		<slot />
 		<script src="../js/front.js"></script>
+		<script src="../js/canvas.js"></script>
 	</body>
 </html>
 <style is:global>
@@ -46,6 +47,7 @@ import '@fontsource/roboto';
 		min-height: 100vh;
 		overflow-x:hidden;
 		background-color: #2b2929;
+		touch-action: none;
 	}
 
 	input[type="number"]::-webkit-inner-spin-button,

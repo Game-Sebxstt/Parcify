@@ -1,0 +1,19 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+
+---
+
+<Layout title="Pacify - Parcel">
+    <div id="content-canvas" class="w-full h-full bg-red-500 absolute flex justify-center items-center">
+        <canvas id="canvas" width="900" height="900"></canvas>
+    </div>
+</Layout>
+
+<style>
+    canvas{
+        background-color: white;
+        position: absolute;
+        bottom: 0;
+    }
+</style>
