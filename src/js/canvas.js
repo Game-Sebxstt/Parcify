@@ -2,52 +2,61 @@ const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
 
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight * .9;
+canvas.height = window.innerHeight * 0.9;
 
 window.addEventListener("resize", () => {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * .9;
+    canvas.height = window.innerHeight * 0.9;
 });
+
+let isPencil = true;
+let isForm = false;
+
+let currentTool = 'square';
+let shapes = [];
+
+const squareBtn = document.getElementById('square-btn');
+const rectangleBtn = document.getElementById('rectangle-btn');
+const circleBtn = document.getElementById('circle-btn');
+const pencilBtn = document.getElementById('pencil-btn');
+
+function draw() {
+        trazos.forEach(trazo => {
+            context.beginPath();
+            context.moveTo((trazo.inicialX - originx) * scale, (trazo.inicialY - originy) * scale);
+            context.lineWidth = trazo.grosor * scale;
+            context.strokeStyle = trazo.color;
+            context.lineCap = "round";
+            context.lineJoin = "round";
+            context.lineTo((trazo.finalX - originx) * scale, (trazo.finalY - originy) * scale);
+            context.stroke();
+        });
+
+        shapes.forEach(shape => {
+            switch (shape.type) {
+                case 'square':
+                    drawSquare(shape.x, shape.y);
+                    break;
+                case 'rectangle':
+                    drawRectangle(shape.x, shape.y);
+                    break;
+                case 'circle':
+                    drawCircle(shape.x, shape.y);
+                    break;
+                default:
+                    break;
+            }
+        });
+}
+
+setInterval(draw, 10);
 
 let scale = 1;
 let originx = 0;
 let originy = 0;
 let ctrlPressed = false;
 
-let trazos = []; // Array para almacenar los trazos
-
-function draw() {
-    context.fillStyle = "white";
-    context.fillRect(originx, originy, canvas.width / scale, canvas.height / scale);
-    context.fillStyle = "black";
-
-    // Dibujar trazos guardados
-    trazos.forEach(trazo => {
-        context.beginPath();
-        context.moveTo((trazo.inicialX - originx) * scale, (trazo.inicialY - originy) * scale);
-        context.lineWidth = trazo.grosor * scale;
-        context.strokeStyle = trazo.color;
-        context.lineCap = "round";
-        context.lineJoin = "round";
-        context.lineTo((trazo.finalX - originx) * scale, (trazo.finalY - originy) * scale);
-        context.stroke();
-    });
-
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const width = 100;
-    const height = 100;
-    const cornerRadius = 5;
-
-    context.beginPath();
-    context.moveTo(centerX - width / 2 + cornerRadius, centerY - height / 2);
-    context.arcTo(centerX + width / 2, centerY - height / 2, centerX + width / 2, centerY + height / 2, cornerRadius);
-    context.arcTo(centerX + width / 2, centerY + height / 2, centerX - width / 2, centerY + height / 2, cornerRadius);
-    context.arcTo(centerX - width / 2, centerY + height / 2, centerX - width / 2, centerY - height / 2, cornerRadius);
-    context.arcTo(centerX - width / 2, centerY - height / 2, centerX + width / 2, centerY - height / 2, cornerRadius);
-    context.closePath();
-    context.fill();
-}
+let trazos = []; 
 
 let initialX;
 let initialY;
@@ -68,7 +77,6 @@ const dibujar = (cursorX, cursorY) => {
     context.lineTo((cursorX - originx) * scale, (cursorY - originy) * scale);
     context.stroke();
 
-    // Almacena el trazo actual
     trazos.push({
         inicialX: initialX,
         inicialY: initialY,
@@ -82,106 +90,195 @@ const dibujar = (cursorX, cursorY) => {
     initialY = cursorY;
 };
 
-const mouseDown = (evt) => {
-    evt.preventDefault();
-    if (evt.changedTouches === undefined) {
-        initialX = evt.offsetX;
-        initialY = evt.offsetY;
-    } else {
-        initialX = evt.changedTouches[0].pageX - correccionX;
-        initialY = evt.changedTouches[0].pageY - correccionY;
-    }
-    dibujar(initialX, initialY);
-    canvas.addEventListener("mousemove", mouseMoving);
-    canvas.addEventListener('touchmove', mouseMoving);
+const drawShapes = () => {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    draw();
 };
+
+const drawPreview = (x, y) => {
+    drawShapes();
+
+    switch (currentTool) {
+        case 'square':
+            drawSquare(x, y, true);
+            break;
+        case 'rectangle':
+            drawRectangle(x, y, true);
+            break;
+        case 'circle':
+            drawCircle(x, y, true);
+            break;
+        default:
+            break;
+    }
+};
+
+const drawShape = (x, y) => {
+    switch (currentTool) {
+        case 'square':
+            drawSquare(x, y);
+            break;
+        case 'rectangle':
+            drawRectangle(x, y);
+            break;
+        case 'circle':
+            drawCircle(x, y);
+            break;
+        default:
+            break;
+    }
+
+    shapes.push({ x, y, type: currentTool });
+};
+
+squareBtn.addEventListener('click', () => {
+    currentTool = 'square';
+    isForm = true;
+    isPencil = false;
+    canvas.addEventListener('mousemove', mouseMoving);
+});
+
+rectangleBtn.addEventListener('click', () => {
+    currentTool = 'rectangle';
+    isForm = true;
+    isPencil = false;
+    canvas.addEventListener('mousemove', mouseMoving);
+});
+
+circleBtn.addEventListener('click', () => {
+    currentTool = 'circle';
+    isForm = true;
+    isPencil = false;
+    canvas.addEventListener('mousemove', mouseMoving);
+});
+
+pencilBtn.addEventListener('click', () => {
+    isForm = false;
+    isPencil = true;
+});
 
 const mouseMoving = (evt) => {
     evt.preventDefault();
-    if (evt.changedTouches === undefined) {
-        dibujar(evt.offsetX, evt.offsetY);
-    } else {
-        dibujar(evt.changedTouches[0].pageX - correccionX, evt.changedTouches[0].pageY - correccionY);
+    if(isPencil){
+        if (evt.changedTouches === undefined) {
+            dibujar(evt.offsetX, evt.offsetY);
+        } else {
+            dibujar(evt.changedTouches[0].pageX - correccionX, evt.changedTouches[0].pageY - correccionY);
+        }
+    }else{
+        const x = evt.clientX - canvas.getBoundingClientRect().left;
+        const y = evt.clientY - canvas.getBoundingClientRect().top;
+    
+        drawPreview(x, y);
     }
 };
 
-const mouseUp = () => {
-    canvas.removeEventListener("mousemove", mouseMoving);
-    canvas.removeEventListener("touchmove", mouseMoving);
+const mouseUp = (evt) => {
+    if(isPencil){
+        canvas.removeEventListener("mousemove", mouseMoving);
+        canvas.removeEventListener("touchmove", mouseMoving);
+    }
+
+    evt.preventDefault();
+    if (!isForm) return;
+
+    const x = evt.clientX - canvas.getBoundingClientRect().left;
+    const y = evt.clientY - canvas.getBoundingClientRect().top;
+
+    drawShape(x, y);
+    canvas.removeEventListener('mousemove', mouseMoving);
+    isForm = false;
 };
 
-canvas.addEventListener("mousedown", mouseDown);
+const mouseDown = (evt) => {
+    evt.preventDefault();
+    if(isPencil){
+        if (evt.changedTouches === undefined) {
+            initialX = evt.offsetX;
+            initialY = evt.offsetY;
+        } else {
+            initialX = evt.changedTouches[0].pageX - correccionX;
+            initialY = evt.changedTouches[0].pageY - correccionY;
+        }
+        dibujar(initialX, initialY);
+        canvas.addEventListener("mousemove", mouseMoving);
+        canvas.addEventListener('touchmove', mouseMoving);
+    }
+};
+
 canvas.addEventListener("mouseup", mouseUp);
 
-// Pantallas táctiles
-canvas.addEventListener('touchstart', mouseDown);
-canvas.addEventListener('touchend', mouseUp);
-
-setInterval(draw, 10);
-
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'Control') {
-        ctrlPressed = true;
-    }
-});
-
-document.addEventListener('keyup', function (event) {
-    if (event.key === 'Control') {
-        ctrlPressed = false;
-    }
-});
-
-canvas.onmousewheel = function (event) {
-    if (!ctrlPressed) {
-        return;
-    }
-
-    var mousex = event.clientX - canvas.offsetLeft;
-    var mousey = event.clientY - canvas.offsetTop;
-    var wheel = event.wheelDelta / 200;
-
-    var zoom = Math.pow(1 + Math.abs(wheel) / 4, wheel > 0 ? 1 : -1);
-
-    var maxZoom = 3;
-    scale *= zoom;
-
-    if (scale > maxZoom) {
-        scale = maxZoom;
+function drawSquare(x, y, preview = false) {
+    const size = 50;
+    if (preview) {
+        context.strokeStyle = 'red';
+        context.strokeRect(x - size / 2, y - size / 2, size, size);
     } else {
-        context.translate(
-            originx,
-            originy
-        );
-        context.scale(zoom, zoom);
-        context.translate(
-            -(mousex / scale + originx - mousex / (scale * zoom)),
-            -(mousey / scale + originy - mousey / (scale * zoom))
-        );
-
-        originx = (mousex / scale + originx - mousex / (scale * zoom));
-        originy = (mousey / scale + originy - mousey / (scale * zoom));
+        context.fillStyle = 'red';
+        context.fillRect(x - size / 2, y - size / 2, size, size);
     }
-};
+}
 
-document.addEventListener("keydown", function (e) {
-    if (e.ctrlKey &&
-        (
-            e.keyCode == "61" ||
-            e.keyCode == "107" ||
-            e.keyCode == "173" ||
-            e.keyCode == "109" ||
-            e.keyCode == "187" ||
-            e.keyCode == "189"
-        )
-    ) {
-        e.preventDefault();
+function drawRectangle(x, y, preview = false) {
+    const width = 100;
+    const height = 50;
+    if (preview) {
+        context.strokeStyle = 'blue';
+        context.strokeRect(x - width / 2, y - height / 2, width, height);
+    } else {
+        context.fillStyle = 'blue';
+        context.fillRect(x - width / 2, y - height / 2, width, height);
+    }
+}
+
+function drawCircle(x, y, preview = false) {
+    const radius = 30;
+    if (preview) {
+        context.strokeStyle = 'green';
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.stroke();
+    } else {
+        context.fillStyle = 'green';
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+    }
+}
+
+let selectedSquare = null;
+
+canvas.addEventListener('mousedown', (evt) => {
+    const x = evt.clientX - canvas.getBoundingClientRect().left;
+    const y = evt.clientY - canvas.getBoundingClientRect().top;
+
+    shapes.forEach(shape => {
+        if (x >= shape.x - 25 && x <= shape.x + 25 &&
+            y >= shape.y - 25 && y <= shape.y + 25) {
+            selectedSquare = shape;
+        }
+    });
+});
+
+canvas.addEventListener('mousemove', (evt) => {
+    if (selectedSquare) {
+        const x = evt.clientX - canvas.getBoundingClientRect().left;
+        const y = evt.clientY - canvas.getBoundingClientRect().top;
+
+        const diffX = x - selectedSquare.x;
+        const diffY = y - selectedSquare.y;
+
+        selectedSquare.x += diffX;
+        selectedSquare.y += diffY;
+
+        drawShapes();
     }
 });
 
-document.addEventListener("wheel", function (e) {
-    if (e.ctrlKey) {
-        e.preventDefault();
-    }
-}, {
-    passive: false
+canvas.addEventListener('mouseup', () => {
+    selectedSquare = null;
 });
+
+canvas.addEventListener("mousedown", mouseDown);
+
+canvas.addEventListener("mouseup", mouseUp);

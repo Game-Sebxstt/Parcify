@@ -1,17 +1,21 @@
 ---
 import Layout from "../layouts/Layout.astro";
-
-
 ---
 
 <Layout title="Pacify - Parcel">
     <div id="content-canvas" class="w-full h-full bg-red-500 absolute flex justify-center items-center">
         <canvas id="canvas" width="900" height="900"></canvas>
+        <div id="tools" class="absolute top-0 left-0 p-4 gap-5 flex">
+            <button id="square-btn" class="bg-slate-600 p-3 hover:bg-slate-500/80">Cuadrado</button>
+            <button id="rectangle-btn" class="bg-slate-600 p-3 hover:bg-slate-500/80">Rectángulo</button>
+            <button id="circle-btn" class="bg-slate-600 p-3 hover:bg-slate-500/80">Círculo</button>
+            <button id="pencil-btn" class="bg-slate-600 p-3 hover:bg-slate-500/80">Pencil</button>
+        </div>
     </div>
 </Layout>
 
 <style>
-    canvas{
+    canvas {
         background-color: white;
         position: absolute;
         bottom: 0;
