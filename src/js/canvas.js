@@ -7,6 +7,7 @@ canvas.width = contentCanvas.offsetWidth;
 canvas.height = contentCanvas.offsetHeight;
 
 window.addEventListener("resize", () => {
+    contentCanvas = document.getElementById('content-canvas');
     canvas.width = contentCanvas.offsetWidth;
     canvas.height = contentCanvas.offsetHeight;
 });

@@ -1,13 +1,15 @@
 ---
+import BoxShapes from "../components/Articles/BoxShapes.astro";
+import ProfileInvite from "../components/Articles/ProfileInvite.astro";
 import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout title="Parcify - Parcel">
-    <div class="w-full h-screen bg-red-500 flex flex-col">
-        <div class="w-full h-20 bg-[#383838] flex justify-between px-2">
+    <div class="w-full h-screen flex flex-col">
+        <div class="w-full h-fit py-2.5 bg-[#383838] flex justify-between px-3 border-b-2 border-[#FC7F53]">
             <div class="w-fit h-full flex items-center gap-3">
                 <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-grid h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-grid h-8 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
                         <path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
@@ -25,7 +27,7 @@ import Layout from "../layouts/Layout.astro";
                     </h4>
                 </div>
 
-                <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                <span class="w-fit h-fit p-1 cursor-pointer">
                     <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="white"  class="icon icon-tabler icons-tabler-filled icon-tabler-caret-down">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M18 9c.852 0 1.297 .986 .783 1.623l-.076 .084l-6 6a1 1 0 0 1 -1.32 .083l-.094 -.083l-6 -6l-.083 -.094l-.054 -.077l-.054 -.096l-.017 -.036l-.027 -.067l-.032 -.108l-.01 -.053l-.01 -.06l-.004 -.057v-.118l.005 -.058l.009 -.06l.01 -.052l.032 -.108l.027 -.067l.07 -.132l.065 -.09l.073 -.081l.094 -.083l.077 -.054l.096 -.054l.036 -.017l.067 -.027l.108 -.032l.053 -.01l.06 -.01l.057 -.004l12.059 -.002z" />
@@ -49,8 +51,8 @@ import Layout from "../layouts/Layout.astro";
                 </span>
             </div>
 
-            <div>
-                <span class="relative">
+            <div class="w-fit h-full flex items-center gap-3">
+                <span class="relative cursor-pointer">
                     <svg class="icon icon-tabler icons-tabler-outline icon-tabler-message h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M8 9h8" /><path d="M8 13h6" />
@@ -62,22 +64,285 @@ import Layout from "../layouts/Layout.astro";
                         <path d="M12 7a5 5 0 1 1 -4.995 5.217l-.005 -.217l.005 -.217a5 5 0 0 1 4.995 -4.783z" />
                     </svg>
                 </span>
+
+                <span class="w-[2px] h-1/2 bg-[#696969]"></span>
+
+                <div class="flex">
+                    <ProfileInvite color="bg-green-500" letter="S"/>
+                    <ProfileInvite color="bg-purple-500 -ml-2" letter="D"/>
+                    <ProfileInvite color="bg-gray-500 -ml-2" letter="3+"/>
+                </div>
+
+                <span class="w-[2px] h-1/2 bg-[#696969]"></span>
+
+                <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-download h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" />
+                        <path d="M7 11l5 5l5 -5" />
+                        <path d="M12 4l0 12" />
+                    </svg>
+                </span>
+
+                <span class="w-fit h-fit py-1.5 px-3 bg-blue-500 rounded-sm cursor-pointer hover:bg-blue-500/50 transition-all duration-100 ease-in text-white text-sm">
+                    Share
+                </span>
+
+                <span class="w-fit h-fit py-1 px-3 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in text-white text-sm flex justify-center items-center gap-2">
+                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-presentation h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 4l18 0" />
+                        <path d="M4 4v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-10" />
+                        <path d="M12 16l0 4" />
+                        <path d="M9 20l6 0" />
+                        <path d="M8 12l3 -3l2 2l3 -3" />
+                    </svg>
+                    Present
+                </span>
             </div>
         </div>
-        <div class="w-full h-full bg-yellow-500 flex">
-            <div class="w-[25rem] h-full bg-purple-500">
-                
+
+        <div class="relative w-full h-full flex">
+            <div class="relative w-[30rem] h-full bg-[#383838] flex">
+                <div class="flex flex-col gap-4 w-[4rem] h-full py-2 items-center bg-[#383838] border-r-2 border-[#FC7F53]">
+                    <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-spaces h-6 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M6.045 9.777a6 6 0 1 0 5.951 .023" />
+                            <path d="M11.997 20.196a6 6 0 1 0 -2.948 -5.97" />
+                            <path d="M17.95 9.785q .05 -.386 .05 -.785a6 6 0 1 0 -3.056 5.23" />
+                        </svg>
+                    </span>
+
+                    <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-hexagons h-6 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M4 18v-5l4 -2l4 2v5l-4 2z" />
+                            <path d="M8 11v-5l4 -2l4 2v5" />
+                            <path d="M12 13l4 -2l4 2v5l-4 2l-4 -2" />
+                        </svg>
+                    </span>
+
+                    <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-photo h-6 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M15 8h.01" />
+                            <path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z" />
+                            <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" />
+                            <path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3" />
+                        </svg>
+                    </span>
+
+                    <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-palette h-6 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25" />
+                            <path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                            <path d="M12.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                            <path d="M16.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                        </svg>
+                    </span>
+
+                    <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-folder-plus h-6 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M12 19h-7a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2h4l3 3h7a2 2 0 0 1 2 2v3.5" />
+                            <path d="M16 19h6" />
+                            <path d="M19 16v6" />
+                        </svg>
+                    </span>
+
+                    <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-category h-6 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M4 4h6v6h-6z" />
+                            <path d="M14 4h6v6h-6z" />
+                            <path d="M4 14h6v6h-6z" />
+                            <path d="M17 17m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+                        </svg>
+                    </span>
+                </div>
+
+                <div class="w-full h-full bg-[#383838]">
+                    <header class="w-full h-12 flex relative py-1 px-3 justify-start items-center mt-2">
+                        <span class="absolute left-5">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-search h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+                                <path d="M21 21l-6 -6" />
+                            </svg>
+                        </span>
+                        <input type="search" name="serch_shapes" id="search_shapes" placeholder="Search icons & graphics" class="w-full h-full bg-[#505050] rounded-[3px] pl-10 text-sm outline-none text-white">
+                    </header>
+
+                    <section>
+                        <div class="w-full h-fit flex flex-col gap-1">
+                            <h3 class="text-white font-semibold ml-5 my-3">
+                                Basic Graphics
+                            </h3>
+
+                            <div class="grid grid-cols-2 grid-rows-1 gap-5 w-full h-full place-items-center px-3">
+                                <BoxShapes text="Line & Shapes">
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-icons h-12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="#FC7F53"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                        <path d="M6.5 6.5m-3.5 0a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0" />
+                                        <path d="M2.5 21h8l-4 -7z" />
+                                        <path d="M14 3l7 7" />
+                                        <path d="M14 10l7 -7" />
+                                        <path d="M14 14h7v7h-7z" />
+                                    </svg>
+                                </BoxShapes>
+
+                                <BoxShapes text="Icons">
+                                    <svg class="icon icon-tabler icons-tabler-filled icon-tabler-contrast-2 h-12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="#FC7F53">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                        <path d="M19 2a3 3 0 0 1 3 3v14a3 3 0 0 1 -3 3h-14a3 3 0 0 1 -3 -3v-14a3 3 0 0 1 3 -3zm0 2h-14a1 1 0 0 0 -1 1v14a1 1 0 0 0 .769 .973c3.499 -.347 7.082 -4.127 7.226 -7.747l.005 -.226c0 -3.687 3.66 -7.619 7.232 -7.974a1 1 0 0 0 -.232 -.026" />
+                                    </svg>
+                                </BoxShapes>
+
+                                <BoxShapes text="Shapes 3D">
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-cube h-12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="#FC7F53"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                        <path d="M21 16.008v-8.018a1.98 1.98 0 0 0 -1 -1.717l-7 -4.008a2.016 2.016 0 0 0 -2 0l-7 4.008c-.619 .355 -1 1.01 -1 1.718v8.018c0 .709 .381 1.363 1 1.717l7 4.008a2.016 2.016 0 0 0 2 0l7 -4.008c.619 -.355 1 -1.01 1 -1.718z" />
+                                        <path d="M12 22v-10" />
+                                        <path d="M12 12l8.73 -5.04" />
+                                        <path d="M3.27 6.96l8.73 5.04" />
+                                    </svg>
+                                </BoxShapes>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </div>
 
-            <div id="content-canvas" class="w-full h-full bg-lime-400">
-                <canvas id="canvas"></canvas>
+            <div id="content-canvas" class="relative w-full h-full bg-lime-400">
+                <canvas id="canvas" class="bg-white w-full h-full"></canvas>
+            </div>
+
+            <div class="absolute right-0 w-[25rem] h-full bg-[#383838] flex flex-col">
+                <header class="w-full h-14 flex justify-center items-center gap-16">
+                    <span class="text-[#FC7F53] text-md font-semibold cursor-pointer">
+                        Design
+                    </span>
+
+                    <span class="w-[2px] h-1/2 bg-[#696969]"></span>
+
+                    <span class="text-white text-md font-semibold cursor-pointer">
+                        Slides
+                    </span>
+                </header>
+
+                <section class="w-full h-full flex flex-col">
+
+                    <div class="w-full h-fit py-4 px-3 flex justify-around items-center border-b-2 border-[#FC7F53]">
+                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-left h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M4 4l0 16" />
+                                <path d="M8 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                            </svg>
+                        </span>
+
+                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-center h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M12 4l0 5" />
+                                <path d="M12 15l0 5" />
+                                <path d="M6 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                            </svg>
+                        </span>
+                        
+                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-right h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M20 4l0 16" />
+                                <path d="M4 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                            </svg>
+                        </span>
+                        
+                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-top h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M4 4l16 0" />
+                                <path d="M9 8m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                            </svg>
+                        </span>
+                        
+                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-bottom h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M4 20l16 0" />
+                                <path d="M9 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                            </svg>
+                        </span>
+                        
+                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-distribute-vertical h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M4 4l0 16" />
+                                <path d="M20 4l0 16" />
+                                <path d="M9 6m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                            </svg>
+                        </span>
+                        
+                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-distribute-horizontal h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M4 4l16 0" />
+                                <path d="M4 20l16 0" />
+                                <path d="M6 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                            </svg>
+                        </span>
+                    </div>
+
+                    <div class="w-full h-fit py-3 px-5 border-b-2 border-[#FC7F53]">
+                        <h3 class="text-white font-bold">
+                            Layout
+                        </h3>
+
+                        <div class="w-full h-fit grid grid-cols-2 gap-y-2 gap-x-12 grid-rows-1 px-3 mt-2">
+                            <div class="flex items-center justify-start">
+                                <span class="text-white font-bold text-xs w-full">
+                                    offset X
+                                </span>
+    
+                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                            </div>
+
+                            <div class="flex items-center justify-start">
+                                <span class="text-white font-bold text-xs w-full">
+                                    offset Y
+                                </span>
+    
+                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                            </div>
+
+                            <div class="flex items-center justify-start">
+                                <span class="text-white font-bold text-xs w-full">
+                                    Width
+                                </span>
+    
+                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                            </div>
+
+                            <div class="flex items-center justify-start">
+                                <span class="text-white font-bold text-xs w-full">
+                                    Height
+                                </span>
+    
+                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="w-full h-fit px-5 justify-around items-center border-b-2 border-[#FC7F53]">
+                        <h3 class="text-white font-bold">
+                            Rotation
+                        </h3>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
 </Layout>
-
-<style>
-    canvas {
-        background-color: white;
-    }
-</style>
