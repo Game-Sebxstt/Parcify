@@ -59,6 +59,23 @@ invite_btn?.forEach((element) => {
     })
 });
 
+let menu_btn_list = document.querySelectorAll("#menu-btn");
+
+menu_btn_list.forEach((element) => {
+    element.addEventListener("click", () => {
+        let attrElement = element.getAttribute("data-section");
+        element.style.backgroundColor = "#FC7F53";
+        element.style.borderColor = "#ad4b1e";
+
+        menu_btn_list.forEach((item) => {
+            if(item != element){
+                item.style.backgroundColor = "#595959";
+                item.style.borderColor = "transparent";
+            }
+        });
+    });
+});
+
 // invite_btn?.addEventListener("click", () => {
 //     document.querySelector("#popup-invite").style.display = "flex";
 // });
