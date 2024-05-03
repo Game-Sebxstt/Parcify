@@ -30,19 +30,25 @@ const {color, header_text} = Astro.props;
             <h3 class="text-2xl text-white font-semibold max-sm:text-lg">{header_text}</h3>
         </div>
     
-        <div class="cursor-pointer">
-            <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-user-circle h-10 max-sm:h-8">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-                <path d="M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
-                <path d="M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855" />
+        <div class="user cursor-pointer" id="userDropdown">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-user-circle h-10 max-sm:h-8">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+              <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path>
+              <path d="M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path>
+              <path d="M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855"></path>
             </svg>
-        </div>
+            <ul id="submenu" class="absoluto bg-white shadow-md rounded-lg mt-1 overflow-hidden">  
+                <li id="Profile" class="px-4 py-2 hover:bg-gray-100">Profile</li>
+                <li id="Settings" class="px-4 py-2 hover:bg-gray-100">Settings</li>
+                <li id="SignIn" class="px-4 py-2 hover:bg-gray-100">SignOff</li>
+            </ul>
+          </div>
     </div>
 </header>
 
 
 <style>
+
 	.header-page{
 		width: calc(100% - 20rem);
 	}
@@ -52,4 +58,13 @@ const {color, header_text} = Astro.props;
 			width: 100%;
 		}
 	}
+
+    #submenu > li{
+        color: black;
+    }
+
+    .hidden{
+        display:none;
+    }
+
 </style>

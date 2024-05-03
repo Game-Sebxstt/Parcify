@@ -1,10 +1,5 @@
 ---
 import SectionShapes from "../components/Sections/Options/section_shapes.astro";
-import SectionTemplates from "../components/Sections/Options/section_templates.astro";
-import SectionImages from "../components/Sections/Options/section_images.astro";
-import SectionIcons from "../components/Sections/Options/section_icons.astro";
-import SectionFolders from "../components/Sections/Options/section_folders.astro";
-import SectionPlugins from "../components/Sections/Options/section_plugins.astro";
 import ProfileInvite from "../components/Articles/ProfileInvite.astro";
 import Layout from "../layouts/Layout.astro";
 ---
@@ -108,9 +103,9 @@ import Layout from "../layouts/Layout.astro";
         </div>
 
         <div class="relative w-full h-full flex">
-            <div id="left-slide" class="absolute -left-[25rem] w-[25rem] h-full bg-[#383838] flex z-10 transition-all ease-in duration-300">
+            <div class="absolute left-0 w-[25rem] h-full bg-[#383838] flex z-10">
                 <div class="flex flex-col gap-4 w-[5rem] h-full py-2 items-center bg-[#383838] border-r-2 border-[#FC7F53]">
-                    <span id="menu-btn" data-section="section_templates" class="w-fit h-fit p-1 bg-[#FC7F53] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-[#ad4b1e]">
+                    <span id="menu-btn" data-section="shapes" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-spaces h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M6.045 9.777a6 6 0 1 0 5.951 .023" />
@@ -119,7 +114,7 @@ import Layout from "../layouts/Layout.astro";
                         </svg>
                     </span>
 
-                    <span id="menu-btn" data-section="section_shapes" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                    <span id="menu-btn" data-section="shapes" class="w-fit h-fit p-1 bg-[#FC7F53] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-[#ad4b1e]">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-hexagons h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M4 18v-5l4 -2l4 2v5l-4 2z" />
@@ -128,7 +123,7 @@ import Layout from "../layouts/Layout.astro";
                         </svg>
                     </span>
 
-                    <span id="menu-btn" data-section="section_images" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                    <span id="menu-btn" data-section="shapes" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-photo h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M15 8h.01" />
@@ -138,18 +133,17 @@ import Layout from "../layouts/Layout.astro";
                         </svg>
                     </span>
 
-                    <span id="menu-btn" data-section="section_icons" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
-                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-file-vector h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                    <span id="menu-btn" data-section="shapes" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-palette h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-                            <path d="M9.5 16.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
-                            <path d="M14.5 12.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
-                            <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                            <path d="M9.5 15a2.5 2.5 0 0 1 2.5 -2.5h1" />
+                            <path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25" />
+                            <path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                            <path d="M12.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                            <path d="M16.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
                         </svg>
                     </span>
 
-                    <span id="menu-btn" data-section="section_folders" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                    <span id="menu-btn" data-section="shapes" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-folder-plus h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M12 19h-7a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2h4l3 3h7a2 2 0 0 1 2 2v3.5" />
@@ -158,7 +152,7 @@ import Layout from "../layouts/Layout.astro";
                         </svg>
                     </span>
 
-                    <span id="menu-btn" data-section="section_plugins" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
+                    <span id="menu-btn" data-section="shapes" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-transparent">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-category h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M4 4h6v6h-6z" />
@@ -181,30 +175,17 @@ import Layout from "../layouts/Layout.astro";
                         <input type="search" name="serch_shapes" id="search_shapes" placeholder="Search icons & graphics" class="w-full h-full bg-[#505050] rounded-[3px] pl-10 text-sm outline-none text-white">
                     </header>
 
-                    <section id="section_options" class="w-full overflow-y-auto">
-                        <SectionTemplates state="flex" id="section_templates"/>
-                        <SectionShapes state="hidden" id="section_shapes"/>
-                        <SectionImages state="hidden" id="section_images"/>
-                        <SectionIcons state="hidden" id="section_icons"/>
-                        <SectionFolders state="hidden" id="section_folders"/>
-                        <SectionPlugins state="hidden" id="section_plugins"/>
+                    <section>
+                        <SectionShapes state="flex"/>
                     </section>
                 </div>
-
-                <span id="close-left-slide" class="w-fit h-fit rounded-r-md cursor-pointer bg-[#505050] border-2 border-r-[#505050] border-t-[#505050] border-b-[#505050] border-l-transparent absolute left-[25rem] top-5">
-                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-chevrons-right h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M7 7l5 5l-5 5" />
-                        <path d="M13 7l5 5l-5 5" />
-                    </svg>
-                </span>
             </div>
 
             <div id="content-canvas" class="relative w-full h-full bg-lime-400">
                 <canvas id="canvas" class="bg-white w-full h-full"></canvas>
             </div>
 
-            <div id="right-slide" class="absolute -right-[25rem] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">
+            <div class="absolute -right-0 w-[25rem] h-full bg-[#383838] flex flex-col">
                 <header class="w-full h-14 flex justify-center items-center gap-16">
                     <span class="text-[#FC7F53] text-md font-semibold cursor-pointer">
                         Design
@@ -426,30 +407,7 @@ import Layout from "../layouts/Layout.astro";
                         </div>
                     </div>
                 </section>
-
-                <section class="w-full h-full hidden flex-col">
-                    <div class="w-full h-fit py-5 px-5 items-center justify-center">
-                        <h3 class="text-white font-bold text-center">
-                            Please selected a element
-                        </h3>
-                    </div>
-                </section>
-
-                <span id="close-right-slide" class="w-fit h-fit rounded-l-md cursor-pointer bg-[#505050] border-2 border-l-[#505050] border-t-[#505050] border-b-[#505050] border-r-transparent absolute right-[25rem] top-5">
-                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-chevrons-left h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M11 7l-5 5l5 5" />
-                        <path d="M17 7l-5 5l5 5" />
-                    </svg>
-                </span>
             </div>
         </div>
     </div>
 </Layout>
-
-
-<style>
-    #section_options{
-        height: calc(100% - 3.5rem);
-    }
-</style>

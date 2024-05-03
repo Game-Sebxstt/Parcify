@@ -3,13 +3,12 @@ import BoxShapes from "../../../components/Articles/BoxShapes.astro";
 
 interface Props{
     state: string;
-    id: string;
 }
 
-const {state, id} = Astro.props;
+const {state} = Astro.props;
 ---
 
-<div id={id} class=`section_option w-full h-fit flex flex-col gap-1 ${state}`>
+<div class=`w-full h-fit flex flex-col gap-1 ${state}`>
     <h3 class="text-white font-semibold ml-5 my-3">
         Basic Graphics
     </h3>
