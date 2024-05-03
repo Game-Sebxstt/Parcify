@@ -3,9 +3,10 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
 ---
 
 <div id="popup-invite" class="w-screen h-screen fixed z-50 hidden justify-center items-center max-sm:px-3">
-    <div id="bg-close-invite" class="absolute left-0 bg-close w-full h-full bg-black/50 cursor-pointer"></div>
+    <div id="bg-close-invite" class="absolute left-0 bg-close w-full h-full backdrop-blur bg-black/50 cursor-pointer"></div>
 
-    <div class="w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10 shadow-lg shadow-black">
+    <!-- esto es la seleccion de proyecto  -->
+    <div id="projectContent" class="flex flex-col h-[32rem] w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10  animate-deployment">
         <header class="w-full flex justify-between items-center p-2 border-b-[1px] border-slate-300">
             <h3 class="text-xl text-white font-bold">
                 Share the parcellers with your friends
@@ -20,25 +21,66 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
             </span>
         </header>
 
-        <section class="flex flex-col gap-5 ml-5 py-7">
-            <div class="flex flex-col gap-5">
-                <h2 class="text-gray-300 text-base font-bold">
+        <section class="flex flex-col gap-5 p-7" id="projects-box">
+            <article class="flex items-center gap-3 p-3 rounded box-border" id="parceler-box">
+                <input type="checkbox" id="projectSelected" class="h-5 w-5" id="parceler-selected">
+                <div class=" h-16 w-24 bg-slate-400 rounded"></div>
+                <p class="flex flex-col">Parcelador (Parcify) <span class="opacity-50">Edited 3 minutes ago</span></p>
+            </article>
+            <article class="flex items-center gap-3 p-3 rounded box-border" id="parceler-box">
+                <input type="checkbox" id="projectSelected" class="h-5 w-5" id="parceler-selected">
+                <div class=" h-16 w-24 bg-slate-400 rounded"></div>
+                <p class="flex flex-col">Parcelador (Parcify) <span class="opacity-50">Edited 3 minutes ago</span></p>
+            </article>
+            <article class="flex items-center gap-3 p-3 rounded box-border" id="parceler-box">
+                <input type="checkbox" id="projectSelected" class="h-5 w-5" id="parceler-selected">
+                <div class=" h-16 w-24 bg-slate-400 rounded"></div>
+                <p class="flex flex-col">Parcelador (Parcify) <span class="opacity-50">Edited 3 minutes ago</span></p>
+            </article>
+        </section>
+
+        <footer class="w-full h-fit py-5 flex justify-center items-center px-3 border-t-[1px] border-gray-300">
+            <button id="continue" class="bg-[#FB7F53] hover:bg-[#FB7F53]/90 active:bg-[#FB7F53]/70 text-white px-3 py-1.5 rounded-sm">
+                Continue
+            </button>
+        </footer>
+    </div>
+
+    <!-- esto es la modificacion de usuarios  -->
+    <div id="users-invited" class="hidden flex-col w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10  animate-deployment">
+        <header class="w-full flex justify-between items-center p-2 ">
+            <h3 class="text-xl text-white font-bold">
+                Share the parcellers with your friends
+            </h3>
+
+            <span id="x-close-invite" class="w-fit h-fit p-1 hover:bg-slate-300/30 transition-all duration-150 ease-in rounded-sm cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-x h-8">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M18 6l-12 12" />
+                    <path d="M6 6l12 12" />
+                </svg>
+            </span>
+        </header>
+
+        <section class="flex flex-col gap-5 p-4">
+            <div class="flex flex-col gap-2 py-4 pl-4 border-l-2 border-[#575757] transition-all hover:bg-[#575757]">
+                <h2 class="text-gray-300 font-bold">
                     Collaborators in your Parceller
                 </h2>
                 
-                <div class="flex gap-2 border-l-2 border-[#575757] pl-3 ml-5">
+                <div class="flex gap-2 pl-3">
                     <ProfileInvite color="bg-green-500" letter="S"/>
                     <ProfileInvite color="bg-purple-500" letter="D"/>
                     <ProfileInvite color="bg-red-500" letter="Y"/>
                 </div>
             </div>
 
-            <div class="flex flex-col gap-5 w-full pl-3">
-                <h2 class="-ml-3 text-gray-300 text-base font-bold">
+            <div class="flex flex-col gap-2 py-4 pl-4 border-l-2 border-[#575757] transition-all hover:bg-[#575757]">
+                <h2 class="text-gray-300 text-base font-bold">
                     Members Access
                 </h2>
 
-                <div class="flex gap-16 max-[430px]:gap-6 border-l-2 border-[#575757] px-3 w-full justify-start items-center">
+                <div class="flex gap-16 max-[430px]:gap-6 px-3 w-full justify-start items-center">
                     <div class="flex gap-3 items-center justify-center">
                         <ProfileInvite color="bg-[#FB7F53]" letter="N"/>
 
@@ -49,7 +91,7 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
 
                     <div class="flex items-end">
                         <div class="relative w-fit flex flex-col gap-1">
-                            <div id="filter" class="flex items-end gap-2 cursor-pointer bg-[#555555] px-3 py-0.5 rounded-sm">
+                            <div id="filter" class="flex items-end gap-2 cursor-pointer bg-[#555555] px-3 py-0.5 rounded-sm transition-all hover:bg-[#2b2929]">
                                 <div class="w-fit h-fit flex items-center gap-2">
                                     <span id="text-select" class="text-white font-bold text-base cursor-pointer w-fit h-fit" data-value="View">
                                         View
@@ -75,11 +117,78 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
                 </div>
             </div>
         </section>
-
-        <footer class="w-full h-fit py-5 justify-start items-center px-3 border-t-[1px] border-gray-300">
-            <button class="bg-[#FB7F53] hover:bg-[#FB7F53]/90 active:bg-[#FB7F53]/70 text-white px-3 py-1.5 rounded-sm">
+        <footer class="w-full h-fit py-5 flex justify-start items-center px-3">
+            <button class="group relative bg-[#FB7F53] hover:bg-[#FB7F53]/90 active:bg-[#FB7F53]/70 text-white px-3 py-1.5 rounded-sm">
                 Copy Link
+                <div class="hidden  group-focus:block">
+                    <div class="group absolute -top-12 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center rounded-sm text-center text-sm text-slate-300 before:-top-2">
+                        <div class="rounded-sm bg-black py-1 px-2">
+                            <p class="whitespace-nowrap">The link was copied successfully!</p>
+                        </div>
+                        <div class="h-0 w-fit border-l-8 border-r-8 border-t-8 border-transparent border-t-black"></div>
+                    </div>
+                </div>
             </button>
-        </footer>
+        </footer> 
     </div>
 </div>
+<script>
+    let projectBox = document.querySelectorAll<HTMLElement>('#parceler-box');
+    let projectSelected = document.querySelectorAll<HTMLInputElement>('#projectSelected'); 
+    let copyLink = document.getElementById('continue') as HTMLButtonElement;
+    let usersInvited = document.getElementById('users-invited') as HTMLDivElement;
+    let projectContent = document.getElementById('projectContent') as HTMLDivElement;
+
+    //agrega el borde cuando se selecciona
+    function setBorder(element:any,index:any) {
+        element.forEach((e:any,i:any) => {
+            if (i === index) {
+                e.style.border='2px solid rgb(147 197 253)'
+            }
+        });
+    }
+
+    //quita el border cuando se deselecciona
+    function deleteBorder(element:any,index:any) {
+        element.forEach((e:any,i:any) => {
+            if (i === index) {
+                e.style.border='0px'
+            }
+        });
+    }
+
+    //verificacion de cual checkbox esta checkeado y desactiva los otros
+    function verifiCheck(elements:any, elementChecked:any) {
+        elements.forEach((e:any) => {
+            if (e != elementChecked) {
+                e.disabled = elementChecked.checked;
+            }
+        });
+    }
+
+    //desactivacion del boton de copiar link
+    copyLink.disabled = true;
+    copyLink.style.opacity ='0.5'
+
+    projectSelected.forEach((e,i)=>{
+        e.addEventListener('click',()=>{
+            verifiCheck(projectSelected,e)
+            if (e.checked == true) {
+                setBorder(projectBox,i)
+                copyLink.disabled = false;
+                copyLink.style.opacity ='1'
+                copyLink.addEventListener('click',()=>{
+                    if (window.getComputedStyle(usersInvited).display == 'none') {
+                        usersInvited.style.display = 'flex'
+                        projectContent.style.display = 'none'
+                    }
+                })
+            } else {
+                deleteBorder(projectBox,i)
+                copyLink.disabled = true;
+                copyLink.style.opacity ='0.5'
+            }
+        });
+    });
+
+</script>
