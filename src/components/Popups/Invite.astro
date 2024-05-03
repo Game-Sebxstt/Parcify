@@ -5,7 +5,6 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
 <div id="popup-invite" class="w-screen h-screen fixed z-50 hidden justify-center items-center max-sm:px-3">
     <div id="bg-close-invite" class="absolute left-0 bg-close w-full h-full backdrop-blur bg-black/50 cursor-pointer"></div>
 
-    <!-- esto es la seleccion de proyecto  -->
     <div id="projectContent" class="flex flex-col h-[32rem] w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10  animate-deployment">
         <header class="w-full flex justify-between items-center p-2 border-b-[1px] border-slate-300">
             <h3 class="text-xl text-white font-bold">
@@ -22,18 +21,21 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
         </header>
 
         <section class="flex flex-col gap-5 p-7" id="projects-box">
-            <article class="flex items-center gap-3 p-3 rounded box-border" id="parceler-box">
-                <input type="checkbox" id="projectSelected" class="h-5 w-5" id="parceler-selected">
+            <article class="flex items-center gap-3 p-3 rounded box-border border-2 border-transparent relative" id="parceler-box">
+                <label for="check-1" class="w-full h-full flex items-center bg-transparent absolute z-10"></label>
+                <input type="checkbox" id="check-1" class="h-5 w-5 projectSelected" id="parceler-selected">
                 <div class=" h-16 w-24 bg-slate-400 rounded"></div>
                 <p class="flex flex-col">Parcelador (Parcify) <span class="opacity-50">Edited 3 minutes ago</span></p>
             </article>
-            <article class="flex items-center gap-3 p-3 rounded box-border" id="parceler-box">
-                <input type="checkbox" id="projectSelected" class="h-5 w-5" id="parceler-selected">
+            <article class="flex items-center gap-3 p-3 rounded box-border border-2 border-transparent relative" id="parceler-box">
+                <label for="check-2" class="w-full h-full flex items-center bg-transparent absolute z-10"></label>
+                <input type="checkbox" id="check-2" class="h-5 w-5 projectSelected" id="parceler-selected">
                 <div class=" h-16 w-24 bg-slate-400 rounded"></div>
                 <p class="flex flex-col">Parcelador (Parcify) <span class="opacity-50">Edited 3 minutes ago</span></p>
             </article>
-            <article class="flex items-center gap-3 p-3 rounded box-border" id="parceler-box">
-                <input type="checkbox" id="projectSelected" class="h-5 w-5" id="parceler-selected">
+            <article class="flex items-center gap-3 p-3 rounded box-border border-2 border-transparent relative" id="parceler-box">
+                <label for="check-3" class="w-full h-full flex items-center bg-transparent absolute z-10"></label>
+                <input type="checkbox" id="check-3" class="h-5 w-5 projectSelected" id="parceler-selected">
                 <div class=" h-16 w-24 bg-slate-400 rounded"></div>
                 <p class="flex flex-col">Parcelador (Parcify) <span class="opacity-50">Edited 3 minutes ago</span></p>
             </article>
@@ -46,7 +48,6 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
         </footer>
     </div>
 
-    <!-- esto es la modificacion de usuarios  -->
     <div id="users-invited" class="hidden flex-col w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10  animate-deployment">
         <header class="w-full flex justify-between items-center p-2 ">
             <h3 class="text-xl text-white font-bold">
@@ -134,12 +135,11 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
 </div>
 <script>
     let projectBox = document.querySelectorAll<HTMLElement>('#parceler-box');
-    let projectSelected = document.querySelectorAll<HTMLInputElement>('#projectSelected'); 
+    let projectSelected = document.querySelectorAll<HTMLInputElement>('.projectSelected'); 
     let copyLink = document.getElementById('continue') as HTMLButtonElement;
     let usersInvited = document.getElementById('users-invited') as HTMLDivElement;
     let projectContent = document.getElementById('projectContent') as HTMLDivElement;
 
-    //agrega el borde cuando se selecciona
     function setBorder(element:any,index:any) {
         element.forEach((e:any,i:any) => {
             if (i === index) {
@@ -148,31 +148,31 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
         });
     }
 
-    //quita el border cuando se deselecciona
     function deleteBorder(element:any,index:any) {
         element.forEach((e:any,i:any) => {
             if (i === index) {
-                e.style.border='0px'
+                e.style.border='2px solid transparent'
             }
         });
     }
 
-    //verificacion de cual checkbox esta checkeado y desactiva los otros
     function verifiCheck(elements:any, elementChecked:any) {
-        elements.forEach((e:any) => {
+        elements.forEach((e:any, i: any) => {
             if (e != elementChecked) {
-                e.disabled = elementChecked.checked;
+                e.checked = false;
+                deleteBorder(projectBox,i)
+            }else{
+                e.checked = true;
             }
         });
     }
 
-    //desactivacion del boton de copiar link
     copyLink.disabled = true;
     copyLink.style.opacity ='0.5'
 
     projectSelected.forEach((e,i)=>{
-        e.addEventListener('click',()=>{
-            verifiCheck(projectSelected,e)
+        e.addEventListener('change',()=>{
+            verifiCheck(projectSelected, e)
             if (e.checked == true) {
                 setBorder(projectBox,i)
                 copyLink.disabled = false;
@@ -190,5 +190,4 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
             }
         });
     });
-
 </script>
