@@ -14,6 +14,13 @@ filter_index?.forEach((element, index) => {
     })
 })
 
+const profile = document.querySelector("#profile");
+
+profile?.addEventListener("click", () => {
+    const more_options_profile = document.querySelector("#more-options-profile");
+    more_options_profile.style.display = window.getComputedStyle(more_options_profile).display == "none" ? 'flex' : 'none';
+});
+
 const items_slide = document.querySelectorAll("#items-slide");
 
 items_slide.forEach((element) => {
@@ -87,27 +94,16 @@ menu_btn_list.forEach((element) => {
 });
 
 let close_right_slide = document.querySelector("#close-right-slide");
+
+close_right_slide?.addEventListener("click", () => {
+    document.querySelector("#right-slide").style.right = window.getComputedStyle(document.querySelector("#right-slide")).right == "0px" ? "-25rem" : "0px";
+});
+
 let close_left_slide = document.querySelector("#close-left-slide");
 
-[close_right_slide, close_left_slide].forEach((element) => {
-    element.addEventListener("click", () => {
-        let class_element = "#" + element.id.split("-")[1] + "-" + element.id.split("-")[2];
-        let remove_class = "-" + element.id.split("-")[1] + "-0";
-        let add_class = "-" + element.id.split("-")[1] + "-[25rem]";
-        let element_id = document.querySelector(class_element)
-
-        if(element_id.classList.contains(remove_class)){
-            element_id.classList.replace(remove_class,add_class);
-            console.log("a")
-            console.log(remove_class, add_class)
-        }else{
-            element_id.classList.replace(add_class,remove_class);
-            console.log(add_class, remove_class)
-            console.log("e")
-        }
-    });
-})
-
+close_left_slide?.addEventListener("click", () => {
+    document.querySelector("#left-slide").style.left = window.getComputedStyle(document.querySelector("#left-slide")).left == "0px" ? "-25rem" : "0px";
+});
 let menu_btn = document.querySelectorAll("#menu-btn");
 
 menu_btn.forEach(element => {

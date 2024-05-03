@@ -5,9 +5,9 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
 <div id="popup-invite" class="w-screen h-screen fixed z-50 hidden justify-center items-center max-sm:px-3">
     <div id="bg-close-invite" class="absolute left-0 bg-close w-full h-full backdrop-blur bg-black/50 cursor-pointer"></div>
 
-    <div id="projectContent" class="flex flex-col h-[32rem] w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10  animate-deployment">
+    <div id="projectContent" class="flex flex-col h-fit w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10  animate-deployment">
         <header class="w-full flex justify-between items-center p-2 border-b-[1px] border-slate-300">
-            <h3 class="text-xl text-white font-bold">
+            <h3 class="text-xl text-white font-bold max-md:text-base">
                 Share the parcellers with your friends
             </h3>
 
@@ -20,12 +20,12 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
             </span>
         </header>
 
-        <section class="flex flex-col gap-5 p-7" id="projects-box">
-            <article class="flex items-center gap-3 p-3 rounded box-border border-2 border-transparent relative" id="parceler-box">
+        <section class="flex flex-col gap-5 py-5" id="projects-box">
+            <article class="flex items-center gap-3 p-3 rounded box-border border-2 border-transparent relative w-full" id="parceler-box">
                 <label for="check-1" class="w-full h-full flex items-center bg-transparent absolute z-10"></label>
                 <input type="checkbox" id="check-1" class="h-5 w-5 projectSelected" id="parceler-selected">
                 <div class=" h-16 w-24 bg-slate-400 rounded"></div>
-                <p class="flex flex-col">Parcelador (Parcify) <span class="opacity-50">Edited 3 minutes ago</span></p>
+                <p class="flex flex-col max-md:text-sm">Parcelador (Parcify) <span class="opacity-50 max-md:text-sm">Edited 3 minutes ago</span></p>
             </article>
             <article class="flex items-center gap-3 p-3 rounded box-border border-2 border-transparent relative" id="parceler-box">
                 <label for="check-2" class="w-full h-full flex items-center bg-transparent absolute z-10"></label>

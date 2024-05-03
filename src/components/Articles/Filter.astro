@@ -1,0 +1,36 @@
+---
+
+---
+
+<div class="flex items-center justify-between w-full pr-2">
+    <div class="relative w-fit flex flex-col gap-1">
+        <div id="filter" class="flex items-end gap-2 cursor-pointer">
+            <div class="w-fit h-fit flex items-center gap-2">
+                <span class="text-gray-300 font-semibold text-xl max-[880px]:text-base w-fit h-fit">
+                    Filter:
+                </span>
+                <span class="text-white font-bold text-lg max-[880px]:text-base cursor-pointer w-fit h-fit">
+                    All files
+                </span>
+            </div>
+
+            <svg id="arrow-down-filter" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-down h-6 cursor-pointer transition-all duration-200 ease-in">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M6 9l6 6l6 -6"/>
+            </svg>
+        </div>
+        
+        <ul id="more-options-filter" class="absolute mt-10 bg-[#2b2929] rounded-md shadow-lg shadow-[#181818] w-full hidden flex-col justify-center item-start text-white animate-deployment">
+            <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-t-md" data-filter="test">Prueba</li>
+            <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+            <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1" data-filter="test">Prueba</li>
+            <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-b-md" data-filter="test">Prueba</li>
+        </ul>
+    </div>
+
+    <div class="flex items-center justify-center">
+        <!-- <svg id="order-chart" class="h-5 cursor-pointer scale-125 transition-all duration-200 ease-in" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12">
+            <path fill="white" fill-opacity="1" fill-rule="evenodd" stroke="none" d="M1 1h3v3H1V1zM0 0h5v5H0V0zm1 8h3v3H1V8zM0 7h5v5H0V7zm11-6H8v3h3V1zM8 0H7v5h5V0H8zm0 8h3v3H8V8zM7 7h5v5H7V7z"></path>
+        </svg> -->
+    </div>
+</div>
