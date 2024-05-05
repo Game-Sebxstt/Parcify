@@ -29,8 +29,10 @@ let offsetX = 0;
 let offsetY = 0;
 let resizeHandle = false;
 
-canvas.width = contentCanvas.offsetWidth;
-canvas.height = contentCanvas.offsetHeight;
+if(contentCanvas){
+    canvas.width = contentCanvas.offsetWidth;
+    canvas.height = contentCanvas.offsetHeight;
+}
 
 window.addEventListener("resize", () => {
     contentCanvas = document.getElementById('content-canvas');
@@ -78,7 +80,7 @@ function drawElements() {
 
 }
 
-canvas.addEventListener('click', function(event) {
+canvas?.addEventListener('click', function(event) {
     var canvasRect = canvas.getBoundingClientRect();
     var mouseX = event.clientX - canvasRect.left;
     var mouseY = event.clientY - canvasRect.top;
@@ -110,7 +112,7 @@ canvas.addEventListener('click', function(event) {
     drawElements();
 });
 
-canvas.addEventListener('mousedown', function(event) {
+canvas?.addEventListener('mousedown', function(event) {
     var canvasRect = canvas.getBoundingClientRect();
     var mouseX = event.clientX - canvasRect.left;
     var mouseY = event.clientY - canvasRect.top;
@@ -135,7 +137,7 @@ canvas.addEventListener('mousedown', function(event) {
     }
 });
 
-canvas.addEventListener('mousemove', function(event) {
+canvas?.addEventListener('mousemove', function(event) {
     var canvasRect = canvas.getBoundingClientRect();
     var mouseX = event.clientX - canvasRect.left;
     var mouseY = event.clientY - canvasRect.top;
@@ -156,7 +158,7 @@ canvas.addEventListener('mousemove', function(event) {
     }
 });
 
-canvas.addEventListener('mouseup', function(event) {
+canvas?.addEventListener('mouseup', function(event) {
     if (selectedElement) {
         selectedElement.finishResize();
     }
@@ -167,7 +169,7 @@ canvas.addEventListener('mouseup', function(event) {
     }
 });
 
-canvas.addEventListener('dblclick', function(event) {
+canvas?.addEventListener('dblclick', function(event) {
     var canvasRect = canvas.getBoundingClientRect();
     var mouseX = event.clientX - canvasRect.left;
     var mouseY = event.clientY - canvasRect.top;
@@ -196,7 +198,7 @@ context.fillRect(0,0, canvas.width, canvas.height);
 let export_canvas = document.querySelector("#export");
 
 export_canvas.addEventListener("click", () => {
-    let imgData = canvas.toDataURL("image/jpeg", 2);
+    let imgData = canvas.toDataURL("image/png", 1).replace("image/png", "image/octet-stream");
     const createEl = document.createElement("a");
     createEl.href = imgData;
 
