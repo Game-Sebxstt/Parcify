@@ -8,7 +8,7 @@ let StatesShapes = {
 };
 
 let StatesCursor = {
-    addShape: false,
+    addShape: true,
 }
 
 export {StatesShapes, StatesCursor}

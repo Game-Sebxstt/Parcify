@@ -23,28 +23,55 @@ let stage = new Konva.Stage({ // Lienzo
     container: 'konva',
     width: widthKonva,
     height: heightKonva,
-    draggable: true,
+    draggable: false,
 });
 
 var layer = new Konva.Layer(); // Capa
 stage.add(layer);
 
-let bg = new Konva.Rect({ // Fondo
-    x: 0,
-    y: 0,
-    width: widthKonva,
-    height: heightKonva,
-    fill: "#ffffff",
-    listening: false
-})
-layer.add(bg);
+function generateGrid(scaleX, scaleY) {
+    // let bg = new Konva.Rect({ // Fondo
+    //     x: 0,
+    //     y: 0,
+    //     width: widthKonva,
+    //     height: heightKonva,
+    //     fill: "#ffffff",
+    //     listening: false,
+    //     draggable: false,
+    // })
+    // layer.add(bg);
+
+    // for (var i = 0; i < widthKonva / 30; i++) {
+    //     layer.add(new Konva.Line({
+    //         points: [Math.round(i * 30) + 0.5, 0, Math.round(i * 30) + 0.5, heightKonva],
+    //         stroke: '#ddd',
+    //         strokeWidth: 1,
+    //         scale: { x: scaleX, y: scaleY },
+    //     }));
+    // }
+    
+    // layer.add(new Konva.Line({points: [0,0,10,10]}));
+    // for (var j = 0; j < heightKonva / 30; j++) {
+    //   layer.add(new Konva.Line({
+    //     points: [0, Math.round(j * 30), widthKonva, Math.round(j * 30)],
+    //     stroke: '#ddd',
+    //     strokeWidth: 0.5,
+    //     scale: { x: scaleX, y: scaleY },
+    //   }));
+    // }
+}
+generateGrid(1,1);
+
+// stage.container().style.backgroundColor = "#f0f0f0";
+// stage.container().style.backgroundImage = "radial-gradient(rgba(140, 140, 140, 0.171) 2px, transparent 0)";
+// stage.container().style.backgroundSize = "30px 30px";
+// stage.container().style.backgroundPosition = "-5px -5px"
 
 var tr = new Konva.Transformer({ // Transformador de tamaño y posicion con limite
     boundBoxFunc: function (oldBoundBox, newBoundBox) {
         if (Math.abs(newBoundBox.width) > MAX_WIDTH) {
         return oldBoundBox;
         }
-
         return newBoundBox;
     },
 });
@@ -187,6 +214,7 @@ stage.on('wheel', (e) => {
     y: pointer.y - mousePointTo.y * newScale,
   };
   stage.position(newPos);
+  generateGrid(newScale, newScale);
 });
 
 // Events to canvas in DOM
@@ -194,7 +222,7 @@ stage.on('wheel', (e) => {
 let export_canvas = document.querySelector("#export");
 export_canvas.addEventListener("click", () => {
     var dataURL = stage.toDataURL({ pixelRatio: 3 });
-    downloadURI(dataURL, 'stage.png');
+    downloadURI(dataURL, 'stage.jpeg');
 });
 
 let undoButton = document.querySelector('#undo');

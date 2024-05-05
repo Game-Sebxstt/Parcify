@@ -47,14 +47,43 @@ import LayoutForm from "../layouts/LayoutForm.astro";
                 <path d="M3 7l9 6l9 -6"></path>
               </svg>
               <input
-                class="w-full py-3 pl-10 text-gray-500 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
-                type="email"
-                name="email_login"
-                id="email_login"
-                placeholder="Email"
+                class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
+                type="text"
+                name="name_login"
+                id="name_login"
+                placeholder="Nombre"
                 required
               />
             </div>
+
+            <div
+            class="relative w-full h-full flex justify-start items-center mb-5"
+          >
+            <svg
+              class="icon icon-tabler icons-tabler-outline icon-tabler-mail h-6 absolute left-2 text-gray-500"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+              <path
+                d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z"
+              ></path>
+              <path d="M3 7l9 6l9 -6"></path>
+            </svg>
+            <input
+              class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
+              type="email"
+              name="email_login"
+              id="email_login"
+              placeholder="Email"
+              required
+            />
+          </div>
 
             <div class="relative w-full h-full flex justify-start items-center">
               <svg
@@ -91,7 +120,7 @@ import LayoutForm from "../layouts/LayoutForm.astro";
                 ></path>
               </svg>
               <input
-                class="w-full py-3 pl-10 text-gray-500 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
+                class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
                 type="password"
                 name="password_login"
                 id="password_login"

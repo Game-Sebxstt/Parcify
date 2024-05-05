@@ -19,6 +19,8 @@ interface ShapeProperties{
     draggable: boolean,
     id: string,
     name: string,
+    text: string,
+    align: string,
 }
 
 let defaultConfig: ShapeProperties = {
@@ -30,20 +32,21 @@ let defaultConfig: ShapeProperties = {
     pointerLength: 10,
     pointerWidth: 10,
     sides: 3,
-    points: [],
+    points: [0,0, 0, -100],
     fill: "black",
-    stroke: "transparent",
+    stroke: "black",
     strokeWidth: 2,
     strokeRadius: 5,
     isVisible: true,
     draggable: true,
     id: "default",
-    name: "shape"
+    name: "shape",
+    text: "Esto es un texto por defecto",
+    align: "center",
 }
 
 function addShape(shapeProperties: ShapeProperties){
     if(States.StatesShapes.circle){
-        console.log(shapeProperties);
         return new Konva.Circle({...defaultConfig, ...shapeProperties});
     }else if(States.StatesShapes.rectangle){
         return new Konva.Rect({...defaultConfig, ...shapeProperties})
