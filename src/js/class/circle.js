@@ -139,6 +139,7 @@ class Circle {
 
     finishResize() {
         this.resizing = false;
+        this.selected = true;
         this.handleIndex = -1;
     }
 

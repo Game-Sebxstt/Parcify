@@ -65,6 +65,9 @@ function addShape(shapeProperties) {
 function drawElements() {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
+    context.fillStyle = "white";
+    context.fillRect(0,0, canvas.width, canvas.height);
+
     elements.forEach(item => {
         item.draw(context);
 
@@ -124,7 +127,6 @@ canvas.addEventListener('mousedown', function(event) {
     if (selectedElement && selectedElement.isInHandle(mouseX, mouseY)) {
         selectedElement.startResize(mouseX, mouseY);
         states_pointer.select = false;
-        console.log("klwajdlak")
     } else if (selectedElement && selectedElement.isClicked(mouseX, mouseY)) {
         offsetX = mouseX - selectedElement.x;
         offsetY = mouseY - selectedElement.y;
@@ -184,4 +186,22 @@ canvas.addEventListener('dblclick', function(event) {
             }
         }
     });
+});
+
+context.fillStyle = "white";
+context.fillRect(0,0, canvas.width, canvas.height);
+
+// Events to elements in DOM
+
+let export_canvas = document.querySelector("#export");
+
+export_canvas.addEventListener("click", () => {
+    let imgData = canvas.toDataURL("image/jpeg", 2);
+    const createEl = document.createElement("a");
+    createEl.href = imgData;
+
+    createEl.download = "Canvas";
+
+    createEl.click();
+    createEl.remove();
 });
