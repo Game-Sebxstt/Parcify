@@ -174,9 +174,8 @@ stage.on('click tap', function (e) {
         }
 
         let shape = addShape(shapeProperties);
-        console.log(shape.attrs.text.length)
 
-        if(shape.attrs.name === "text"){
+        if(shape && shape.attrs.name === "text"){
             shape.on('transform', () => {
                 shape.setAttrs({
                     width: Math.max(5, shape.width() * shape.scaleX()),
@@ -296,10 +295,53 @@ stage.on('click tap', function (e) {
             
         }
 
-        elements.push(shape);
-        tr.nodes(elements);
-        layer.add(shape);
+        if(shape){
+            elements.push(shape);
+            tr.nodes(elements);
+            layer.add(shape);
+            layer.draw();
+        }
+    }
+
+    if(States.StatesShapes.image && !e.target.id()){
+        console.log(e.target.id())
+        var image = new Image();
+        let mousePos = stage.getRelativePointerPosition();
+
+        let widthDefault = 100;
+
+        let shapeProperties = {
+            x: mousePos.x - (widthDefault / 2),
+            y: mousePos.y - (widthDefault / 2),
+            image: image,
+            width: widthDefault,
+            height: widthDefault,
+            id: "default",
+            name: "image",
+            draggable: true
+        }
+
+        // image.onload = function () {
+        //     var image = new Konva.Image({...shapeProperties});
+        //     layer.add(image);
+        //     layer.draw();     
+        // };
+
+        let ob = new Konva.Rect({
+            x: shapeProperties.x,
+            y: shapeProperties.y,
+            width: shapeProperties.width,
+            height: shapeProperties.height,
+            id: "default",
+            name: "shape",
+            fill: 'red',
+            cornerRadius: 5
+        })
+
+        layer.add(ob);
         layer.draw();
+
+        image.src = '../../../public/Logo.jpg';
     }
 
     if (selectionRectangle.visible()) {
@@ -311,7 +353,7 @@ stage.on('click tap', function (e) {
         return;
     }
 
-    if (!e.target.hasName("shape") && !e.target.hasName("text")) {
+    if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
         return;
     }
 
@@ -363,6 +405,48 @@ stage.on('wheel', (e) => {
   stage.position(newPos);
   generateGrid(newScale, newScale);
 });
+
+// Agregar evento para Ctrl + C (Guardar JSON del stage)
+document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && e.key === 'c') {
+        e.preventDefault();
+
+        // Serializar el stage actual a JSON
+        const stageJSON = stage.toJSON();
+
+        // Guardar el JSON en localStorage
+        localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
+    }
+});
+
+// Agregar evento para Ctrl + V (Reemplazar el stage con un nuevo contenido)
+document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && e.key === 'v') {
+        e.preventDefault();
+
+        // Obtener el JSON serializado del localStorage
+        const savedStageJSON = localStorage.getItem("STAGEJSON");
+
+        if (savedStageJSON) {
+            try {
+                // Deserializar el JSON para crear un nuevo stage
+                const newStage = Konva.Node.create(JSON.parse(savedStageJSON), 'konva');
+
+                // Reemplazar el contenido actual con el nuevo stage
+                stage.destroyChildren();
+                newStage.children.forEach(child => {
+                    stage.add(child);
+                });
+                stage.batchDraw();
+
+            } catch (error) {
+                console.error('Error al pegar el contenido:', error);
+            }
+        }
+    }
+});
+
+
 
 // Events to canvas in DOM
 

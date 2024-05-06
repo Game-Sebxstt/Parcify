@@ -14,7 +14,7 @@ interface ShapeProperties{
     fill: string,
     stroke: string,
     strokeWidth: number,
-    strokeRadius: number,
+    cornerRadius: number,
     isVisible: boolean,
     draggable: boolean,
     id: string,
@@ -36,7 +36,7 @@ let defaultConfig: ShapeProperties = {
     fill: "black",
     stroke: "black",
     strokeWidth: 2,
-    strokeRadius: 5,
+    cornerRadius: 3,
     isVisible: true,
     draggable: true,
     id: "default",
@@ -62,6 +62,8 @@ function addShape(shapeProperties: ShapeProperties){
         defaultConfig.name = "text";
         return new Konva.Text({...defaultConfig, ...shapeProperties});
     }
+
+    return false;
 }
 
 export {addShape}
