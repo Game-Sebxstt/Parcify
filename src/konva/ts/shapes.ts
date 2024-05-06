@@ -42,7 +42,7 @@ let defaultConfig: ShapeProperties = {
     id: "default",
     name: "shape",
     text: "Esto es un texto por defecto",
-    align: "center",
+    align: "left",
 }
 
 function addShape(shapeProperties: ShapeProperties){
@@ -59,6 +59,7 @@ function addShape(shapeProperties: ShapeProperties){
     }else if(States.StatesShapes.arrow){
         return new Konva.Arrow({...defaultConfig, ...shapeProperties});
     }else if(States.StatesShapes.text){
+        defaultConfig.name = "text";
         return new Konva.Text({...defaultConfig, ...shapeProperties});
     }
 }

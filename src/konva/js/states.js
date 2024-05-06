@@ -1,6 +1,6 @@
 let StatesShapes = {
-    text: false,
-    circle: true,
+    text: true,
+    circle: false,
     rectangle: false,
     triangle: false,
     diamond: false,

@@ -27,47 +27,74 @@ let stage = new Konva.Stage({ // Lienzo
 });
 
 var layer = new Konva.Layer(); // Capa
+var layerGrid = new Konva.Layer(); // Capa de la cuadricula
+var layerBackground = new Konva.Layer(); // Capa de fondo
 stage.add(layer);
+stage.add(layerGrid);
+stage.add(layerBackground);
+
+layer.zIndex(2);
+layerGrid.zIndex(1);
+layerBackground.zIndex(0);
 
 function generateGrid(scaleX, scaleY) {
-    // let bg = new Konva.Rect({ // Fondo
-    //     x: 0,
-    //     y: 0,
-    //     width: widthKonva,
-    //     height: heightKonva,
-    //     fill: "#ffffff",
-    //     listening: false,
-    //     draggable: false,
-    // })
-    // layer.add(bg);
+    let bg = new Konva.Rect({ // Fondo
+        x: 0,
+        y: 0,
+        width: widthKonva,
+        height: heightKonva,
+        fill: "#ffffff",
+        listening: false,
+        draggable: false,
+    });
+    layerBackground.add(bg);
 
-    // for (var i = 0; i < widthKonva / 30; i++) {
-    //     layer.add(new Konva.Line({
-    //         points: [Math.round(i * 30) + 0.5, 0, Math.round(i * 30) + 0.5, heightKonva],
-    //         stroke: '#ddd',
-    //         strokeWidth: 1,
-    //         scale: { x: scaleX, y: scaleY },
-    //     }));
-    // }
+    elements = elements.filter((element) => {
+        if (element.name() === "grid") {
+            element.destroy();
+            return false;
+        }
+        return true;
+    });
+
+    stage.find(".grid").forEach((element) => {
+        element.destroy();
+    });
+
+    for (var i = 0; i < widthKonva / 10; i++) {
+        let grid = new Konva.Line({
+            points: [Math.round(i * 10) + 0.5, 0, Math.round(i * 10) + 0.5, heightKonva],
+            stroke: '#ddd',
+            strokeWidth: 1,
+            scale: { x: scaleX, y: scaleY },
+            name: "grid",
+            listening: false,
+            draggable: false,
+        })
+
+        elements.push(grid);
+        layerGrid.add(grid);
+    }
     
-    // layer.add(new Konva.Line({points: [0,0,10,10]}));
-    // for (var j = 0; j < heightKonva / 30; j++) {
-    //   layer.add(new Konva.Line({
-    //     points: [0, Math.round(j * 30), widthKonva, Math.round(j * 30)],
-    //     stroke: '#ddd',
-    //     strokeWidth: 0.5,
-    //     scale: { x: scaleX, y: scaleY },
-    //   }));
-    // }
+    layerGrid.add(new Konva.Line({points: [0,0,10,10]}));
+    for (var j = 0; j < heightKonva / 10; j++) {
+      let grid = new Konva.Line({
+        points: [0, Math.round(j * 10), widthKonva, Math.round(j * 10)],
+        stroke: '#ddd',
+        strokeWidth: 0.5,
+        scale: { x: scaleX, y: scaleY },
+        name: "grid"
+      })
+
+      elements.push(grid);
+      layerGrid.add(grid);
+    }
 }
 generateGrid(1,1);
 
-// stage.container().style.backgroundColor = "#f0f0f0";
-// stage.container().style.backgroundImage = "radial-gradient(rgba(140, 140, 140, 0.171) 2px, transparent 0)";
-// stage.container().style.backgroundSize = "30px 30px";
-// stage.container().style.backgroundPosition = "-5px -5px"
-
 var tr = new Konva.Transformer({ // Transformador de tamaño y posicion con limite
+    nodes: elements,
+    padding: 5,
     boundBoxFunc: function (oldBoundBox, newBoundBox) {
         if (Math.abs(newBoundBox.width) > MAX_WIDTH) {
         return oldBoundBox;
@@ -144,10 +171,130 @@ stage.on('click tap', function (e) {
         let shapeProperties = {
             x: mousePos.x,
             y: mousePos.y,
-            name: "shape"
         }
 
         let shape = addShape(shapeProperties);
+        console.log(shape.attrs.text.length)
+
+        if(shape.attrs.name === "text"){
+            shape.on('transform', () => {
+                shape.setAttrs({
+                    width: Math.max(5, shape.width() * shape.scaleX()),
+                    height: Math.max(5, shape.height() * shape.scaleY()),
+                    scaleX: 1,
+                    scaleY: 1,
+                });
+            });
+
+            shape.on('dblclick dbltap', () => {
+                shape.hide();
+                tr.hide();
+                layer.draw();
+        
+                var textPosition = shape.getAbsolutePosition();
+
+                var stageBox = stage.container().getBoundingClientRect();
+        
+                var areaPosition = {
+                  x: stageBox.left + textPosition.x,
+                  y: stageBox.top + textPosition.y,
+                };
+        
+                var textarea = document.createElement('textarea');
+                document.body.appendChild(textarea);
+        
+                textarea.value = shape.text();
+                textarea.style.position = 'absolute';
+                textarea.style.top = areaPosition.y + 'px';
+                textarea.style.left = areaPosition.x + 'px';
+                textarea.style.width = shape.width();
+                textarea.style.height = shape.height();
+                textarea.style.fontSize = shape.fontSize();
+                textarea.style.border = '2px solid blue';
+                textarea.style.padding = '.5rem';
+                textarea.style.margin = '0px';
+                textarea.style.overflow = 'hidden';
+                textarea.style.background = 'none';
+                textarea.style.outline = 'none';
+                textarea.style.lineHeight = shape.lineHeight();
+                textarea.style.fontFamily = shape.fontFamily();
+                textarea.style.transformOrigin = 'left top';
+                textarea.style.textAlign = shape.align();
+                textarea.style.color = shape.fill();
+                let rotation = shape.rotation();
+                let transform = '';
+                if (rotation) {
+                  transform += 'rotateZ(' + rotation + 'deg)';
+                }
+
+                let px = 0;
+                let isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+                if (isFirefox) {
+                    px += 2 + Math.round(shape.fontSize() / 20);
+                }
+                transform += 'translateY(-' + px + 'px)';
+                textarea.style.transform = transform;
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 3 + 'px';
+
+                textarea.focus();
+
+                function removeTextarea(){
+                    if(!textarea){
+                        return;
+                    }
+                    shape.width();
+                    textarea.remove();
+                    window.removeEventListener('click', handleOutsideClick);
+                    shape.show();
+                    tr.show();
+                    tr.forceUpdate();
+                    layer.draw();
+                }
+
+                textarea.addEventListener('keydown', function (e) {
+                    // hide on enter
+                    // but don't hide on shift + enter
+                    if (e.keyCode === 13 && !e.shiftKey) {
+                        shape.text(textarea.value);
+                        removeTextarea();
+                    }
+                    // on esc do not set value back to node
+                    if (e.keyCode === 27) {
+                        removeTextarea();
+                    }
+                });
+
+                textarea.addEventListener('input', function () {
+                    shape.text(textarea.value);
+                });
+
+                function handleOutsideClick(e) {
+                    if (e.target !== textarea) {
+                        shape.text(textarea.value);
+                        removeTextarea();
+                    }
+                }
+
+                setTimeout(() => {
+                    window.addEventListener('click', handleOutsideClick);
+                });
+
+
+                
+                // textarea.focus();
+        
+                // textarea.addEventListener('keydown', function (e) {
+                //   // hide on enter
+                //   if (e.keyCode === 13) {
+                //     removeTextarea();
+                //   }
+                // });
+
+                // stage.on('click', removeTextarea);
+              });
+            
+        }
 
         elements.push(shape);
         tr.nodes(elements);
@@ -164,7 +311,7 @@ stage.on('click tap', function (e) {
         return;
     }
 
-    if (!e.target.hasName("shape")) {
+    if (!e.target.hasName("shape") && !e.target.hasName("text")) {
         return;
     }
 
@@ -221,8 +368,13 @@ stage.on('wheel', (e) => {
 
 let export_canvas = document.querySelector("#export");
 export_canvas.addEventListener("click", () => {
+    layerGrid.visible(false);
     var dataURL = stage.toDataURL({ pixelRatio: 3 });
-    downloadURI(dataURL, 'stage.jpeg');
+    let stateDownload = downloadURI(dataURL, 'stage.jpeg');
+
+    if(stateDownload){
+        layerGrid.visible(true);
+    }
 });
 
 let undoButton = document.querySelector('#undo');
