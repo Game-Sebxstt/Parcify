@@ -32,15 +32,22 @@ if(localStorage.getItem("STAGEJSON")){
     });
 }
 
-var layer = new Konva.Layer(); // Capa
-var layerGrid = new Konva.Layer(); // Capa de la cuadricula
-var layerBackground = new Konva.Layer(); // Capa de fondo
-stage.add(layer);
-stage.add(layerGrid);
-stage.add(layerBackground);
+console.log(stage.getLayers(), stage.getLayers().find(item => item.attrs.id == "layer"))
 
-layer.zIndex(2);
-layerGrid.zIndex(1);
+var layer = stage.getLayers().find(item => item.attrs.id == "layer") || new Konva.Layer({
+    id: "layer"
+});
+
+var layerBackground = stage.getLayers().find(item => item.attrs.id == "layerbackground") || new Konva.Layer({
+    id: "layerbackground",
+});
+
+if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers().find(item => item.attrs.id == "layerBackground")){
+    stage.add(layer);
+    stage.add(layerBackground); 
+}
+
+layer.zIndex(1);
 layerBackground.zIndex(0);
 
 let bg = new Konva.Rect({ // Fondo
@@ -414,6 +421,7 @@ document.addEventListener('keydown', function (e) {
 
         const stageJSON = stage.toJSON();
 
+        localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
     }
 
