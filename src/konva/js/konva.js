@@ -8,6 +8,7 @@ let konva = document.querySelector("#konva");
 
 //Variables Reusing
 let elements = [];
+let elementsLayerBackground = [];
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
 let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
 
@@ -17,14 +18,19 @@ var MAX_WIDTH = widthKonva / 2;
 var X1, Y1, X2, Y2;
 var SELECTING = false;
 
+let stage;
 
 //Tools Konva
-let stage = new Konva.Stage({ // Lienzo
-    container: 'konva',
-    width: widthKonva,
-    height: heightKonva,
-    draggable: false,
-});
+if(localStorage.getItem("STAGEJSON")){
+    stage = Konva.Node.create(JSON.parse(localStorage.getItem("STAGEJSON")), 'konva');
+}else{
+    stage = new Konva.Stage({ // Lienzo
+        container: 'konva',
+        width: widthKonva,
+        height: heightKonva,
+        draggable: true,
+    });
+}
 
 var layer = new Konva.Layer(); // Capa
 var layerGrid = new Konva.Layer(); // Capa de la cuadricula
@@ -37,70 +43,33 @@ layer.zIndex(2);
 layerGrid.zIndex(1);
 layerBackground.zIndex(0);
 
-function generateGrid(scaleX, scaleY) {
-    let bg = new Konva.Rect({ // Fondo
-        x: 0,
-        y: 0,
-        width: widthKonva,
-        height: heightKonva,
-        fill: "#ffffff",
-        listening: false,
-        draggable: false,
-    });
-    layerBackground.add(bg);
-
-    elements = elements.filter((element) => {
-        if (element.name() === "grid") {
-            element.destroy();
-            return false;
-        }
-        return true;
-    });
-
-    stage.find(".grid").forEach((element) => {
-        element.destroy();
-    });
-
-    for (var i = 0; i < widthKonva / 10; i++) {
-        let grid = new Konva.Line({
-            points: [Math.round(i * 10) + 0.5, 0, Math.round(i * 10) + 0.5, heightKonva],
-            stroke: '#ddd',
-            strokeWidth: 1,
-            scale: { x: scaleX, y: scaleY },
-            name: "grid",
-            listening: false,
-            draggable: false,
-        })
-
-        elements.push(grid);
-        layerGrid.add(grid);
-    }
-    
-    layerGrid.add(new Konva.Line({points: [0,0,10,10]}));
-    for (var j = 0; j < heightKonva / 10; j++) {
-      let grid = new Konva.Line({
-        points: [0, Math.round(j * 10), widthKonva, Math.round(j * 10)],
-        stroke: '#ddd',
-        strokeWidth: 0.5,
-        scale: { x: scaleX, y: scaleY },
-        name: "grid"
-      })
-
-      elements.push(grid);
-      layerGrid.add(grid);
-    }
-}
-generateGrid(1,1);
+let bg = new Konva.Rect({ // Fondo
+    x: 0,
+    y: 0,
+    width: stage.width(),
+    height: stage.height(),
+    fill: "#1E1E1E",
+    listening: false,
+    draggable: false,
+    scale: {
+        x: 8,
+        y: 8,
+    },
+    name: "bg"
+});
+layerBackground.add(bg);
+elementsLayerBackground.push(bg);
 
 var tr = new Konva.Transformer({ // Transformador de tamaño y posicion con limite
     nodes: elements,
-    padding: 5,
+    padding: 1,
     boundBoxFunc: function (oldBoundBox, newBoundBox) {
         if (Math.abs(newBoundBox.width) > MAX_WIDTH) {
         return oldBoundBox;
         }
         return newBoundBox;
     },
+    visible: true,
 });
 layer.add(tr);
 
@@ -113,59 +82,98 @@ layer.add(selectionRectangle);
 
 // Events to stage
 
-stage.on('mousedown touchstart', (e) => {
-    if (e.target !== stage) {
+stage.on('dragmove', () => {
+    bg.absolutePosition({ x: 0, y: 0 });
+});
+
+stage.on('mousemove', () => {
+    if(!States.StatesCursor.addShape){
         return;
     }
 
-    e.evt.preventDefault();
-    X1 = stage.getPointerPosition().x;
-    Y1 = stage.getPointerPosition().y;
-    X2 = stage.getPointerPosition().x;
-    Y2 = stage.getPointerPosition().y;
+    tr.setAttr("visible", false);
 
-    selectionRectangle.width(0);
-    selectionRectangle.height(0);
-    SELECTING = true;
+    elements.forEach(element => {
+        if(element.attrs.name == "preview"){
+            element.destroy();
+            return;
+        }
+    });
+
+    var mousePos = stage.getRelativePointerPosition();
+    
+    let shapeProperties = {
+        x: mousePos.x,
+        y: mousePos.y,
+        draggable: false,
+        listening: false,
+        opacity: 0.5,
+        name: 'preview'
+    }
+
+    let shape = addShape(shapeProperties);
+
+    elements.push(shape);
+    layer.add(shape);
+    layer.draw();
+})
+
+stage.on('mousedown touchstart', (e) => {
+  if (e.target !== stage) {
+    return;
+  }
+  e.evt.preventDefault();
+  X1 = stage.getRelativePointerPosition().x;
+  Y1 = stage.getRelativePointerPosition().y;
+  X2 = stage.getRelativePointerPosition().x;
+  Y2 = stage.getRelativePointerPosition().y;
+
+  selectionRectangle.width(0);
+  selectionRectangle.height(0);
+  SELECTING = true;
 });
 
 stage.on('mousemove touchmove', (e) => {
-    if (!SELECTING) {
-        return;
-    }
+  if (!SELECTING) {
+    return;
+  }
+  e.evt.preventDefault();
+  X2 = stage.getRelativePointerPosition().x;
+  Y2 = stage.getRelativePointerPosition().y;
 
-    e.evt.preventDefault();
-    X2 = stage.getPointerPosition().x;
-    Y2 = stage.getPointerPosition().y;
-
-    selectionRectangle.setAttrs({
-        visible: true,
-        x: Math.min(X1, X2),
-        y: Math.min(Y1, Y2),
-        width: Math.abs(X2 - X1),
-        height: Math.abs(Y2 - Y1),
-    });
+  selectionRectangle.setAttrs({
+    visible: true,
+    x: Math.min(X1, X2),
+    y: Math.min(Y1, Y2),
+    width: Math.abs(X2 - X1),
+    height: Math.abs(Y2 - Y1),
+  });
 });
 
 stage.on('mouseup touchend', (e) => {
-    SELECTING = false;
-    if (!selectionRectangle.visible()) {
-        return;
-    }
-
-    e.evt.preventDefault();
-    selectionRectangle.visible(false);
-    var shapes = stage.find('.rect');
-    var box = selectionRectangle.getClientRect();
-    var selected = shapes.filter((shape) =>
-        Konva.Util.haveIntersection(box, shape.getClientRect())
-    );
-
-    tr.nodes(selected);
+  SELECTING = false;
+  if (!selectionRectangle.visible()) {
+    return;
+  }
+  e.evt.preventDefault();
+  selectionRectangle.visible(false);
+  var shapes = stage.find('.shape' || '.text');
+  var box = selectionRectangle.getClientRect();
+  var selected = shapes.filter((shape) =>
+    Konva.Util.haveIntersection(box, shape.getClientRect())
+  );
+  tr.nodes(selected);
 });
 
 stage.on('click tap', function (e) {
     if (States.StatesCursor && !e.target.id()) {
+        elements.forEach(element => {
+            if(element.attrs.name == "preview"){
+                element.destroy();
+                return;
+            }
+        });
+
         let mousePos = stage.getRelativePointerPosition();
 
         let shapeProperties = {
@@ -300,6 +308,13 @@ stage.on('click tap', function (e) {
             tr.nodes(elements);
             layer.add(shape);
             layer.draw();
+                            
+            Object.keys(States.StatesShapes).forEach(key => {
+                States.StatesShapes[key] = false;
+            });
+
+            States.StatesCursor.addShape = false;
+            tr.setAttr("visible", true);
         }
     }
 
@@ -321,26 +336,11 @@ stage.on('click tap', function (e) {
             draggable: true
         }
 
-        // image.onload = function () {
-        //     var image = new Konva.Image({...shapeProperties});
-        //     layer.add(image);
-        //     layer.draw();     
-        // };
-
-        let ob = new Konva.Rect({
-            x: shapeProperties.x,
-            y: shapeProperties.y,
-            width: shapeProperties.width,
-            height: shapeProperties.height,
-            id: "default",
-            name: "shape",
-            fill: 'red',
-            cornerRadius: 5
-        })
-
-        layer.add(ob);
-        layer.draw();
-
+        image.onload = function () {
+            var image = new Konva.Image({...shapeProperties});
+            layer.add(image);
+            layer.draw();     
+        };
         image.src = '../../../public/Logo.jpg';
     }
 
@@ -369,9 +369,7 @@ stage.on('click tap', function (e) {
     } else if (metaPressed && !isSelected) {
         const nodes = tr.nodes().concat([e.target]);
         tr.nodes(nodes);
-    }
-
-});
+}});
 
 stage.on('wheel', (e) => {
   e.evt.preventDefault();
@@ -392,7 +390,7 @@ stage.on('wheel', (e) => {
 
   var newScale = direction > 0 ? oldScale * SCALEBY : oldScale / SCALEBY;
 
-  if(newScale > 10 || newScale < .3){
+  if(newScale > 8 || newScale < .3){
     return;
   }
 
@@ -403,50 +401,37 @@ stage.on('wheel', (e) => {
     y: pointer.y - mousePointTo.y * newScale,
   };
   stage.position(newPos);
-  generateGrid(newScale, newScale);
+  bg.absolutePosition({ x: 0, y: 0 });
 });
 
-// Agregar evento para Ctrl + C (Guardar JSON del stage)
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key === 'c') {
         e.preventDefault();
+    }
 
-        // Serializar el stage actual a JSON
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+
         const stageJSON = stage.toJSON();
 
-        // Guardar el JSON en localStorage
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
     }
-});
 
-// Agregar evento para Ctrl + V (Reemplazar el stage con un nuevo contenido)
-document.addEventListener('keydown', function (e) {
+    if(e.shiftKey){
+        stage.setAttr("draggable", false);
+    }
+
     if (e.ctrlKey && e.key === 'v') {
         e.preventDefault();
 
-        // Obtener el JSON serializado del localStorage
-        const savedStageJSON = localStorage.getItem("STAGEJSON");
-
-        if (savedStageJSON) {
-            try {
-                // Deserializar el JSON para crear un nuevo stage
-                const newStage = Konva.Node.create(JSON.parse(savedStageJSON), 'konva');
-
-                // Reemplazar el contenido actual con el nuevo stage
-                stage.destroyChildren();
-                newStage.children.forEach(child => {
-                    stage.add(child);
-                });
-                stage.batchDraw();
-
-            } catch (error) {
-                console.error('Error al pegar el contenido:', error);
-            }
-        }
     }
 });
 
-
+document.addEventListener('keyup', function (e) {
+    if(e.code == "ShiftLeft"){
+        stage.setAttr("draggable", true);
+    }
+});
 
 // Events to canvas in DOM
 
@@ -466,3 +451,22 @@ undoButton.addEventListener('click', undo);
 
 let redoButton = document.querySelector('#redo');
 redoButton.addEventListener('click', redo);
+
+let shapes = document.querySelectorAll("#shape");
+
+shapes.forEach(element => {
+    element.addEventListener("click", () => {
+        let attr = element.getAttribute("data-select");
+
+        Object.keys(States.StatesShapes).forEach(key => {
+            States.StatesShapes[key] = false;
+        });
+
+        if (attr && States.StatesShapes.hasOwnProperty(attr)) {
+            States.StatesShapes[attr] = true;
+            States.StatesCursor.addShape = true;
+        } else {
+            console.log(`La clave '${attr}' no es válida en States.StatesShapes`);
+        }
+    });
+});

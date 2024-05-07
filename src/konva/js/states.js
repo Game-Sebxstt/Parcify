@@ -2,14 +2,14 @@ let StatesShapes = {
     text: false,
     image: false,
     circle: false,
-    rectangle: true,
+    square: false,
     triangle: false,
     diamond: false,
-    arrow: false,
+    line: false,
 };
 
 let StatesCursor = {
-    addShape: true,
+    addShape: false,
 }
 
 export {StatesShapes, StatesCursor}

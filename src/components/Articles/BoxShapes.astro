@@ -1,12 +1,14 @@
 ---
 interface Props{
     text: string;
+    id: string,
+    data_select: string,
 }
 
-const { text } = Astro.props;
+const { text, id, data_select } = Astro.props;
 ---
 
-<div class="w-full h-full bg-[#505050] flex flex-col justify-center items-center gap-2 py-2 rounded-md cursor-pointer hover:bg-[#505050]/50">
+<div class="w-full h-full bg-[#505050] flex flex-col justify-center items-center gap-2 py-2 rounded-md cursor-pointer hover:bg-[#505050]/50" id={id} data-select={data_select}>
     <slot/>
     <h4 class="text-white text-sm text-wrap">
         {text}
