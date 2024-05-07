@@ -3,16 +3,12 @@ import { downloadURI } from "./functions";
 import { addShape } from "../ts/shapes";
 import * as States from "./states";
 
-//Canva
 let konva = document.querySelector("#konva");
-
-//Variables Reusing
 let elements = [];
 let elementsLayerBackground = [];
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
 let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
 
-//Variables Important
 var SCALEBY = 1.1;
 var MAX_WIDTH = widthKonva / 2;
 var X1, Y1, X2, Y2;
@@ -20,11 +16,10 @@ var SELECTING = false;
 
 let stage;
 
-//Tools Konva
 if(localStorage.getItem("STAGEJSON")){
     stage = Konva.Node.create(JSON.parse(localStorage.getItem("STAGEJSON")), 'konva');
-}else{
-    stage = new Konva.Stage({ // Lienzo
+} else {
+    stage = new Konva.Stage({
         container: 'konva',
         width: widthKonva,
         height: heightKonva,
@@ -32,11 +27,12 @@ if(localStorage.getItem("STAGEJSON")){
     });
 }
 
-console.log(stage.getLayers(), stage.getLayers().find(item => item.attrs.id == "layer"))
-
 var layer = stage.getLayers().find(item => item.attrs.id == "layer") || new Konva.Layer({
     id: "layer"
 });
+
+elements = [...layer.getChildren().filter(item => (item.attrs.id != "selection") && item.attrs.id != "transformer") ];
+console.log(elements)
 
 var layerBackground = stage.getLayers().find(item => item.attrs.id == "layerbackground") || new Konva.Layer({
     id: "layerbackground",
@@ -50,7 +46,7 @@ if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers
 layer.zIndex(1);
 layerBackground.zIndex(0);
 
-let bg = new Konva.Rect({ // Fondo
+let bg = new Konva.Rect({
     x: 0,
     y: 0,
     width: stage.width(),
@@ -67,27 +63,29 @@ let bg = new Konva.Rect({ // Fondo
 layerBackground.add(bg);
 elementsLayerBackground.push(bg);
 
-var tr = new Konva.Transformer({ // Transformador de tamaño y posicion con limite
-    nodes: elements,
+var tr = layer.getChildren().find(item => item.attrs.id == "transformer") || new Konva.Transformer({
     padding: 1,
     boundBoxFunc: function (oldBoundBox, newBoundBox) {
         if (Math.abs(newBoundBox.width) > MAX_WIDTH) {
-        return oldBoundBox;
+            return oldBoundBox;
         }
         return newBoundBox;
     },
     visible: true,
+    id: "transformer"
 });
-layer.add(tr);
 
-var selectionRectangle = new Konva.Rect({ // Area de seleccion de elementos
+if(!layer.getChildren().find(item => item.attrs.id == "transformer")){
+    layer.add(tr);
+}
+
+var selectionRectangle = new Konva.Rect({
     fill: 'rgba(0,0,255,0.5)',
     visible: false,
     listening: false,
+    id: "selection"
 });
 layer.add(selectionRectangle);
-
-// Events to stage
 
 stage.on('dragmove', () => {
     bg.absolutePosition({ x: 0, y: 0 });
@@ -116,60 +114,60 @@ stage.on('mousemove', () => {
         listening: false,
         opacity: 0.5,
         name: 'preview'
-    }
+    };
 
     let shape = addShape(shapeProperties);
 
     elements.push(shape);
     layer.add(shape);
     layer.draw();
-})
+});
 
 stage.on('mousedown touchstart', (e) => {
-  if (e.target !== stage) {
-    return;
-  }
-  e.evt.preventDefault();
-  X1 = stage.getRelativePointerPosition().x;
-  Y1 = stage.getRelativePointerPosition().y;
-  X2 = stage.getRelativePointerPosition().x;
-  Y2 = stage.getRelativePointerPosition().y;
+    if (e.target !== stage) {
+        return;
+    }
+    e.evt.preventDefault();
+    X1 = stage.getRelativePointerPosition().x;
+    Y1 = stage.getRelativePointerPosition().y;
+    X2 = stage.getRelativePointerPosition().x;
+    Y2 = stage.getRelativePointerPosition().y;
 
-  selectionRectangle.width(0);
-  selectionRectangle.height(0);
-  SELECTING = true;
+    selectionRectangle.width(0);
+    selectionRectangle.height(0);
+    SELECTING = true;
 });
 
 stage.on('mousemove touchmove', (e) => {
-  if (!SELECTING) {
-    return;
-  }
-  e.evt.preventDefault();
-  X2 = stage.getRelativePointerPosition().x;
-  Y2 = stage.getRelativePointerPosition().y;
+    if (!SELECTING) {
+        return;
+    }
+    e.evt.preventDefault();
+    X2 = stage.getRelativePointerPosition().x;
+    Y2 = stage.getRelativePointerPosition().y;
 
-  selectionRectangle.setAttrs({
-    visible: true,
-    x: Math.min(X1, X2),
-    y: Math.min(Y1, Y2),
-    width: Math.abs(X2 - X1),
-    height: Math.abs(Y2 - Y1),
-  });
+    selectionRectangle.setAttrs({
+        visible: true,
+        x: Math.min(X1, X2),
+        y: Math.min(Y1, Y2),
+        width: Math.abs(X2 - X1),
+        height: Math.abs(Y2 - Y1),
+    });
 });
 
 stage.on('mouseup touchend', (e) => {
-  SELECTING = false;
-  if (!selectionRectangle.visible()) {
-    return;
-  }
-  e.evt.preventDefault();
-  selectionRectangle.visible(false);
-  var shapes = stage.find('.shape' || '.text');
-  var box = selectionRectangle.getClientRect();
-  var selected = shapes.filter((shape) =>
-    Konva.Util.haveIntersection(box, shape.getClientRect())
-  );
-  tr.nodes(selected);
+    SELECTING = false;
+    if (!selectionRectangle.visible()) {
+        return;
+    }
+    e.evt.preventDefault();
+    selectionRectangle.visible(false);
+    var shapes = stage.find('.shape' || '.text');
+    var box = selectionRectangle.getClientRect();
+    var selected = shapes.filter((shape) =>
+        Konva.Util.haveIntersection(box, shape.getClientRect())
+    );
+    tr.nodes(selected);
 });
 
 stage.on('click tap', function (e) {
@@ -186,7 +184,7 @@ stage.on('click tap', function (e) {
         let shapeProperties = {
             x: mousePos.x,
             y: mousePos.y,
-        }
+        };
 
         let shape = addShape(shapeProperties);
 
@@ -262,18 +260,14 @@ stage.on('click tap', function (e) {
                     window.removeEventListener('click', handleOutsideClick);
                     shape.show();
                     tr.show();
-                    tr.forceUpdate();
                     layer.draw();
                 }
 
                 textarea.addEventListener('keydown', function (e) {
-                    // hide on enter
-                    // but don't hide on shift + enter
                     if (e.keyCode === 13 && !e.shiftKey) {
                         shape.text(textarea.value);
                         removeTextarea();
                     }
-                    // on esc do not set value back to node
                     if (e.keyCode === 27) {
                         removeTextarea();
                     }
@@ -293,21 +287,7 @@ stage.on('click tap', function (e) {
                 setTimeout(() => {
                     window.addEventListener('click', handleOutsideClick);
                 });
-
-
-                
-                // textarea.focus();
-        
-                // textarea.addEventListener('keydown', function (e) {
-                //   // hide on enter
-                //   if (e.keyCode === 13) {
-                //     removeTextarea();
-                //   }
-                // });
-
-                // stage.on('click', removeTextarea);
-              });
-            
+            });
         }
 
         if(shape){
@@ -326,7 +306,7 @@ stage.on('click tap', function (e) {
     }
 
     if(States.StatesShapes.image && !e.target.id()){
-        console.log(e.target.id())
+        console.log(e.target.id());
         var image = new Image();
         let mousePos = stage.getRelativePointerPosition();
 
@@ -341,7 +321,7 @@ stage.on('click tap', function (e) {
             id: "default",
             name: "image",
             draggable: true
-        }
+        };
 
         image.onload = function () {
             var image = new Konva.Image({...shapeProperties});
@@ -376,44 +356,57 @@ stage.on('click tap', function (e) {
     } else if (metaPressed && !isSelected) {
         const nodes = tr.nodes().concat([e.target]);
         tr.nodes(nodes);
-}});
+    }
+});
 
 stage.on('wheel', (e) => {
-  e.evt.preventDefault();
+    e.evt.preventDefault();
 
-  var oldScale = stage.scaleX();
-  var pointer = stage.getPointerPosition();
+    var oldScale = stage.scaleX();
+    var pointer = stage.getPointerPosition();
 
-  var mousePointTo = {
-    x: (pointer.x - stage.x()) / oldScale,
-    y: (pointer.y - stage.y()) / oldScale,
-  };
+    var mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+    };
 
-  let direction = e.evt.deltaY > 0 ? 1 : -1;
+    let direction = e.evt.deltaY > 0 ? 1 : -1;
 
-  if (e.evt.ctrlKey) {
-    direction = -direction;
-  }
+    if (e.evt.ctrlKey) {
+        direction = -direction;
+    }
 
-  var newScale = direction > 0 ? oldScale * SCALEBY : oldScale / SCALEBY;
+    var newScale = direction > 0 ? oldScale * SCALEBY : oldScale / SCALEBY;
 
-  if(newScale > 8 || newScale < .3){
-    return;
-  }
+    if(newScale > 8 || newScale < .3){
+        return;
+    }
 
-  stage.scale({ x: newScale, y: newScale });
+    stage.scale({ x: newScale, y: newScale });
 
-  var newPos = {
-    x: pointer.x - mousePointTo.x * newScale,
-    y: pointer.y - mousePointTo.y * newScale,
-  };
-  stage.position(newPos);
-  bg.absolutePosition({ x: 0, y: 0 });
+    var newPos = {
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+    };
+    stage.position(newPos);
+    bg.absolutePosition({ x: 0, y: 0 });
 });
 
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key === 'c') {
         e.preventDefault();
+        const selectedNodes = tr.nodes();
+        const copiedNodes = selectedNodes.map(node => node.toObject());
+        const copiedData = JSON.stringify(copiedNodes);
+        navigator.clipboard.writeText(copiedData);
+    }
+
+    if (e.ctrlKey && e.key === 'x') {
+        e.preventDefault();
+        const selectedNodes = tr.nodes();
+        const copiedNodes = selectedNodes.map(node => node.toObject());
+        const copiedData = JSON.stringify(copiedNodes);
+        navigator.clipboard.writeText(copiedData);
     }
 
     if (e.ctrlKey && e.key === 's') {
@@ -431,7 +424,29 @@ document.addEventListener('keydown', function (e) {
 
     if (e.ctrlKey && e.key === 'v') {
         e.preventDefault();
+        navigator.clipboard.readText().then(clipboardData => {
+            if (clipboardData) {
+                const pastedNodes = JSON.parse(clipboardData);
+                const newNodes = pastedNodes.map(nodeData => {
+                    const newNode = Konva.Node.create(nodeData, 'container');
+                    newNode.setAttrs({
+                        x: newNode.x() + (newNode.width() * 2),
+                        y: newNode.y() - (newNode.height() / 2),
+                    });
+                    return newNode;
+                });
+                layer.add(...newNodes);
+                tr.nodes(newNodes);
+                elements = [...newNodes]
+                layer.batchDraw();
+            }
+        });
+    }
 
+    if(e.ctrlKey && e.key === 'a'){
+        e.preventDefault();
+        console.log(elements)
+        tr.nodes(elements);
     }
 });
 
@@ -441,17 +456,10 @@ document.addEventListener('keyup', function (e) {
     }
 });
 
-// Events to canvas in DOM
-
 let export_canvas = document.querySelector("#export");
 export_canvas.addEventListener("click", () => {
-    layerGrid.visible(false);
     var dataURL = stage.toDataURL({ pixelRatio: 3 });
-    let stateDownload = downloadURI(dataURL, 'stage.jpeg');
-
-    if(stateDownload){
-        layerGrid.visible(true);
-    }
+    downloadURI(dataURL, 'stage.jpeg');
 });
 
 let undoButton = document.querySelector('#undo');
