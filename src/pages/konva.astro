@@ -108,8 +108,8 @@ import Layout from "../layouts/Layout.astro";
         </div>
 
         <div class="relative w-full h-full flex">
-            <div id="left-slide" class="absolute -left-[0] w-[25rem] h-full bg-[#383838] flex z-10 transition-all ease-in duration-300">
-                <div class="flex flex-col gap-4 w-[5rem] h-full py-2 items-center bg-[#383838] border-r-2 border-[#FC7F53]">
+            <div id="left-slide" class="absolute -left-[25rem] w-[25rem] h-full bg-[#383838] flex z-10 transition-all ease-in duration-300">
+                <div class="flex flex-col gap-4 w-[5rem] h-full py-2 items-center bg-[#383838] border-r-2 border-[rgb(252,127,83)]">
                     <span id="menu-btn" data-section="section_templates" class="w-fit h-fit p-1 bg-[#FC7F53] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-[#ad4b1e]">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-spaces h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -202,6 +202,10 @@ import Layout from "../layouts/Layout.astro";
 
             <div id="content-konva" class="w-full h-full bg-lime-400">
                 <div id="konva" class="bg-white w-full h-full"></div>
+            </div>
+
+            <div id="content-test" class="hidden">
+                <div id="test" class="hidden"></div>
             </div>
 
             <div id="right-slide" class="absolute -right-[25rem] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">

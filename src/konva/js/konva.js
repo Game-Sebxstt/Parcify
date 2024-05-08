@@ -1,4 +1,5 @@
 import Konva from "konva";
+import _ from 'lodash'
 import { downloadURI } from "./functions";
 import { addShape } from "../ts/shapes";
 import * as States from "./states";
@@ -6,6 +7,8 @@ import * as States from "./states";
 let konva = document.querySelector("#konva");
 let elements = [];
 let elementsLayerBackground = [];
+let historySave = [];
+let indexHistory = 0;
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
 let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
 
@@ -13,6 +16,7 @@ var SCALEBY = 1.1;
 var MAX_WIDTH = widthKonva / 2;
 var X1, Y1, X2, Y2;
 var SELECTING = false;
+var SHIFTLEFT = false;
 
 let stage;
 
@@ -32,7 +36,6 @@ var layer = stage.getLayers().find(item => item.attrs.id == "layer") || new Konv
 });
 
 elements = [...layer.getChildren().filter(item => (item.attrs.id != "selection") && item.attrs.id != "transformer") ];
-console.log(elements)
 
 var layerBackground = stage.getLayers().find(item => item.attrs.id == "layerbackground") || new Konva.Layer({
     id: "layerbackground",
@@ -46,7 +49,7 @@ if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers
 layer.zIndex(1);
 layerBackground.zIndex(0);
 
-let bg = new Konva.Rect({
+let bg = layerBackground.getChildren().find(item => item.attrs.id == "bg") ||  new Konva.Rect({
     x: 0,
     y: 0,
     width: stage.width(),
@@ -60,8 +63,11 @@ let bg = new Konva.Rect({
     },
     name: "bg"
 });
-layerBackground.add(bg);
-elementsLayerBackground.push(bg);
+
+if(!layerBackground.getChildren().find(item => item.attrs.id == "bg")){
+    layerBackground.add(bg);
+    elementsLayerBackground.push(bg);
+}
 
 var tr = layer.getChildren().find(item => item.attrs.id == "transformer") || new Konva.Transformer({
     padding: 1,
@@ -79,13 +85,52 @@ if(!layer.getChildren().find(item => item.attrs.id == "transformer")){
     layer.add(tr);
 }
 
-var selectionRectangle = new Konva.Rect({
-    fill: 'rgba(0,0,255,0.5)',
+var selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection") ||  new Konva.Rect({
+    fill: 'rgba(252,127,83, .4)',
     visible: false,
     listening: false,
     id: "selection"
 });
-layer.add(selectionRectangle);
+
+if(!layer.getChildren().find(item => item.attrs.id == "selection")){
+    layer.add(selectionRectangle);
+}
+
+function saveHistory(stageJSON) {
+    historySave.push(stageJSON)
+    indexHistory = historySave.length;
+    console.log(historySave)
+}
+
+function undo() {
+    console.log(historySave.length)
+    if (historySave.length > 0) {
+        indexHistory--;
+        let stageJSON = historySave[indexHistory];
+        const node = Konva.Node.create(JSON.parse(stageJSON), 'test');
+        historySave.pop();
+
+        stage.getLayers().forEach(item => {
+            if(item.attrs.id == 'layer'){
+                item.removeChildren();
+            }
+        });
+
+        node.getLayers().forEach(item => {
+            if(item.attrs.id == 'layer'){
+                item.getChildren().forEach(element => {
+                    layer.add(element);
+                })
+            }
+        });
+    }
+}
+
+function redo() {
+    if (historyUndo.length > 0) {
+
+    }
+}
 
 stage.on('dragmove', () => {
     bg.absolutePosition({ x: 0, y: 0 });
@@ -100,8 +145,7 @@ stage.on('mousemove', () => {
 
     elements.forEach(element => {
         if(element.attrs.name == "preview"){
-            element.destroy();
-            return;
+           element.remove();
         }
     });
 
@@ -118,15 +162,16 @@ stage.on('mousemove', () => {
 
     let shape = addShape(shapeProperties);
 
-    elements.push(shape);
+    elements.push(shape)
     layer.add(shape);
     layer.draw();
 });
 
 stage.on('mousedown touchstart', (e) => {
-    if (e.target !== stage) {
+    if (e.target !== stage || !SHIFTLEFT) {
         return;
     }
+
     e.evt.preventDefault();
     X1 = stage.getRelativePointerPosition().x;
     Y1 = stage.getRelativePointerPosition().y;
@@ -142,6 +187,7 @@ stage.on('mousemove touchmove', (e) => {
     if (!SELECTING) {
         return;
     }
+
     e.evt.preventDefault();
     X2 = stage.getRelativePointerPosition().x;
     Y2 = stage.getRelativePointerPosition().y;
@@ -171,13 +217,15 @@ stage.on('mouseup touchend', (e) => {
 });
 
 stage.on('click tap', function (e) {
+    elements = elements.filter(item => item.attrs.name != "preview");
+    layer.getChildren().forEach(element => {
+        if(element.attrs.name == "preview"){
+            element.destroy();
+        }
+    });
+
     if (States.StatesCursor && !e.target.id()) {
-        elements.forEach(element => {
-            if(element.attrs.name == "preview"){
-                element.destroy();
-                return;
-            }
-        });
+        saveHistory(stage.toJSON());
 
         let mousePos = stage.getRelativePointerPosition();
 
@@ -187,7 +235,7 @@ stage.on('click tap', function (e) {
         };
 
         let shape = addShape(shapeProperties);
-
+        
         if(shape && shape.attrs.name === "text"){
             shape.on('transform', () => {
                 shape.setAttrs({
@@ -294,8 +342,7 @@ stage.on('click tap', function (e) {
             elements.push(shape);
             tr.nodes(elements);
             layer.add(shape);
-            layer.draw();
-                            
+            
             Object.keys(States.StatesShapes).forEach(key => {
                 States.StatesShapes[key] = false;
             });
@@ -306,7 +353,6 @@ stage.on('click tap', function (e) {
     }
 
     if(States.StatesShapes.image && !e.target.id()){
-        console.log(e.target.id());
         var image = new Image();
         let mousePos = stage.getRelativePointerPosition();
 
@@ -403,22 +449,35 @@ document.addEventListener('keydown', function (e) {
 
     if (e.ctrlKey && e.key === 'x') {
         e.preventDefault();
+        let newElementsArray = [];
         const selectedNodes = tr.nodes();
         const copiedNodes = selectedNodes.map(node => node.toObject());
         const copiedData = JSON.stringify(copiedNodes);
+        selectedNodes.map(item => item.remove());
+        tr.nodes(newElementsArray);
         navigator.clipboard.writeText(copiedData);
     }
 
     if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
-
         const stageJSON = stage.toJSON();
 
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
     }
 
+    if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault()
+        undo();
+    }
+
+    if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault()
+        redo();
+    }
+
     if(e.shiftKey){
+        SHIFTLEFT = true;
         stage.setAttr("draggable", false);
     }
 
@@ -437,7 +496,8 @@ document.addEventListener('keydown', function (e) {
                 });
                 layer.add(...newNodes);
                 tr.nodes(newNodes);
-                elements = [...newNodes]
+
+                elements = [...elements, ...newNodes];
                 layer.batchDraw();
             }
         });
@@ -445,13 +505,13 @@ document.addEventListener('keydown', function (e) {
 
     if(e.ctrlKey && e.key === 'a'){
         e.preventDefault();
-        console.log(elements)
         tr.nodes(elements);
     }
 });
 
 document.addEventListener('keyup', function (e) {
     if(e.code == "ShiftLeft"){
+        SHIFTLEFT = false;
         stage.setAttr("draggable", true);
     }
 });
