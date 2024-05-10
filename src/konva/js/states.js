@@ -13,4 +13,8 @@ let StatesCursor = {
     select: undefined,
 }
 
-export {StatesShapes, StatesCursor}
+let StatesValues = {
+    image: undefined,
+}
+
+export {StatesShapes, StatesCursor, StatesValues}

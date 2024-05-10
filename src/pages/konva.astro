@@ -108,7 +108,7 @@ import Layout from "../layouts/Layout.astro";
         </div>
 
         <div class="relative w-full h-full flex">
-            <div id="left-slide" class="absolute -left-[25rem] w-[25rem] h-full bg-[#383838] flex z-10 transition-all ease-in duration-300">
+            <div id="left-slide" class="absolute -left-[0] w-[25rem] h-full bg-[#383838] flex z-10 transition-all ease-in duration-300">
                 <div class="flex flex-col gap-4 w-[5rem] h-full py-2 items-center bg-[#383838] border-r-2 border-[rgb(252,127,83)]">
                     <span id="menu-btn" data-section="section_templates" class="w-fit h-fit p-1 bg-[#FC7F53] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in border-2 border-[#ad4b1e]">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-spaces h-7 max-[980px]:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
@@ -170,23 +170,32 @@ import Layout from "../layouts/Layout.astro";
                 </div>
 
                 <div class="w-full h-full bg-[#383838]">
-                    <header class="w-full h-12 flex relative py-1 px-3 justify-start items-center mt-2">
-                        <span class="absolute left-5">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-search h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
-                                <path d="M21 21l-6 -6" />
-                            </svg>
-                        </span>
-                        <input type="search" name="serch_shapes" id="search_shapes" placeholder="Search icons & graphics" class="w-full h-full bg-[#505050] rounded-[3px] pl-10 text-sm outline-none text-white">
+                    <header class="w-full h-12 flex relative justify-center items-start mt-2 flex-col">
+                        <div id="header-one" class="w-full h-full flex relative px-3 justify-start items-center mt-2">
+                            <span class="absolute left-5">
+                                <svg class="icon icon-tabler icons-tabler-outline icon-tabler-search h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+                                    <path d="M21 21l-6 -6" />
+                                </svg>
+                            </span>
+                            <input type="search" name="serch_shapes" id="search_shapes" placeholder="Search icons & graphics" class="w-full h-full bg-[#505050] rounded-[3px] pl-10 text-sm outline-none text-white">
+                        </div>
+
+                        <div id="header-two" class="w-full h-full hidden relative px-2 justify-start items-center mt-2">
+                            <input type="file" id="file-folder" class="hidden" multiple />
+                            <label for="file-folder" class="w-full bg-[#FC7F53] rounded-[3px] py-2 flex justify-center items-center cursor-pointer hover:bg-[#dd7651] transition-all ease-in duration-200">
+                                <span class="text-lg">Importar Medios</span>
+                            </label>
+                        </div>
                     </header>
 
                     <section id="section_options" class="w-full overflow-y-auto">
                         <SectionTemplates state="hidden" id="section_templates"/>
-                        <SectionShapes state="flex" id="section_shapes"/>
+                        <SectionShapes state="hidden" id="section_shapes"/>
                         <SectionImages state="hidden" id="section_images"/>
                         <SectionIcons state="hidden" id="section_icons"/>
-                        <SectionFolders state="hidden" id="section_folders"/>
+                        <SectionFolders state="flex" id="section_folders"/>
                         <SectionPlugins state="hidden" id="section_plugins"/>
                     </section>
                 </div>
@@ -464,5 +473,64 @@ import Layout from "../layouts/Layout.astro";
     input[type="color"]::-moz-color-swatch {
         border-radius: 3px;
         border: none;
+    }
+
+    .container-input {
+        text-align: center;
+        background: #282828;
+        border-top: 5px solid #c39f77;
+        padding: 50px 0;
+        border-radius: 6px;
+        width: 50%;
+        margin: 0 auto;
+        margin-bottom: 20px;
+    }
+
+    .inputfile {
+        width: 0.1px;
+        height: 0.1px;
+        opacity: 0;
+        overflow: hidden;
+        position: absolute;
+        z-index: -1;
+    }
+
+    .inputfile + label {
+        max-width: 80%;
+        font-size: 1.25rem;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+        display: inline-block;
+        overflow: hidden;
+        padding: 0.625rem 1.25rem;
+    }
+
+    .inputfile + label svg {
+        width: 1em;
+        height: 1em;
+        vertical-align: middle;
+        fill: currentColor;
+        margin-top: -0.25em;
+        margin-right: 0.25em;
+    }
+
+    .iborrainputfile {
+        font-size:16px; 
+        font-weight:normal;
+        font-family: 'Lato';
+    }
+
+        
+    .inputfile-1 + label {
+        color: #fff;
+        background-color: #c39f77;
+    }
+
+    .inputfile-1:focus + label,
+    .inputfile-1.has-focus + label,
+    .inputfile-1 + label:hover {
+        background-color: #9f8465;
     }
 </style>

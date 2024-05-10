@@ -114,6 +114,15 @@ menu_btn.forEach(element => {
         sections_options.forEach(element => {
             if(element.id == attr){
                 element.style.display = "flex";
+
+                if(attr == "section_folders"){
+                    document.querySelector("#header-one").style.display = "none";
+                    document.querySelector("#header-two").style.display = "flex";
+                }else{
+                    document.querySelector("#header-one").style.display = "flex";
+                    document.querySelector("#header-two").style.display = "none";
+                }
+
             }else{
                 element.style.display = "none";
             }

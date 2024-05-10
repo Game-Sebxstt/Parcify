@@ -189,7 +189,7 @@ stage.on('dragmove', () => {
 });
 
 stage.on('mousemove', () => {
-    if(!States.StatesCursor.addShape){
+    if(!States.StatesCursor.addShape || States.StatesShapes.image){
         return;
     }
 
@@ -269,6 +269,7 @@ stage.on('mouseup touchend', (e) => {
 });
 
 stage.on('click tap', function (e) {
+
     elements = elements.filter(item => item.attrs.name != "preview");
     layer.getChildren().forEach(element => {
         if(element.attrs.name == "preview"){
@@ -282,7 +283,7 @@ stage.on('click tap', function (e) {
         }
     }
 
-    if (States.StatesCursor && !e.target.id()) {
+    if (States.StatesCursor.addShape && !States.StatesShapes.image) {
         let mousePos = stage.getRelativePointerPosition();
 
         let shapeProperties = {
@@ -399,7 +400,6 @@ stage.on('click tap', function (e) {
             saveHistory(stage.toJSON());
 
             elements.push(shape);
-            tr.nodes(elements);
             layer.add(shape);
 
             Object.keys(States.StatesShapes).forEach(key => {
@@ -408,10 +408,15 @@ stage.on('click tap', function (e) {
 
             States.StatesCursor.addShape = false;
             tr.setAttr("visible", true);
+            tr.nodes([shape])
         }
     }
 
-    if(States.StatesShapes.image && !e.target.id()){
+    if(States.StatesShapes.image){
+        if(!States.StatesValues.image){
+            return;
+        }
+
         var image = new Image();
         let mousePos = stage.getRelativePointerPosition();
 
@@ -433,7 +438,11 @@ stage.on('click tap', function (e) {
             layer.add(image);
             layer.draw();     
         };
-        image.src = '../../../public/Logo.jpg';
+        image.src = States.StatesValues.image;
+
+        States.StatesCursor.addShape = false;
+        States.StatesShapes.image = false;
+        States.StatesValues.image = undefined;
     }
 
     if (selectionRectangle.visible()) {
@@ -457,15 +466,19 @@ stage.on('click tap', function (e) {
     const isSelected = tr.nodes().indexOf(e.target) >= 0;
 
     if (!metaPressed && !isSelected) {
+        tr.moveUp();
         tr.nodes([e.target]);
     } else if (metaPressed && isSelected) {
+        tr.moveUp();
         const nodes = tr.nodes().slice();
         nodes.splice(nodes.indexOf(e.target), 1);
         tr.nodes(nodes);
     } else if (metaPressed && !isSelected) {
+        tr.moveUp();
         const nodes = tr.nodes().concat([e.target]);
         tr.nodes(nodes);
     }
+
 });
 
 stage.on('wheel', (e) => {
@@ -500,12 +513,6 @@ stage.on('wheel', (e) => {
     stage.position(newPos);
     bg.absolutePosition({ x: 0, y: 0 });
 });
-
-elements.forEach(item => {
-    item.on("change", () => {
-        console.log("change")
-    });
-})
 
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key === 'c') {
@@ -598,8 +605,9 @@ document.addEventListener('keyup', function (e) {
 let export_canvas = document.querySelector("#export");
 export_canvas.addEventListener("click", () => {
     var dataURL = stage.toDataURL({ pixelRatio: 3 });
+    // dataURL = tr.nodes()[0].toDataURL({ pixelRatio: 3})
     downloadURI(dataURL, 'stage.jpeg');
-});
+})
 
 let undoButton = document.querySelector('#undo');
 undoButton.addEventListener('click', undo);
@@ -611,7 +619,6 @@ let shapes = document.querySelectorAll("#shape");
 
 shapes.forEach(element => {
     element.addEventListener("click", () => {
-        console.log(element)
         let attr = element.getAttribute("data-select");
 
         Object.keys(States.StatesShapes).forEach(key => {
@@ -621,12 +628,74 @@ shapes.forEach(element => {
         if (attr && States.StatesShapes.hasOwnProperty(attr)) {
             States.StatesShapes[attr] = true;
             States.StatesCursor.addShape = true;
-            console.log(States)
         } else {
             console.log(`La clave '${attr}' no es válida en States.StatesShapes`);
         }
     });
 });
+
+
+let file_folder = document.querySelector("#file-folder");
+let dropzone_file = document.querySelector("#dropzone-file")
+let list_image_folder = document.querySelector("#list-image-folder");
+let contents_image_folder = document.querySelectorAll("#content-image-folder");
+
+if(contents_image_folder.length > 1){
+    document.querySelector("#content-drop").style.display = "none";
+    list_image_folder.style.display = "grid"
+}
+
+file_folder?.addEventListener("change", saveFile)
+dropzone_file?.addEventListener("change", saveFile)
+
+function saveFile(e){
+    let files = e.target.files;
+
+    if(files){
+        Object.values(files).forEach(item => {
+            const reader = new FileReader();
+
+            reader.onload = e => {
+                const imageData = e.target.result;
+                let clone_content_image_folder = contents_image_folder[0].cloneNode();
+                clone_content_image_folder.id = "content-image-folder";
+                clone_content_image_folder.setAttribute("data-image-src", imageData);
+                clone_content_image_folder.style.display = "flex"
+
+                const image = document.createElement("img");
+                image.src = imageData;
+                image.classList.add("w-72")
+                image.classList.add("h-36");
+
+                clone_content_image_folder.appendChild(image)
+                list_image_folder.appendChild(clone_content_image_folder);
+                contents_image_folder = document.querySelectorAll("#content-image-folder");
+
+                contents_image_folder?.forEach(item => {
+                    item.addEventListener("click", () => {
+                        console.log("click")
+                        let folder = item.getAttribute("data-image-src");
+                
+                        Object.keys(States.StatesShapes).forEach(key => {
+                            States.StatesShapes[key] = false;
+                        });
+                
+                        States.StatesShapes.image = true;
+                        States.StatesCursor.addShape = true;
+                        States.StatesValues.image = folder;
+                    });
+                });
+            }
+
+            reader.readAsDataURL(item);
+        });
+
+        if(contents_image_folder.length > 0){
+            document.querySelector("#content-drop").style.display = "none";
+            list_image_folder.style.display = "grid"
+        }
+    }
+}
 
 let input_layout_x = document.querySelector("#input_layout_x");
 let input_layout_y = document.querySelector("#input_layout_y");
