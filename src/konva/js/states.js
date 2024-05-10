@@ -10,6 +10,7 @@ let StatesShapes = {
 
 let StatesCursor = {
     addShape: false,
+    select: undefined,
 }
 
 export {StatesShapes, StatesCursor}

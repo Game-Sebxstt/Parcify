@@ -6,6 +6,7 @@ import * as States from "./states";
 
 let konva = document.querySelector("#konva");
 let elements = [];
+let groups = [];
 let elementsLayerBackground = [];
 let historySave = [];
 let indexHistory = 0;
@@ -13,7 +14,7 @@ let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
 let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
 
 var SCALEBY = 1.1;
-var MAX_WIDTH = widthKonva / 2;
+var MAX_WIDTH = widthKonva;
 var X1, Y1, X2, Y2;
 var SELECTING = false;
 var SHIFTLEFT = false;
@@ -81,6 +82,8 @@ var tr = layer.getChildren().find(item => item.attrs.id == "transformer") || new
     id: "transformer"
 });
 
+tr.zIndex(100);
+
 if(!layer.getChildren().find(item => item.attrs.id == "transformer")){
     layer.add(tr);
 }
@@ -96,39 +99,88 @@ if(!layer.getChildren().find(item => item.attrs.id == "selection")){
     layer.add(selectionRectangle);
 }
 
+function ungroupElements() {
+    const selectedGroup = tr.nodes()[0];
+    if (!(selectedGroup instanceof Konva.Group)) {
+        return;
+    }
+
+    const children = selectedGroup.getChildren();
+    children.forEach((child) => {
+        child.draggable(true);
+        layer.add(child);
+    });
+
+    selectedGroup.destroy();
+    elements = elements.filter((item) => item !== selectedGroup);
+    tr.nodes(children);
+    layer.batchDraw();
+}
+
+function groupElements() {
+    const selectedNodes = tr.nodes();
+    if (selectedNodes.length < 2) {
+        return;
+    }
+
+    const group = new Konva.Group({
+        draggable: true,
+    });
+
+    selectedNodes.forEach((node) => {
+        node.draggable(false);
+        group.add(node);
+    });
+
+    layer.add(group);
+    elements.push(group);
+    tr.nodes([group]);
+    layer.batchDraw();
+}
+
 function saveHistory(stageJSON) {
-    historySave.push(stageJSON)
+    historySave.push(JSON.parse(stageJSON));
     indexHistory = historySave.length;
-    console.log(historySave)
 }
 
 function undo() {
-    console.log(historySave.length)
-    if (historySave.length > 0) {
+    if (indexHistory > 0) {
         indexHistory--;
-        let stageJSON = historySave[indexHistory];
-        const node = Konva.Node.create(JSON.parse(stageJSON), 'test');
-        historySave.pop();
+        const lastState = historySave[indexHistory];
 
-        stage.getLayers().forEach(item => {
-            if(item.attrs.id == 'layer'){
-                item.removeChildren();
-            }
-        });
+        layer.destroy();
+        
+        const stageJSON = lastState;
+        const layerJSON = stageJSON.children[1];
+        layer = Konva.Layer.create(layerJSON);
+        stage.add(layer);
+        
 
-        node.getLayers().forEach(item => {
-            if(item.attrs.id == 'layer'){
-                item.getChildren().forEach(element => {
-                    layer.add(element);
-                })
-            }
-        });
+        elements = layer.getChildren().filter(item => (item.attrs.id != "selection") && item.attrs.id != "transformer");
+        tr = layer.getChildren().find(item => item.attrs.id == "transformer");
+        selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection");
+        
+        layer.draw();
     }
 }
 
 function redo() {
-    if (historyUndo.length > 0) {
+    if (indexHistory < historySave.length - 1) {
+        indexHistory++;
+        const nextState = historySave[indexHistory];
+        
+        layer.destroy();        
 
+        const stageJSON = nextState;
+        const layerJSON = stageJSON.children[1];
+        layer = Konva.Layer.create(layerJSON);
+        stage.add(layer);
+        
+        elements = layer.getChildren().filter(item => (item.attrs.id != "selection") && item.attrs.id != "transformer");
+        tr = layer.getChildren().find(item => item.attrs.id == "transformer");
+        selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection");
+
+        layer.draw();
     }
 }
 
@@ -224,9 +276,13 @@ stage.on('click tap', function (e) {
         }
     });
 
-    if (States.StatesCursor && !e.target.id()) {
-        saveHistory(stage.toJSON());
+    if(e.target){
+        if(e.target != stage){
+            States.StatesCursor.select = e.target;
+        }
+    }
 
+    if (States.StatesCursor && !e.target.id()) {
         let mousePos = stage.getRelativePointerPosition();
 
         let shapeProperties = {
@@ -236,7 +292,7 @@ stage.on('click tap', function (e) {
 
         let shape = addShape(shapeProperties);
         
-        if(shape && shape.attrs.name === "text"){
+        if(shape && shape.attrs.type === "text"){
             shape.on('transform', () => {
                 shape.setAttrs({
                     width: Math.max(5, shape.width() * shape.scaleX()),
@@ -267,20 +323,21 @@ stage.on('click tap', function (e) {
                 textarea.style.position = 'absolute';
                 textarea.style.top = areaPosition.y + 'px';
                 textarea.style.left = areaPosition.x + 'px';
-                textarea.style.width = shape.width();
-                textarea.style.height = shape.height();
-                textarea.style.fontSize = shape.fontSize();
-                textarea.style.border = '2px solid blue';
-                textarea.style.padding = '.5rem';
+                textarea.style.width = shape.width() * 2 + 'px';
+                textarea.style.height = shape.height() * 2 + 5 + 'px';
+                textarea.style.border = 'none';
+                textarea.style.padding = '0px';
                 textarea.style.margin = '0px';
                 textarea.style.overflow = 'hidden';
-                textarea.style.background = 'none';
+                textarea.style.background = 'transparent';
                 textarea.style.outline = 'none';
+                textarea.style.resize = 'none';
                 textarea.style.lineHeight = shape.lineHeight();
                 textarea.style.fontFamily = shape.fontFamily();
                 textarea.style.transformOrigin = 'left top';
                 textarea.style.textAlign = shape.align();
                 textarea.style.color = shape.fill();
+                textarea.style.fontSize = shape.fontSize() + "px"
                 let rotation = shape.rotation();
                 let transform = '';
                 if (rotation) {
@@ -339,10 +396,12 @@ stage.on('click tap', function (e) {
         }
 
         if(shape){
+            saveHistory(stage.toJSON());
+
             elements.push(shape);
             tr.nodes(elements);
             layer.add(shape);
-            
+
             Object.keys(States.StatesShapes).forEach(key => {
                 States.StatesShapes[key] = false;
             });
@@ -386,7 +445,11 @@ stage.on('click tap', function (e) {
         return;
     }
 
-    if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
+    const parent = e.target.getParent();
+    if (parent && parent instanceof Konva.Group) {
+        tr.nodes([parent]);
+        return;
+    } else if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
         return;
     }
 
@@ -437,6 +500,12 @@ stage.on('wheel', (e) => {
     stage.position(newPos);
     bg.absolutePosition({ x: 0, y: 0 });
 });
+
+elements.forEach(item => {
+    item.on("change", () => {
+        console.log("change")
+    });
+})
 
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key === 'c') {
@@ -507,6 +576,16 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
         tr.nodes(elements);
     }
+
+    if(e.ctrlKey && e.key === 'j'){
+        e.preventDefault();
+        groupElements();
+    }
+
+    if (e.ctrlKey && e.key === 'g') {
+        e.preventDefault();
+        ungroupElements();
+    }
 });
 
 document.addEventListener('keyup', function (e) {
@@ -532,6 +611,7 @@ let shapes = document.querySelectorAll("#shape");
 
 shapes.forEach(element => {
     element.addEventListener("click", () => {
+        console.log(element)
         let attr = element.getAttribute("data-select");
 
         Object.keys(States.StatesShapes).forEach(key => {
@@ -541,8 +621,159 @@ shapes.forEach(element => {
         if (attr && States.StatesShapes.hasOwnProperty(attr)) {
             States.StatesShapes[attr] = true;
             States.StatesCursor.addShape = true;
+            console.log(States)
         } else {
             console.log(`La clave '${attr}' no es válida en States.StatesShapes`);
         }
     });
 });
+
+let input_layout_x = document.querySelector("#input_layout_x");
+let input_layout_y = document.querySelector("#input_layout_y");
+
+let input_width = document.querySelector("#input_width");
+let input_height = document.querySelector("#input_height");
+
+let input_rotate = document.querySelector("#input_rotate");
+let input_radius = document.querySelector("#input_radius");
+
+let color_style = document.querySelector("#color_style");
+let input_color = document.querySelector("#input_color");
+
+let color_style_border = document.querySelector("#color_style_border");
+let input_color_border = document.querySelector("#input_color_border");
+let input_stroke_border = document.querySelector("#input_stroke_border");
+
+input_layout_x.addEventListener("input", updateElement);
+input_layout_y.addEventListener("input", updateElement);
+input_width.addEventListener("input", updateElement);
+input_height.addEventListener("input", updateElement);
+input_rotate.addEventListener("input", updateElement);
+input_radius.addEventListener("input", updateElement);
+color_style_border.addEventListener("input", updateElement);
+input_stroke_border.addEventListener("input", updateElement)
+color_style.addEventListener("input", updateElement);
+input_color.addEventListener("input", () => {
+    let value = input_color.value;
+
+    if (States.StatesCursor.select && value.split("").length == 7) {
+        let select = States.StatesCursor.select;
+        select.setAttrs({
+            fill: value
+        });
+        layer.batchDraw();
+    }
+});
+
+function updateElement() {
+    const selectedNodes = tr.nodes();
+    if (selectedNodes.length === 0) {
+        return;
+    }
+
+    selectedNodes.forEach((node) => {
+        if (node instanceof Konva.Group) {
+            const children = node.getChildren();
+            children.forEach((child) => {
+                updateNodeAttrs(child);
+            });
+        } else {
+            updateNodeAttrs(node);
+        }
+    });
+
+    layer.batchDraw();
+}
+
+function updateNodeAttrs(node) {
+    let scaleX = node.attrs.scaleX ?? 1;
+    let scaleY = node.attrs.scaleY ?? 1;
+
+    let width;
+    let height;
+
+    if (node.attrs.width || node.attrs.height) {
+        width = ((node.attrs.width || 1) * scaleX).toFixed(0);
+        height = ((node.attrs.height || 1) * scaleY).toFixed(0);
+    }
+
+    if (node.attrs.radius) {
+        width = ((node.attrs.radius || 1) * scaleX).toFixed(0) * 2;
+        height = ((node.attrs.radius || 1) * scaleY).toFixed(0) * 2;
+    }
+
+    let x = parseFloat(input_layout_x.value);
+    let y = parseFloat(input_layout_y.value);
+
+    if(node.getParent() instanceof Konva.Group){
+        x = node.attrs.x;
+        y = node.attrs.y;
+    }
+
+    node.setAttrs({
+        x: x,
+        y: y,
+        width: width / scaleX,
+        height: height / scaleY,
+        rotation: parseFloat(input_rotate.value),
+        cornerRadius: parseFloat(input_radius.value),
+        fill: color_style.value,
+        stroke: color_style_border.value,
+        strokeWidth: parseFloat(input_stroke_border.value),
+    });
+}
+
+let previousAttrs = null;
+
+setInterval(() => {
+    if (States.StatesCursor.select != undefined && tr.nodes().length > 0) {
+        if(document.querySelector("#content-edit") && document.querySelector("#content-edit-nothing")){
+            document.querySelector("#content-edit").style.display = "flex";
+            document.querySelector("#content-edit-nothing").style.display = "none";
+        }
+
+        let select = States.StatesCursor.select;
+        const currentAttrs = { ...select.attrs };
+
+        if (!_.isEqual(previousAttrs, currentAttrs)) {
+            changeLayout(currentAttrs);
+            previousAttrs = currentAttrs;
+        }
+    }else{
+        if(document.querySelector("#content-edit") && document.querySelector("#content-edit-nothing")){
+            document.querySelector("#content-edit").style.display = "none";
+            document.querySelector("#content-edit-nothing").style.display = "flex";
+        }
+    }
+},);
+
+function changeLayout(attrs) {
+    color_style.value = attrs.fill;
+    color_style_border.value = attrs.stroke;
+
+    let scaleX = attrs.scaleX ?? 1;
+    let scaleY = attrs.scaleY ?? 1;
+    input_layout_x.value = attrs.x.toFixed(0)
+    input_layout_y.value = attrs.y.toFixed(0)
+    if(attrs.width){
+        input_width.value = ((attrs.width || 1) * scaleX).toFixed(0)
+        input_height.value = ((attrs.height || 1) * scaleY).toFixed(0)
+    }
+
+    if(attrs.radius){
+        input_width.value = ((attrs.radius || 1) * scaleX).toFixed(0)
+        input_height.value = ((attrs.radius || 1) * scaleY).toFixed(0)
+    }
+
+    if(attrs.rotation){
+        input_rotate.value = attrs.rotation.toFixed(0) || 1;
+    }
+    
+    if(attrs.cornerRadius){
+        input_radius.value = attrs.cornerRadius;
+    }
+
+    input_color.value = color_style.value;
+    input_color_border.value = color_style_border.value;
+    input_stroke_border.value = attrs.strokeWidth;
+}

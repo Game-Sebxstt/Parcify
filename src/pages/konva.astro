@@ -204,10 +204,6 @@ import Layout from "../layouts/Layout.astro";
                 <div id="konva" class="bg-white w-full h-full"></div>
             </div>
 
-            <div id="content-test" class="hidden">
-                <div id="test" class="hidden"></div>
-            </div>
-
             <div id="right-slide" class="absolute -right-[25rem] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">
                 <header class="w-full h-14 flex justify-center items-center gap-16">
                     <span class="text-[#FC7F53] text-md font-semibold cursor-pointer">
@@ -221,7 +217,7 @@ import Layout from "../layouts/Layout.astro";
                     </span>
                 </header>
 
-                <section class="w-full h-full flex flex-col">
+                <section id="content-edit" class="w-full h-full flex flex-col">
 
                     <div class="w-full h-fit py-4 px-3 flex justify-around items-center border-b-2 border-[#FC7F53]">
                         <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
@@ -295,7 +291,7 @@ import Layout from "../layouts/Layout.astro";
                                     offset X
                                 </span>
     
-                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none" max="10000">
                             </div>
 
                             <div class="flex items-center justify-start">
@@ -303,7 +299,7 @@ import Layout from "../layouts/Layout.astro";
                                     offset Y
                                 </span>
     
-                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                                <input type="number" name="input_layout_y" id="input_layout_y" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
                             </div>
 
                             <div class="flex items-center justify-start">
@@ -311,7 +307,7 @@ import Layout from "../layouts/Layout.astro";
                                     Width
                                 </span>
     
-                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                                <input type="number" name="input_width" id="input_width" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
                             </div>
 
                             <div class="flex items-center justify-start">
@@ -319,18 +315,28 @@ import Layout from "../layouts/Layout.astro";
                                     Height
                                 </span>
     
-                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
+                                <input type="number" name="input_height" id="input_height" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
                             </div>
 
                         </div>
                     </div>
 
-                    <div class="w-full h-fit px-5 flex py-5 gap-x-3 justify-start items-center border-b-2 border-[#FC7F53]">
-                        <h3 class="text-white font-bold">
-                            Rotation
-                        </h3>
+                    <div class="w-full h-fit flex flex-col py-5 justify-start gap-y-5 items-start border-b-2 border-[#FC7F53]">
+                        <div class="-full h-fit px-5 flex gap-x-3 justify-start items-center">
+                            <h3 class="text-white font-bold">
+                                Rotation
+                            </h3>
+    
+                            <input type="number" name="input_rotate" id="input_rotate" class="w-fit h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
+                        </div>
 
-                        <input type="number" name="input_rotate" id="input_rotate" class="w-fit h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
+                        <div class="-full h-fit px-5 flex gap-x-6 justify-start items-center">
+                            <h3 class="text-white font-bold">
+                                Radius
+                            </h3>
+    
+                            <input type="number" name="input_radius" id="input_radius" class="w-fit h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
+                        </div>
                     </div>
 
                     <div class="w-full h-fit px-5 flex flex-col py-5 gap-3 justify-center items-start border-b-2 border-[#FC7F53]">
@@ -339,54 +345,10 @@ import Layout from "../layouts/Layout.astro";
                         </h3>
 
                         <div class="flex flex-col gap-4 w-full">
-                            <div class="w-full h-fit flex items-center justify-around">
-                                <i class="w-7 h-7 ml-2 bg-blue-500 "></i>
+                            <div class="w-full h-fit flex items-center justify-start gap-x-5">
+                                <input type="color" value="#43da86" id="color_style" />
 
                                 <input type="text" name="input_color" id="input_color" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="1DA5F2">
-
-                                <input type="text" name="input_color_opacity" id="input_color_opacity" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="100%">
-
-                                <span class="flex gap-4">
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-                                        <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
-                                    </svg>
-
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M5 12l14 0" />
-                                    </svg>
-                                </span>
-                            </div>
-
-                            <div class="w-full h-fit flex items-center justify-around">
-                                <i class="w-7 h-7 ml-2 bg-blue-500 "></i>
-
-                                <input type="text" name="input_color" id="input_color" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="1DA5F2">
-
-                                <input type="text" name="input_color_opacity" id="input_color_opacity" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="100%">
-
-                                <span class="flex gap-4">
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-                                        <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
-                                    </svg>
-
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M5 12l14 0" />
-                                    </svg>
-                                </span>
-                            </div>
-
-                            <div class="w-full h-fit flex items-center justify-around">
-                                <i class="w-7 h-7 ml-2 bg-blue-500 "></i>
-
-                                <input type="text" name="input_color" id="input_color" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="1DA5F2">
-
-                                <input type="text" name="input_color_opacity" id="input_color_opacity" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="100%">
 
                                 <span class="flex gap-4">
                                     <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
@@ -404,18 +366,33 @@ import Layout from "../layouts/Layout.astro";
                         </div>
                     </div>
 
-                    <div class="w-full h-fit px-5 flex py-5 gap-3 justify-between items-center border-b-2 border-[#FC7F53]">
+                    <div class="w-full h-fit px-5 flex flex-col py-5 gap-3 justify-center items-start border-b-2 border-[#FC7F53]">
                         <h3 class="text-white font-bold">
-                            Rotation
+                            Borders
                         </h3>
-                        
-                        <span class="w-fit h-fit p-1 rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-plus h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M12 5l0 14" />
-                                <path d="M5 12l14 0" />
-                            </svg>
-                        </span>
+
+                        <div class="flex flex-col gap-4 w-full">
+                            <div class="w-full h-fit flex items-center justify-start gap-x-5">
+                                <input type="color" value="#43da86" id="color_style_border" />
+
+                                <input type="text" name="input_color_border" id="input_color_border" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="1DA5F2">
+
+                                <input type="number" name="input_stroke_border" id="input_stroke_border" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
+
+                                <span class="flex gap-4">
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                        <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+                                        <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+                                    </svg>
+
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                        <path d="M5 12l14 0" />
+                                    </svg>
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="w-full h-fit px-5 flex flex-col py-5 gap-3 justify-center items-start">
@@ -431,7 +408,7 @@ import Layout from "../layouts/Layout.astro";
                     </div>
                 </section>
 
-                <section class="w-full h-full hidden flex-col">
+                <section id="content-edit-nothing" class="w-full h-full hidden flex-col">
                     <div class="w-full h-fit py-5 px-5 items-center justify-center">
                         <h3 class="text-white font-bold text-center">
                             Please selected a element
@@ -465,5 +442,27 @@ import Layout from "../layouts/Layout.astro";
     
     #section_options{
         height: calc(100% - 3.5rem);
+    }
+
+    input[type="color"] {
+        margin-left: 0.5rem;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 34px;
+        height: 36px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+        border-radius: 3px;
+        border: none;
+    }
+
+    input[type="color"]::-moz-color-swatch {
+        border-radius: 3px;
+        border: none;
     }
 </style>

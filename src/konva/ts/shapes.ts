@@ -1,25 +1,54 @@
 import Konva from 'konva'
 import * as States from "../js/states";
 
-interface ShapeProperties{
+interface PropertiesGeneral{
+    id: string,
+    name: string,
+    isVisible: boolean,
+    draggable: boolean
+}
+
+interface PropertiesNecessary{
     x: number,
     y: number,
-    width: number,
-    height: number,
-    radius: number,
-    pointerLength: number,
-    pointerWidth: number,
-    sides: number,
-    points: number[],
+    scale: {
+        x: number,
+        y: number,
+    },
+    rotation: number,
     fill: string,
     opacity: number,
     stroke: string,
     strokeWidth: number,
+}
+
+interface Square{
+    type: "rect",
     cornerRadius: number,
-    isVisible: boolean,
-    draggable: boolean,
-    id: string,
-    name: string,
+    width: number,
+    height: number,
+}
+
+interface Circle{
+    type: "circle",
+    radius: number,
+}
+
+interface Triangle{
+    type: "triangle" | "diamond",
+    sides: number,
+    radius: number,
+}
+
+interface Line{
+    type: "line" | "arrow",
+    pointerLength: number,
+    pointerWidth: number,
+    points: number[],
+}
+
+interface Text{
+    type: "text",
     text: string,
     align: string,
     fontStyle: any,
@@ -27,53 +56,96 @@ interface ShapeProperties{
     fontFamily: string,
 }
 
-let defaultConfig: ShapeProperties = {
-    x: 0,
-    y: 0,
-    width: 50,
-    height: 50,
-    radius: 30,
-    pointerLength: 10,
-    pointerWidth: 10,
-    sides: 3,
-    points: [0,0, 0, -100],
-    fill: "#ddd",
-    opacity: 1,
-    stroke: "#ddd",
-    strokeWidth: 0,
-    cornerRadius: 3,
-    isVisible: true,
-    draggable: true,
+let PropertiesGeneral: PropertiesGeneral = {
     id: "default",
     name: "shape",
-    text: "Esto es un texto por defecto",
+    isVisible: true,
+    draggable: true
+}
+
+let PropertiesNecessary: PropertiesNecessary = {
+    x: 0,
+    y: 0,
+    scale: {
+        x: 1,
+        y: 1,
+    },
+    rotation: 0,
+    fill: "#dddddd",
+    opacity: 1,
+    stroke: "#dddddd",
+    strokeWidth: 0,
+}
+
+let Square: Square = {
+    ...PropertiesGeneral,
+    ...PropertiesNecessary,
+    width: 50,
+    height: 50,
+    cornerRadius: 1,
+    type: "rect",
+}
+
+let Circle: Circle = {
+    ...PropertiesGeneral,
+    ...PropertiesNecessary,
+    radius: 30,
+    type: "circle"
+}
+
+let Triangle: Triangle = {
+    ...PropertiesGeneral,
+    ...PropertiesNecessary,
+    radius: 30,
+    sides: 3,
+    type: "triangle"
+}
+
+let Diamond: Triangle = {
+    ...PropertiesGeneral,
+    ...PropertiesNecessary,
+    radius: 30,
+    sides: 4,
+    type: "diamond"
+}
+
+let Line: Line = {
+    ...PropertiesGeneral,
+    ...PropertiesNecessary,
+    pointerLength: 10,
+    pointerWidth: 10,
+    points: [0,0, 0, -100],
+    type: "line"
+}
+
+let Text: Text = {
+    ...PropertiesGeneral,
+    ...PropertiesNecessary,
+    text: "Escribe un texto.",
     align: "left",
     fontStyle: 700,
     fontFamily: 'Arial',
     fontSize: 12,
+    type: "text"
 }
 
-function addShape(shapeProperties: ShapeProperties){
+
+function addShape(shapeProperties: PropertiesNecessary){
     if(States.StatesShapes.circle){
-        return new Konva.Circle({...defaultConfig, ...shapeProperties});
+        return new Konva.Circle({...Circle, ...shapeProperties});
     }else if(States.StatesShapes.square){
-        if(!shapeProperties.width && !shapeProperties.height){
-            shapeProperties.x -= 25;
-            shapeProperties.y -= 25;
-        }
-        return new Konva.Rect({...defaultConfig, ...shapeProperties})
+        shapeProperties.x -= 25;
+        shapeProperties.y -= 25;
+        return new Konva.Rect({...Square, ...shapeProperties})
     }else if(States.StatesShapes.triangle){
-        shapeProperties.sides = 3;
-        return new Konva.RegularPolygon({...defaultConfig, ...shapeProperties});
+        return new Konva.RegularPolygon({...Triangle, ...shapeProperties});
     }else if(States.StatesShapes.diamond){
-        shapeProperties.sides = 4;
-        return new Konva.RegularPolygon({...defaultConfig, ...shapeProperties});
+        return new Konva.RegularPolygon({...Diamond, ...shapeProperties});
     }else if(States.StatesShapes.line){
-        defaultConfig.strokeWidth = 1;
-        return new Konva.Arrow({...defaultConfig, ...shapeProperties});
+        PropertiesNecessary.strokeWidth = 1;
+        return new Konva.Arrow({...Line, ...shapeProperties});
     }else if(States.StatesShapes.text){
-        defaultConfig.name = "text";
-        return new Konva.Text({...defaultConfig, ...shapeProperties});
+        return new Konva.Text({...Text, ...shapeProperties});
     }
 
     return false;
