@@ -213,82 +213,8 @@ import Layout from "../layouts/Layout.astro";
                 <div id="konva" class="bg-white w-full h-full"></div>
             </div>
 
-            <div id="right-slide" class="absolute -right-[25rem] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">
-                <header class="w-full h-14 flex justify-center items-center gap-16">
-                    <span class="text-[#FC7F53] text-md font-semibold cursor-pointer">
-                        Design
-                    </span>
-
-                    <span class="w-[2px] h-1/2 bg-[#696969]"></span>
-
-                    <span class="text-white text-md font-semibold cursor-pointer">
-                        Slides
-                    </span>
-                </header>
-
+            <div id="right-slide" class="absolute -right-[0] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">
                 <section id="content-edit" class="w-full h-full flex flex-col">
-
-                    <div class="w-full h-fit py-4 px-3 flex justify-around items-center border-b-2 border-[#FC7F53]">
-                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-left h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M4 4l0 16" />
-                                <path d="M8 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                            </svg>
-                        </span>
-
-                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-center h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M12 4l0 5" />
-                                <path d="M12 15l0 5" />
-                                <path d="M6 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                            </svg>
-                        </span>
-                        
-                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-right h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M20 4l0 16" />
-                                <path d="M4 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                            </svg>
-                        </span>
-                        
-                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-top h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M4 4l16 0" />
-                                <path d="M9 8m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                            </svg>
-                        </span>
-                        
-                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-bottom h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M4 20l16 0" />
-                                <path d="M9 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                            </svg>
-                        </span>
-                        
-                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-distribute-vertical h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M4 4l0 16" />
-                                <path d="M20 4l0 16" />
-                                <path d="M9 6m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                            </svg>
-                        </span>
-                        
-                        <span class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-distribute-horizontal h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M4 4l16 0" />
-                                <path d="M4 20l16 0" />
-                                <path d="M6 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                            </svg>
-                        </span>
-                    </div>
-
                     <div class="w-full h-fit py-5 px-5 border-b-2 border-[#FC7F53]">
                         <h3 class="text-white font-bold">
                             Layout
@@ -360,13 +286,13 @@ import Layout from "../layouts/Layout.astro";
                                 <input type="text" name="input_color" id="input_color" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="1DA5F2">
 
                                 <span class="flex gap-4">
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                                         <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
                                         <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
                                     </svg>
 
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                                         <path d="M5 12l14 0" />
                                     </svg>
@@ -389,13 +315,13 @@ import Layout from "../layouts/Layout.astro";
                                 <input type="number" name="input_stroke_border" id="input_stroke_border" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
 
                                 <span class="flex gap-4">
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                                         <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
                                         <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
                                     </svg>
 
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                                         <path d="M5 12l14 0" />
                                     </svg>
@@ -404,17 +330,133 @@ import Layout from "../layouts/Layout.astro";
                         </div>
                     </div>
 
-                    <div class="w-full h-fit px-5 flex flex-col py-5 gap-3 justify-center items-start">
-                        <h3 class="text-white font-bold">
-                            Opacity
-                        </h3>
-                        
-                        <div class="w-full flex items-center gap-5">
-                            <input id="default-range" type="range" value="100" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-700">
+                    <div id="editor-richt-text" class="w-full h-fit my-3 px-2">
+                        <div class="w-full mb-4 border rounded-lg bg-[#303030] border-[#FC7F53]">
+                            <div class="flex items-center justify-center px-3 py-2 w-full">
+                                <div class="flex flex-wrap w-full items-center justify-center">
+                                    <div class="flex items-center w-full justify-around ">
+                                        <!-- <button id="align_vertical" data-align-vertical="left" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-left w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 4l0 16" />
+                                                <path d="M8 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                                            </svg>
+                                        </button> -->
+                                        <button id="align_vertical" data-align-vertical="middle" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-center w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M12 4l0 5" />
+                                                <path d="M12 15l0 5" />
+                                                <path d="M6 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                                            </svg>
+                                        </button>
+                                        <!-- <button id="align_vertical" data-align-vertical="left" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-right w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M20 4l0 16" />
+                                                <path d="M4 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                                            </svg>
+                                        </button> -->
+                                        <button id="align_vertical" data-align-vertical="top" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-top w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 4l16 0" />
+                                                <path d="M9 8m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                                            </svg>
+                                        </button>
+                                        <button id="align_vertical" data-align-vertical="bottom" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-bottom w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 20l16 0" />
+                                                <path d="M9 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                                            </svg>
+                                        </button>
+                                        <button id="align_vertical" data-align-vertical="left" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-distribute-vertical w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 4l0 16" />
+                                                <path d="M20 4l0 16" />
+                                                <path d="M9 6m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                                            </svg>
+                                        </button>
+                                        <button id="align_vertical" data-align-vertical="left" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-distribute-horizontal w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 4l16 0" />
+                                                <path d="M4 20l16 0" />
+                                                <path d="M6 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                            <input type="number" name="input_opacity" id="input_opacity" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
+                        <div class="w-full mb-4 border rounded-lg bg-[#303030] border-[#FC7F53]">
+                            <div class="flex items-center justify-between px-3 py-2 border-b border-gray-600">
+                                <div class="flex flex-wrap items-center sm:divide-x sm:rtl:divide-x-reverse divide-gray-600">
+                                    <div class="flex items-center space-x-1 rtl:space-x-reverse sm:pe-4">
+                                        <button id="bold_style" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M8 5h4.5a3.5 3.5 0 1 1 0 7H8m0-7v7m0-7H6m2 7h6.5a3.5 3.5 0 1 1 0 7H8m0-7v7m0 0H6"/>
+                                            </svg>
+                                        </button>
+                                        <button id="italic_style" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m8.874 19 6.143-14M6 19h6.33m-.66-14H18"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="relative flex items-center gap-1 rtl:space-x-reverse sm:ps-4">
+                                        <button id="align" data-align="left" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-align-left w-4 h-4">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 6l16 0" />
+                                                <path d="M4 12l10 0" />
+                                                <path d="M4 18l14 0" />
+                                            </svg>
+                                        </button>
+                                        <button id="align" data-align="center" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-align-center w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 6l16 0" />
+                                                <path d="M8 12l8 0" />
+                                                <path d="M6 18l12 0" />
+                                            </svg>
+                                        </button>
+                                        <button id="align" data-align="right" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-align-right w-4 h-4">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 6l16 0" />
+                                                <path d="M10 12l10 0" />
+                                                <path d="M6 18l14 0" />
+                                            </svg>
+                                        </button>
+                                        <button id="align" data-align="justify" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
+                                            <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-align-justified w-4 h-4">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M4 6l16 0" />
+                                                <path d="M4 12l16 0" />
+                                                <path d="M4 18l12 0" />
+                                            </svg>
+                                        </button>
+                                        <div class="py-1 flex justify-center items-center gap-2 text-gray-400">
+                                            <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M3 6.2V5h11v1.2M8 5v14m-3 0h6m2-6.8V11h8v1.2M17 11v8m-1.5 0h3"/>
+                                            </svg>
+
+                                            <input type="number" name="font_size" id="font_size" class="w-12 h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=12>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-2 rounded-b-lg bg-[#303030] rounded-lg border border-[#FC7F53]">
+                            <textarea id="editor_text" rows="8" class="block w-full max-h-40 outline-none rounded-md px-0 text-sm border-0 bg-[#303030] focus:ring-0 text-white placeholder-gray-400" placeholder="Escribe algo..." required ></textarea>
                         </div>
                     </div>
+
                 </section>
 
                 <section id="content-edit-nothing" class="w-full h-full hidden flex-col">
@@ -511,7 +553,7 @@ import Layout from "../layouts/Layout.astro";
         width: 1em;
         height: 1em;
         vertical-align: middle;
-        fill: currentColor;
+        fill: white;
         margin-top: -0.25em;
         margin-right: 0.25em;
     }

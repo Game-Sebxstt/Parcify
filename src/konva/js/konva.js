@@ -635,6 +635,117 @@ shapes.forEach(element => {
 });
 
 
+let editor_text = document.querySelector("#editor_text");
+let aligns = document.querySelectorAll("#align");
+let aligns_vertical = document.querySelectorAll("#align_vertical");
+let bold_style = document.querySelector("#bold_style");
+let italic_style = document.querySelector("#italic_style");
+let font_size = document.querySelector("#font_size");
+
+font_size?.addEventListener("input", (e) => {
+    let node = tr.nodes()[0];
+    if(!node){
+        return;
+    }
+
+    let value = e.target.value;
+
+    if(value < 0 || value > 90){
+        return;
+    }
+
+    node.setAttr("fontSize", value)
+
+});
+
+italic_style?.addEventListener("click", () => {
+    let node = tr.nodes()[0];
+    if(!node){
+        return;
+    }
+
+
+    if(node.getAttr("fontStyle") != "italic"){
+        bold_style.style.backgroundColor = "transparent";
+        italic_style.style.backgroundColor = "#505050";
+        node.setAttr("fontStyle", "italic");
+        return;
+    }
+
+    node.setAttr("fontStyle", "normal");
+});
+
+bold_style?.addEventListener("click", () => {
+    let node = tr.nodes()[0];
+    if(!node){
+        return;
+    }
+
+    if(node.getAttr("fontStyle") != "bold"){
+        italic_style.style.backgroundColor = "transparent";
+        bold_style.style.backgroundColor = "#505050";
+        node.setAttr("fontStyle", "bold");
+        return;
+    }
+
+    node.setAttr("fontStyle", "normal");
+});
+
+aligns_vertical?.forEach(item => {
+
+    item?.addEventListener("click", () => {
+        let node = tr.nodes()[0];
+        if(!node){
+            return;
+        }
+
+        let attr = item.getAttribute("data-align-vertical");
+
+        node.setAttr("verticalAlign", attr)
+        item.style.backgroundColor = "#505050";
+
+        aligns_vertical?.forEach(element => {
+            if(item != element){
+                element.style.backgroundColor = "transparent"
+            }
+        })
+    });
+});
+
+aligns?.forEach(item => {
+    item?.addEventListener("click", () => {
+        let node = tr.nodes()[0];
+        if(!node){
+            return;
+        }
+    
+        let attr = item.getAttribute("data-align");
+
+        node.setAttr("align", attr)
+        item.style.backgroundColor = "#505050";
+
+        aligns?.forEach(element => {
+            if(item != element){
+                element.style.backgroundColor = "transparent"
+            }
+        })
+    });
+});
+
+
+editor_text?.addEventListener("input", (e) =>{
+    let node = tr.nodes()[0];
+    if(!node){
+        return;
+    }
+
+    let value = e.target.value;
+
+    node.setAttr("text", value)
+
+    console.log(node.attrs)
+});
+
 let file_folder = document.querySelector("#file-folder");
 let dropzone_file = document.querySelector("#dropzone-file")
 let list_image_folder = document.querySelector("#list-image-folder");
@@ -779,6 +890,9 @@ function updateNodeAttrs(node) {
         y = node.attrs.y;
     }
 
+    if(node instanceof Konva.Text){
+    }
+
     node.setAttrs({
         x: x,
         y: y,
@@ -810,8 +924,8 @@ setInterval(() => {
         }
     }else{
         if(document.querySelector("#content-edit") && document.querySelector("#content-edit-nothing")){
-            document.querySelector("#content-edit").style.display = "none";
-            document.querySelector("#content-edit-nothing").style.display = "flex";
+            // document.querySelector("#content-edit").style.display = "none";
+            // document.querySelector("#content-edit-nothing").style.display = "flex";
         }
     }
 },);
@@ -819,6 +933,32 @@ setInterval(() => {
 function changeLayout(attrs) {
     color_style.value = attrs.fill;
     color_style_border.value = attrs.stroke;
+
+    console.log(attrs)
+
+    if(attrs.text){
+        editor_text.value = attrs.text;
+    }
+
+    if(attrs.align){
+        aligns.forEach(item => {
+            if(item.getAttribute("data-align") == attrs.align){
+                item.style.backgroundColor = "#505050"
+            }else{
+                item.style.backgroundColor = "transparent"
+            }
+        })
+    }
+
+    if(attrs.verticalAlign){
+        aligns_vertical.forEach(item => {
+            if(item.getAttribute("data-align-vertical") == attrs.verticalAlign){
+                item.style.backgroundColor = "#505050"
+            }else{
+                item.style.backgroundColor = "transparent"
+            }
+        })
+    }
 
     let scaleX = attrs.scaleX ?? 1;
     let scaleY = attrs.scaleY ?? 1;

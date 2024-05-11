@@ -54,6 +54,7 @@ interface Text{
     fontStyle: any,
     fontSize: number,
     fontFamily: string,
+    verticalAlign: string,
 }
 
 let PropertiesGeneral: PropertiesGeneral = {
@@ -123,8 +124,9 @@ let Text: Text = {
     ...PropertiesNecessary,
     text: "Escribe un texto.",
     align: "left",
-    fontStyle: 700,
+    fontStyle: "normal",
     fontFamily: 'Arial',
+    verticalAlign: "top",
     fontSize: 12,
     type: "text"
 }
