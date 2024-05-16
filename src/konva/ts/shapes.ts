@@ -83,7 +83,7 @@ let Square: Square = {
     ...PropertiesNecessary,
     width: 50,
     height: 50,
-    cornerRadius: 1,
+    cornerRadius: 0,
     type: "rect",
 }
 

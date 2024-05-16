@@ -17,14 +17,16 @@ let indexHistory = 0;
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
 let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
 
-let attempsChange = 10;
+let attempsChange = 12;
 
-var SCALEBY = 1.1;
+var SCALEBY = 1.2;
 var MAX_WIDTH = widthKonva;
 var X1, Y1, X2, Y2;
 var SELECTING = false;
 var SELECTALL = true;
 var ISDRAG = false;
+var LIMIT_MOVEMENT = 10;
+var GUIDELINE_OFFSET = 5;
 
 let stage;
 
@@ -46,6 +48,36 @@ var layer = stage.getLayers().find(item => item.attrs.id == "layer") || new Konv
 });
 
 elements = [...layer.getChildren().filter(item => (item.attrs.id != "selection") && item.attrs.id != "transformer") ];
+
+layer.getChildren().forEach(item => {
+    if(item instanceof Konva.Image == false){
+        return;
+    }
+
+    const image = new Image();
+
+    image.onload = function () {
+        var image = new Konva.Image({
+            x: item.x(),
+            y: item.y(),
+            image: this,
+            width: item.width(),
+            height: item.height(),
+            draggable: true,
+            id: "default",
+            name: "shape",
+            imagePath: item.attrs.imagePath,
+            _id: item._id
+        });
+
+        elements.push(image);
+        layer.add(image);
+        layer.draw();
+    }
+
+    image.src = item.attrs.imagePath;
+
+})
 
 var layerBackground = stage.getLayers().find(item => item.attrs.id == "layerbackground") || new Konva.Layer({
     id: "layerbackground",
@@ -108,26 +140,387 @@ if(!layer.getChildren().find(item => item.attrs.id == "selection")){
 
 saveHistory(stage.toJSON());
 
-function ungroupElements() {
-    const selectedGroup = tr.nodes()[0];
-    if (!(selectedGroup instanceof Konva.Group)) {
-        return;
-    }
+// let grid = new Konva.Layer();
 
-    const children = selectedGroup.getChildren();
+// let size = 12;
+// let width = stage.width();
+// let height = stage.height();
+// let x = 0;
+// let y = 0;
 
-    children.forEach((child) => {
-        if(!child instanceof Konva.Group){
-            child.draggable(true);
-            layer.add(child);
+// for (let i = 0; i < width / size; i++) {
+//     for (let j = 0; j < height / size; j++) {
+//         let point = new Konva.Circle({
+//             x: x,
+//             y: y,
+//             radius: 0.25,
+//             fill: 'white',
+//             listening: false,
+//         });
+//         grid.add(point);
+//         y += size;
+//     }
+//     y = 0;
+//     x += size;
+// }
+
+// grid.zIndex(0);
+// stage.add(grid);
+
+function moveLimit(){
+    // elements.forEach(item => {
+    //     item.on("dragmove", () => {
+    //         let x = item.x();
+    //         let y = item.y();
+
+    //         let moveX = x % LIMIT_MOVEMENT;
+    //         let moveY = y % LIMIT_MOVEMENT;
+
+    //         if(moveX != 0){
+    //             item.setAttr("x", x + (LIMIT_MOVEMENT - moveX))
+    //         }
+
+    //         if(moveY != 0){
+    //             item.setAttr("y", y + (LIMIT_MOVEMENT - moveY))
+    //         }
+    //     });
+
+    //     //resize limit width and height
+    //     item.on("transform", () => {
+    //         let width = item.width();
+    //         let height = item.height();
+
+    //         let moveWidth = width % LIMIT_MOVEMENT;
+    //         let moveHeight = height % LIMIT_MOVEMENT;
+
+    //         if(moveWidth != 0){
+    //             item.setAttr("width", width + (LIMIT_MOVEMENT - moveWidth))
+    //         }
+
+    //         if(moveHeight != 0){
+    //             item.setAttr("height", height + (LIMIT_MOVEMENT - moveHeight))
+    //         }
+    //     });
+
+    // });
+
+    // //Movimiento pero de grupos
+
+    // groups.forEach(item => {
+    //     item.on("dragmove", () => {
+    //         let x = item.x();
+    //         let y = item.y();
+
+    //         let moveX = x % LIMIT_MOVEMENT;
+    //         let moveY = y % LIMIT_MOVEMENT;
+
+    //         if(moveX != 0){
+    //             item.setAttr("x", x + (LIMIT_MOVEMENT - moveX))
+    //         }
+
+    //         if(moveY != 0){
+    //             item.setAttr("y", y + (LIMIT_MOVEMENT - moveY))
+    //         }
+    //     });
+    // });
+
+    // layer.batchDraw();
+}
+
+function getLineGuideStops(skipShape) {
+    var vertical = [0, stage.width() / 2, stage.width()];
+    var horizontal = [0, stage.height() / 2, stage.height()];
+
+    stage.find('.shape').forEach((guideItem) => {
+        if (guideItem === skipShape) {
+            return;
         }
+        var box = guideItem.getClientRect();
+        vertical.push([box.x, box.x + box.width, box.x + box.width / 2]);
+        horizontal.push([box.y, box.y + box.height, box.y + box.height / 2]);
+    });
+    return {
+        vertical: vertical.flat(),
+        horizontal: horizontal.flat(),
+    };
+}
+
+function getObjectSnappingEdges(node) {
+    var box = node.getClientRect();
+    var absPos = node.absolutePosition();
+
+    return {
+        vertical: [
+            {
+                guide: Math.round(box.x),
+                offset: Math.round(absPos.x - box.x),
+                snap: 'start',
+            },
+            {
+                guide: Math.round(box.x + box.width / 2),
+                offset: Math.round(absPos.x - box.x - box.width / 2),
+                snap: 'center',
+            },
+            {
+                guide: Math.round(box.x + box.width),
+                offset: Math.round(absPos.x - box.x - box.width),
+                snap: 'end',
+            },
+        ],
+        horizontal: [
+            {
+                guide: Math.round(box.y),
+                offset: Math.round(absPos.y - box.y),
+                snap: 'start',
+            },
+            {
+                guide: Math.round(box.y + box.height / 2),
+                offset: Math.round(absPos.y - box.y - box.height / 2),
+                snap: 'center',
+            },
+            {
+                guide: Math.round(box.y + box.height),
+                offset: Math.round(absPos.y - box.y - box.height),
+                snap: 'end',
+            },
+        ],
+    };
+}
+
+function getGuides(lineGuideStops, itemBounds) {
+    var resultV = [];
+    var resultH = [];
+
+    lineGuideStops.vertical.forEach((lineGuide) => {
+        itemBounds.vertical.forEach((itemBound) => {
+            var diff = Math.abs(lineGuide - itemBound.guide);
+            if (diff < GUIDELINE_OFFSET) {
+                resultV.push({
+                    lineGuide: lineGuide,
+                    diff: diff,
+                    snap: itemBound.snap,
+                    offset: itemBound.offset,
+                });
+            }
+        });
     });
 
-    selectedGroup.destroy();
-    elements = elements.filter((item) => item !== selectedGroup);
-    tr.nodes(children);
-    layer.batchDraw();
+    lineGuideStops.horizontal.forEach((lineGuide) => {
+        itemBounds.horizontal.forEach((itemBound) => {
+            var diff = Math.abs(lineGuide - itemBound.guide);
+            if (diff < GUIDELINE_OFFSET) {
+                resultH.push({
+                    lineGuide: lineGuide,
+                    diff: diff,
+                    snap: itemBound.snap,
+                    offset: itemBound.offset,
+                });
+            }
+        });
+    });
+
+    var guides = [];
+
+    var minV = resultV.sort((a, b) => a.diff - b.diff)[0];
+    var minH = resultH.sort((a, b) => a.diff - b.diff)[0];
+    if (minV) {
+        guides.push({
+            lineGuide: minV.lineGuide,
+            offset: minV.offset,
+            orientation: 'V',
+            snap: minV.snap,
+        });
+    }
+    if (minH) {
+        guides.push({
+            lineGuide: minH.lineGuide,
+            offset: minH.offset,
+            orientation: 'H',
+            snap: minH.snap,
+        });
+    }
+    return guides;
 }
+
+function drawGuides(guides) {
+    guides.forEach((lg) => {
+        if (lg.orientation === 'H') {
+            var line = new Konva.Line({
+                points: [-6000, 0, 6000, 0],
+                stroke: 'rgb(0, 161, 255)',
+                strokeWidth: 1,
+                name: 'guid-line',
+                dash: [4, 6],
+            });
+            layer.add(line);
+            line.absolutePosition({
+                x: 0,
+                y: lg.lineGuide,
+            });
+        } else if (lg.orientation === 'V') {
+            var line = new Konva.Line({
+                points: [0, -6000, 0, 6000],
+                stroke: 'rgb(0, 161, 255)',
+                strokeWidth: 1,
+                name: 'guid-line',
+                dash: [4, 6],
+            });
+            layer.add(line);
+            line.absolutePosition({
+                x: lg.lineGuide,
+                y: 0,
+            });
+        }
+    });
+}
+
+function snapDragElements(){
+    layer.on('dragmove', function (e) {
+        if (e.target.id() === 'transformer') {
+            return;
+        }
+        
+        layer.find('.guid-line').forEach((l) => l.destroy());
+    
+        var lineGuideStops = getLineGuideStops(e.target);
+        var itemBounds = getObjectSnappingEdges(e.target);
+    
+        var guides = getGuides(lineGuideStops, itemBounds);
+    
+        if (!guides.length) {
+            return;
+        }
+    
+        drawGuides(guides);
+    
+        var absPos = e.target.absolutePosition();
+        guides.forEach((lg) => {
+            switch (lg.snap) {
+                case 'start': {
+                    switch (lg.orientation) {
+                        case 'V': {
+                            absPos.x = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                        case 'H': {
+                            absPos.y = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case 'center': {
+                    switch (lg.orientation) {
+                        case 'V': {
+                            absPos.x = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                        case 'H': {
+                            absPos.y = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case 'end': {
+                    switch (lg.orientation) {
+                        case 'V': {
+                            absPos.x = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                        case 'H': {
+                            absPos.y = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        });
+        e.target.absolutePosition(absPos);
+    });
+
+    layer.on('dragend', function (e) {
+        if (e.target.id() === 'transformer') {
+            return;
+        }
+        
+        layer.find('.guid-line').forEach((l) => l.destroy());
+        saveHistory(stage.toJSON());
+    });
+}
+
+function snapTransformElements(){
+    tr.on('transform', function (e) {
+        layer.find('.guid-line').forEach((l) => l.destroy());
+    
+        var lineGuideStops = getLineGuideStops(e.target);
+        var itemBounds = getObjectSnappingEdges(e.target);
+    
+        var guides = getGuides(lineGuideStops, itemBounds);
+    
+        if (!guides.length) {
+            return;
+        }
+    
+        drawGuides(guides);
+    
+        var absPos = e.target.absolutePosition();
+        guides.forEach((lg) => {
+            switch (lg.snap) {
+                case 'start': {
+                    switch (lg.orientation) {
+                        case 'V': {
+                            absPos.x = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                        case 'H': {
+                            absPos.y = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case 'center': {
+                    switch (lg.orientation) {
+                        case 'V': {
+                            absPos.x = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                        case 'H': {
+                            absPos.y = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case 'end': {
+                    switch (lg.orientation) {
+                        case 'V': {
+                            absPos.x = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                        case 'H': {
+                            absPos.y = lg.lineGuide + lg.offset;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        });
+        e.target.absolutePosition(absPos);
+    });
+
+    tr.on("transformend", function (e) {
+        layer.find('.guid-line').forEach((l) => l.destroy());
+        saveHistory(stage.toJSON());
+    });
+}   
+
+snapDragElements();
+
+snapTransformElements();
 
 function groupElements() {
     let selectedNodes = tr.nodes();
@@ -151,6 +544,29 @@ function groupElements() {
     layer.add(group);
     elements.push(group);
     tr.nodes([group]);
+    layer.batchDraw();
+}
+
+function ungroupElements() {
+    let selectedNodes = tr.nodes();
+    if (selectedNodes.length === 0) {
+        return;
+    }
+
+    if (selectedNodes[0] instanceof Konva.Group == false) {
+        return;
+    }
+
+    const children = selectedNodes[0].children.slice();
+    selectedNodes[0].remove();
+
+    children.forEach((node) => {
+        node.draggable(true);
+        layer.add(node);
+        elements.push(node);
+    });
+
+    tr.nodes(children);
     layer.batchDraw();
 }
 
@@ -179,6 +595,8 @@ function undo() {
         tr.setAttr("visible", true)
         layer.draw();
         updateElementsEvent();
+        snapDragElements();
+        snapTransformElements();
     }
 }
 
@@ -201,18 +619,14 @@ function redo() {
         tr.setAttr("visible", true)
         layer.draw();
         updateElementsEvent();
+        snapDragElements();
+        snapTransformElements();
     }
 }
 
 function updateElementsEvent(){
     elements.forEach(item => {
         item.on("transformend", () => {
-            console.log("entro")
-            saveHistory(stage.toJSON());
-        })
-    
-        item.on("dragend", () => {
-            console.log("salio")
             saveHistory(stage.toJSON());
         })
     });
@@ -443,6 +857,7 @@ stage.on('click tap', function (e) {
             saveHistory(stage.toJSON());
 
             updateElementsEvent();
+            moveLimit();
         }
     }
 
@@ -463,12 +878,15 @@ stage.on('click tap', function (e) {
             width: widthDefault,
             height: widthDefault,
             id: "default",
-            name: "image",
-            draggable: true
+            name: "shape",
+            draggable: true,
+            imagePath: States.StatesValues.image
         };
 
         image.onload = function () {
             var image = new Konva.Image({...shapeProperties});
+            image.setAttr("_id", image._id);
+            elements.push(image);
             layer.add(image);
             layer.draw();     
         };
@@ -546,6 +964,7 @@ stage.on('wheel', (e) => {
     };
     stage.position(newPos);
     bg.absolutePosition({ x: 0, y: 0 });
+    stage.batchDraw();
 });
 
 stage.on("mousedown", (e) => {
@@ -590,14 +1009,24 @@ document.addEventListener('keydown', function (e) {
         }
         
         e.preventDefault();
-        let newElementsArray = [];
         const selectedNodes = tr.nodes();
+        console.log(selectedNodes)
         const copiedNodes = selectedNodes.map(node => node.toObject());
         const copiedData = JSON.stringify(copiedNodes);
-        selectedNodes.map(item => item.remove());
-        tr.nodes(newElementsArray);
         navigator.clipboard.writeText(copiedData);
-        saveHistory(stage.toJSON())
+        selectedNodes.forEach(node => {
+            layer.getChildren().forEach(item => {
+                if(item._id == node.attrs._id){
+                    item.destroy();
+                }
+            });
+           node.destroy();
+        });
+
+
+        console.log(stage.getChildren())
+        tr.nodes([]);
+        layer.batchDraw();
     }
 
     if (e.ctrlKey && e.key === 's') {
@@ -654,8 +1083,10 @@ document.addEventListener('keydown', function (e) {
             return;
         }
         
+        // Quiero que se seleccionen todos los elementos del stage
         e.preventDefault();
-        tr.nodes(elements);
+        tr.nodes([...elements]);
+        console.log(tr.nodes())
     }
 
     if(e.ctrlKey && e.key === 'j'){
@@ -693,7 +1124,6 @@ document.addEventListener('keydown', function (e) {
         saveHistory(stage.toJSON())
     }
 });
-
 
 let export_canvas = document.querySelector("#export");
 export_canvas.addEventListener("click", () => {
@@ -1099,8 +1529,8 @@ setInterval(() => {
 },);
 
 function changeLayout(attrs) {
-    color_style.value = attrs.fill;
-    color_style_border.value = attrs.stroke;
+    color_style.value = attrs.fill || "#000000";
+    color_style_border.value = attrs.stroke || "#000000";
 
     if(attrs.text){
         editor_text.value = attrs.text;
@@ -1128,8 +1558,8 @@ function changeLayout(attrs) {
 
     let scaleX = attrs.scaleX ?? 1;
     let scaleY = attrs.scaleY ?? 1;
-    input_layout_x.value = attrs.x.toFixed(0)
-    input_layout_y.value = attrs.y.toFixed(0)
+    input_layout_x.value = attrs.x.toFixed(0) || 0
+    input_layout_y.value = attrs.y.toFixed(0) || 0
     if(attrs.width){
         input_width.value = ((attrs.width || 1) * scaleX).toFixed(0)
         input_height.value = ((attrs.height || 1) * scaleY).toFixed(0)
