@@ -585,6 +585,10 @@ document.addEventListener('keydown', function (e) {
     }
 
     if (e.ctrlKey && e.key === 'x') {
+        if(!SELECTALL){
+            return;
+        }
+        
         e.preventDefault();
         let newElementsArray = [];
         const selectedNodes = tr.nodes();
