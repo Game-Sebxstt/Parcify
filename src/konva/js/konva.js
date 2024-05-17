@@ -21,6 +21,7 @@ let attempsChange = 12;
 
 var SCALEBY = 1.2;
 var MAX_WIDTH = widthKonva;
+var MIN_WIDTH = 20;
 var X1, Y1, X2, Y2;
 var SELECTING = false;
 var SELECTALL = true;
@@ -113,13 +114,17 @@ if(!layerBackground.getChildren().find(item => item.attrs.id == "bg")){
 
 var tr = layer.getChildren().find(item => item.attrs.id == "transformer") || new Konva.Transformer({
     padding: 1,
-    boundBoxFunc: function (oldBoundBox, newBoundBox) {
-        if (Math.abs(newBoundBox.width) > MAX_WIDTH) {
-            return oldBoundBox;
+    flipEnabled: false,
+    boundBoxFunc: (oldBox, newBox) => {
+        if (Math.abs(newBox.width) < MIN_WIDTH) {
+          return oldBox;
         }
-        return newBoundBox;
+        return newBox;
     },
+    ignoreStroke: true,
     visible: true,
+    // centeredScaling: true,
+    rotationSnaps: [0, 90, 180, 270],
     id: "transformer"
 });
 
@@ -450,6 +455,11 @@ function snapDragElements(){
     });
 }
 
+function getCornerRadius(width, height, cornerRadiusPercentage) {
+    const shortestSide = Math.min(width, height);
+    return shortestSide * cornerRadiusPercentage;
+}
+
 function snapTransformElements(){
     tr.on('transform', function (e) {
         layer.find('.guid-line').forEach((l) => l.destroy());
@@ -510,6 +520,11 @@ function snapTransformElements(){
             }
         });
         e.target.absolutePosition(absPos);
+
+        // const width = e.target.width() * e.target.scaleX();
+        // const height = e.target.height() * e.target.scaleY();
+        // const cornerRadius = getCornerRadius(width, height, 0.1);
+        // e.target.cornerRadius(cornerRadius);
     });
 
     tr.on("transformend", function (e) {
@@ -517,6 +532,17 @@ function snapTransformElements(){
         saveHistory(stage.toJSON());
     });
 }   
+
+tr.on("transform", (e) => {
+    if(e.target instanceof Konva.Text == true){
+        e.target.setAttrs({
+            width: Math.max(5, e.target.width() * e.target.scaleX(), MIN_WIDTH),
+            height: Math.max(5, e.target.height() * e.target.scaleY()),
+            scaleX: 1,
+            scaleY: 1,
+        });
+    }
+});
 
 snapDragElements();
 
@@ -741,14 +767,14 @@ stage.on('click tap', function (e) {
         let shape = addShape(shapeProperties);
         
         if(shape && shape.attrs.type === "text"){
-            shape.on('transform', () => {
-                shape.setAttrs({
-                    width: Math.max(5, shape.width() * shape.scaleX()),
-                    height: Math.max(5, shape.height() * shape.scaleY()),
-                    scaleX: 1,
-                    scaleY: 1,
-                });
-            });
+            // shape.on('transform', () => {
+            //     shape.setAttrs({
+            //         width: Math.max(5, shape.width() * shape.scaleX()),
+            //         height: Math.max(5, shape.height() * shape.scaleY()),
+            //         scaleX: 1,
+            //         scaleY: 1,
+            //     });
+            // });
 
             shape.on('dblclick dbltap', () => {
                 shape.hide();
@@ -933,6 +959,101 @@ stage.on('click tap', function (e) {
 
 });
 
+// stage.on('dblclick dbltap', (e) => {
+//     if (e.target instanceof Konva.Stage) {
+//         return;
+//     }
+
+//     if (e.target.hasName('shape') || e.target.hasName('text') || e.target.hasName('image')) {
+//         const shapeNode = e.target;
+               
+//         let textNode = layer.getChildren().find(item => item.attrs.group_id == e.target._id);
+
+//         console.log(textNode)
+
+//         if (!textNode) {
+//             textNode = new Konva.Text({
+//                 text: 'algo',
+//                 x: shapeNode.x(),
+//                 y: shapeNode.y(),
+//                 width: shapeNode.width() - (e.target.width() * 0.1),
+//                 height: shapeNode.height() - (e.target.height() * 0.1),
+//                 fill: '#000000',
+//                 fontSize: 16,
+//                 fontFamily: 'Arial',
+//                 align: 'center',
+//                 verticalAlign: 'middle',
+//                 name: 'text',
+//                 group_id: e.target._id
+//             });
+//             layer.add(textNode)
+//         }
+
+//         layer.draw();
+
+//         // const textPosition = textNode.getAbsolutePosition();
+//         // const stageBox = stage.container().getBoundingClientRect();
+//         // const areaPosition = {
+//         //     x: stageBox.left + textPosition.x,
+//         //     y: stageBox.top + textPosition.y,
+//         // };
+
+//         // const textarea = document.createElement('textarea');
+//         // document.body.appendChild(textarea);
+
+//         // textarea.value = textNode.text();
+//         // textarea.style.position = 'absolute';
+//         // textarea.style.top = areaPosition.y + 'px';
+//         // textarea.style.left = areaPosition.x + 'px';
+//         // textarea.style.width = textNode.width() * 2 + 'px';
+//         // textarea.style.height = textNode.height() * 2 + 5 + 'px';
+//         // // ... (el resto del código para crear y configurar el textarea)
+
+//         // function removeTextarea() {
+//         //     if (!textarea) {
+//         //         return;
+//         //     }
+//         //     textNode.text(textarea.value);
+//         //     textarea.remove();
+//         //     window.removeEventListener('click', handleOutsideClick);
+//         //     textNode.show();
+//         //     tr.show();
+//         //     layer.draw();
+//         // }
+
+//         // textarea.addEventListener('keydown', function (e) {
+//         //     if (e.keyCode === 13 && !e.shiftKey) {
+//         //         removeTextarea();
+//         //     }
+//         //     if (e.keyCode === 27) {
+//         //         removeTextarea();
+//         //     }
+//         // });
+
+//         // textarea.addEventListener('input', function () {
+//         //     textNode.text(textarea.value);
+//         //     textNode.width(shapeNode.width());
+//         //     textNode.height(shapeNode.height());
+//         //     textNode.offsetX(shapeNode.width() / 2);
+//         //     textNode.offsetY(shapeNode.height() / 2);
+//         // });
+
+//         // function handleOutsideClick(e) {
+//         //     if (e.target !== textarea) {
+//         //         if (textarea.value.trim() === '') {
+//         //             textNode.remove();
+//         //         } else {
+//         //             removeTextarea();
+//         //         }
+//         //     }
+//         // }
+
+//         // setTimeout(() => {
+//         //     window.addEventListener('click', handleOutsideClick);
+//         // });
+//     }
+// });
+
 stage.on('wheel', (e) => {
     e.evt.preventDefault();
 
@@ -991,20 +1112,75 @@ stage.on("mousedown", (e) => {
 });
 
 document.addEventListener('keydown', function (e) {
-    if (e.ctrlKey && e.key === 'c') {
+    if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        const stageJSON = stage.toJSON();
+
+        localStorage.removeItem("STAGEJSON");
+        localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo();
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+        e.preventDefault()
+        redo();
+    }
+
+    if(e.ctrlKey && e.key.toLowerCase() === 'j'){
+        e.preventDefault();
+        groupElements();
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        ungroupElements();
+        saveHistory(stage.toJSON())
+    }
+
+    if(e.ctrlKey && e.key.toLowerCase() === 'u'){
+        e.preventDefault();
+
+        if(!tr.nodes() > 0){
+            return;
+        }
+
+        let element = tr.nodes()[0];
+        element.moveUp();
+        saveHistory(stage.toJSON())
+    }
+
+    if(e.ctrlKey && e.key.toLowerCase() === 'o'){
+        e.preventDefault();
+
+        if(!tr.nodes() > 0){
+            return;
+        }
+
+        let element = tr.nodes()[0];
+        element.moveDown();
+        saveHistory(stage.toJSON())
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 'c') {
         if(!SELECTALL){
             return;
         }
 
         e.preventDefault();
+        console.log("entroo")
         const selectedNodes = tr.nodes();
         const copiedNodes = selectedNodes.map(node => node.toObject());
         const copiedData = JSON.stringify(copiedNodes);
         navigator.clipboard.writeText(copiedData);
     }
 
-    if (e.ctrlKey && e.key === 'x') {
+    if (e.ctrlKey && e.key.toLowerCase() === 'x') {
         if(!SELECTALL){
+            console.log("no select")
             return;
         }
         
@@ -1029,25 +1205,7 @@ document.addEventListener('keydown', function (e) {
         layer.batchDraw();
     }
 
-    if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        const stageJSON = stage.toJSON();
-
-        localStorage.removeItem("STAGEJSON");
-        localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
-    }
-
-    if (e.ctrlKey && e.key === 'z') {
-        e.preventDefault()
-        undo();
-    }
-
-    if (e.ctrlKey && e.key === 'y') {
-        e.preventDefault()
-        redo();
-    }
-
-    if (e.ctrlKey && e.key === 'v') {
+    if (e.ctrlKey && e.key.toLowerCase() === 'v') {
         if(!SELECTALL){
             return;
         }
@@ -1078,50 +1236,14 @@ document.addEventListener('keydown', function (e) {
         });
     }
 
-    if(e.ctrlKey && e.key === 'a'){
+    if(e.ctrlKey && e.key.toLowerCase() === 'a'){
         if(!SELECTALL){
             return;
         }
         
-        // Quiero que se seleccionen todos los elementos del stage
         e.preventDefault();
         tr.nodes([...elements]);
         console.log(tr.nodes())
-    }
-
-    if(e.ctrlKey && e.key === 'j'){
-        e.preventDefault();
-        groupElements();
-    }
-
-    if (e.ctrlKey && e.key === 'g') {
-        e.preventDefault();
-        ungroupElements();
-        saveHistory(stage.toJSON())
-    }
-
-    if(e.ctrlKey && e.key === 'u'){
-        e.preventDefault();
-
-        if(!tr.nodes() > 0){
-            return;
-        }
-
-        let element = tr.nodes()[0];
-        element.moveUp();
-        saveHistory(stage.toJSON())
-    }
-
-    if(e.ctrlKey && e.key === 'o'){
-        e.preventDefault();
-
-        if(!tr.nodes() > 0){
-            return;
-        }
-
-        let element = tr.nodes()[0];
-        element.moveDown();
-        saveHistory(stage.toJSON())
     }
 });
 
@@ -1129,12 +1251,12 @@ let export_canvas = document.querySelector("#export");
 export_canvas.addEventListener("click", () => {
     if(tr.nodes().length > 0 && tr.nodes()[0] instanceof Konva.Group){
         var dataURL = tr.nodes()[0].toDataURL({ pixelRatio: 3})
-        downloadURI(dataURL, 'stage.jpeg');
+        downloadURI(dataURL, 'stage.png');
         return;
     }
 
     var dataURL = stage.toDataURL({ pixelRatio: 3 });
-    downloadURI(dataURL, 'stage.jpeg');
+    downloadURI(dataURL, 'stage.png');
 
 })
 
@@ -1162,7 +1284,6 @@ shapes.forEach(element => {
         }
     });
 });
-
 
 let editor_text = document.querySelector("#editor_text");
 let aligns = document.querySelectorAll("#align");

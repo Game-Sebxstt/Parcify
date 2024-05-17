@@ -5,7 +5,8 @@ interface PropertiesGeneral{
     id: string,
     name: string,
     isVisible: boolean,
-    draggable: boolean
+    draggable: boolean,
+    strokeScaleEnabled: boolean,
 }
 
 interface PropertiesNecessary{
@@ -61,7 +62,8 @@ let PropertiesGeneral: PropertiesGeneral = {
     id: "default",
     name: "shape",
     isVisible: true,
-    draggable: true
+    draggable: true,
+    strokeScaleEnabled: false,
 }
 
 let PropertiesNecessary: PropertiesNecessary = {
