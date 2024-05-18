@@ -8,6 +8,7 @@ let StatesShapes = {
     line: false,
 };
 
+//Guardar los estados del cursor
 let StatesCursor = {
     addShape: false,
     select: undefined,
