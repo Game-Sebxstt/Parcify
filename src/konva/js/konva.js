@@ -959,100 +959,102 @@ stage.on('click tap', function (e) {
 
 });
 
-// stage.on('dblclick dbltap', (e) => {
-//     if (e.target instanceof Konva.Stage) {
-//         return;
-//     }
+stage.on('dblclick dbltap', (e) => {
+    if (e.target instanceof Konva.Stage) {
+        return;
+    }
 
-//     if (e.target.hasName('shape') || e.target.hasName('text') || e.target.hasName('image')) {
-//         const shapeNode = e.target;
+    if (e.target.hasName('shape') || e.target.hasName('text') || e.target.hasName('image')) {
+        const shapeNode = e.target;
                
-//         let textNode = layer.getChildren().find(item => item.attrs.group_id == e.target._id);
+        let textNode = layer.getChildren().find(item => item.attrs.group_id == e.target._id);
 
-//         console.log(textNode)
+        console.log(textNode)
 
-//         if (!textNode) {
-//             textNode = new Konva.Text({
-//                 text: 'algo',
-//                 x: shapeNode.x(),
-//                 y: shapeNode.y(),
-//                 width: shapeNode.width() - (e.target.width() * 0.1),
-//                 height: shapeNode.height() - (e.target.height() * 0.1),
-//                 fill: '#000000',
-//                 fontSize: 16,
-//                 fontFamily: 'Arial',
-//                 align: 'center',
-//                 verticalAlign: 'middle',
-//                 name: 'text',
-//                 group_id: e.target._id
-//             });
-//             layer.add(textNode)
-//         }
+        if (!textNode) {
+            textNode = new Konva.Text({
+                text: 'algo',
+                x: shapeNode.x(),
+                y: shapeNode.y(),
+                width: shapeNode.width(),
+                height: shapeNode.height(),
+                fill: '#000000',
+                fontSize: 16,
+                fontFamily: 'Arial',
+                align: 'left',
+                verticalAlign: 'middle',
+                name: 'text',
+                listening: false,
+                draggable: false,
+                group_id: e.target._id
+            });
+            layer.add(textNode)
+        }
 
-//         layer.draw();
+        layer.draw();
 
-//         // const textPosition = textNode.getAbsolutePosition();
-//         // const stageBox = stage.container().getBoundingClientRect();
-//         // const areaPosition = {
-//         //     x: stageBox.left + textPosition.x,
-//         //     y: stageBox.top + textPosition.y,
-//         // };
+        // const textPosition = textNode.getAbsolutePosition();
+        // const stageBox = stage.container().getBoundingClientRect();
+        // const areaPosition = {
+        //     x: stageBox.left + textPosition.x,
+        //     y: stageBox.top + textPosition.y,
+        // };
 
-//         // const textarea = document.createElement('textarea');
-//         // document.body.appendChild(textarea);
+        // const textarea = document.createElement('textarea');
+        // document.body.appendChild(textarea);
 
-//         // textarea.value = textNode.text();
-//         // textarea.style.position = 'absolute';
-//         // textarea.style.top = areaPosition.y + 'px';
-//         // textarea.style.left = areaPosition.x + 'px';
-//         // textarea.style.width = textNode.width() * 2 + 'px';
-//         // textarea.style.height = textNode.height() * 2 + 5 + 'px';
-//         // // ... (el resto del código para crear y configurar el textarea)
+        // textarea.value = textNode.text();
+        // textarea.style.position = 'absolute';
+        // textarea.style.top = areaPosition.y + 'px';
+        // textarea.style.left = areaPosition.x + 'px';
+        // textarea.style.width = textNode.width() * 2 + 'px';
+        // textarea.style.height = textNode.height() * 2 + 5 + 'px';
+        // // ... (el resto del código para crear y configurar el textarea)
 
-//         // function removeTextarea() {
-//         //     if (!textarea) {
-//         //         return;
-//         //     }
-//         //     textNode.text(textarea.value);
-//         //     textarea.remove();
-//         //     window.removeEventListener('click', handleOutsideClick);
-//         //     textNode.show();
-//         //     tr.show();
-//         //     layer.draw();
-//         // }
+        // function removeTextarea() {
+        //     if (!textarea) {
+        //         return;
+        //     }
+        //     textNode.text(textarea.value);
+        //     textarea.remove();
+        //     window.removeEventListener('click', handleOutsideClick);
+        //     textNode.show();
+        //     tr.show();
+        //     layer.draw();
+        // }
 
-//         // textarea.addEventListener('keydown', function (e) {
-//         //     if (e.keyCode === 13 && !e.shiftKey) {
-//         //         removeTextarea();
-//         //     }
-//         //     if (e.keyCode === 27) {
-//         //         removeTextarea();
-//         //     }
-//         // });
+        // textarea.addEventListener('keydown', function (e) {
+        //     if (e.keyCode === 13 && !e.shiftKey) {
+        //         removeTextarea();
+        //     }
+        //     if (e.keyCode === 27) {
+        //         removeTextarea();
+        //     }
+        // });
 
-//         // textarea.addEventListener('input', function () {
-//         //     textNode.text(textarea.value);
-//         //     textNode.width(shapeNode.width());
-//         //     textNode.height(shapeNode.height());
-//         //     textNode.offsetX(shapeNode.width() / 2);
-//         //     textNode.offsetY(shapeNode.height() / 2);
-//         // });
+        // textarea.addEventListener('input', function () {
+        //     textNode.text(textarea.value);
+        //     textNode.width(shapeNode.width());
+        //     textNode.height(shapeNode.height());
+        //     textNode.offsetX(shapeNode.width() / 2);
+        //     textNode.offsetY(shapeNode.height() / 2);
+        // });
 
-//         // function handleOutsideClick(e) {
-//         //     if (e.target !== textarea) {
-//         //         if (textarea.value.trim() === '') {
-//         //             textNode.remove();
-//         //         } else {
-//         //             removeTextarea();
-//         //         }
-//         //     }
-//         // }
+        // function handleOutsideClick(e) {
+        //     if (e.target !== textarea) {
+        //         if (textarea.value.trim() === '') {
+        //             textNode.remove();
+        //         } else {
+        //             removeTextarea();
+        //         }
+        //     }
+        // }
 
-//         // setTimeout(() => {
-//         //     window.addEventListener('click', handleOutsideClick);
-//         // });
-//     }
-// });
+        // setTimeout(() => {
+        //     window.addEventListener('click', handleOutsideClick);
+        // });
+    }
+});
 
 stage.on('wheel', (e) => {
     e.evt.preventDefault();
