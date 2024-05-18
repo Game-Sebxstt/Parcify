@@ -1,0 +1,25 @@
+---
+interface Props{
+    category: string,
+
+}
+
+const {category} = Astro.props;
+
+---
+
+<div class="w-full h-fit">
+    <header class="w-full h-fit flex justify-between items-center py-3 px-2">
+        <span class="text-white font-bold text-lg">
+            {category}
+        </span>
+
+        <span class="text-gray-300 font-bold text-base cursor-pointer hover:underline">
+            Ver todo
+        </span>
+    </header>
+
+    <section class="w-full h-fit grid grid-cols-3 gap-3 max-[900px]:grid-cols-2 max-sm:grid-cols-1">
+        <slot/>
+    </section>
+</div>
