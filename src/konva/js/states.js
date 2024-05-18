@@ -11,6 +11,7 @@ let StatesShapes = {
 let StatesCursor = {
     addShape: false,
     select: undefined,
+    textEditing: undefined,
 }
 
 let StatesValues = {

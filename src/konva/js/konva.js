@@ -542,6 +542,22 @@ tr.on("transform", (e) => {
             scaleY: 1,
         });
     }
+
+    if(e.target == States.StatesCursor.textEditing){
+        var textPosition = e.target.absolutePosition();
+        var stageBox = stage.container().getBoundingClientRect();
+        var areaPosition = {
+          x: stageBox.left + textPosition.x,
+          y: stageBox.top + textPosition.y,
+        };
+
+        let textarea = document.querySelector("#edit-text")
+
+        textarea.style.top = areaPosition.y + 'px';
+        textarea.style.left = areaPosition.x + 'px';
+        textarea.style.width = e.target.width() + 'px';
+        textarea.style.height = e.target.height() * e.target.scaleY() + 'px';
+    }
 });
 
 snapDragElements();
@@ -660,6 +676,22 @@ function updateElementsEvent(){
 
 stage.on('dragmove', () => {
     bg.absolutePosition({ x: 0, y: 0 });
+
+    if(States.StatesCursor.textEditing){
+        var textPosition = States.StatesCursor.textEditing.absolutePosition();
+        var stageBox = stage.container().getBoundingClientRect();
+        var areaPosition = {
+          x: stageBox.left + textPosition.x,
+          y: stageBox.top + textPosition.y,
+        };
+
+        let textarea = document.querySelector("#edit-text")
+
+        textarea.style.top = areaPosition.y + 'px';
+        textarea.style.left = areaPosition.x + 'px';
+        textarea.style.width = States.StatesCursor.textEditing.width() * States.StatesCursor.textEditing.scaleX() + 'px';
+        textarea.style.height = States.StatesCursor.textEditing.height() * States.StatesCursor.textEditing.scaleY() + 'px';
+    }
 });
 
 stage.on('mousemove', () => {
@@ -765,109 +797,6 @@ stage.on('click tap', function (e) {
         };
 
         let shape = addShape(shapeProperties);
-        
-        if(shape && shape.attrs.type === "text"){
-            // shape.on('transform', () => {
-            //     shape.setAttrs({
-            //         width: Math.max(5, shape.width() * shape.scaleX()),
-            //         height: Math.max(5, shape.height() * shape.scaleY()),
-            //         scaleX: 1,
-            //         scaleY: 1,
-            //     });
-            // });
-
-            shape.on('dblclick dbltap', () => {
-                shape.hide();
-                tr.hide();
-                layer.draw();
-        
-                var textPosition = shape.getAbsolutePosition();
-
-                var stageBox = stage.container().getBoundingClientRect();
-        
-                var areaPosition = {
-                  x: stageBox.left + textPosition.x,
-                  y: stageBox.top + textPosition.y,
-                };
-        
-                var textarea = document.createElement('textarea');
-                document.body.appendChild(textarea);
-        
-                textarea.value = shape.text();
-                textarea.style.position = 'absolute';
-                textarea.style.top = areaPosition.y + 'px';
-                textarea.style.left = areaPosition.x + 'px';
-                textarea.style.width = shape.width() * 2 + 'px';
-                textarea.style.height = shape.height() * 2 + 5 + 'px';
-                textarea.style.border = 'none';
-                textarea.style.padding = '0px';
-                textarea.style.margin = '0px';
-                textarea.style.overflow = 'hidden';
-                textarea.style.background = 'transparent';
-                textarea.style.outline = 'none';
-                textarea.style.resize = 'none';
-                textarea.style.lineHeight = shape.lineHeight();
-                textarea.style.fontFamily = shape.fontFamily();
-                textarea.style.transformOrigin = 'left top';
-                textarea.style.textAlign = shape.align();
-                textarea.style.color = shape.fill();
-                textarea.style.fontSize = shape.fontSize() + "px"
-                let rotation = shape.rotation();
-                let transform = '';
-                if (rotation) {
-                  transform += 'rotateZ(' + rotation + 'deg)';
-                }
-
-                let px = 0;
-                let isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-                if (isFirefox) {
-                    px += 2 + Math.round(shape.fontSize() / 20);
-                }
-                transform += 'translateY(-' + px + 'px)';
-                textarea.style.transform = transform;
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 3 + 'px';
-
-                textarea.focus();
-
-                function removeTextarea(){
-                    if(!textarea){
-                        return;
-                    }
-                    shape.width();
-                    textarea.remove();
-                    window.removeEventListener('click', handleOutsideClick);
-                    shape.show();
-                    tr.show();
-                    layer.draw();
-                }
-
-                textarea.addEventListener('keydown', function (e) {
-                    if (e.keyCode === 13 && !e.shiftKey) {
-                        shape.text(textarea.value);
-                        removeTextarea();
-                    }
-                    if (e.keyCode === 27) {
-                        removeTextarea();
-                    }
-                });
-
-                textarea.addEventListener('input', function () {
-                    shape.text(textarea.value);
-                });
-
-                function handleOutsideClick(e) {
-                    if (e.target !== textarea) {
-                        shape.text(textarea.value);
-                        removeTextarea();
-                    }
-                }
-
-                setTimeout(() => {
-                    window.addEventListener('click', handleOutsideClick);
-                });
-            });
-        }
 
         if(shape){
             elements.push(shape);
@@ -960,100 +889,89 @@ stage.on('click tap', function (e) {
 });
 
 stage.on('dblclick dbltap', (e) => {
-    if (e.target instanceof Konva.Stage) {
-        return;
+    let textNode = e.target;
+    if (textNode instanceof Konva.Text == false) {
+      return;
     }
 
-    if (e.target.hasName('shape') || e.target.hasName('text') || e.target.hasName('image')) {
-        const shapeNode = e.target;
-               
-        let textNode = layer.getChildren().find(item => item.attrs.group_id == e.target._id);
+    States.StatesCursor.textEditing = textNode;
+    textNode.hide();
 
-        console.log(textNode)
+    var textPosition = textNode.absolutePosition();
+    var stageBox = stage.container().getBoundingClientRect();
 
-        if (!textNode) {
-            textNode = new Konva.Text({
-                text: 'algo',
-                x: shapeNode.x(),
-                y: shapeNode.y(),
-                width: shapeNode.width(),
-                height: shapeNode.height(),
-                fill: '#000000',
-                fontSize: 16,
-                fontFamily: 'Arial',
-                align: 'left',
-                verticalAlign: 'middle',
-                name: 'text',
-                listening: false,
-                draggable: false,
-                group_id: e.target._id
-            });
-            layer.add(textNode)
+    var areaPosition = {
+      x: stageBox.left + textPosition.x,
+      y: stageBox.top + textPosition.y,
+    };
+
+    var textarea = document.createElement('textarea');
+    textarea.id = "edit-text"
+    document.body.appendChild(textarea);
+    textarea.value = textNode.text();
+    textarea.style.position = 'absolute';
+    textarea.style.top = areaPosition.y + 'px';
+    textarea.style.left = areaPosition.x + 'px';
+    textarea.style.width = textNode.width() * textNode.scaleX() + 'px';
+    textarea.style.height = textNode.height() * textNode.scaleY() + 'px';
+    textarea.style.fontSize = textNode.fontSize() + 'px';
+    textarea.style.border = '0px';
+    textarea.style.padding = '0px';
+    textarea.style.margin = 'none';
+    textarea.style.overflow = 'hidden';
+    textarea.style.background = 'transparent';
+    textarea.style.outline = 'none';
+    textarea.style.resize = 'none';
+    textarea.style.lineHeight = textNode.lineHeight();
+    textarea.style.fontFamily = textNode.fontFamily();
+    textarea.style.transformOrigin = 'left top';
+    textarea.style.textAlign = textNode.align();
+    textarea.style.color = textNode.fill();
+    textarea.style.transform = `rotateZ(${textNode.rotation() ?? 0}deg)`;
+    setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
+    textarea.focus();
+    SELECTALL = false;
+  
+    function removeTextarea() {
+      document.querySelector("#edit-text")?.remove();
+      window.removeEventListener('click', handleOutsideClick);
+      textNode.show();
+      tr.show();
+      tr.forceUpdate();
+      SELECTALL = true;
+      States.StatesCursor.textEditing = undefined;
+    }
+  
+    function setTextareaWidth(newWidth) {
+      if (!newWidth) {
+        newWidth = textNode.placeholder.length * textNode.fontSize();
+      }
+      textarea.style.width = newWidth + 'px';
+    }
+  
+    textarea.addEventListener('keydown', function (e) {
+      if (e.keyCode === 13 && !e.shiftKey) {
+        textNode.text(textarea.value);
+        removeTextarea();
+      }
+      if (e.keyCode === 27) {
+        removeTextarea();
+      }
+    });
+  
+    textarea.addEventListener('keydown', function () {
+      setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
+    });
+  
+    function handleOutsideClick(e) {
+        if (e.target !== textarea) {
+            textNode.text(textarea.value);
+            removeTextarea();
         }
-
-        layer.draw();
-
-        // const textPosition = textNode.getAbsolutePosition();
-        // const stageBox = stage.container().getBoundingClientRect();
-        // const areaPosition = {
-        //     x: stageBox.left + textPosition.x,
-        //     y: stageBox.top + textPosition.y,
-        // };
-
-        // const textarea = document.createElement('textarea');
-        // document.body.appendChild(textarea);
-
-        // textarea.value = textNode.text();
-        // textarea.style.position = 'absolute';
-        // textarea.style.top = areaPosition.y + 'px';
-        // textarea.style.left = areaPosition.x + 'px';
-        // textarea.style.width = textNode.width() * 2 + 'px';
-        // textarea.style.height = textNode.height() * 2 + 5 + 'px';
-        // // ... (el resto del código para crear y configurar el textarea)
-
-        // function removeTextarea() {
-        //     if (!textarea) {
-        //         return;
-        //     }
-        //     textNode.text(textarea.value);
-        //     textarea.remove();
-        //     window.removeEventListener('click', handleOutsideClick);
-        //     textNode.show();
-        //     tr.show();
-        //     layer.draw();
-        // }
-
-        // textarea.addEventListener('keydown', function (e) {
-        //     if (e.keyCode === 13 && !e.shiftKey) {
-        //         removeTextarea();
-        //     }
-        //     if (e.keyCode === 27) {
-        //         removeTextarea();
-        //     }
-        // });
-
-        // textarea.addEventListener('input', function () {
-        //     textNode.text(textarea.value);
-        //     textNode.width(shapeNode.width());
-        //     textNode.height(shapeNode.height());
-        //     textNode.offsetX(shapeNode.width() / 2);
-        //     textNode.offsetY(shapeNode.height() / 2);
-        // });
-
-        // function handleOutsideClick(e) {
-        //     if (e.target !== textarea) {
-        //         if (textarea.value.trim() === '') {
-        //             textNode.remove();
-        //         } else {
-        //             removeTextarea();
-        //         }
-        //     }
-        // }
-
-        // setTimeout(() => {
-        //     window.addEventListener('click', handleOutsideClick);
-        // });
     }
+    setTimeout(() => {
+        window.addEventListener('click', handleOutsideClick);
+    });
 });
 
 stage.on('wheel', (e) => {
@@ -1592,7 +1510,7 @@ function updateNodeAttrs(select, node) {
             width: width / scaleX,
             height: height / scaleY,
             rotation: parseFloat(input_rotate.value),
-            cornerRadius: parseFloat(input_corner.value),
+            cornerRadius: parseFloat(input_corner.value) || 0,
             radius: parseFloat(input_radius.value),
             fill: color_style.value,
             stroke: color_style_border.value,
