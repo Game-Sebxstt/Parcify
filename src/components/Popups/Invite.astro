@@ -53,6 +53,17 @@ if(data.projects[0] && data.projects[0].last_modified){
                     </article>
                 ))
             }
+
+            {
+                data.projects.length < 1 ? (
+                    <span class="w-full px-3 text-white font-bold text-lg">
+                        No se encontraron proyectos
+                    </span>
+                ) : (
+                    <span class="hidden"></span>
+                )
+            }
+            
         </section>
 
         <footer class="w-full h-fit py-5 flex justify-center items-center px-3 border-t-[1px] border-gray-300">
