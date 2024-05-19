@@ -1,5 +1,4 @@
-//no borrar
-import petitions from './backend/petitions';
+import req from './backend/requests';
 
 
 
@@ -139,50 +138,44 @@ menu_btn.forEach(element => {
 
 let formLogin = document.getElementById('form_login');
 let formRegister = document.getElementById('form_signUp');
-//? register
-formRegister?.addEventListener('submit', (e) => {
+
+formRegister?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    //name_register
-    //email_register
-    //password_register
     let username = document.getElementById('name_register');
     let email = document.getElementById('email_register');
     let password = document.getElementById('password_register');
 
     if (username.value.length > 3 && validateEmail(email.value)) {
-        petitions.registerUser(username.value, email.value, password.value);
-    } else {
-       
-       
+        const data_register = await req.registerUser(username.value, email.value, password.value);
+
+        if(!data_register.state){
+            let errorMensaje = document.getElementById('danger');
+            errorMensaje.style.display = "flex"
+            errorMensaje.querySelector("#txt").textContent = data_register.data;
+            return;
+        }
+
+        window.location.href = "/SignIn"
     }
 });
 
 formLogin?.addEventListener('submit', async (e) => {
     e.preventDefault()
-    //datos ingresados
     let email = document.getElementById('email_login');
     let password = document.getElementById('password_login');
 
-    //validacion
-    const validation = await petitions.loginUser(email.value, password.value);
+    const validation = await req.loginUser(email.value, password.value);
 
-    if(!validation.state){//Si el estado es falso
+    if(!validation.state){
         let errorMensaje = document.getElementById('danger');
         errorMensaje.style.display = "flex"
         errorMensaje.querySelector("#txt").textContent = validation.data;
     }
 
-    // setCookie("user", validation);
-    // if (getCookie("user")) {
-    //     console.log('pipe')
-    // } 
-    //window.location.href = "/"
+    setCookie("ID-USER", validation.data.message)
+    window.location.href = "/"
 });
 
-
-// invite_btn?.addEventListener("click", () => {
-//     document.querySelector("#popup-invite").style.display = "flex";
-// });
 
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

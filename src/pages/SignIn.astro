@@ -1,16 +1,15 @@
 ---
 import LayoutForm from "../layouts/LayoutForm.astro";
-import MesageError from "../components/Popups/mesageError.astro";
+import MesageError from "../components/Popups/Alerts/Error.astro";
+
+console.log(Astro.cookies.get("ID-USER"))
 ---
 
 <LayoutForm title="Parcify - Sign In">
   <div class="w-screen h-fit flex justify-center items-center max-xl:px-4 py-3">
-    <div
-      class="bg-[#474747] shadow-lg shadow-[#181818] w-full h-fit px-3 py-3 max-w-screen-xl rounded-3xl flex justify-between"
-    >
+    <div class="bg-gray-800 shadow-lg shadow-[#181818] w-full h-fit px-3 py-3 max-w-screen-xl rounded-3xl flex justify-between">
       <div class="w-[55%] max-[820px]:w-full h-full [980px]:px-10 flex justify-center items-center">
-        <div
-          class="w-full max-w-[80%] flex flex-col justify-center items-start gap-8"
+        <div class="w-full max-w-[80%] flex flex-col justify-center items-start gap-8"
         >
           <div class="flex justify-start items-center mt-5">
             <img src="/Logo-no-background-no-text.png" class="h-12" alt="" />
@@ -219,7 +218,7 @@ import MesageError from "../components/Popups/mesageError.astro";
         </div>
       </div>
 
-      <div class="w-[45%] h-100% bg-[#FB7F53] rounded-2xl max-[820px]:hidden flex flex-col justify-center items-center px-5">
+      <div class="w-[45%] h-100% bg-[#FB7F53] shadow-lg shadow-black/50 rounded-2xl max-[820px]:hidden flex flex-col justify-center items-center px-5">
         <img src="/Business-plan-01.svg" class="h-[50%] max-[980px]:h-[35%]">
         <h3 class="text-white text-2xl text-center font-bold mt-5 max-w-[20rem] max-[980px]:text-xl">
             Gestiona tus parceladores fácilmente con Parcify
@@ -231,6 +230,6 @@ import MesageError from "../components/Popups/mesageError.astro";
     </div>
   </div>
 
-  <MesageError id="danger" message="Ocurrio un error "></MesageError>
+  <MesageError id="danger"></MesageError>
 </LayoutForm>
 
