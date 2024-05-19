@@ -203,7 +203,8 @@ let logout = document.querySelector('#logout');
 logout?.addEventListener('click', (e) => {
     e.preventDefault();
     setCookie('ID-USER', "", "0")
-    if (getCookie("ID-USER") != null) {
+    setCookie('logged', "", "0")
+    if (getCookie("ID-USER") != null || getCookie("logged") != null) {
         return;
     }
     window.location.reload();
