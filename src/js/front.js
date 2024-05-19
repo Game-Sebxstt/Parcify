@@ -1,13 +1,18 @@
+//no borrar
+import petitions from './backend/petitions';
+
+
+
 const filter_index = document.querySelectorAll('#filter');
 
 filter_index?.forEach((element, index) => {
     element?.addEventListener("click", () => {
         const more_options_filter = document.querySelectorAll('#more-options-filter')[index];
         const arrow_down_filter = document.querySelectorAll('#arrow-down-filter')[index];
-        if(window.getComputedStyle(more_options_filter).display === 'none'){
+        if (window.getComputedStyle(more_options_filter).display === 'none') {
             more_options_filter.style.display = 'flex';
             arrow_down_filter.style.transform = 'rotate(180deg)';
-        }else{
+        } else {
             more_options_filter.style.display = 'none';
             arrow_down_filter.style.transform = 'rotate(0deg)';
         }
@@ -33,9 +38,9 @@ const menu_header = document.querySelector("#menu-header");
 
 menu_header?.addEventListener("click", () => {
     const slide = document.querySelector("#slideMobile");
-    if(window.getComputedStyle(slide).left == "0px"){
+    if (window.getComputedStyle(slide).left == "0px") {
         slide.style.left = "-100%"
-    }else{
+    } else {
         slide.style.left = "0%"
     }
 });
@@ -50,7 +55,7 @@ const bg_close_invite = document.querySelector("#bg-close-invite");
 
 bg_close_invite?.addEventListener("click", () => {
     document.querySelector("#popup-invite").style.display = "none";
-    if(window.getComputedStyle(document.getElementById('users-invited')).display == "flex"){
+    if (window.getComputedStyle(document.getElementById('users-invited')).display == "flex") {
         document.getElementById('users-invited').style.display = 'none'
         document.getElementById('projectContent').style.display = 'flex'
     }
@@ -61,7 +66,7 @@ const x_close_invite = document.querySelectorAll("#x-close-invite");
 x_close_invite?.forEach((element, i) => {
     element.addEventListener("click", () => {
         document.querySelector("#popup-invite").style.display = "none";
-        if(i != 0){
+        if (i != 0) {
             document.getElementById('users-invited').style.display = 'none'
             document.getElementById('projectContent').style.display = 'flex'
         }
@@ -85,7 +90,7 @@ menu_btn_list.forEach((element) => {
         element.style.borderColor = "#ad4b1e";
 
         menu_btn_list.forEach((item) => {
-            if(item != element){
+            if (item != element) {
                 item.style.backgroundColor = "#595959";
                 item.style.borderColor = "transparent";
             }
@@ -112,24 +117,100 @@ menu_btn.forEach(element => {
         let sections_options = document.querySelectorAll(".section_option");
 
         sections_options.forEach(element => {
-            if(element.id == attr){
+            if (element.id == attr) {
                 element.style.display = "flex";
 
-                if(attr == "section_folders"){
+                if (attr == "section_folders") {
                     document.querySelector("#header-one").style.display = "none";
                     document.querySelector("#header-two").style.display = "flex";
-                }else{
+                } else {
                     document.querySelector("#header-one").style.display = "flex";
                     document.querySelector("#header-two").style.display = "none";
                 }
 
-            }else{
+            } else {
                 element.style.display = "none";
             }
-        })      
+        })
     });
 });
+
+//? login
+
+let formLogin = document.getElementById('form_login');
+let formRegister = document.getElementById('form_signUp');
+//? register
+formRegister?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    //name_register
+    //email_register
+    //password_register
+    let username = document.getElementById('name_register');
+    let email = document.getElementById('email_register');
+    let password = document.getElementById('password_register');
+
+    if (username.value.length > 3 && validateEmail(email.value)) {
+        petitions.registerUser(username.value, email.value, password.value);
+    } else {
+       
+       
+    }
+});
+
+formLogin?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    //datos ingresados
+    let email = document.getElementById('email_login');
+    let password = document.getElementById('password_login');
+
+    //validacion
+    const validation = await petitions.loginUser(email.value, password.value);
+
+    if(!validation.state){//Si el estado es falso
+        let errorMensaje = document.getElementById('danger');
+        errorMensaje.style.display = "flex"
+        errorMensaje.querySelector("#txt").textContent = validation.data;
+    }
+
+    // setCookie("user", validation);
+    // if (getCookie("user")) {
+    //     console.log('pipe')
+    // } 
+    //window.location.href = "/"
+});
+
 
 // invite_btn?.addEventListener("click", () => {
 //     document.querySelector("#popup-invite").style.display = "flex";
 // });
+
+function validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+function validatePassword(password) {
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    return passwordRegex.test(password);
+}
+
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
