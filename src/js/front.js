@@ -148,7 +148,7 @@ formRegister?.addEventListener('submit', async (e) => {
     if (username.value.length > 3 && validateEmail(email.value)) {
         const data_register = await req.registerUser(username.value, email.value, password.value);
 
-        if(!data_register.state){
+        if (!data_register.state) {
             let errorMensaje = document.getElementById('danger');
             errorMensaje.style.display = "flex"
             errorMensaje.querySelector("#txt").textContent = data_register.data;
@@ -166,16 +166,27 @@ formLogin?.addEventListener('submit', async (e) => {
 
     const validation = await req.loginUser(email.value, password.value);
 
-    if(!validation.state){
+    if (!validation.state) {
         let errorMensaje = document.getElementById('danger');
         errorMensaje.style.display = "flex"
         errorMensaje.querySelector("#txt").textContent = validation.data;
+        return;
     }
 
     setCookie("ID-USER", validation.data.message)
     window.location.href = "/"
 });
 
+
+let logout = document.querySelector('#logout');
+logout?.addEventListener('click', (e) => {
+    e.preventDefault();
+    setCookie('ID-USER', "", "0")
+    if (getCookie("ID-USER") != null) {
+        return;
+    }
+    window.location.reload();
+});
 
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
