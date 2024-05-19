@@ -12,11 +12,20 @@ import Filter from '../components/Articles/Filter.astro';
 import ArticlePlus from '../components/Articles/ArticlePlus.astro';
 import CreateParceller from '../components/Popups/CreateParceller.astro';
 
+const id = Astro.cookies.get("ID-USER")?.value;
+const get_data = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
+
+const data = await get_data.json();
+
+if(data.message == "El Usuario no existe."){
+	return Astro.redirect("/SignIn")
+}
+
 ---
 
 <Layout title="Parcify">
 	<div class="w-full h-fit flex">
-		<Header header_text='Management Parcellers' color='bg-purple-500'></Header>
+		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.message.username}></Header>
 		<Slide/>
 		<SlideMobile/>
 		<CreateParceller id_content='content-create-parcel'/>

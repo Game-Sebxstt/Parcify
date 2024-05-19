@@ -1,6 +1,15 @@
 ---
 import LayoutForm from "../layouts/LayoutForm.astro";
 import MesageError from "../components/Popups/Alerts/Error.astro";
+
+const id = Astro.cookies.get("ID-USER")?.value;
+const get_data = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
+
+const data = await get_data.json();
+
+if(data.message != "El Usuario no existe."){
+	return Astro.redirect("/")
+}
 ---
 
 <LayoutForm title="Parcify - Sign In">

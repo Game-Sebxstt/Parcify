@@ -21,7 +21,7 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
     origin: (origin, callback) => {
-      const allowedOrigins = ['http://localhost:4321', 'http://localhost:4322', ''];
+      const allowedOrigins = ['http://localhost:4321', 'http://localhost:4322', 'https://1rhbb29z-4321.use2.devtunnels.ms'];
       if (allowedOrigins.includes(origin) || !origin) {
         callback(null, true);
       } else {
@@ -45,7 +45,7 @@ console.log("Escuchando el puerto " + app.get("port"));
 
 app.post('/register/auth', async (req, res) => {
     if (!req.body) {
-        res.status(400).send({ status: "Bad Request", message: "Body is empty"});
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty"});
     }
 
     const { username, email, password } = req.body;
@@ -68,7 +68,7 @@ app.post('/register/auth', async (req, res) => {
 
 app.post('/login/auth', async (req, res) => {
     if (!req.body) {
-        res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
     }
 
     const { email, password } = req.body;
@@ -84,13 +84,21 @@ app.post('/login/auth', async (req, res) => {
 
 app.get("/user/data", async (req, res) =>{
     if (!req.body) {
-        res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
     }
 
-    //Traer los datos de la base de datos de la tabla llamada  projects
+    const id_user = req.query.id_user;
+
     const connection = await getConnection();
-    const data = await connection.query("SELECT * FROM users");
-    
+    const data = await connection.query("SELECT * FROM users WHERE user_id = ?", [id_user]);
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "El Usuario no existe." })
+    }
+
+    data[0].password = undefined;
+
+    res.status(200).send({ status: "Good Request", message: data[0] })
 
 });
 

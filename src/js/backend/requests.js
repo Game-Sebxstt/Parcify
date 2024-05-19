@@ -45,6 +45,16 @@ async function loginUser(email, password) {
     return {state: true, data: responseData};
 }
 
+async function saveProject(stageJson){
+    const response = await fetch(`http://localhost:4000/project`, {
+        method: "POST",
+        body: JSON.stringify(stageJson),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+}
+
 export default {
     registerUser,
     loginUser,

@@ -2,9 +2,12 @@
 interface Props{
     header_text: string;
     color: string;
+
+    //Data
+    username: string,
 }
 
-const {color, header_text} = Astro.props;
+const {color, header_text, username} = Astro.props;
 
 ---
 
@@ -39,7 +42,7 @@ const {color, header_text} = Astro.props;
             </svg>
 
             <ul id="more-options-profile" class="absolute -left-full mt-3 bg-[#2b2929] rounded-[3px] shadow-lg shadow-[#181818] w-fit gap-2 hidden flex-col justify-center item-start text-white animate-deployment">
-                <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-5 py-1 rounded-t-[3px]" data-filter="test">Prueba</li>
+                <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-5 py-1 rounded-t-[3px]" data-filter="test">{username}</li>
                 <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-5 py-1" data-filter="test">Prueba</li>
                 <li class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-5 py-1 rounded-b-[3px]" data-filter="test">Prueba</li>
             </ul>
