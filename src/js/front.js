@@ -1,6 +1,6 @@
-import req from './backend/requests';
+import * as req from './backend/requests';
 
-
+//Options
 
 const filter_index = document.querySelectorAll('#filter');
 
@@ -134,6 +134,26 @@ menu_btn.forEach(element => {
     });
 });
 
+let options_parcel = document.querySelectorAll("#btn-options-parcel");
+
+options_parcel?.forEach(item => {
+  item.addEventListener("click", function() {
+    item.parentNode.querySelector("#options-parcel").style.display = window?.getComputedStyle(item.parentNode.querySelector("#options-parcel")).display == "none" ? "flex" : "none";
+  });
+})
+
+let element_project = document.querySelectorAll("#element-project");
+
+element_project?.forEach(item => {
+    item.addEventListener("click", function() {
+        let attr = item.getAttribute("data-id");
+
+        window.location.hreft = ""
+
+        console.log(attr)
+    });
+});
+
 //? login
 
 let formLogin = document.getElementById('form_login');
@@ -166,13 +186,15 @@ formLogin?.addEventListener('submit', async (e) => {
 
     const validation = await req.loginUser(email.value, password.value);
 
-    if(!validation.state){
+    if(!validation.state || !validation){
         let errorMensaje = document.getElementById('danger');
         errorMensaje.style.display = "flex"
         errorMensaje.querySelector("#txt").textContent = validation.data;
+        return;
     }
 
     setCookie("ID-USER", validation.data.message)
+    setCookie("logged", true)
     window.location.href = "/"
 });
 
@@ -207,3 +229,24 @@ function getCookie(name) {
     }
     return null;
 }
+
+//CREAR PARCELADOR
+const createTemplate = document.querySelectorAll("#create-template");
+
+createTemplate?.forEach(item => {
+  item.addEventListener("click", async () => {
+
+    const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
+
+    console.log(validation)
+
+    if(!validation.state || !validation){
+        let errorMensaje = document.getElementById('danger');
+        errorMensaje.style.display = "flex"
+        errorMensaje.querySelector("#txt").textContent = validation.data;
+        return;
+    }
+
+    // window.location.href="/konva"
+  })
+});

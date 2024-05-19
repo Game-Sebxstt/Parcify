@@ -6,6 +6,7 @@ interface Props {
 const { title } = Astro.props;
 
 import '@fontsource/roboto';
+import MesageError from "../components/Popups/Alerts/Error.astro";
 ---
 
 <!doctype html>
@@ -19,6 +20,7 @@ import '@fontsource/roboto';
 		<title>{title}</title>
 	</head>
 	<body>
+		<MesageError id="danger"></MesageError>
 		<slot />
 		<script src="../js/front.js"></script>
 		<!-- <script src="../js/canvas.js"></script> -->

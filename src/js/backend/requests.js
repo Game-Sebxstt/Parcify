@@ -1,4 +1,4 @@
-async function registerUser(name, mail, pass) {
+export async function registerUser(name, mail, pass) {
     const data = {
         username: name,
         email: mail,
@@ -22,7 +22,7 @@ async function registerUser(name, mail, pass) {
     return {state: true, data: responseData};
 }
 
-async function loginUser(email, password) {
+export async function loginUser(email, password) {
     const data = {
         email: email,
         password: password,
@@ -45,17 +45,43 @@ async function loginUser(email, password) {
     return {state: true, data: responseData};
 }
 
-async function saveProject(stageJson){
-    const response = await fetch(`http://localhost:4000/project`, {
+export async function createProject(id, name){
+    const data = {
+        id: Number(id),
+        name: name,
+    }
+
+    const response = await fetch(`http://localhost:4000/project/create`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+export async function saveProject(stageJson) {
+    const response = await fetch(`http://localhost:4000/project/save`, {
         method: "POST",
         body: JSON.stringify(stageJson),
         headers: {
             "Content-Type": "application/json",
         }
     });
-}
 
-export default {
-    registerUser,
-    loginUser,
-};
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}

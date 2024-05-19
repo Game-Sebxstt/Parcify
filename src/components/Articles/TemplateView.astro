@@ -31,13 +31,3 @@ const { first_text, second_text } = Astro.props;
       </div>
     </div>
 </div>
-
-<script>
-  const createTemplate = document.querySelectorAll("#create-template") as NodeListOf<HTMLElement>;
-
-  createTemplate?.forEach(item => {
-    item.addEventListener("click", () => {
-      window.location.href="/konva"
-    })
-  });
-</script>

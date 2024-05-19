@@ -82,6 +82,43 @@ app.post('/login/auth', async (req, res) => {
     res.status(200).send({ status: "Good Request", message: id[0].user_id })
 });
 
+app.post("/project/create", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const { id, name} = req.body;
+
+    const connection = await getConnection();
+    const userExist = await connection.query("SELECT user_id FROM users WHERE user_id = ?", [id]);
+
+    if(!userExist.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "El Usuario no existe." })
+    }
+
+    const project_id = await generateIdProject(connection);
+    const date_now = new Date();
+    const data = await connection.query("INSERT INTO projects (project_id, user_id, name, stage, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?)",[project_id, id, name, "", "", date_now]);
+
+    if (!data) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo crear el proyecto" })
+    }
+
+    return res.status(200).send({state: "Good Request", message: "El proyecto se creo correctamente."})
+})
+
+app.post("/project/save", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const {stage} = req.body;
+
+    const connection = await getConnection();
+    //Update stage
+    await connection.query("UPDATE users SET stage = ? WHERE stage = ?", [stage, 0]);
+});
+
 app.get("/user/data", async (req, res) =>{
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
@@ -91,15 +128,20 @@ app.get("/user/data", async (req, res) =>{
 
     const connection = await getConnection();
     const data = await connection.query("SELECT * FROM users WHERE user_id = ?", [id_user]);
+    const projects = await connection.query("SELECT * FROM projects WHERE user_id = ?", [id_user]);
 
-    if(!data.length > 0){
+    if(!data.length > 0 && !projects.length > 0){
         return res.status(400).send({ status: "Bad Request", message: "El Usuario no existe." })
     }
 
     data[0].password = undefined;
 
-    res.status(200).send({ status: "Good Request", message: data[0] })
+    const info_user = {
+        users: data[0],
+        projects: projects,
+    }
 
+    res.status(200).send({ status: "Good Request", message: info_user })
 });
 
 async function generateIdUser(connection) {
@@ -126,6 +168,32 @@ async function generateIdUser(connection) {
     }
 
     return user_id;
+}
+
+async function generateIdProject(connection) {
+    let project_id;
+    let isAvailable = false;
+    let attempts = 0;
+    let min = 9999;
+    let max = 999999;
+    const maxAttempts = 100;
+
+    while (!isAvailable && attempts < maxAttempts) {
+        project_id = Math.floor(Math.random() * max) + min;
+
+        const userIdExists = await connection.query("SELECT project_id FROM projects WHERE project_id = ?", [project_id]);
+        if (userIdExists.length === 0) {
+            isAvailable = true;
+        }
+
+        attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+        return null;
+    }
+
+    return project_id;
 }
 
 function encrypt(value){

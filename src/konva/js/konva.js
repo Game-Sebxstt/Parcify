@@ -3,6 +3,7 @@ import _ from 'lodash'
 import { downloadURI } from "./functions";
 import { addShape } from "../ts/shapes";
 import * as States from "./states";
+import * as req from '../../js/backend/requests'
 
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -1038,6 +1039,7 @@ document.addEventListener('keydown', function (e) {
 
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
+        req.saveProject(stageJSON);
     }
 
     if (e.ctrlKey && e.key.toLowerCase() === 'z') {

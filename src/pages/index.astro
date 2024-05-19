@@ -11,21 +11,45 @@ import Invite from '../components/Popups/Invite.astro';
 import Filter from '../components/Articles/Filter.astro';
 import ArticlePlus from '../components/Articles/ArticlePlus.astro';
 import CreateParceller from '../components/Popups/CreateParceller.astro';
+import Error from '../components/Popups/Alerts/Error.astro';
 
+const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
-const get_data = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
 
-const data = await get_data.json();
+console.log(logged, id)
 
-if(data.message == "El Usuario no existe."){
+if(logged != 'true' && !id){
+  return Astro.redirect("/SignIn")
+}
+
+let get_data: any;
+let data: any;
+
+try{
+	get_data = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
+	data = await get_data.json();
+	data = data.message;
+
+	if(data == "El Usuario no existe."){
+		Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
+		Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
+		return Astro.redirect("/SignIn")
+	}
+	console.log(data)
+}catch(e){
+	console.log(e)
+	Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
+    Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
 	return Astro.redirect("/SignIn")
 }
+
+
 
 ---
 
 <Layout title="Parcify">
-	<div class="w-full h-fit flex">
-		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.message.username}></Header>
+	<div class="w-full h-fit flex">	
+		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username}></Header>
 		<Slide/>
 		<SlideMobile/>
 		<CreateParceller id_content='content-create-parcel'/>
@@ -44,9 +68,12 @@ if(data.message == "El Usuario no existe."){
 
 			<article class="w-full">
 				<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
-					<Article first_text='Parcelador (Parcify)' second_text='Edited 3 minutes ago'/>
 					<ArticlePlus/>
+					{
+						data.projects.map((item: any) => (
+							<Article name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
+						))
+					}
 				</div>
 			</article>
 		</Content>
