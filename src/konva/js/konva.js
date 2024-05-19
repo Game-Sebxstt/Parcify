@@ -5,6 +5,15 @@ import { addShape } from "../ts/shapes";
 import * as States from "./states";
 import * as req from '../../js/backend/requests'
 
+const queryString = window.location.search;
+
+const urlParams = new URLSearchParams(queryString);
+
+const id_stage = urlParams.get("id");
+console.log(id_stage)
+
+const new_stage_db = await getStage(id_stage)
+
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 });
@@ -32,8 +41,9 @@ var GUIDELINE_OFFSET = 5;
 
 let stage;
 
-if(localStorage.getItem("STAGEJSON")){
-    stage = Konva.Node.create(JSON.parse(localStorage.getItem("STAGEJSON")), 'konva');
+if(new_stage_db){
+    stage = Konva.Node.create(new_stage_db, 'konva');
+    console.log("Guardado de la base de datos")
 } else {
     stage = new Konva.Stage({
         container: 'konva',
@@ -233,6 +243,23 @@ function moveLimit(){
     // layer.batchDraw();
 }
 
+async function getStage(id_stage) {
+    const validation = await req.getProject(id_stage);
+
+    if(!validation.state || !validation){
+        let errorMensaje = document.getElementById('danger');
+        errorMensaje.style.display = "flex"
+        errorMensaje.querySelector("#txt").textContent = data_register.data;
+        return null;
+    }
+
+    if(!validation.data.message.stage){
+        return null;
+    }
+
+    return validation.data.message.stage;
+}
+    
 function getLineGuideStops(skipShape) {
     var vertical = [0, stage.width() / 2, stage.width()];
     var horizontal = [0, stage.height() / 2, stage.height()];
@@ -1039,7 +1066,9 @@ document.addEventListener('keydown', function (e) {
 
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
-        req.saveProject(stageJSON);
+        var dataURL = stage.toDataURL({ pixelRatio: 3 });
+        console.log(dataURL)
+        req.saveProject(stageJSON, id_stage, dataURL);
     }
 
     if (e.ctrlKey && e.key.toLowerCase() === 'z') {

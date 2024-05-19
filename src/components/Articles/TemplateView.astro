@@ -2,14 +2,17 @@
 interface Props{
   first_text: string;
   second_text: string;
+  url_image: string,
 }
 
-const { first_text, second_text } = Astro.props;
+const { first_text, second_text, url_image } = Astro.props;
 ---
 
 <div id="create-template" class="w-full h-fit cursor-pointer">
     <div class="w-full h-72 relative mb-2">
-      <div class="bg-[#E6E6E6] w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0"></div>
+      <div class="bg-[#E6E6E6] w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0">
+        <img src={url_image} class="w-full h-full rounded-md">
+      </div>
 
       <div class="w-full h-full flex justify-center items-center rounded-md shadow-md shadow-black mb-2 border-2 border-transparent cursor-pointer transition-all duration-[500] ease-in hover:border-[#FB7F53] hover:bg-[#FB7F5E]/70 [&>svg]:hover:opacity-100 absolute top-0 left-0">
         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-plus w-12 opacity-0 transition-all duration-[500] ease-in" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">

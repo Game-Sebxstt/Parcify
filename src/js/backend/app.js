@@ -104,7 +104,49 @@ app.post("/project/create", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo crear el proyecto" })
     }
 
-    return res.status(200).send({state: "Good Request", message: "El proyecto se creo correctamente."})
+    return res.status(200).send({state: "Good Request", message: project_id})
+})
+
+app.post("/project/delete", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const { id_project } = req.body;
+
+    const connection = await getConnection();
+    const data = await connection.query("DELETE FROM projects WHERE project_id = ?", [id_project]);
+
+    if(!data){
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo eliminar el proyecto." })
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "El proyecto se elimino correctamente." })
+})
+
+app.post("/project/duplicate", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const { id_project } = req.body;
+
+    const connection = await getConnection();
+    const data = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "El Proyecto no existe." })
+    }
+
+    const project_id = await generateIdProject(connection);
+    const date_now = new Date();
+    const duplicate = await connection.query("INSERT INTO projects (project_id, user_id, name, stage, preview, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?, ?)",[project_id, data[0].user_id, data[0].name, data[0].stage, data[0].preview, data[0].collaborators, date_now]);
+
+    if(!duplicate){
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo duplicar el proyecto." })
+    }
+
+    return res.status(200).send({ status: "Good Request", message: project_id })
 })
 
 app.post("/project/save", async (req, res) => {
@@ -112,11 +154,17 @@ app.post("/project/save", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
     }
 
-    const {stage} = req.body;
+    const {stage, project_id, preview} = req.body;
 
     const connection = await getConnection();
-    //Update stage
-    await connection.query("UPDATE users SET stage = ? WHERE stage = ?", [stage, 0]);
+    const update_project = await connection.query("UPDATE projects SET stage = ?, preview = ? WHERE project_id = ?", [stage, preview, project_id]);
+
+
+    if(!update_project){
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el proyecto." })
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "El proyecto se guardo correctamente." })
 });
 
 app.get("/user/data", async (req, res) =>{
@@ -142,6 +190,23 @@ app.get("/user/data", async (req, res) =>{
     }
 
     res.status(200).send({ status: "Good Request", message: info_user })
+});
+
+app.get("/user/project", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const id_project = req.query.id_project;
+
+    const connection = await getConnection();
+    const data = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "El Proyecto no existe." })
+    }
+
+    res.status(200).send({ status: "Good Request", message: data[0] })
 });
 
 async function generateIdUser(connection) {

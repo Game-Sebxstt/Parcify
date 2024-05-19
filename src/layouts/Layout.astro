@@ -7,6 +7,36 @@ const { title } = Astro.props;
 
 import '@fontsource/roboto';
 import MesageError from "../components/Popups/Alerts/Error.astro";
+import CreateParceller from '../components/Popups/CreateParceller.astro';
+import Invite from '../components/Popups/Invite.astro';
+
+const logged = Astro.cookies.get("logged")?.value;
+const id = Astro.cookies.get("ID-USER")?.value;
+
+if(logged != 'true' && !id){
+  return Astro.redirect("/SignIn")
+}
+
+let get_data: any;
+let data: any;
+
+try{
+	get_data = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
+	data = await get_data.json();
+	data = data.message;
+
+	if(data == "El Usuario no existe."){
+		Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
+		Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
+		return Astro.redirect("/SignIn")
+	}
+}catch(e){
+	console.log(e)
+	Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
+    Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
+	return Astro.redirect("/SignIn")
+}
+
 ---
 
 <!doctype html>
@@ -21,6 +51,8 @@ import MesageError from "../components/Popups/Alerts/Error.astro";
 	</head>
 	<body>
 		<MesageError id="danger"></MesageError>
+		<CreateParceller id_content='content-create-parcel'/>
+		<Invite data={data}/>
 		<slot />
 		<script src="../js/front.js"></script>
 		<!-- <script src="../js/canvas.js"></script> -->
