@@ -26,7 +26,7 @@ import LayoutForm from "../layouts/LayoutForm.astro";
             </h3>
           </div>
 
-          <form action="/SignIn" id="form_login" class="w-full flex flex-col gap-3">
+          <form action="/SignIn" id="form_signUp" class="w-full flex flex-col gap-3">
             <div
               class="relative w-full h-full flex justify-start items-center mb-5"
             >
@@ -49,8 +49,8 @@ import LayoutForm from "../layouts/LayoutForm.astro";
               <input
                 class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
                 type="text"
-                name="name_login"
-                id="name_login"
+                name="name_register"
+                id="name_register"
                 placeholder="Nombre"
                 required
               />
@@ -78,8 +78,8 @@ import LayoutForm from "../layouts/LayoutForm.astro";
             <input
               class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
               type="email"
-              name="email_login"
-              id="email_login"
+              name="email_register"
+              id="email_register"
               placeholder="Email"
               required
             />
@@ -122,8 +122,8 @@ import LayoutForm from "../layouts/LayoutForm.astro";
               <input
                 class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
                 type="password"
-                name="password_login"
-                id="password_login"
+                name="password_register"
+                id="password_register"
                 placeholder="Password"
                 required
               />
@@ -132,15 +132,14 @@ import LayoutForm from "../layouts/LayoutForm.astro";
             <div
               class="w-full flex justify-end items-center text-blue-500/90 font-semibold my-2 gap-2 max-sm:text-sm"
             >
-              <input type="checkbox" name="check_terms_login" id="check_terms_login">
+              <input type="checkbox" name="check_terms_login" id="check_terms_login" required>
               <span class="cursor-pointer">I accept terms and conditions</span>
             </div>
 
             <div class="w-full flex justify-center items-center">
               <button
                 type="submit"
-                class="bg-[#FB7F53] w-full py-3 text-sm text-white font-semibold rounded-[4px] hover:bg-[#FB7F53]/80 active:bg-[#FB7F53]/60"
-              >
+                class="bg-[#FB7F53] w-full py-3 text-sm text-white font-semibold rounded-[4px] hover:bg-[#FB7F53]/80 active:bg-[#FB7F53]/60">
                 Register
               </button>
             </div>
