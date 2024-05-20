@@ -3,15 +3,22 @@ interface Props{
   first_text: string;
   second_text: string;
   url_image: string,
+  template_id: string,
 }
 
-const { first_text, second_text, url_image } = Astro.props;
+const { first_text, second_text, url_image, template_id } = Astro.props;
 ---
 
-<div id="create-template" class="w-full h-fit cursor-pointer">
+<div data-id={template_id} id="create-template" class="w-full h-fit cursor-pointer">
     <div class="w-full h-72 relative mb-2">
       <div class="bg-[#E6E6E6] w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0">
-        <img src={url_image} class="w-full h-full rounded-md">
+        {
+          url_image ? (
+            <img src={url_image} class="w-full h-full rounded-md">
+          ) : (
+            <img src="../../../public/placeholder/image_preview.svg" class="w-full h-full">
+          )
+        }
       </div>
 
       <div class="w-full h-full flex justify-center items-center rounded-md shadow-md shadow-black mb-2 border-2 border-transparent cursor-pointer transition-all duration-[500] ease-in hover:border-[#FB7F53] hover:bg-[#FB7F5E]/70 [&>svg]:hover:opacity-100 absolute top-0 left-0">

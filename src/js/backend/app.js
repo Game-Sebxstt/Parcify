@@ -87,7 +87,7 @@ app.post("/project/create", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
     }
 
-    const { id, name} = req.body;
+    const { id, name, template_id} = req.body;
 
     const connection = await getConnection();
     const userExist = await connection.query("SELECT user_id FROM users WHERE user_id = ?", [id]);
@@ -95,6 +95,10 @@ app.post("/project/create", async (req, res) => {
     if(!userExist.length > 0){
         return res.status(400).send({ status: "Bad Request", message: "El Usuario no existe." })
     }
+
+    //Select template stage and preview
+    
+
 
     const project_id = await generateIdProject(connection);
     const date_now = new Date();
@@ -207,6 +211,17 @@ app.get("/user/project", async (req, res) => {
     }
 
     res.status(200).send({ status: "Good Request", message: data[0] })
+});
+
+app.get("/templates", async (req, res) => {
+    const connection = await getConnection();
+    const data = await connection.query("SELECT * FROM templates");
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "No hay plantillas." })
+    }
+
+    res.status(200).send({ status: "Good Request", message: data })
 });
 
 async function generateIdUser(connection) {

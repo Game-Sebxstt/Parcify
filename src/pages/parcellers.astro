@@ -3,7 +3,6 @@ import Layout from '../layouts/Layout.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import Content from '../components/Sections/Content.astro';
 import Article from "../components//Articles/Article.astro"
-import Header from '../components/Sections/Header.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import ArticlePlus from '../components/Articles/ArticlePlus.astro';
 
@@ -37,7 +36,6 @@ try{
 
 <Layout title="Parcify">
 	<div class="w-full h-fit flex">
-		<Header header_text='My Parcellers' color='bg-red-500' username={data.users.username}></Header>
 		<Slide/>
 		<SlideMobile/>
 		<Content>

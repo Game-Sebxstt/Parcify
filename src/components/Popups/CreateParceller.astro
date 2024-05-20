@@ -4,9 +4,10 @@ import Templates from '../Sections/Categories/Templates.astro';
 
 interface Props{
     id_content: string,
+    templates: any;
 }
 
-const {id_content} = Astro.props;
+const {id_content, templates} = Astro.props;
 
 ---
 
@@ -37,7 +38,12 @@ const {id_content} = Astro.props;
         <!-- section Popup -->
         <section class="w-full h-full px-5 py-3 gap-y-3 overflow-x-auto">
             <Templates category='Recomendados'>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify' url_image='../../../public/placeholder/image_preview.svg'/>
+                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify' url_image='../../../public/placeholder/image_preview.svg' template_id="0"/>
+                {
+                    templates.map((item: any) => (
+                        <TemplateView first_text={item.name} second_text={"By Parcify"} url_image={item.preview} template_id={item.template_id}/>
+                    ))
+                }
             </Templates>
 
             <!-- <Templates category='Educativos'>

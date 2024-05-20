@@ -45,10 +45,11 @@ export async function loginUser(email, password) {
     return {state: true, data: responseData};
 }
 
-export async function createProject(id, name){
+export async function createProject(id, name, template_id){
     const data = {
         id: Number(id),
         name: name,
+        template_id: template_id
     }
 
     const response = await fetch(`http://localhost:4000/project/create`, {
