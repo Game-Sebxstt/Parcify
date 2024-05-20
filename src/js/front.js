@@ -1,5 +1,9 @@
 import * as req from './backend/requests';
 
+// document.addEventListener("contextmenu", function(e){
+//     e.preventDefault();
+//   }, false);
+
 //Options
 
 const filter_index = document.querySelectorAll('#filter');
@@ -200,12 +204,26 @@ back_index?.addEventListener("click", () => {
     window.location.href = "/";
 });
 
-let options_parcel = document.querySelectorAll("#btn-options-parcel");
+
+let options_parcel = document.querySelectorAll("#element-project");
 
 options_parcel?.forEach(item => {
-    item.addEventListener("click", function() {
-        item.parentNode.querySelector("#options-parcel").style.display = window?.getComputedStyle(item.parentNode.querySelector("#options-parcel")).display == "none" ? "flex" : "none";
-    });
+    item.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        item.parentNode.querySelector("#options-parcel").style.display = "flex";
+        item.parentNode.querySelector("#options-parcel").style.top = e.clientY + "px";
+        item.parentNode.querySelector("#options-parcel").style.left = e.clientX + "px";
+
+        options_parcel.forEach(element => {
+            if (element != item) {
+                element.parentNode.querySelector("#options-parcel").style.display = "none";
+            }
+        });
+
+        document.addEventListener("click", () => {
+            item.parentNode.querySelector("#options-parcel").style.display = "none";
+        });
+    })
 })
 
 //ELIMINAR PROYECTO
