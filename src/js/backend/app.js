@@ -96,13 +96,20 @@ app.post("/project/create", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "El Usuario no existe." })
     }
 
-    //Select template stage and preview
+    let template = await connection.query("SELECT stage, preview FROM templates WHERE template_id = ?", [template_id]);
     
-
+    if(!template.length > 0){
+        template = [
+            {
+                stage: "",
+                preview: ""
+            }
+        ]
+    }
 
     const project_id = await generateIdProject(connection);
     const date_now = new Date();
-    const data = await connection.query("INSERT INTO projects (project_id, user_id, name, stage, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?)",[project_id, id, name, "", "", date_now]);
+    const data = await connection.query("INSERT INTO projects (project_id, user_id, name, preview, stage, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?, ?)",[project_id, id, name, template[0].preview, template[0].stage, "", date_now]);
 
     if (!data) {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo crear el proyecto" })

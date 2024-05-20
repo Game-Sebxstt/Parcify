@@ -10,7 +10,6 @@ const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
 
 const id_stage = urlParams.get("id");
-console.log(id_stage)
 
 const new_stage_db = await getStage(id_stage)
 
@@ -42,8 +41,7 @@ var GUIDELINE_OFFSET = 5;
 let stage;
 
 if(new_stage_db){
-    stage = Konva.Node.create(new_stage_db, 'konva');
-    console.log("Guardado de la base de datos")
+    stage = Konva.Node.create(JSON.parse(new_stage_db), 'konva');
 } else {
     stage = new Konva.Stage({
         container: 'konva',
@@ -649,7 +647,6 @@ function undo() {
     if (indexHistory > 0) {
         indexHistory--;
         const lastState = historySave[indexHistory];
-        console.log(lastState)
 
         layer.destroy();
         
@@ -1067,7 +1064,7 @@ document.addEventListener('keydown', function (e) {
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
         var dataURL = stage.toDataURL({ pixelRatio: 3 });
-        console.log(dataURL)
+        console.log(dataURL.length)
         req.saveProject(stageJSON, id_stage, dataURL);
     }
 
@@ -1122,7 +1119,6 @@ document.addEventListener('keydown', function (e) {
         }
 
         e.preventDefault();
-        console.log("entroo")
         const selectedNodes = tr.nodes();
         const copiedNodes = selectedNodes.map(node => node.toObject());
         const copiedData = JSON.stringify(copiedNodes);
@@ -1131,13 +1127,11 @@ document.addEventListener('keydown', function (e) {
 
     if (e.ctrlKey && e.key.toLowerCase() === 'x') {
         if(!SELECTALL){
-            console.log("no select")
             return;
         }
         
         e.preventDefault();
         const selectedNodes = tr.nodes();
-        console.log(selectedNodes)
         const copiedNodes = selectedNodes.map(node => node.toObject());
         const copiedData = JSON.stringify(copiedNodes);
         navigator.clipboard.writeText(copiedData);
@@ -1151,7 +1145,6 @@ document.addEventListener('keydown', function (e) {
         });
 
 
-        console.log(stage.getChildren())
         tr.nodes([]);
         layer.batchDraw();
     }
@@ -1194,7 +1187,6 @@ document.addEventListener('keydown', function (e) {
         
         e.preventDefault();
         tr.nodes([...elements]);
-        console.log(tr.nodes())
     }
 });
 
@@ -1230,8 +1222,6 @@ shapes.forEach(element => {
         if (attr && States.StatesShapes.hasOwnProperty(attr)) {
             States.StatesShapes[attr] = true;
             States.StatesCursor.addShape = true;
-        } else {
-            console.log(`La clave '${attr}' no es válida en States.StatesShapes`);
         }
     });
 });
@@ -1463,12 +1453,10 @@ let elements_focus = [
 elements_focus?.forEach(item => {
     item.addEventListener("focus", () => {
         SELECTALL = false;
-        console.log(SELECTALL)
     })
 
     item.addEventListener("blur", () => {
         SELECTALL = true;
-        console.log(SELECTALL)
     })
 });
 

@@ -253,7 +253,8 @@ createTemplate?.forEach(item => {
   item.addEventListener("click", async () => {
 
     let attr = item.getAttribute("data-id");
-    const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
+    console.log(attr);
+    const validation = await req.createProject(getCookie("ID-USER"), "Untitled", attr);
 
     console.log(validation)
 
