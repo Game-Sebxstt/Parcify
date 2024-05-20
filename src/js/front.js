@@ -194,6 +194,12 @@ menu_btn.forEach(element => {
     });
 });
 
+let back_index = document.querySelector("#back-index");
+
+back_index?.addEventListener("click", () => {
+    window.location.href = "/";
+});
+
 let options_parcel = document.querySelectorAll("#btn-options-parcel");
 
 options_parcel?.forEach(item => {
@@ -228,6 +234,7 @@ const createTemplate = document.querySelectorAll("#create-template");
 createTemplate?.forEach(item => {
   item.addEventListener("click", async () => {
 
+    let attr = item.getAttribute("data-id");
     const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
 
     console.log(validation)
