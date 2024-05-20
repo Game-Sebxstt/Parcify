@@ -272,7 +272,7 @@ duplicate_parcel?.forEach(item => {
 let element_project = document.querySelectorAll("#element-project");
 
 element_project?.forEach(item => {
-    item.addEventListener("click", function() {
+    item.addEventListener("click", function () {
         let attr = item.getAttribute("data-id");
         window.location.href = "/konva?id=" + attr
     });
@@ -310,7 +310,7 @@ formLogin?.addEventListener('submit', async (e) => {
 
     const validation = await req.loginUser(email.value, password.value);
 
-    if(!validation.state || !validation){
+    if (!validation.state || !validation) {
         let errorMensaje = document.getElementById('danger');
         errorMensaje.style.display = "flex"
         errorMensaje.querySelector("#txt").textContent = validation.data;
@@ -332,6 +332,17 @@ logout?.addEventListener('click', (e) => {
     }
     window.location.reload();
 });
+
+//settings
+let openSetting = document.querySelector("#openSettings");
+openSetting?.addEventListener("click", ()=>{
+    let settings = document.querySelector("#settings");
+    if (window.getComputedStyle(settings).display == 'none') {
+        settings.style.display = 'flex'
+    } else {
+        settings.style.display = 'none'
+    }
+})
 
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -363,3 +374,24 @@ function getCookie(name) {
     }
     return null;
 }
+
+//CREAR PARCELADOR
+const createTemplate = document.querySelectorAll("#create-template");
+
+createTemplate?.forEach(item => {
+    item.addEventListener("click", async () => {
+
+        const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
+
+        console.log(validation)
+
+        if (!validation.state || !validation) {
+            let errorMensaje = document.getElementById('danger');
+            errorMensaje.style.display = "flex"
+            errorMensaje.querySelector("#txt").textContent = validation.data;
+            return;
+        }
+
+        // window.location.href="/konva"
+    })
+});
