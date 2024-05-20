@@ -3,7 +3,6 @@ import Layout from '../layouts/Layout.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Content from '../components/Sections/Content.astro';
-import Header from '../components/Sections/Header.astro';
 import Article from "../components//Articles/Article.astro"
 import ArticleMedium from "../components//Articles/ArticleMedium.astro"
 import ArticleTemplate from "../components//Articles/ArticleTemplate.astro"
@@ -31,7 +30,6 @@ try{
 		return Astro.redirect("/SignIn")
 	}
 }catch(e){
-	console.log(e)
 	Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
     Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
 	return Astro.redirect("/SignIn")
@@ -41,7 +39,6 @@ try{
 
 <Layout title="Parcify">
 	<div class="w-full h-fit flex">	
-		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username} email={data.users.email}></Header>
 		<Slide/>
 		<SlideMobile/>
 		<Content>

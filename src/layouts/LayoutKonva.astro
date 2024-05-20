@@ -30,7 +30,6 @@ try{
 		return Astro.redirect("/SignIn")
 	}
 }catch(e){
-	console.log(e)
 	Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
     Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
 	return Astro.redirect("/SignIn")

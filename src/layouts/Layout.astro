@@ -44,9 +44,7 @@ try{
 		return Astro.redirect("/SignIn")
 	}
 
-	console.log(templates)
 }catch(e){
-	console.log(e)
 	Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
     Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
 	return Astro.redirect("/SignIn")
@@ -65,7 +63,7 @@ try{
 		<title>{title}</title>
 	</head>
 	<body>
-		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username}></Header>
+		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username} email={data.users.email}></Header>
 		<MesageError id="danger"></MesageError>
 		<CreateParceller id_content='content-create-parcel' templates={templates}/>
 		<Invite data={data}/>

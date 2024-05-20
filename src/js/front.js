@@ -229,7 +229,7 @@ delete_parcel?.forEach(item => {
 });
 
 //CREAR PROYECTO
-const createTemplate = document.querySelectorAll("#create-template");
+let createTemplate = document.querySelectorAll("#create-template");
 
 createTemplate?.forEach(item => {
   item.addEventListener("click", async () => {
@@ -374,24 +374,3 @@ function getCookie(name) {
     }
     return null;
 }
-
-//CREAR PARCELADOR
-const createTemplate = document.querySelectorAll("#create-template");
-
-createTemplate?.forEach(item => {
-    item.addEventListener("click", async () => {
-
-        const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
-
-        console.log(validation)
-
-        if (!validation.state || !validation) {
-            let errorMensaje = document.getElementById('danger');
-            errorMensaje.style.display = "flex"
-            errorMensaje.querySelector("#txt").textContent = validation.data;
-            return;
-        }
-
-        // window.location.href="/konva"
-    })
-});
