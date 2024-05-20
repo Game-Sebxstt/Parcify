@@ -1,0 +1,50 @@
+---
+interface Props{
+    state: string,
+
+    username: string,
+    email: string
+}
+
+const {username, email, state} = Astro.props;
+---
+
+<!-- encabezado -->
+<div class=`section-config flex flex-col gap-4 ${state}`>
+    <header class="flex items-center justify-between px-1 p-2">
+        <h2 class="t text-3xl font-bold">Porfile</h2>
+        <svg id="closeSetting" class="cursor-pointer hover:stroke-red-400 transition-all" xmlns="http://www.w3.org/2000/svg"  width="30"  height="30"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 19v-2a2 2 0 0 1 2 -2h2" /><path d="M15 5v2a2 2 0 0 0 2 2h2" /><path d="M5 15h2a2 2 0 0 1 2 2v2" /><path d="M5 9h2a2 2 0 0 0 2 -2v-2" /></svg>
+    </header>
+    
+    <!-- contenido -->
+    <main class="flex gap-4">
+        <!-- user photo -->
+        <section class="flex flex-col items-center gap-5 px-5 py-2">
+            <div id="userPhoto" class="h-[7rem] w-[7rem] p-2 shadow-lg shadow-black/70 rounded-[50%] bg-cover bg-no-repeat bg-center"></div>
+            <label for="inputfile"class="hover:text-orange-500 cursor-pointer transition-all">Edit</label>
+            <input type="file" class="hidden" id="inputfile" accept="image/jpeg, image/png, image/jpg">
+        </section>
+    
+        <!-- user data -->
+        <form class="flex flex-col gap-6 px-4">
+            <!-- name -->
+            <article class="flex flex-col items-start gap-2">
+                <h3 class="font-bold text-lg">Name</h3>
+                <input placeholder={username} class="bg-[#292929] border-2 border-[#3e3e3e] rounded-lg text-white px-6 py-3 text-base hover:border-[#FB7F53] outline-none cursor-pointer transition placeholder:text-lg "type="text" required/>
+            </article>
+    
+            <!-- email -->
+            <article class="flex flex-col items-start gap-2">
+                <h3 class="font-bold text-lg">Email</h3>
+                <input placeholder={email} class="bg-[#292929] border-2 border-[#3e3e3e] rounded-lg text-white px-6 py-3 text-base hover:border-[#FB7F53] outline-none cursor-pointer transition placeholder:text-lg "type="email" required/>
+            </article>
+    
+            <article class=" flex justify-end">
+                <button class="bg-[#FB7F53] px-3 py-2 rounded font-semibold flex items-center gap-2" type="submit">
+                    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-edit"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" /><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" /><path d="M16 5l3 3" /></svg>
+                    <p>Guardar Cambios</p>
+                </button>
+            </article>
+        </form>
+    </main>
+</div>

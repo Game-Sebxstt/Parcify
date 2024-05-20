@@ -21,7 +21,7 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
     origin: (origin, callback) => {
-      const allowedOrigins = ['http://localhost:4321', 'http://localhost:4322', 'https://1rhbb29z-4321.use2.devtunnels.ms'];
+      const allowedOrigins = ['http://localhost:4321', 'http://localhost:4322', 'https://1rhbb29z-4321.use2.devtunnels.ms', 'https://7qjgdqdv-4321.use2.devtunnels.ms'];
       if (allowedOrigins.includes(origin) || !origin) {
         callback(null, true);
       } else {

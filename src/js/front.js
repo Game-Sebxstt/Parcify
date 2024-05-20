@@ -137,15 +137,15 @@ menu_btn.forEach(element => {
 let options_parcel = document.querySelectorAll("#btn-options-parcel");
 
 options_parcel?.forEach(item => {
-  item.addEventListener("click", function() {
-    item.parentNode.querySelector("#options-parcel").style.display = window?.getComputedStyle(item.parentNode.querySelector("#options-parcel")).display == "none" ? "flex" : "none";
-  });
+    item.addEventListener("click", function () {
+        item.parentNode.querySelector("#options-parcel").style.display = window?.getComputedStyle(item.parentNode.querySelector("#options-parcel")).display == "none" ? "flex" : "none";
+    });
 })
 
 let element_project = document.querySelectorAll("#element-project");
 
 element_project?.forEach(item => {
-    item.addEventListener("click", function() {
+    item.addEventListener("click", function () {
         let attr = item.getAttribute("data-id");
 
         window.location.hreft = ""
@@ -186,7 +186,7 @@ formLogin?.addEventListener('submit', async (e) => {
 
     const validation = await req.loginUser(email.value, password.value);
 
-    if(!validation.state || !validation){
+    if (!validation.state || !validation) {
         let errorMensaje = document.getElementById('danger');
         errorMensaje.style.display = "flex"
         errorMensaje.querySelector("#txt").textContent = validation.data;
@@ -209,6 +209,17 @@ logout?.addEventListener('click', (e) => {
     }
     window.location.reload();
 });
+
+//settings
+let openSetting = document.querySelector("#openSettings");
+openSetting?.addEventListener("click", ()=>{
+    let settings = document.querySelector("#settings");
+    if (window.getComputedStyle(settings).display == 'none') {
+        settings.style.display = 'flex'
+    } else {
+        settings.style.display = 'none'
+    }
+})
 
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -245,19 +256,19 @@ function getCookie(name) {
 const createTemplate = document.querySelectorAll("#create-template");
 
 createTemplate?.forEach(item => {
-  item.addEventListener("click", async () => {
+    item.addEventListener("click", async () => {
 
-    const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
+        const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
 
-    console.log(validation)
+        console.log(validation)
 
-    if(!validation.state || !validation){
-        let errorMensaje = document.getElementById('danger');
-        errorMensaje.style.display = "flex"
-        errorMensaje.querySelector("#txt").textContent = validation.data;
-        return;
-    }
+        if (!validation.state || !validation) {
+            let errorMensaje = document.getElementById('danger');
+            errorMensaje.style.display = "flex"
+            errorMensaje.querySelector("#txt").textContent = validation.data;
+            return;
+        }
 
-    // window.location.href="/konva"
-  })
+        // window.location.href="/konva"
+    })
 });
