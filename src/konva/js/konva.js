@@ -1621,3 +1621,4 @@ function changeLayout(attrs) {
     input_stroke_border.value = attrs.strokeWidth || 0;
     input_corner.value = attrs.cornerRadius || 0;
 }
+
