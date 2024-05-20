@@ -7,6 +7,7 @@ import SectionFolders from "../components/Sections/Options/section_folders.astro
 import SectionPlugins from "../components/Sections/Options/section_plugins.astro";
 import ProfileInvite from "../components/Articles/ProfileInvite.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
+import Presentations from "../components/Articles/Presentations.astro";
 ---
 
 <LayoutKonva title="Parcify - Konva">
@@ -20,7 +21,7 @@ import LayoutKonva from "../layouts/LayoutKonva.astro";
                         <path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
                         <path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
                         <path d="M14 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
-                    </svg>
+                    </svg> 
                 </span>
 
                 <div class="flex flex-col w-fit h-fit">
@@ -31,14 +32,15 @@ import LayoutKonva from "../layouts/LayoutKonva.astro";
                         By Sebxstt
                     </h4>
                 </div>
-
-                <span class="w-fit h-fit p-1 cursor-pointer">
+          
+              
+                <span id="details-project" class="w-fit h-fit p-1 cursor-pointer">
                     <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="white"  class="icon icon-tabler icons-tabler-filled icon-tabler-caret-down">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M18 9c.852 0 1.297 .986 .783 1.623l-.076 .084l-6 6a1 1 0 0 1 -1.32 .083l-.094 -.083l-6 -6l-.083 -.094l-.054 -.077l-.054 -.096l-.017 -.036l-.027 -.067l-.032 -.108l-.01 -.053l-.01 -.06l-.004 -.057v-.118l.005 -.058l.009 -.06l.01 -.052l.032 -.108l.027 -.067l.07 -.132l.065 -.09l.073 -.081l.094 -.083l.077 -.054l.096 -.054l.036 -.017l.067 -.027l.108 -.032l.053 -.01l.06 -.01l.057 -.004l12.059 -.002z" />
-                    </svg>
+                    </svg> 
                 </span>
-
+            
                 <span class="w-[2px] h-1/2 bg-[#696969]"></span>
 
                 <span id="undo" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
@@ -55,7 +57,7 @@ import LayoutKonva from "../layouts/LayoutKonva.astro";
                     </svg>
                 </span>
             </div>
-
+                
             <div class="w-fit h-full flex items-center gap-3">
                 <span class="relative cursor-pointer">
                     <svg class="icon icon-tabler icons-tabler-outline icon-tabler-message h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
@@ -71,7 +73,7 @@ import LayoutKonva from "../layouts/LayoutKonva.astro";
                 </span>
 
                 <span class="w-[2px] h-1/2 bg-[#696969]"></span>
-
+             
                 <div class="flex">
                     <ProfileInvite color="bg-green-500" letter="S"/>
                     <ProfileInvite color="bg-purple-500 -ml-2" letter="D"/>
@@ -208,11 +210,13 @@ import LayoutKonva from "../layouts/LayoutKonva.astro";
                     </svg>
                 </span>
             </div>
-
+            
             <div id="content-konva" class="w-full h-full bg-lime-400">
-                <div id="konva" class="bg-white w-full h-full"></div>
-            </div>
+                <div id="konva" class="bg-white w-full h-full">
 
+                </div>
+                
+            </div>
             <div id="right-slide" class="absolute -right-[25rem] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">
                 <section id="content-edit" class="w-full h-full flex flex-col">
                     <div class="w-full h-fit py-5 px-5 border-b-2 border-[#FC7F53]">
@@ -467,6 +471,12 @@ import LayoutKonva from "../layouts/LayoutKonva.astro";
                     </svg>
                 </span>
             </div>
+
+                <Presentations title="profle" owner="hola"
+                created = "Sebxstt"
+                lastModified = "Editado hace 6 minutos."
+                description = "Este proyecto es un parcelador basico."
+                />
         </div>
     </div>
 </LayoutKonva>
