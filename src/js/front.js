@@ -72,6 +72,66 @@ x_close_invite?.forEach((element, i) => {
     })
 })
 
+let projectBox = document.querySelectorAll('#parceler-box');
+let projectSelected = document.querySelectorAll('.projectSelected'); 
+let copyLink = document.getElementById('continue');
+let usersInvited = document.getElementById('users-invited');
+let projectContent = document.getElementById('projectContent');
+
+function setBorder(element,index) {
+    element.forEach((e,i) => {
+        if (i === index) {
+            e.style.border='2px solid rgb(147 197 253)'
+        }
+    });
+}
+
+function deleteBorder(element,index) {
+    element.forEach((e,i) => {
+        if (i === index) {
+            e.style.border='2px solid transparent'
+        }
+    });
+}
+
+function verifiCheck(elements, elementChecked) {
+    elements.forEach((e, i) => {
+        if (e != elementChecked) {
+            e.checked = false;
+            deleteBorder(projectBox,i)
+        }else{
+            e.checked = true;
+        }
+    });
+}
+
+if(copyLink){
+    copyLink.disabled = true;
+    copyLink.style.opacity ='0.5'
+}
+
+projectSelected.forEach((e,i)=>{
+    e.addEventListener('change',()=>{
+        console.log(e)
+        verifiCheck(projectSelected, e)
+        if (e.checked == true) {
+            setBorder(projectBox,i)
+            copyLink.disabled = false;
+            copyLink.style.opacity ='1'
+            copyLink.addEventListener('click',()=>{
+                if (window.getComputedStyle(usersInvited).display == 'none') {
+                    usersInvited.style.display = 'flex'
+                    projectContent.style.display = 'none'
+                }
+            })
+        } else {
+            deleteBorder(projectBox,i)
+            copyLink.disabled = true;
+            copyLink.style.opacity ='0.5'
+        }
+    });
+});
+
 const invite_btn = document.querySelectorAll("#invite-btn");
 
 invite_btn?.forEach((element) => {
@@ -137,20 +197,77 @@ menu_btn.forEach(element => {
 let options_parcel = document.querySelectorAll("#btn-options-parcel");
 
 options_parcel?.forEach(item => {
-    item.addEventListener("click", function () {
+    item.addEventListener("click", function() {
         item.parentNode.querySelector("#options-parcel").style.display = window?.getComputedStyle(item.parentNode.querySelector("#options-parcel")).display == "none" ? "flex" : "none";
     });
 })
+
+//ELIMINAR PROYECTO
+let delete_parcel = document.querySelectorAll("#delete-parcel");
+
+delete_parcel?.forEach(item => {
+    item.addEventListener("click", async () => {
+        let attr = item.getAttribute("data-id");
+
+        const validation = await req.deleteProject(attr);
+
+        if(!validation.state || !validation){
+            let errorMensaje = document.getElementById('danger');
+            errorMensaje.style.display = "flex"
+            errorMensaje.querySelector("#txt").textContent = validation.data;
+            return;
+        }
+
+        window.location.reload();
+    });
+});
+
+//CREAR PROYECTO
+const createTemplate = document.querySelectorAll("#create-template");
+
+createTemplate?.forEach(item => {
+  item.addEventListener("click", async () => {
+
+    const validation = await req.createProject(getCookie("ID-USER"), "Untitled");
+
+    console.log(validation)
+
+    if(!validation.state || !validation){
+        let errorMensaje = document.getElementById('danger');
+        errorMensaje.style.display = "flex"
+        errorMensaje.querySelector("#txt").textContent = validation.data;
+        return;
+    }
+
+    window.location.reload();
+  })
+});
+
+//DUPLICAR PROYECTO
+let duplicate_parcel = document.querySelectorAll("#duplicate-parcel");
+duplicate_parcel?.forEach(item => {
+    item.addEventListener("click", async () => {
+        let attr = item.getAttribute("data-id");
+
+        const validation = await req.duplicateProject(attr);
+
+        if(!validation.state || !validation){
+            let errorMensaje = document.getElementById('danger');
+            errorMensaje.style.display = "flex"
+            errorMensaje.querySelector("#txt").textContent = validation.data;
+            return;
+        }
+
+        window.location.reload();
+    });
+});
 
 let element_project = document.querySelectorAll("#element-project");
 
 element_project?.forEach(item => {
     item.addEventListener("click", function () {
         let attr = item.getAttribute("data-id");
-
-        window.location.hreft = ""
-
-        console.log(attr)
+        window.location.href = "/konva?id=" + attr
     });
 });
 
@@ -197,7 +314,6 @@ formLogin?.addEventListener('submit', async (e) => {
     setCookie("logged", true)
     window.location.href = "/"
 });
-
 
 let logout = document.querySelector('#logout');
 logout?.addEventListener('click', (e) => {
