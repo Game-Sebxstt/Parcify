@@ -1064,7 +1064,7 @@ document.addEventListener('keydown', function (e) {
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
         var dataURL = stage.toDataURL({ pixelRatio: 3 });
-        console.log(dataURL.length)
+        console.log(dataURL)
         req.saveProject(stageJSON, id_stage, dataURL);
     }
 

@@ -17,8 +17,9 @@ const port = process.env.PORT || 4000;
 app.set("port", port);
 
 // Middlewares
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+// app.use(express.limit(100000000));
+app.use(bodyParser.json({ limit: '100mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '100mb' }));
 app.use(cors({
     origin: (origin, callback) => {
       const allowedOrigins = ['http://localhost:4321', 'http://localhost:4322', 'https://1rhbb29z-4321.use2.devtunnels.ms', 'https://7qjgdqdv-4321.use2.devtunnels.ms'];

@@ -8,7 +8,7 @@ interface Props{
 }
 
 const {id_content, templates} = Astro.props;
-
+console.log(templates)
 ---
 
 <div id={id_content} class="content-all fixed z-50 hidden animate-deployment justify-center items-center w-full h-full px-3">
@@ -40,9 +40,13 @@ const {id_content, templates} = Astro.props;
             <Templates category='Recomendados'>
                 <TemplateView first_text='Plantilla Vacia' second_text='by Parcify' url_image='../../../public/placeholder/image_preview.svg' template_id="0"/>
                 {
-                    templates.map((item: any) => (
-                        <TemplateView first_text={item.name} second_text={"By Parcify"} url_image={item.preview} template_id={item.template_id}/>
-                    ))
+                    templates != "No hay plantillas." ? (
+                        templates.map((item: any) => (
+                            <TemplateView first_text={item.name} second_text={"By Parcify"} url_image={item.preview} template_id={item.template_id}/>
+                        ))
+                    ) : (
+                        <span class="hidden"></span>
+                    )
                 }
             </Templates>
 

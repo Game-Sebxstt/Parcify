@@ -8,6 +8,14 @@ import SectionPlugins from "../components/Sections/Options/section_plugins.astro
 import ProfileInvite from "../components/Articles/ProfileInvite.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
 import Presentations from "../components/Articles/Presentations.astro";
+
+const logged = Astro.cookies.get("logged")?.value;
+const id = Astro.cookies.get("ID-USER")?.value;
+
+if(logged != 'true' && !id){
+  return Astro.redirect("/SignIn")
+}
+
 ---
 
 <LayoutKonva title="Parcify - Konva">
