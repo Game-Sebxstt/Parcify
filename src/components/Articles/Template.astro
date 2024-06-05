@@ -1,13 +1,14 @@
 ---
 interface Props{
-  first_text: string;
-  second_text: string;
+  name:string,
+  description: string,
+  typeElement:string,
 }
 
-const { first_text, second_text } = Astro.props;
+const { name, description, typeElement } = Astro.props;
 ---
 
-<div class="cursor-pointer">
+<div id={typeElement}  class="cursor-pointer" data-name={name}>
     <div class="bg-[#E6E6E6] w-full h-72 rounded-md shadow-md shadow-black mb-2"></div>
   
     <div class="flex justify-start gap-5 items-center">  
@@ -21,8 +22,8 @@ const { first_text, second_text } = Astro.props;
       </div>
 
       <div class="flex flex-col">
-        <h3 class="text-white text-xl font-bold max-xl:text-lg">{first_text}</h3>
-        <h4 class="text-gray-300 text-lg max-xl:text-base">{second_text}</h4>
+        <h3 class="text-white text-xl font-bold max-xl:text-lg">{name}</h3>
+        <h4 class="text-gray-300 text-lg max-xl:text-base">{description}</h4>
       </div>
     </div>
 </div>

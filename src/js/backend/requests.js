@@ -110,6 +110,8 @@ export async function getProject(id_project){
     return {state: true, data: responseData};
 }
 
+
+
 //Delete project with method post
 export async function deleteProject(id_project){
     const response = await fetch(`http://localhost:4000/project/delete`, {
