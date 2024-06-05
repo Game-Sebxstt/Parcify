@@ -1,108 +1,19 @@
 ---
+
 interface Props {
     username:string,
     email:string,
 }
 
 const {username, email} = Astro.props;
-
-import SectionProfile from './Options/section_profile.astro';
-import SectionSecurity from './Options/section_security.astro';
-import SectionNofitications from './Options/section_nofitications.astro';
 ---
-<section id="settings" class="absolute z-20 h-full w-full hidden items-center justify-center bg-black/50 backdrop-blur-sm p-2">
-    <!-- configurations -->
-    <article id="configurations" class=" animate-deployment flex w-auto shadow">
-        <!-- navbar -->
-        <aside class="bg-[#3c3a3a] flex flex-col items-center gap-5 p-5 rounded-l-lg">
-            <header class="flex items-center justify-between box-border gap-2">
-                <img class="h-12" src="/Logo-no-background-no-text.png">
-                <p class="font-bold text-2xl ">PARCIFY</p>
-            </header>
-            <nav class="flex flex-col gap-4">
-                <!-- Account -->
-                <div class="flex flex-col gap-2">
-                    <p class="font-semibold text-gray-400 text-base">Account</p>
-                    <button id="button-config" data-section="profile" class="flex items-center gap-2 hover:bg-orange-500 transition-all cursor-pointer py-2 px-4">
-                        <svg class="flex items-center" xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round" ><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 13a3 3 0 1 0 0 -6a3 3 0 0 0 0 6z" /><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9 -9 9s-9 -1.8 -9 -9s1.8 -9 9 -9z" /><path d="M6 20.05v-.05a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v.05" /></svg>
-                        <p class="font-medium text-lg">Porfile</p>
-                    </button>
-                    <button id="button-config" data-section="notifications" class="flex items-center gap-2 hover:bg-orange-500 transition-all cursor-pointer py-2 px-4">
-                        <svg class="flex items-center" xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round" ><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>
-                        <p class="font-medium text-lg">Notifications</p>
-                    </button>
-                </div>
-                
-                <!-- generla configuration -->
-                <div class="flex flex-col gap-2">
-                    <p class="font-semibold text-gray-400 text-base">Account</p>
-                    <button id="button-config" data-section="security" class="flex items-center gap-2 hover:bg-orange-500 transition-all cursor-pointer py-2 px-4">
-                        <svg class="flex items-center" xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round" ><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3" /><path d="M12 3v18" /></svg>
-                        <p class="font-medium text-lg">Security</p>
-                    </button>
-                </div>
-            </nav>
-        </aside>
-
-        <!-- content porfile-->
-        <aside class="flex flex-col rounded-r-lg bg-[#2b2929] p-6">
-            <SectionProfile username={username} email={email} state='flex profile'/>
-            <SectionSecurity username={username} email={email} state='hidden security'/>
-            <SectionNofitications username={username} email={email} state='hidden notifications'/>
-        </aside>
+<section id="settings" class="bg-black/50 backdrop-blur-sm fixed h-full w-full z-50 hidden items-center justify-center">
+    <article class="bg-red-500 h-[30rem] w-[45rem] rounded-lg shadow-sm flex flex-row items-center max-[800px]:w-[40rem] max-[800px]:h-auto max-[800px]:flex-col">
+        <header>
+            <h1>pe</h1>
+        </header>
+        <section>
+            <h4>fff</h4>
+        </section>
     </article>
 </section>
-<script>
-    // funcionaliad de cambio de configuracion
-
-    let buttons_config = document.querySelectorAll("#button-config")
-
-    buttons_config?.forEach((item: any) => {
-        item.addEventListener('click', () => {
-            let section = item.getAttribute("data-section"); //El contenedor que abrira
-            let section_show = document.querySelector(`.${section}`) as HTMLDivElement;
-            section_show.style.display = "flex";
-
-            document.querySelectorAll(".section-config").forEach((element: any) => {
-                if(element != section_show){
-                    element.style.display = "none";
-                }
-            })
-        });
-    });
-
-    let closeSetting = document.querySelectorAll("#closeSetting");
-        closeSetting.forEach((e) => {
-            e?.addEventListener('click', () => {
-                let settings = document.querySelector("#settings") as HTMLElement;
-                if (window.getComputedStyle(settings).display == 'flex') {
-                    settings.style.display = 'none'
-                } else {
-                    settings.style.display = 'flex'
-                }
-            })
-        })
-
-    //funcionalidad de perfil
-    let userPhoto = document.querySelector('#userPhoto') as HTMLDivElement;
-    let change_userPhoto = document.querySelector('#inputfile') as HTMLElement;
-
-    change_userPhoto?.addEventListener('change',()=>{
-        const files = (event?.target as HTMLInputElement).files;
-
-        if (files && files[0]) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                let path = e.target?.result as string;
-                userPhoto.style.backgroundImage =`url(${path})`;
-            };
-        reader.readAsDataURL(files[0]);
-        }
-    });
-    
-    //funcionalidad de notificaciones
-
-
-    //funcionalidad de seguridad
-
-</script>

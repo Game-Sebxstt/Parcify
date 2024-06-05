@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 
 interface Props{
+  id:string,
   name: string,
   last_modified: string,
   project_id: string,
@@ -40,10 +41,10 @@ export function lastModified(fechas: any) {
 }
 
 //Data variables
-const {name, last_modified, project_id, preview, stage, collaborators} = Astro.props;
+const {id, name, last_modified, project_id, preview, stage, collaborators} = Astro.props;
 ---
 
-<div class="w-full h-fit relative">
+<div id={id} class="w-full h-fit relative" data-name={name} data-modified={last_modified}>
   <div id="options-parcel" class="w-fit h-fit hidden fixed z-50">
     <ul id="more-options-filter" class="bg-[#2b2929] rounded-md shadow-lg shadow-[#181818] w-fit flex flex-col justify-center item-start text-white animate-deployment">
       <li id="duplicate-parcel" data-id={project_id} class="hover:bg-slate-600 transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-t-md flex gap-2" data-filter="test">

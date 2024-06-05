@@ -6,6 +6,7 @@ import Header from '../components/Sections/Header.astro';
 import Template from "../components/Articles/Template.astro"
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Filter from '../components/Articles/Filter.astro';
+import SearchBar from '../components/Articles/SearchBar.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -42,30 +43,25 @@ try{
 		<Content>
 			<article class="w-full">
 				<div class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-start items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
-					<ul class="grid_filter flex gap-2 max-md:text-sm pr-2 place-items-center">
-						<li class="relative w-full h-fit py-1 px-2  cursor-pointer flex justify-center items-center text-center">
-							<svg  class="icon icon-tabler icons-tabler-outline icon-tabler-search h-6 absolute left-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-								<path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-								<path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
-								<path d="M21 21l-6 -6" />
-							</svg>
-							<input type="search" placeholder="Search projects" class="pl-11 pr-3 bg-[#292929] border-2 border-[#3e3e3e] rounded-lg text-white px-6 py-3 text-base hover:border-[#FB7F53] outline-none cursor-pointer transition max-[880px]:w-full">
-						</li>
-					</ul>
-
+					<SearchBar section="templates" article='template' placeholder='Search Projects'></SearchBar>
 					<div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
-						<Filter/>
+						<Filter section='templates' article='template'/>
 					</div>
 				</div>
 
 				<article class="w-full">
-					<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
-						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
-						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
-						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
-						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
-						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+					<div id="content-grid" data-section="templates" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
+						<Template typeElement="template" name='1' description='By Sebxstt'/>
+						<Template typeElement="template" name='2' description='By Sebxstt'/>
+						<Template typeElement="template" name='1122' description='By Sebxstt'/>
+						<Template typeElement="template" name='1' description='By Sebxstt'/>
+						<Template typeElement="template" name='asdasd' description='By Sebxstt'/>
+						<Template typeElement="template" name='PPPPPP' description='By Sebxstt'/>
+						<Template typeElement="template" name='juasjuas' description='By Sebxstt'/>
+						<Template typeElement="template" name='1asdasa' description='By Sebxstt'/>
+						<Template typeElement="template" name='1' description='By Sebxstt'/>
+						<Template typeElement="template" name="sdasd**/" description='By Sebxstt'/>
+						<Template typeElement="template" name='///' description='By Sebxstt'/>
 					</div>
 				</article>
 			</article>

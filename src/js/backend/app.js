@@ -232,6 +232,20 @@ app.get("/templates", async (req, res) => {
     res.status(200).send({ status: "Good Request", message: data })
 });
 
+//search templates
+app.get("/templates/search", async (req, res) => {
+    const connection = await getConnection();
+    const data = await connection.query("SELECT * FROM templates");
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "No hay plantillas." })
+    }
+
+    res.status(200).send({ status: "Good Request", message: data })
+});
+
+
+
 async function generateIdUser(connection) {
     let user_id;
     let isAvailable = false;

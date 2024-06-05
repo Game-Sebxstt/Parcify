@@ -8,6 +8,8 @@ import ArticleMedium from "../components//Articles/ArticleMedium.astro"
 import ArticleTemplate from "../components//Articles/ArticleTemplate.astro"
 import Filter from '../components/Articles/Filter.astro';
 import ArticlePlus from '../components/Articles/ArticlePlus.astro';
+import SearchBar from '../components/Articles/SearchBar.astro';
+import Settings from '../components/Sections/Settings.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -38,27 +40,38 @@ try{
 ---
 
 <Layout title="Parcify">
-	<div class="w-full h-fit flex">	
+	<div class="w-full h-fit flex">
+		<!-- sidebar -->
 		<Slide/>
 		<SlideMobile/>
+		<!-- main content -->
 		<Content>
+			<!-- templates -->
 			<article class="w-full h-64 grid grid-cols-4 max-xl:grid-cols-3 max-[980px]:grid-cols-2 max-sm:grid-cols-1 grid-rows-1 gap-3">
 				<ArticleMedium class_article="max-xl:hidden" first_text='Parcelador Básico'/>
 				<ArticleMedium class_article="max-[980px]:hidden" first_text='Parcelador Básico'/>
 				<ArticleMedium class_article="max-sm:hidden" first_text='Parcelador Básico'/>
 				<ArticleTemplate class_article="" first_text='Parcelador Básico'/>
 			</article>
-	
-			<article class="w-full flex flex-col p-4 bg-[#383838] rounded-md shadow-lg shadow-[#181818]">
-				<Filter/>
+
+			<!-- filters & searchbar -->
+			<article class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-start items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
+				<!-- search bar -->
+				<SearchBar placeholder='Search Projects' article='project' section='home'></SearchBar>
+
+				<!-- filtros -->
+				<div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
+					<Filter section='home' article='project'/>
+				</div>
 			</article>
 
+			<!-- your projects -->
 			<article class="w-full">
 				<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
 					<ArticlePlus/>
 					{
 						data.projects.map((item: any) => (
-							<Article name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
+							<Article id="project" name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
 						))
 					}
 				</div>
@@ -66,3 +79,4 @@ try{
 		</Content>
 	</div>
 </Layout>
+

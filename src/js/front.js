@@ -77,23 +77,23 @@ x_close_invite?.forEach((element, i) => {
 })
 
 let projectBox = document.querySelectorAll('#parceler-box');
-let projectSelected = document.querySelectorAll('.projectSelected'); 
+let projectSelected = document.querySelectorAll('.projectSelected');
 let copyLink = document.getElementById('continue');
 let usersInvited = document.getElementById('users-invited');
 let projectContent = document.getElementById('projectContent');
 
-function setBorder(element,index) {
-    element.forEach((e,i) => {
+function setBorder(element, index) {
+    element.forEach((e, i) => {
         if (i === index) {
-            e.style.border='2px solid rgb(147 197 253)'
+            e.style.border = '2px solid rgb(147 197 253)'
         }
     });
 }
 
-function deleteBorder(element,index) {
-    element.forEach((e,i) => {
+function deleteBorder(element, index) {
+    element.forEach((e, i) => {
         if (i === index) {
-            e.style.border='2px solid transparent'
+            e.style.border = '2px solid transparent'
         }
     });
 }
@@ -102,36 +102,36 @@ function verifiCheck(elements, elementChecked) {
     elements.forEach((e, i) => {
         if (e != elementChecked) {
             e.checked = false;
-            deleteBorder(projectBox,i)
-        }else{
+            deleteBorder(projectBox, i)
+        } else {
             e.checked = true;
         }
     });
 }
 
-if(copyLink){
+if (copyLink) {
     copyLink.disabled = true;
-    copyLink.style.opacity ='0.5'
+    copyLink.style.opacity = '0.5'
 }
 
-projectSelected.forEach((e,i)=>{
-    e.addEventListener('change',()=>{
+projectSelected.forEach((e, i) => {
+    e.addEventListener('change', () => {
         console.log(e)
         verifiCheck(projectSelected, e)
         if (e.checked == true) {
-            setBorder(projectBox,i)
+            setBorder(projectBox, i)
             copyLink.disabled = false;
-            copyLink.style.opacity ='1'
-            copyLink.addEventListener('click',()=>{
+            copyLink.style.opacity = '1'
+            copyLink.addEventListener('click', () => {
                 if (window.getComputedStyle(usersInvited).display == 'none') {
                     usersInvited.style.display = 'flex'
                     projectContent.style.display = 'none'
                 }
             })
         } else {
-            deleteBorder(projectBox,i)
+            deleteBorder(projectBox, i)
             copyLink.disabled = true;
-            copyLink.style.opacity ='0.5'
+            copyLink.style.opacity = '0.5'
         }
     });
 });
@@ -226,6 +226,138 @@ options_parcel?.forEach(item => {
     })
 })
 
+//BUSCAR PROYECTOS
+let searchBar = document.querySelectorAll("#searchbar");
+searchBar.forEach((item) => {
+    item?.addEventListener("input", (e) => {
+        // Obtener el valor del searchBar y convertirlo a minúsculas
+        let searchTerm = item.value.toLowerCase();
+        let typeElement = item.getAttribute("data-article");
+
+        console.log(typeElement, searchTerm);
+        // Llamar a los proyectos o las platillas
+        let elementToFilter = document.querySelectorAll(`#${typeElement}`);
+
+        // Iterar sobre los proyectos para obtener sus atributos
+        elementToFilter.forEach((item) => {
+            //lo que se tiene que filtrar
+            let name = item.getAttribute("data-name")?.toLowerCase();
+
+            if (!name.includes(searchTerm)) {
+                item.classList.add("hidden");
+            } else {
+                item.classList.remove("hidden");
+            }
+        });
+    });
+})
+
+
+//filtrar cosas
+let filtros = document.querySelectorAll("#filtro");
+filtros.forEach((item, index) => {
+    switch (index) {
+        case 0:
+            item.addEventListener("click", () => {
+                let dondeToy = item.parentElement.getAttribute("data-article")
+                let elementToFilter = document.querySelectorAll(`#${dondeToy}`)
+                //colcar los nombres de los proyectos en un arreglo 
+                let elementsArray = Array.from(elementToFilter);
+                let namesAndElements = elementsArray.map((item) => {
+                    item.classList.remove("hidden")
+                    return {
+                        name: item.getAttribute("data-name"),
+                        element: item
+                    };
+                });
+                let boxOrdenSelection = document.querySelector("#orden")
+                let arrow = boxOrdenSelection.firstChild;
+
+                //de la A a la Z
+                let parentElement = elementsArray[0].parentElement;
+
+                if (arrow.id === "arrowDown") {
+                    //organizacion descendente
+                    let descendente = namesAndElements.sort((a, b) => b.name.localeCompare(a.name));
+                    descendente.forEach((item) => {
+                        parentElement.appendChild(item.element);
+                    });
+                } else {
+                    //organizacion ascendente
+                    let ascendente = namesAndElements.sort((a, b) => a.name.localeCompare(b.name));
+                    ascendente.forEach((item) => {
+                        parentElement.appendChild(item.element);
+                    });
+                }
+            });
+            break;
+        case 1:
+            item.addEventListener("click", () => {
+                let mainBox = item.parentElement.getAttribute("data-article")
+                let element = document.querySelectorAll(`#${mainBox}`)
+                let elementsArray = Array.from(element);
+                let datesAndElements = elementsArray.map((el) => {
+                    item.classList.remove("hidden")
+                    return {
+                        date: new Date(el.getAttribute("data-modified")),
+                        element: el,
+                    };
+                });
+
+                let boxOrdenSelection = item.children[1];
+                let arrow = boxOrdenSelection.firstChild;
+
+                // Orden descendente por defecto                       
+                let parentElement = elementsArray[0].parentElement;
+
+                if (arrow.id === "arrowDown") {
+                    // Organización descendente                   
+                    let ascendente = datesAndElements.sort((a, b) => a.date - b.date);
+                    ascendente.forEach((item) => {
+                        parentElement.appendChild(item.element);
+                    });
+                } else {
+                    let descendente = datesAndElements.sort((a, b) => b.date - a.date);
+                    descendente.forEach((item) => {
+                        parentElement.appendChild(item.element);
+                    });
+                }
+
+            });
+            break;
+        case 2:
+            item.addEventListener("click", () => {
+                //obtener todos los proyectos que me han compartido
+                let getTypeElement = item.parentElement.getAttribute("data-article");
+                let element = document.querySelectorAll(`#${getTypeElement}`);
+                let sharedProjects = document.querySelectorAll("#projectShared");
+
+                element.forEach((project) => {
+                    project.classList.add("hidden");
+
+                    sharedProjects.forEach((item) => {
+                        if (project === item) {
+                            project.classList.remove("hidden");
+                        }
+                    });
+                });
+            });
+            break;
+        case 3:
+            item.addEventListener("click", () => {
+                //proyectos
+                let getTypeElement = item.parentElement.getAttribute("data-article");
+                let element = document.querySelectorAll(`#${getTypeElement}`);
+
+                element.forEach(item => { item.classList.remove("hidden") })
+            });
+            break;
+        default:
+            console.error("Error al filtrar");
+            break;
+    }
+})
+
 //ELIMINAR PROYECTO
 let delete_parcel = document.querySelectorAll("#delete-parcel");
 
@@ -235,7 +367,7 @@ delete_parcel?.forEach(item => {
 
         const validation = await req.deleteProject(attr);
 
-        if(!validation.state || !validation){
+        if (!validation.state || !validation) {
             let errorMensaje = document.getElementById('danger');
             errorMensaje.style.display = "flex"
             errorMensaje.querySelector("#txt").textContent = validation.data;
@@ -250,23 +382,23 @@ delete_parcel?.forEach(item => {
 let createTemplate = document.querySelectorAll("#create-template");
 
 createTemplate?.forEach(item => {
-  item.addEventListener("click", async () => {
+    item.addEventListener("click", async () => {
 
-    let attr = item.getAttribute("data-id");
-    console.log(attr);
-    const validation = await req.createProject(getCookie("ID-USER"), "Untitled", attr);
+        let attr = item.getAttribute("data-id");
+        console.log(attr);
+        const validation = await req.createProject(getCookie("ID-USER"), "Untitled", attr);
 
-    console.log(validation)
+        console.log(validation)
 
-    if(!validation.state || !validation){
-        let errorMensaje = document.getElementById('danger');
-        errorMensaje.style.display = "flex"
-        errorMensaje.querySelector("#txt").textContent = validation.data;
-        return;
-    }
+        if (!validation.state || !validation) {
+            let errorMensaje = document.getElementById('danger');
+            errorMensaje.style.display = "flex"
+            errorMensaje.querySelector("#txt").textContent = validation.data;
+            return;
+        }
 
-    window.location.reload();
-  })
+        window.location.reload();
+    })
 });
 
 //DUPLICAR PROYECTO
@@ -277,7 +409,7 @@ duplicate_parcel?.forEach(item => {
 
         const validation = await req.duplicateProject(attr);
 
-        if(!validation.state || !validation){
+        if (!validation.state || !validation) {
             let errorMensaje = document.getElementById('danger');
             errorMensaje.style.display = "flex"
             errorMensaje.querySelector("#txt").textContent = validation.data;
@@ -352,9 +484,9 @@ logout?.addEventListener('click', (e) => {
     window.location.reload();
 });
 
-//settings
+//? settings
 let openSetting = document.querySelector("#openSettings");
-openSetting?.addEventListener("click", ()=>{
+openSetting?.addEventListener("click", () => {
     let settings = document.querySelector("#settings");
     if (window.getComputedStyle(settings).display == 'none') {
         settings.style.display = 'flex'
@@ -362,6 +494,54 @@ openSetting?.addEventListener("click", ()=>{
         settings.style.display = 'none'
     }
 })
+
+let closeSetting = document.querySelectorAll("#closeSetting");
+closeSetting.forEach((e) => {
+    e?.addEventListener('click', () => {
+        let settings = document.querySelector("#settings");
+        if (window.getComputedStyle(settings).display == 'flex') {
+            settings.style.display = 'none'
+        } else {
+            settings.style.display = 'flex'
+        }
+    })
+})
+
+// funcionaliad de cambio de configuracion
+
+let buttons_config = document.querySelectorAll("#button-config")
+
+buttons_config?.forEach((item) => {
+    item.addEventListener('click', () => {
+        let section = item.getAttribute("data-section"); //El contenedor que abrira
+        let section_show = document.querySelector(`.${section}`);
+        section_show.style.display = "flex";
+
+        document.querySelectorAll(".section-config").forEach((element) => {
+            if (element != section_show) {
+                element.style.display = "none";
+            }
+        })
+    });
+});
+
+//funcionalidad de perfil
+let userPhoto = document.querySelector('#userPhoto');
+let change_userPhoto = document.querySelector('#inputfile');
+
+change_userPhoto?.addEventListener('change', () => {
+    const files = (event?.target).files;
+
+    if (files && files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            let path = e.target?.result;
+            userPhoto.style.backgroundImage = `url(${path})`;
+        };
+        reader.readAsDataURL(files[0]);
+    }
+});
+
 
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
