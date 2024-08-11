@@ -561,7 +561,6 @@ function snapTransformElements(){
 
 tr.on("transform", (e) => {
     if (!e.target) {
-        console.log("no target");
         return;
     }
 
@@ -575,7 +574,6 @@ tr.on("transform", (e) => {
     }
 
     if (e.target instanceof Konva.Label) {
-        console.log("transform group");
         let isTextFind = false
         e.target.getChildren().forEach(item => {
             if (item instanceof Konva.Text) {
@@ -596,11 +594,10 @@ tr.on("transform", (e) => {
                 scaleY: 1,
             });
         }
-
     }
 
-    if(e.target instanceof Konva.Group){
-
+    if(e.target instanceof Konva.Tag){
+        tr.nodes([e.target.parent]);
     }
 
     if (e.target == States.StatesCursor.textEditing) {
@@ -620,9 +617,18 @@ tr.on("transform", (e) => {
     }
 });
 
-snapDragElements();
+tr.on("transformend", (e) => {
+    if (!e.target) {
+        return;
+    }
 
-// snapTransformElements();
+    if (e.target instanceof Konva.Label) {
+        tr.nodes(e.target.getChildren());
+    }
+});
+
+snapDragElements();
+snapTransformElements();
 
 function groupElements() {
     let selectedNodes = tr.nodes();
@@ -820,12 +826,11 @@ function dbClickText(textNode) {
     });
 }
 
-// Función para mover el cursor al final del texto
 function moveCursorToEnd(element) {
     var range = document.createRange();
     var sel = window.getSelection();
     range.selectNodeContents(element);
-    range.collapse(false); // Colapsa el rango al final del contenido
+    range.collapse(false);
     sel.removeAllRanges();
     sel.addRange(range);
 }
@@ -836,6 +841,7 @@ function dbClickRect(elementDrag){
 
     if(textNode){
         value = textNode.text();
+        textNode.hide();
     }
     
     States.StatesCursor.textEditing = elementDrag;
@@ -851,7 +857,7 @@ function dbClickRect(elementDrag){
     var textarea = document.createElement('textarea');
     textarea.id = "edit-text";
     document.body.appendChild(textarea);
-    textarea.innerText = elementDrag.attrs.text || value;
+    textarea.value = value || " ";
     textarea.style.position = 'absolute';
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
@@ -887,16 +893,18 @@ function dbClickRect(elementDrag){
         });
 
         elementDrag.parent.add(new Konva.Text({
-            text: textarea.innerText,
+            x: elementDrag.x(),
+            y: elementDrag.y(),
+            width: elementDrag.width(),
+            height: elementDrag.height(),
+            text: textarea.value,
             fontSize: elementDrag.attrs.font_size,
             fontFamily: "Arial",
             fill: "black",
             align: "center",
             verticalAlign: "middle",
-            width: elementDrag.width(),
-            height: elementDrag.height(),
             draggable: true,
-            listening: true,
+            listening: false,
         }));
 
         layer.draw();
@@ -906,6 +914,7 @@ function dbClickRect(elementDrag){
         tr.show();
         tr.forceUpdate();
         tr.moveToTop();
+        tr.nodes(elementDrag.parent.getChildren())
         SELECTALL = true;
         States.StatesCursor.textEditing = undefined;
 
@@ -1169,11 +1178,8 @@ stage.on('click tap', function (e) {
 
     const parent = e.target.getParent();
     if (parent && parent instanceof Konva.Group) {
-        console.log("group");
-        console.log(parent.getChildren());
-        
         tr.moveToTop();
-        tr.nodes([parent]);
+        tr.nodes(parent.getChildren());
         return;
     }else if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
         return;
@@ -1183,8 +1189,6 @@ stage.on('click tap', function (e) {
     const isSelected = tr.nodes().indexOf(e.target) >= 0;
 
     if (!metaPressed && !isSelected) {
-        console.log("target");
-        
         tr.moveToTop();
         tr.nodes([e.target]);
     } else if (metaPressed && isSelected) {
@@ -1263,7 +1267,6 @@ document.addEventListener('keydown', function (e) {
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
         var dataURL = stage.toDataURL({ pixelRatio: 3 });
-        console.log(dataURL)
         req.saveProject(stageJSON, id_stage, dataURL);
     }
 
@@ -1788,8 +1791,8 @@ setInterval(() => {
 },);
 
 function changeLayout(attrs) {
-    color_style.value = attrs.fill || "#000000";
-    color_style_border.value = attrs.stroke || "#000000";
+    color_style.value = attrs.fill || "black";
+    color_style_border.value = attrs.stroke || "black";
 
     if(attrs.text){
         editor_text.value = attrs.text;
@@ -1817,8 +1820,8 @@ function changeLayout(attrs) {
 
     let scaleX = attrs.scaleX ?? 1;
     let scaleY = attrs.scaleY ?? 1;
-    input_layout_x.value = attrs.x.toFixed(0) || 0
-    input_layout_y.value = attrs.y.toFixed(0) || 0
+    input_layout_x.value = (attrs.x !== undefined ? attrs.x.toFixed(0) : 0);
+    input_layout_y.value = (attrs.y !== undefined ? attrs.y.toFixed(0) : 0);
     if(attrs.width){
         input_width.value = ((attrs.width || 1) * scaleX).toFixed(0)
         input_height.value = ((attrs.height || 1) * scaleY).toFixed(0)
