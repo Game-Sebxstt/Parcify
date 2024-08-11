@@ -144,9 +144,7 @@ function addShape(shapeProperties: PropertiesNecessary){
     }else if(States.StatesShapes.square){
         shapeProperties.x -= 25;
         shapeProperties.y -= 25;
-        const label = new Konva.Label({...shapeProperties});
-        label.add(new Konva.Tag({...Square}));
-        return label;
+        return new Konva.Rect({...Square, ...shapeProperties})
     }else if(States.StatesShapes.triangle){
         return new Konva.RegularPolygon({...Triangle, ...shapeProperties});
     }else if(States.StatesShapes.diamond){

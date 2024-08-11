@@ -573,31 +573,10 @@ tr.on("transform", (e) => {
         });
     }
 
-    if (e.target instanceof Konva.Label) {
-        let isTextFind = false
-        e.target.getChildren().forEach(item => {
-            if (item instanceof Konva.Text) {
-                isTextFind = true;
-
-                item.setAttrs({
-                    width: Math.max(5, e.target.width() * e.target.scaleX(), MIN_WIDTH), 
-                    height: Math.max(5, e.target.height() * e.target.scaleY()),
-                    scaleX: 1,
-                    scaleY: 1,
-                });
-            }
-        });
-
-        if(isTextFind){
-            e.target.setAttrs({
-                scaleX: 1,
-                scaleY: 1,
-            });
+    if(e.target instanceof Konva.Rect){
+        if (e.target.parent instanceof Konva.Group) {
+            tr.nodes(e.target.parent.getChildren());
         }
-    }
-
-    if(e.target instanceof Konva.Tag){
-        tr.nodes([e.target.parent]);
     }
 
     if (e.target == States.StatesCursor.textEditing) {
@@ -620,10 +599,6 @@ tr.on("transform", (e) => {
 tr.on("transformend", (e) => {
     if (!e.target) {
         return;
-    }
-
-    if (e.target instanceof Konva.Label) {
-        tr.nodes(e.target.getChildren());
     }
 });
 
@@ -739,6 +714,59 @@ function updateElementsEvent(){
     });
 }
 
+function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
+    let fillColor = "black";
+    let fontSize = elementDrag.attrs.font_size;
+    let fontFamily = "Arial";
+
+    if (textNode){
+        fillColor = textNode.fill();
+        fontSize = textNode.fontSize();
+        fontFamily = textNode.fontFamily();
+    }
+
+    var textarea = document.createElement('div');
+    textarea.contentEditable = true;
+    textarea.id = "edit-text";
+    document.body.appendChild(textarea);
+    textarea.innerText = value || " ";
+    textarea.style.position = 'absolute';
+    textarea.style.top = areaPosition.y + 'px';
+    textarea.style.left = areaPosition.x + 'px';
+    textarea.style.width = elementDrag.width() * elementDrag.scaleX() + 'px';
+    textarea.style.height = elementDrag.height() * elementDrag.scaleY() + 'px';
+    textarea.style.fontSize = fontSize + 'px';
+    textarea.style.border = '0px';
+    textarea.style.padding = '0px';
+    textarea.style.margin = 'none';
+    textarea.style.overflow = 'hidden';
+    textarea.style.background = 'none';
+    textarea.style.outline = 'none';
+    textarea.style.resize = 'none';
+    textarea.style.lineHeight = 1;
+    textarea.style.fontFamily = fontFamily;
+    textarea.style.transformOrigin = 'right top';
+    textarea.style.textAlign = textAlign;
+    textarea.style.display = 'flex';
+    textarea.style.justifyContent = textAlign;
+    textarea.style.alignItems = textAlign;
+    textarea.style.color = fillColor;
+    textarea.style.transform = `rotateZ(${elementDrag.rotation() ?? 0}deg)`;
+    setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x, textarea, textNode);
+    textarea.focus();
+    moveCursorToEnd(textarea);
+    SELECTALL = false;
+
+    return textarea;
+}
+
+function setTextareaWidth(newWidth, textarea, textNode) {
+    if (!newWidth) {
+        newWidth = textNode.placeholder.length * textNode.fontSize();
+    }
+    textarea.style.width = newWidth + 'px';
+}
+
 function dbClickText(textNode) {
     States.StatesCursor.textEditing = textNode;
     textNode.hide();
@@ -751,37 +779,7 @@ function dbClickText(textNode) {
         y: stageBox.top + textPosition.y,
     };
 
-    var textarea = document.createElement('div');
-    textarea.contentEditable = true;
-    textarea.id = "edit-text";
-    document.body.appendChild(textarea);
-    textarea.innerText = textNode.text();
-    textarea.style.position = 'absolute';
-    textarea.style.top = areaPosition.y + 'px';
-    textarea.style.left = areaPosition.x + 'px';
-    textarea.style.width = textNode.width() * textNode.scaleX() + 'px';
-    textarea.style.height = textNode.height() * textNode.scaleY() + 'px';
-    textarea.style.fontSize = textNode.fontSize() + 'px';
-    textarea.style.border = '0px';
-    textarea.style.padding = '0px';
-    textarea.style.margin = 'none';
-    textarea.style.overflow = 'hidden';
-    textarea.style.background = 'none';
-    textarea.style.outline = 'none';
-    textarea.style.resize = 'none';
-    textarea.style.lineHeight = textNode.lineHeight();
-    textarea.style.fontFamily = textNode.fontFamily();
-    textarea.style.transformOrigin = 'right top';
-    textarea.style.textAlign = textNode.align();
-    textarea.style.display = 'flex';
-    textarea.style.justifyContent = textNode.align();
-    textarea.style.alignItems = textNode.align();
-    textarea.style.color = textNode.fill();
-    textarea.style.transform = `rotateZ(${textNode.rotation() ?? 0}deg)`;
-    setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
-    textarea.focus();
-    moveCursorToEnd(textarea);
-    SELECTALL = false;
+    var textarea = createTextArea(textNode.align(), areaPosition, textNode, textNode, (textNode.text() == "Escribe un texto." ? "": textNode.text()));
 
     function removeTextarea() {
         document.querySelector("#edit-text")?.remove();
@@ -791,13 +789,6 @@ function dbClickText(textNode) {
         tr.forceUpdate();
         SELECTALL = true;
         States.StatesCursor.textEditing = undefined;
-    }
-
-    function setTextareaWidth(newWidth) {
-        if (!newWidth) {
-            newWidth = textNode.placeholder.length * textNode.fontSize();
-        }
-        textarea.style.width = newWidth + 'px';
     }
 
     textarea.addEventListener('keydown', function (e) {
@@ -811,12 +802,12 @@ function dbClickText(textNode) {
     });
 
     textarea.addEventListener('keydown', function () {
-        setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
+        setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x, textarea, textNode);
     });
 
     function handleOutsideClick(e) {
         if (e.target !== textarea) {
-            textNode.text(textarea.innerText);
+            textNode.text(textarea.value);
             removeTextarea();
         }
     }
@@ -835,15 +826,21 @@ function moveCursorToEnd(element) {
     sel.addRange(range);
 }
 
-function dbClickRect(elementDrag){
-    let textNode = elementDrag.parent.getChildren().find(item => item instanceof Konva.Text);
-    let value
+function dbClickRect(elementDrag) {
+    let textNode
+    if (elementDrag.parent instanceof Konva.Group) {
+        textNode = elementDrag.parent.getChildren().find(item => item instanceof Konva.Text);
+    }
 
-    if(textNode){
+    let value;
+    let textAlign = "center";
+
+    if (textNode) {
         value = textNode.text();
+        textAlign = textNode.align() || "center";
         textNode.hide();
     }
-    
+
     States.StatesCursor.textEditing = elementDrag;
 
     var textPosition = elementDrag.absolutePosition();
@@ -854,50 +851,38 @@ function dbClickRect(elementDrag){
         y: stageBox.top + textPosition.y,
     };
 
-    var textarea = document.createElement('textarea');
-    textarea.id = "edit-text";
-    document.body.appendChild(textarea);
-    textarea.value = value || " ";
-    textarea.style.position = 'absolute';
-    textarea.style.top = areaPosition.y + 'px';
-    textarea.style.left = areaPosition.x + 'px';
-    textarea.style.width = elementDrag.width() * elementDrag.scaleX() + 'px';
-    textarea.style.height = elementDrag.height() * elementDrag.scaleY() + 'px';
-    textarea.style.fontSize = elementDrag.attrs.font_size + 'px';
-    textarea.style.border = '0px';
-    textarea.style.padding = '0px';
-    textarea.style.margin = 'none';
-    textarea.style.overflow = 'hidden';
-    textarea.style.background = 'none';
-    textarea.style.outline = 'none';
-    textarea.style.resize = 'none';
-    textarea.style.lineHeight = 1;
-    textarea.style.fontFamily = "Arial";
-    textarea.style.transformOrigin = 'right top';
-    textarea.style.textAlign = "center";
-    textarea.style.color = "black";
-    textarea.style.transform = `rotateZ(${elementDrag.rotation() ?? 0}deg)`;
-    setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x);
-    textarea.focus();
-    SELECTALL = false;
+    var textarea = createTextArea(textAlign, areaPosition, elementDrag, textNode, value);
 
     function removeTextarea() {
         document.querySelector("#edit-text")?.remove();
         window.removeEventListener('click', handleOutsideClick);
         elementDrag.show();
 
-        elementDrag.parent.children.forEach(item => {
-            if(item instanceof Konva.Text){
-                item.destroy();
-            }
-        });
+        let group;
 
-        elementDrag.parent.add(new Konva.Text({
+        if (elementDrag.parent instanceof Konva.Group) {
+            elementDrag.parent.getChildren().forEach(item => {
+                if(item instanceof Konva.Text){
+                    item.destroy();
+                }
+            });
+
+            group = elementDrag.parent;
+        } else {
+            group = new Konva.Group({
+                draggable: true,
+            });
+            
+            layer.add(group);
+        }
+
+        group.add(elementDrag);
+        group.add(new Konva.Text({
             x: elementDrag.x(),
             y: elementDrag.y(),
             width: elementDrag.width(),
             height: elementDrag.height(),
-            text: textarea.value,
+            text: textarea.innerText,
             fontSize: elementDrag.attrs.font_size,
             fontFamily: "Arial",
             fill: "black",
@@ -914,18 +899,18 @@ function dbClickRect(elementDrag){
         tr.show();
         tr.forceUpdate();
         tr.moveToTop();
-        tr.nodes(elementDrag.parent.getChildren())
+        tr.nodes(group.getChildren());
         SELECTALL = true;
         States.StatesCursor.textEditing = undefined;
 
         let isTextFind = false
-        elementDrag.parent.getChildren().forEach(item => {
+        group.getChildren().forEach(item => {
             if (item instanceof Konva.Text) {
                 isTextFind = true;
 
                 item.setAttrs({
-                    width: Math.max(5, elementDrag.parent.width() * elementDrag.parent.scaleX(), MIN_WIDTH), 
-                    height: Math.max(5, elementDrag.parent.height() * elementDrag.parent.scaleY()),
+                    width: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).width() * group.getChildren().find(item => item instanceof Konva.Rect).scaleX(), MIN_WIDTH), 
+                    height: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).height() * group.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
                     scaleX: 1,
                     scaleY: 1,
                 });
@@ -933,18 +918,26 @@ function dbClickRect(elementDrag){
         });
 
         if(isTextFind){
-            elementDrag.parent.setAttrs({
+            group.setAttrs({
                 scaleX: 1,
                 scaleY: 1,
             });
         }
-    }
 
-    function setTextareaWidth(newWidth) {
-        if (!newWidth) {
-            newWidth = elementDrag.placeholder.length * elementDrag.fontSize();
-        }
-        textarea.style.width = newWidth + 'px';
+        group.on('transform dragmove', function() {
+            group.getChildren().forEach(item => {
+                if (item instanceof Konva.Text) {
+                    item.setAttrs({
+                        x: group.getChildren().find(item => item instanceof Konva.Rect).x(),
+                        y: group.getChildren().find(item => item instanceof Konva.Rect).y(),
+                        width: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).width() * group.getChildren().find(item => item instanceof Konva.Rect).scaleX(), MIN_WIDTH), 
+                        height: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).height() * group.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
+                        scaleX: 1,
+                        scaleY: 1,
+                    });
+                }
+            });
+        });
     }
 
     textarea.addEventListener('keydown', function (e) {
@@ -958,7 +951,7 @@ function dbClickRect(elementDrag){
     });
 
     textarea.addEventListener('keydown', function () {
-        setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x);
+        setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x, textarea, textNode);
     });
 
     function handleOutsideClick(e) {
@@ -967,24 +960,21 @@ function dbClickRect(elementDrag){
             removeTextarea();
         }
     }
+
     setTimeout(() => {
         window.addEventListener('click', handleOutsideClick);
     });
 }
 
-function dbClickElement(e){
+function dbClickElement(e) {
     let element = e.target;
     
-    if(element instanceof Konva.Text){
+    if (element instanceof Konva.Text) {
         dbClickText(element);
     }
 
-    if(element instanceof Konva.Rect){
-        dbClickRect(element)
-    }
-
-    if(element instanceof Konva.Tag){
-        dbClickRect(element)
+    if (element instanceof Konva.Rect) {
+        dbClickRect(element);
     }
 }
 
@@ -1107,7 +1097,6 @@ stage.on('click tap', function (e) {
         let shapeProperties = {
             x: mousePos.x,
             y: mousePos.y,
-            text: "",
             font_size: 20,
         };
 
