@@ -28,6 +28,8 @@ interface Square{
     cornerRadius: number,
     width: number,
     height: number,
+    listening: boolean,
+    draggable: boolean,
 }
 
 interface Circle{
@@ -87,6 +89,8 @@ let Square: Square = {
     height: 50,
     cornerRadius: 0,
     type: "rect",
+    listening: true,
+    draggable: true,
 }
 
 let Circle: Circle = {
@@ -140,7 +144,9 @@ function addShape(shapeProperties: PropertiesNecessary){
     }else if(States.StatesShapes.square){
         shapeProperties.x -= 25;
         shapeProperties.y -= 25;
-        return new Konva.Rect({...Square, ...shapeProperties})
+        const label = new Konva.Label({...shapeProperties});
+        label.add(new Konva.Tag({...Square}));
+        return label;
     }else if(States.StatesShapes.triangle){
         return new Konva.RegularPolygon({...Triangle, ...shapeProperties});
     }else if(States.StatesShapes.diamond){

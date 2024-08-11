@@ -560,7 +560,11 @@ function snapTransformElements(){
 }   
 
 tr.on("transform", (e) => {
-    if(e.target instanceof Konva.Text == true){
+    if (!e.target) {
+        return;
+    }
+
+    if (e.target instanceof Konva.Text) {
         e.target.setAttrs({
             width: Math.max(5, e.target.width() * e.target.scaleX(), MIN_WIDTH),
             height: Math.max(5, e.target.height() * e.target.scaleY()),
@@ -569,15 +573,41 @@ tr.on("transform", (e) => {
         });
     }
 
-    if(e.target == States.StatesCursor.textEditing){
+    if (e.target instanceof Konva.Group || e.target instanceof Konva.Layer || e.target instanceof Konva.Label) {
+        e.target.getChildren().forEach(item => {
+            if (item instanceof Konva.Text) {
+                item.setAttrs({
+                    width: Math.max(5, e.target.width() * e.target.scaleX(), MIN_WIDTH), 
+                    height: Math.max(5, e.target.height() * e.target.scaleY()),
+                    scaleX: 1,
+                    scaleY: 1,
+                });
+
+                const labelWidth = e.target.width() * e.target.scaleX();
+                const labelHeight = e.target.height() * e.target.scaleY();
+
+                item.setAttrs({
+                    width: labelWidth, 
+                    height: labelHeight,
+                });
+            }
+        });
+
+        e.target.setAttrs({
+            scaleX: 1,
+            scaleY: 1,
+        });
+    }
+
+    if (e.target == States.StatesCursor.textEditing) {
         var textPosition = e.target.absolutePosition();
         var stageBox = stage.container().getBoundingClientRect();
         var areaPosition = {
-          x: stageBox.left + textPosition.x,
-          y: stageBox.top + textPosition.y,
+            x: stageBox.left + textPosition.x,
+            y: stageBox.top + textPosition.y,
         };
 
-        let textarea = document.querySelector("#edit-text")
+        let textarea = document.querySelector("#edit-text");
 
         textarea.style.top = areaPosition.y + 'px';
         textarea.style.left = areaPosition.x + 'px';
@@ -699,6 +729,218 @@ function updateElementsEvent(){
     });
 }
 
+function dbClickText(textNode){
+    States.StatesCursor.textEditing = textNode;
+    textNode.hide();
+
+    var textPosition = textNode.absolutePosition();
+    var stageBox = stage.container().getBoundingClientRect();
+
+    var areaPosition = {
+      x: stageBox.left + textPosition.x,
+      y: stageBox.top + textPosition.y,
+    };
+
+    var textarea = document.createElement('textarea');
+    textarea.id = "edit-text"
+    document.body.appendChild(textarea);
+    textarea.value = textNode.text();
+    textarea.style.position = 'absolute';
+    textarea.style.top = areaPosition.y + 'px';
+    textarea.style.left = areaPosition.x + 'px';
+    textarea.style.width = textNode.width() * textNode.scaleX() + 'px';
+    textarea.style.height = textNode.height() * textNode.scaleY() + 'px';
+    textarea.style.fontSize = textNode.fontSize() + 'px';
+    textarea.style.border = '0px';
+    textarea.style.padding = '0px';
+    textarea.style.margin = 'none';
+    textarea.style.overflow = 'hidden';
+    textarea.style.background = 'none';
+    textarea.style.outline = 'none';
+    textarea.style.resize = 'none';
+    textarea.style.lineHeight = textNode.lineHeight();
+    textarea.style.fontFamily = textNode.fontFamily();
+    textarea.style.transformOrigin = 'right top';
+    textarea.style.textAlign = textNode.align();
+    textarea.style.color = textNode.fill();
+    textarea.style.transform = `rotateZ(${textNode.rotation() ?? 0}deg)`;
+    setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
+    textarea.focus();
+    SELECTALL = false;
+  
+    function removeTextarea() {
+      document.querySelector("#edit-text")?.remove();
+      window.removeEventListener('click', handleOutsideClick);
+      textNode.show();
+      tr.show();
+      tr.forceUpdate();
+      SELECTALL = true;
+      States.StatesCursor.textEditing = undefined;
+    }
+  
+    function setTextareaWidth(newWidth) {
+      if (!newWidth) {
+        newWidth = textNode.placeholder.length * textNode.fontSize();
+      }
+      textarea.style.width = newWidth + 'px';
+    }
+  
+    textarea.addEventListener('keydown', function (e) {
+      if (e.keyCode === 13 && !e.shiftKey) {
+        textNode.text(textarea.value);
+        removeTextarea();
+      }
+      if (e.keyCode === 27) {
+        removeTextarea();
+      }
+    });
+  
+    textarea.addEventListener('keydown', function () {
+      setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
+    });
+  
+    function handleOutsideClick(e) {
+        if (e.target !== textarea) {
+            textNode.text(textarea.value);
+            removeTextarea();
+        }
+    }
+    setTimeout(() => {
+        window.addEventListener('click', handleOutsideClick);
+    });
+}
+
+function dbClickRect(elementDrag){
+    console.log(elementDrag);
+    //hidden text of textNode.parent
+    let textNode = elementDrag.parent.getChildren().find(item => item instanceof Konva.Text);
+    console.log(textNode);
+    let value
+
+    if(textNode){
+        value = textNode.text();
+    }
+    
+    States.StatesCursor.textEditing = elementDrag;
+
+    var textPosition = elementDrag.absolutePosition();
+    var stageBox = stage.container().getBoundingClientRect();
+
+    var areaPosition = {
+        x: stageBox.left + textPosition.x,
+        y: stageBox.top + textPosition.y,
+    };
+
+    var textarea = document.createElement('textarea');
+    textarea.id = "edit-text";
+    document.body.appendChild(textarea);
+    textarea.value = elementDrag.attrs.text || value;
+    textarea.style.position = 'absolute';
+    textarea.style.top = areaPosition.y + 'px';
+    textarea.style.left = areaPosition.x + 'px';
+    textarea.style.width = elementDrag.width() * elementDrag.scaleX() + 'px';
+    textarea.style.height = elementDrag.height() * elementDrag.scaleY() + 'px';
+    textarea.style.fontSize = elementDrag.attrs.font_size + 'px';
+    textarea.style.border = '0px';
+    textarea.style.padding = '0px';
+    textarea.style.margin = 'none';
+    textarea.style.overflow = 'hidden';
+    textarea.style.background = 'none';
+    textarea.style.outline = 'none';
+    textarea.style.resize = 'none';
+    textarea.style.lineHeight = 1;
+    textarea.style.fontFamily = "Arial";
+    textarea.style.transformOrigin = 'right top';
+    textarea.style.textAlign = "center";
+    textarea.style.color = "black";
+    textarea.style.transform = `rotateZ(${elementDrag.rotation() ?? 0}deg)`;
+    setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x);
+    textarea.focus();
+    SELECTALL = false;
+
+    function removeTextarea() {
+        document.querySelector("#edit-text")?.remove();
+        window.removeEventListener('click', handleOutsideClick);
+        elementDrag.show();
+
+        elementDrag.parent.children.forEach(item => {
+            if(item instanceof Konva.Text){
+                item.destroy();
+            }
+        });
+
+        elementDrag.parent.add(new Konva.Text({
+            text: textarea.value,
+            fontSize: elementDrag.attrs.font_size,
+            fontFamily: "Arial",
+            fill: "black",
+            align: "center",
+            verticalAlign: "middle",
+            width: elementDrag.width(),
+            height: elementDrag.height(),
+            draggable: true,
+            listening: true,
+        }));
+
+        layer.draw();
+        updateElementsEvent();
+        moveLimit();
+
+        tr.show();
+        tr.forceUpdate();
+        tr.moveToTop();
+        SELECTALL = true;
+        States.StatesCursor.textEditing = undefined;
+    }
+
+    function setTextareaWidth(newWidth) {
+        if (!newWidth) {
+            newWidth = elementDrag.placeholder.length * elementDrag.fontSize();
+        }
+        textarea.style.width = newWidth + 'px';
+    }
+
+    textarea.addEventListener('keydown', function (e) {
+        if (e.keyCode === 13 && !e.shiftKey) {
+            elementDrag.attrs.text = textarea.value;
+            removeTextarea();
+        }
+        if (e.keyCode === 27) {
+            removeTextarea();
+        }
+    });
+
+    textarea.addEventListener('keydown', function () {
+        setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x);
+    });
+
+    function handleOutsideClick(e) {
+        if (e.target !== textarea) {
+            elementDrag.attrs.text = textarea.value;
+            removeTextarea();
+        }
+    }
+    setTimeout(() => {
+        window.addEventListener('click', handleOutsideClick);
+    });
+}
+
+function dbClickElement(e){
+    let element = e.target;
+    
+    if(element instanceof Konva.Text){
+        dbClickText(element);
+    }
+
+    if(element instanceof Konva.Rect){
+        dbClickRect(element)
+    }
+
+    if(element instanceof Konva.Tag){
+        dbClickRect(element)
+    }
+}
+
 stage.on('dragmove', () => {
     bg.absolutePosition({ x: 0, y: 0 });
 
@@ -801,7 +1043,6 @@ stage.on('mouseup touchend', (e) => {
 });
 
 stage.on('click tap', function (e) {
-
     elements = elements.filter(item => item.attrs.name != "preview");
     layer.getChildren().forEach(element => {
         if(element.attrs.name == "preview"){
@@ -819,6 +1060,8 @@ stage.on('click tap', function (e) {
         let shapeProperties = {
             x: mousePos.x,
             y: mousePos.y,
+            text: "",
+            font_size: 20,
         };
 
         let shape = addShape(shapeProperties);
@@ -888,9 +1131,10 @@ stage.on('click tap', function (e) {
 
     const parent = e.target.getParent();
     if (parent && parent instanceof Konva.Group) {
+        tr.moveToTop();
         tr.nodes([parent]);
         return;
-    } else if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
+    }else if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
         return;
     }
 
@@ -898,7 +1142,7 @@ stage.on('click tap', function (e) {
     const isSelected = tr.nodes().indexOf(e.target) >= 0;
 
     if (!metaPressed && !isSelected) {
-        tr.moveUp();
+        tr.moveToTop();
         tr.nodes([e.target]);
     } else if (metaPressed && isSelected) {
         tr.moveUp();
@@ -914,89 +1158,7 @@ stage.on('click tap', function (e) {
 });
 
 stage.on('dblclick dbltap', (e) => {
-    let textNode = e.target;
-    if (textNode instanceof Konva.Text == false) {
-      return;
-    }
-
-    States.StatesCursor.textEditing = textNode;
-    textNode.hide();
-
-    var textPosition = textNode.absolutePosition();
-    var stageBox = stage.container().getBoundingClientRect();
-
-    var areaPosition = {
-      x: stageBox.left + textPosition.x,
-      y: stageBox.top + textPosition.y,
-    };
-
-    var textarea = document.createElement('textarea');
-    textarea.id = "edit-text"
-    document.body.appendChild(textarea);
-    textarea.value = textNode.text();
-    textarea.style.position = 'absolute';
-    textarea.style.top = areaPosition.y + 'px';
-    textarea.style.left = areaPosition.x + 'px';
-    textarea.style.width = textNode.width() * textNode.scaleX() + 'px';
-    textarea.style.height = textNode.height() * textNode.scaleY() + 'px';
-    textarea.style.fontSize = textNode.fontSize() + 'px';
-    textarea.style.border = '0px';
-    textarea.style.padding = '0px';
-    textarea.style.margin = 'none';
-    textarea.style.overflow = 'hidden';
-    textarea.style.background = 'none';
-    textarea.style.outline = 'none';
-    textarea.style.resize = 'none';
-    textarea.style.lineHeight = textNode.lineHeight();
-    textarea.style.fontFamily = textNode.fontFamily();
-    textarea.style.transformOrigin = 'right top';
-    textarea.style.textAlign = textNode.align();
-    textarea.style.color = textNode.fill();
-    textarea.style.transform = `rotateZ(${textNode.rotation() ?? 0}deg)`;
-    setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
-    textarea.focus();
-    SELECTALL = false;
-  
-    function removeTextarea() {
-      document.querySelector("#edit-text")?.remove();
-      window.removeEventListener('click', handleOutsideClick);
-      textNode.show();
-      tr.show();
-      tr.forceUpdate();
-      SELECTALL = true;
-      States.StatesCursor.textEditing = undefined;
-    }
-  
-    function setTextareaWidth(newWidth) {
-      if (!newWidth) {
-        newWidth = textNode.placeholder.length * textNode.fontSize();
-      }
-      textarea.style.width = newWidth + 'px';
-    }
-  
-    textarea.addEventListener('keydown', function (e) {
-      if (e.keyCode === 13 && !e.shiftKey) {
-        textNode.text(textarea.value);
-        removeTextarea();
-      }
-      if (e.keyCode === 27) {
-        removeTextarea();
-      }
-    });
-  
-    textarea.addEventListener('keydown', function () {
-      setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
-    });
-  
-    function handleOutsideClick(e) {
-        if (e.target !== textarea) {
-            textNode.text(textarea.value);
-            removeTextarea();
-        }
-    }
-    setTimeout(() => {
-        window.addEventListener('click', handleOutsideClick);
-    });
+    dbClickElement(e);
 });
 
 stage.on('wheel', (e) => {
@@ -1031,12 +1193,6 @@ stage.on('wheel', (e) => {
     stage.position(newPos);
     bg.absolutePosition({ x: 0, y: 0 });
     stage.batchDraw();
-});
-
-stage.on("mousedown", (e) => {
-    if(e.evt.button == 1){
-        ISDRAG = true
-    }
 });
 
 stage.on("mousemove", (e) => {
