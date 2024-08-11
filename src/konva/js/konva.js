@@ -561,6 +561,7 @@ function snapTransformElements(){
 
 tr.on("transform", (e) => {
     if (!e.target) {
+        console.log("no target");
         return;
     }
 
@@ -573,30 +574,33 @@ tr.on("transform", (e) => {
         });
     }
 
-    if (e.target instanceof Konva.Group || e.target instanceof Konva.Layer || e.target instanceof Konva.Label) {
+    if (e.target instanceof Konva.Label) {
+        console.log("transform group");
+        let isTextFind = false
         e.target.getChildren().forEach(item => {
             if (item instanceof Konva.Text) {
+                isTextFind = true;
+
                 item.setAttrs({
                     width: Math.max(5, e.target.width() * e.target.scaleX(), MIN_WIDTH), 
                     height: Math.max(5, e.target.height() * e.target.scaleY()),
                     scaleX: 1,
                     scaleY: 1,
                 });
-
-                const labelWidth = e.target.width() * e.target.scaleX();
-                const labelHeight = e.target.height() * e.target.scaleY();
-
-                item.setAttrs({
-                    width: labelWidth, 
-                    height: labelHeight,
-                });
             }
         });
 
-        e.target.setAttrs({
-            scaleX: 1,
-            scaleY: 1,
-        });
+        if(isTextFind){
+            e.target.setAttrs({
+                scaleX: 1,
+                scaleY: 1,
+            });
+        }
+
+    }
+
+    if(e.target instanceof Konva.Group){
+
     }
 
     if (e.target == States.StatesCursor.textEditing) {
@@ -618,7 +622,7 @@ tr.on("transform", (e) => {
 
 snapDragElements();
 
-snapTransformElements();
+// snapTransformElements();
 
 function groupElements() {
     let selectedNodes = tr.nodes();
@@ -729,7 +733,7 @@ function updateElementsEvent(){
     });
 }
 
-function dbClickText(textNode){
+function dbClickText(textNode) {
     States.StatesCursor.textEditing = textNode;
     textNode.hide();
 
@@ -737,14 +741,15 @@ function dbClickText(textNode){
     var stageBox = stage.container().getBoundingClientRect();
 
     var areaPosition = {
-      x: stageBox.left + textPosition.x,
-      y: stageBox.top + textPosition.y,
+        x: stageBox.left + textPosition.x,
+        y: stageBox.top + textPosition.y,
     };
 
-    var textarea = document.createElement('textarea');
-    textarea.id = "edit-text"
+    var textarea = document.createElement('div');
+    textarea.contentEditable = true;
+    textarea.id = "edit-text";
     document.body.appendChild(textarea);
-    textarea.value = textNode.text();
+    textarea.innerText = textNode.text();
     textarea.style.position = 'absolute';
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
@@ -762,59 +767,71 @@ function dbClickText(textNode){
     textarea.style.fontFamily = textNode.fontFamily();
     textarea.style.transformOrigin = 'right top';
     textarea.style.textAlign = textNode.align();
+    textarea.style.display = 'flex';
+    textarea.style.justifyContent = textNode.align();
+    textarea.style.alignItems = textNode.align();
     textarea.style.color = textNode.fill();
     textarea.style.transform = `rotateZ(${textNode.rotation() ?? 0}deg)`;
     setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
     textarea.focus();
+    moveCursorToEnd(textarea);
     SELECTALL = false;
-  
+
     function removeTextarea() {
-      document.querySelector("#edit-text")?.remove();
-      window.removeEventListener('click', handleOutsideClick);
-      textNode.show();
-      tr.show();
-      tr.forceUpdate();
-      SELECTALL = true;
-      States.StatesCursor.textEditing = undefined;
+        document.querySelector("#edit-text")?.remove();
+        window.removeEventListener('click', handleOutsideClick);
+        textNode.show();
+        tr.show();
+        tr.forceUpdate();
+        SELECTALL = true;
+        States.StatesCursor.textEditing = undefined;
     }
-  
+
     function setTextareaWidth(newWidth) {
-      if (!newWidth) {
-        newWidth = textNode.placeholder.length * textNode.fontSize();
-      }
-      textarea.style.width = newWidth + 'px';
+        if (!newWidth) {
+            newWidth = textNode.placeholder.length * textNode.fontSize();
+        }
+        textarea.style.width = newWidth + 'px';
     }
-  
+
     textarea.addEventListener('keydown', function (e) {
-      if (e.keyCode === 13 && !e.shiftKey) {
-        textNode.text(textarea.value);
-        removeTextarea();
-      }
-      if (e.keyCode === 27) {
-        removeTextarea();
-      }
+        if (e.keyCode === 13 && !e.shiftKey) {
+            textNode.text(textarea.innerText);
+            removeTextarea();
+        }
+        if (e.keyCode === 27) {
+            removeTextarea();
+        }
     });
-  
+
     textarea.addEventListener('keydown', function () {
-      setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
+        setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x);
     });
-  
+
     function handleOutsideClick(e) {
         if (e.target !== textarea) {
-            textNode.text(textarea.value);
+            textNode.text(textarea.innerText);
             removeTextarea();
         }
     }
+    
     setTimeout(() => {
         window.addEventListener('click', handleOutsideClick);
     });
 }
 
+// Función para mover el cursor al final del texto
+function moveCursorToEnd(element) {
+    var range = document.createRange();
+    var sel = window.getSelection();
+    range.selectNodeContents(element);
+    range.collapse(false); // Colapsa el rango al final del contenido
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
 function dbClickRect(elementDrag){
-    console.log(elementDrag);
-    //hidden text of textNode.parent
     let textNode = elementDrag.parent.getChildren().find(item => item instanceof Konva.Text);
-    console.log(textNode);
     let value
 
     if(textNode){
@@ -834,7 +851,7 @@ function dbClickRect(elementDrag){
     var textarea = document.createElement('textarea');
     textarea.id = "edit-text";
     document.body.appendChild(textarea);
-    textarea.value = elementDrag.attrs.text || value;
+    textarea.innerText = elementDrag.attrs.text || value;
     textarea.style.position = 'absolute';
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
@@ -870,7 +887,7 @@ function dbClickRect(elementDrag){
         });
 
         elementDrag.parent.add(new Konva.Text({
-            text: textarea.value,
+            text: textarea.innerText,
             fontSize: elementDrag.attrs.font_size,
             fontFamily: "Arial",
             fill: "black",
@@ -891,6 +908,27 @@ function dbClickRect(elementDrag){
         tr.moveToTop();
         SELECTALL = true;
         States.StatesCursor.textEditing = undefined;
+
+        let isTextFind = false
+        elementDrag.parent.getChildren().forEach(item => {
+            if (item instanceof Konva.Text) {
+                isTextFind = true;
+
+                item.setAttrs({
+                    width: Math.max(5, elementDrag.parent.width() * elementDrag.parent.scaleX(), MIN_WIDTH), 
+                    height: Math.max(5, elementDrag.parent.height() * elementDrag.parent.scaleY()),
+                    scaleX: 1,
+                    scaleY: 1,
+                });
+            }
+        });
+
+        if(isTextFind){
+            elementDrag.parent.setAttrs({
+                scaleX: 1,
+                scaleY: 1,
+            });
+        }
     }
 
     function setTextareaWidth(newWidth) {
@@ -902,7 +940,7 @@ function dbClickRect(elementDrag){
 
     textarea.addEventListener('keydown', function (e) {
         if (e.keyCode === 13 && !e.shiftKey) {
-            elementDrag.attrs.text = textarea.value;
+            elementDrag.attrs.text = textarea.innerText;
             removeTextarea();
         }
         if (e.keyCode === 27) {
@@ -916,7 +954,7 @@ function dbClickRect(elementDrag){
 
     function handleOutsideClick(e) {
         if (e.target !== textarea) {
-            elementDrag.attrs.text = textarea.value;
+            elementDrag.attrs.text = textarea.innerText;
             removeTextarea();
         }
     }
@@ -1131,6 +1169,9 @@ stage.on('click tap', function (e) {
 
     const parent = e.target.getParent();
     if (parent && parent instanceof Konva.Group) {
+        console.log("group");
+        console.log(parent.getChildren());
+        
         tr.moveToTop();
         tr.nodes([parent]);
         return;
@@ -1142,6 +1183,8 @@ stage.on('click tap', function (e) {
     const isSelected = tr.nodes().indexOf(e.target) >= 0;
 
     if (!metaPressed && !isSelected) {
+        console.log("target");
+        
         tr.moveToTop();
         tr.nodes([e.target]);
     } else if (metaPressed && isSelected) {
