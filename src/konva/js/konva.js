@@ -3,6 +3,7 @@ import _ from 'lodash'
 import { downloadURI } from "./functions";
 import { addShape } from "../ts/shapes";
 import * as States from "./states";
+import { TransformerPoints } from "../ts/transformerPoints";
 import * as req from '../../js/backend/requests'
 
 const queryString = window.location.search;
@@ -1089,6 +1090,9 @@ stage.on('click tap', function (e) {
 
     if(e.target && e.target != stage){
         States.StatesCursor.select = e.target;
+        const transformer = new TransformerPoints(stage, layer, elements);
+        e.target.setAttr("transformer", transformer);
+        transformer.attachTo(e.target);
     }
 
     if (States.StatesCursor.addShape && !States.StatesShapes.image) {
