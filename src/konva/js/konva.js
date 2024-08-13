@@ -3,7 +3,7 @@ import _ from 'lodash'
 import { downloadURI } from "./functions";
 import { addShape } from "../ts/shapes";
 import * as States from "./states";
-import { TransformerPoints } from "../ts/transformerPoints";
+import { TransformerPoints } from "../ts/TransformerPoint";
 import * as req from '../../js/backend/requests'
 
 const queryString = window.location.search;
@@ -1088,11 +1088,15 @@ stage.on('click tap', function (e) {
         }
     });
 
-    if(e.target && e.target != stage){
+    if (e.target && e.target !== stage) {
         States.StatesCursor.select = e.target;
-        const transformer = new TransformerPoints(stage, layer, elements);
-        e.target.setAttr("transformer", transformer);
-        transformer.attachTo(e.target);
+
+        if (e.target instanceof Konva.Node){
+            const transformer = new TransformerPoints(stage, layer, elements);
+            transformer.attachTo(e.target);
+            
+            layer.draw();
+        }
     }
 
     if (States.StatesCursor.addShape && !States.StatesShapes.image) {
