@@ -6,6 +6,7 @@ interface ConnectorOptions {
     borderColor?: string;
     anchorColor?: string;
     arrowColor?: string;
+    borderArrowColor?: string;
 }
 
 interface ClosestAnchorResult {
@@ -37,7 +38,7 @@ export class TransformerPoints {
             anchorSize: 7,
             borderColor: '#80D0FF',
             anchorColor: 'white',
-            arrowColor: 'red',
+            arrowColor: 'white',
         };
 
         this.addGlobalEvents();
@@ -230,9 +231,13 @@ export class TransformerPoints {
                 points: [startX, startY, mousePos.x, mousePos.y],
                 pointerLength: 10 / this.scale,
                 pointerWidth: 10 / this.scale,
-                fill: this.options.arrowColor || 'red',
-                stroke: this.options.arrowColor || 'red',
+                fill: this.options.arrowColor || 'white',
+                stroke: this.options.borderArrowColor || 'white',
                 strokeWidth: 2 / this.scale,
+                lineJoin: "round",
+                lineCap: "round",
+                draggable: false,
+                listening: false,
             });
 
             arrow.setAttr('anchorA', this.targetNode)

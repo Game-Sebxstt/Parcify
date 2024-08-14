@@ -1,5 +1,5 @@
 import Konva from 'konva'
-import * as States from "../js/states";
+import * as States from "../js/StatesLogic";
 
 interface PropertiesGeneral{
     id: string,
