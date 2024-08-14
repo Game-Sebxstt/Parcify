@@ -343,6 +343,18 @@ export function updateElementsEvent(){
     });
 }
 
+export function dbClickElement(e) {
+    let element = e.target;
+    
+    if (element instanceof Konva.Text) {
+        dbClickText(element);
+    }
+
+    if (element instanceof Konva.Rect) {
+        dbClickRect(element);
+    }
+}
+
 function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     let fillColor = "black";
     let fontSize = elementDrag.attrs.font_size;
@@ -592,16 +604,4 @@ function dbClickRect(elementDrag) {
     setTimeout(() => {
         window.addEventListener('click', handleOutsideClick);
     });
-}
-
-export function dbClickElement(e) {
-    let element = e.target;
-    
-    if (element instanceof Konva.Text) {
-        dbClickText(element);
-    }
-
-    if (element instanceof Konva.Rect) {
-        dbClickRect(element);
-    }
 }
