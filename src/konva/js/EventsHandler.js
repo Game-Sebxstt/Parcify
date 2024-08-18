@@ -6,11 +6,20 @@ import * as GlobalFunctions from "./GlobalFunctions";
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        const stageJSON = konva.stage.toJSON();
+        
+        const stageClone = konva.stage.clone();
+
+        stageClone.getLayers().forEach(layer => {
+            if(layer.attrs.id == "layerUtilities"){
+                layer.destroy();
+            }
+        });
+
+        const stageJSON = (stageClone).toJSON();
 
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
-        var dataURL = konva.stage.toDataURL({ pixelRatio: 3 });
+        var dataURL = stageClone.toDataURL({ pixelRatio: 3 });
         req.saveProject(stageJSON, konva.id_stage, dataURL);
     }
 

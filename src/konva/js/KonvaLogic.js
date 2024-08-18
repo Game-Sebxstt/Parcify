@@ -1,6 +1,7 @@
 import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as req from '../../js/backend/requests';
+import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
@@ -14,20 +15,20 @@ const MIN_WIDTH_DEFAULT = 20;
 const GUIDELINE_OFFSET_DEFAULT = 5;
 
 // Variables
-let SCALEBY = SCALEBY_DEFAULT;
-let MIN_WIDTH = MIN_WIDTH_DEFAULT;
-let GUIDELINE_OFFSET = GUIDELINE_OFFSET_DEFAULT;
-let SELECTING = false;
-let SELECTALL = true;
-let ISDRAG = false;
+var SCALEBY = SCALEBY_DEFAULT;
+var MIN_WIDTH = MIN_WIDTH_DEFAULT;
+var GUIDELINE_OFFSET = GUIDELINE_OFFSET_DEFAULT;
+var SELECTING = false;
+var SELECTALL = true;
+var ISDRAG = false;
 
 // State variables
-let X1, Y1, X2, Y2;
-let elements = [];
-let groups = [];
-let elementsLayerBackground = [];
-let historySave = [];
-let indexHistory = 0;
+var X1, Y1, X2, Y2;
+var elements = [];
+var groups = [];
+var elementsLayerBackground = [];
+var historySave = [];
+var indexHistory = 0;
 
 let konva = document.querySelector("#konva");
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
@@ -54,8 +55,8 @@ export function setIsDrag(isDrag){
     ISDRAG = isDrag;
 }
 
-export function setElements(elements){
-    elements = elements;
+export function setElements(elementsChange){
+    elements = elementsChange;
 }
 
 export function setPositions(positions){
@@ -116,6 +117,11 @@ if(new_stage_db){
 
 stage.stopDrag();
 
+export var layerUtilities = stage.getLayers().find(item => item.attrs.id == "layerUtilities") || new Konva.Layer({
+    id: "layerUtilities"
+});
+stage.add(layerUtilities);
+
 export var layer = stage.getLayers().find(item => item.attrs.id == "layer") || new Konva.Layer({
     id: "layer"
 });
@@ -158,10 +164,11 @@ var layerBackground = stage.getLayers().find(item => item.attrs.id == "layerback
 
 if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers().find(item => item.attrs.id == "layerBackground")){
     stage.add(layer);
-    stage.add(layerBackground); 
+    stage.add(layerBackground);
 }
 
 layer.zIndex(1);
+layerUtilities.zIndex(1);
 layerBackground.zIndex(0);
 
 export let bg = layerBackground.getChildren().find(item => item.attrs.id == "bg") ||  new Konva.Rect({
@@ -214,6 +221,18 @@ export var selectionRectangle = layer.getChildren().find(item => item.attrs.id =
 if(!layer.getChildren().find(item => item.attrs.id == "selection")){
     layer.add(selectionRectangle);
 }
+
+export const transformer = new TransformerPoints(stage, layer, layerUtilities, {
+    arrowColor: 'white',
+    borderArrowColor: '#80D0FF',
+    anchorColor: 'white',
+    borderColor: '#80D0FF',
+    anchorSize: 5,
+    enabledAnchors: ["left", "right", "top", "bottom"],
+    proximityThreshold: 20,
+});
+
+transformer.init();
 
 saveHistory(stage.toJSON());
 

@@ -1,4 +1,6 @@
 import Konva from 'konva';
+import * as GlobalFunctions from "../../js/GlobalFunctions";
+import * as konva from "../../js/KonvaLogic";
 
 interface ConnectorOptions {
     enabledAnchors?: string[];
@@ -7,17 +9,13 @@ interface ConnectorOptions {
     anchorColor?: string;
     arrowColor?: string;
     borderArrowColor?: string;
-}
-
-interface ClosestAnchorResult {
-    targetAnchor: Konva.Circle | null;
-    targetClosest: Konva.Node | null;
+    proximityThreshold?: number;
 }
 
 export class TransformerPoints {
     private stage: Konva.Stage;
     private layer: Konva.Layer;
-    private elements: Konva.Node[];
+    private layerUtilities: Konva.Layer;
     private targetNode: Konva.Node | null = null;
     private options: ConnectorOptions;
     private isDragging: boolean = false;
@@ -29,10 +27,10 @@ export class TransformerPoints {
     private arrowMap: { [key: string]: Konva.Arrow[] } = {};
     private scale: number = 1;
 
-    constructor(stage: Konva.Stage, layer: Konva.Layer, elements: Konva.Node[], options?: ConnectorOptions) {
+    constructor(stage: Konva.Stage, layer: Konva.Layer, layerUtilities: Konva.Layer, options?: ConnectorOptions) {
         this.stage = stage;
         this.layer = layer;
-        this.elements = elements;
+        this.layerUtilities = layerUtilities
         this.options = options || {
             enabledAnchors: ['left', 'right', 'bottom', 'top'],
             anchorSize: 7,
@@ -66,7 +64,7 @@ export class TransformerPoints {
 
     private handleZoomOrTransform() {
         if (!this.targetNode) {
-            this.elements.forEach((element: Konva.Node) => {
+            konva.getElements().forEach((element: Konva.Node) => {
                 if(element instanceof Konva.Rect || element instanceof Konva.RegularPolygon){
                     this.targetNode = element;
                     this.updateScale();
@@ -133,54 +131,6 @@ export class TransformerPoints {
         return anchorPositions;
     }
 
-    public attachTo(node: Konva.Node) {
-        if (!node || node.attrs.id === "anchorPoint") return;
-
-        this.targetNode = node;
-        this.addNodeEvents();
-
-        this.anchors.forEach(anchor => anchor.destroy());
-        this.anchors = [];
-
-        const anchorPositions = this.getAnchorPositions(this.targetNode);
-
-        this.options.enabledAnchors?.forEach((anchorType) => {
-            const pos = anchorPositions[anchorType];
-            if (pos) {
-                const anchor = new Konva.Circle({
-                    x: (this.targetNode?.x() || 0) + pos.x,
-                    y: (this.targetNode?.y() || 0) + pos.y,
-                    radius: (this.options.anchorSize || 7) / this.scale,
-                    fill: this.options.anchorColor || 'white',
-                    stroke: this.options.borderColor || '#80D0FF',
-                    strokeWidth: 2 / this.scale,
-                    name: anchorType,
-                    id: "anchorPoint",
-                    draggable: true,
-                });
-
-                anchor.on('dragstart', (e) => this.onAnchorDragStart(e, anchor));
-                anchor.on('dragmove', (e) => this.onAnchorDrag(e, anchor));
-                anchor.on('dragend', (e) => this.onAnchorDragEnd(e, anchor));
-
-                this.anchors.push(anchor);
-                this.layer.add(anchor);
-            }
-        });
-
-        this.targetNode?.setAttrs({ transformer: this });
-
-        this.layer.batchDraw();
-    }
-
-    public detach() {
-        this.anchors.forEach(anchor => anchor.destroy());
-        this.anchors = [];
-        this.targetNode = null;
-
-        this.layer.batchDraw();
-    }
-
     private addNodeEvents() {
         if (!this.targetNode) return;
 
@@ -214,12 +164,12 @@ export class TransformerPoints {
     
         this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroy());
         this.arrowMap[this.activeAnchorType || ''] = [];
-    
-        this.elements.forEach((element: Konva.Node) => {
+
+        konva.getElements().forEach((element: Konva.Node) => {
             if (element === this.targetNode) return;
     
             if (!element.attrs.transformerTarget) {
-                const transformer = new TransformerPoints(this.stage, this.layer, this.elements, this.options);
+                const transformer = new TransformerPoints(this.stage, this.layer, this.layerUtilities, this.options);
                 element.setAttrs({ transformerTarget: transformer });
             }
     
@@ -238,9 +188,11 @@ export class TransformerPoints {
                 lineCap: "round",
                 draggable: false,
                 listening: false,
+                name: 'arrow',
             });
 
             arrow.setAttr('anchorA', this.targetNode)
+            arrow.setAttr("anchorIdA", this.targetNode?.attrs.id_unique)
             arrow.setAttr('anchorTypeA', this.activeAnchorType)
     
             this.layer.add(arrow);
@@ -270,6 +222,7 @@ export class TransformerPoints {
     }
     
     private onAnchorDragEnd(e: Konva.KonvaEventObject<DragEvent>, anchor: Konva.Circle) {
+
         this.isDragging = false;
     
         const mousePos = this.stage.getRelativePointerPosition();
@@ -299,8 +252,8 @@ export class TransformerPoints {
                 const middlePos = this.calculateMiddlePosition(startPos, endPos, this.activeAnchorType || '');
 
                 arrow.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
-                arrow.setAttr('targetAnchor', targetAnchor);
                 arrow.setAttr("anchorB", targetClosest)
+                arrow.setAttr("anchorIdB", targetClosest?.attrs.id_unique)
                 arrow.setAttr('anchorTypeB', targetAnchor.name());
             });
         } else {
@@ -312,11 +265,11 @@ export class TransformerPoints {
         this.layer.batchDraw();
     }
 
-    private findClosestAnchor(mousePos: { x: number, y: number }): ClosestAnchorResult {
-        const proximityThreshold = 10;
+    private findClosestAnchor(mousePos: { x: number, y: number }): { targetAnchor: Konva.Circle | null, targetClosest: Konva.Node | null } {
+        const proximityThreshold = this.options.proximityThreshold || 15;
         let targetAnchor: Konva.Circle | null = null;
         let minDistance = Infinity;
-        let targetNodeTranform: Konva.Circle | null = null;
+        let targetNodeTranform: Konva.Node | null = null;
     
         this.transforms.forEach(transformer => {
             transformer.anchors.forEach(anchor => {
@@ -324,7 +277,7 @@ export class TransformerPoints {
                 if (dist < proximityThreshold && dist < minDistance) {
                     targetAnchor = anchor;
                     minDistance = dist;
-                    targetNodeTranform = transformer.targetNode as Konva.Circle;
+                    targetNodeTranform = transformer.targetNode as Konva.Node;
                 }
             });
         });
@@ -353,14 +306,14 @@ export class TransformerPoints {
 
     private updateArrows() {
         if (!this.targetNode) return;
-    
+
         Object.keys(this.arrowMap).forEach(anchorType => {
             this.arrowMap[anchorType]?.forEach(arrow => {
                 const anchorA = arrow.getAttr("anchorA");
                 const anchorTypeA = arrow.getAttr("anchorTypeA");
                 const anchorB = arrow.getAttr("anchorB");
                 const anchorTypeB = arrow.getAttr("anchorTypeB");
-    
+                
                 if (!anchorA || !anchorB) return;
     
                 const startPos = this.calculateArrowPosition(anchorA, anchorTypeA);
@@ -449,6 +402,111 @@ export class TransformerPoints {
         }
     
         return {x: middleX, y: middleY};
+    }
+
+    public attachTo(node: Konva.Node) {
+        if (!node || node.attrs.id === "anchorPoint") return;
+
+        this.targetNode = node;
+        this.addNodeEvents();
+
+        this.anchors.forEach(anchor => anchor.destroy());
+        this.anchors = [];
+
+        const anchorPositions = this.getAnchorPositions(this.targetNode);
+
+        this.options.enabledAnchors?.forEach((anchorType) => {
+            const pos = anchorPositions[anchorType];
+            if (pos) {
+                const anchor = new Konva.Circle({
+                    x: (this.targetNode?.x() || 0) + pos.x,
+                    y: (this.targetNode?.y() || 0) + pos.y,
+                    radius: (this.options.anchorSize || 7) / this.scale,
+                    fill: this.options.anchorColor || 'white',
+                    stroke: this.options.borderColor || '#80D0FF',
+                    strokeWidth: 2 / this.scale,
+                    name: anchorType,
+                    id: "anchorPoint",
+                    id_unique: GlobalFunctions.randomId(),
+                    draggable: true,
+                });
+
+                anchor.on('dragstart', (e) => this.onAnchorDragStart(e, anchor));
+                anchor.on('dragmove', (e) => this.onAnchorDrag(e, anchor));
+                anchor.on('dragend', (e) => this.onAnchorDragEnd(e, anchor));
+
+                this.anchors.push(anchor);
+                this.layerUtilities.add(anchor);
+            }
+        });
+
+        this.targetNode?.setAttrs({ transformer: this });
+        this.layerUtilities.batchDraw();
+    }
+
+    public detach() {
+        this.anchors.forEach(anchor => anchor.destroy());
+        this.anchors = [];
+        this.targetNode = null;
+
+        konva.getElements().forEach((element: Konva.Node) => {
+            if (element.attrs.id === "anchorPoint") {
+                element.destroy();
+            }
+        });
+
+        this.layer.batchDraw();
+    }
+
+    public init() {
+        var arrowMapClone: any = {};
+
+        this.layer.find('.arrow').forEach(arrow => {
+            const anchorTypeA = arrow.attrs.anchorTypeA;
+
+            if (!arrowMapClone[anchorTypeA]) {
+                arrowMapClone[anchorTypeA] = [];
+            }
+
+            arrowMapClone[anchorTypeA].push(arrow);
+        });
+
+        this.arrowMap = arrowMapClone;
+
+        Object.keys(this.arrowMap).forEach((anchorType) => {
+            this.arrowMap[anchorType].forEach(arrow => {
+                if(arrow.getAttr("anchorA") || arrow.getAttr("anchorB")) return;
+
+                let anchorA
+                let anchorB
+
+                this.layer.getChildren().forEach((element: Konva.Node) => {
+                    if(element.attrs.id_unique === arrow.getAttr("anchorIdA")){
+                        anchorA = element
+                    }
+
+                    if(element.attrs.id_unique === arrow.getAttr("anchorIdB")){
+                        anchorB = element
+                    }
+                });
+
+                if(anchorA && anchorB){
+                    arrow.setAttr("anchorA", anchorA)
+                    arrow.setAttr("anchorB", anchorB)
+
+                    this.attachTo(anchorA)
+                    this.attachTo(anchorB)
+
+                    this.detach()
+                }else{
+                    console.log("not found anchors")
+                }
+            })
+        });
+    }
+
+    public destroy() {
+        this.detach();
     }
 
 }
