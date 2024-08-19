@@ -3,6 +3,7 @@ import Konva from "konva";
 import * as konva from "./KonvaLogic";
 import * as GlobalFunctions from "./GlobalFunctions";
 import { addShape } from "../ts/CreationShapes";
+import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 
 konva.layer.on('dragmove', function (e) {
     if (e.target.id() === 'transformer') {
@@ -308,7 +309,17 @@ konva.stage.on('click tap', function (e) {
         States.StatesCursor.select = e.target;
 
         if (e.target instanceof Konva.Node){
-            konva.transformer.attachTo(e.target);
+            const transformer = new TransformerPoints(konva.stage, konva.layer, konva.layerUtilities, {
+                arrowColor: 'white',
+                borderArrowColor: '#80D0FF',
+                anchorColor: 'white',
+                borderColor: '#80D0FF',
+                anchorSize: 5,
+                enabledAnchors: ["left", "right", "top", "bottom"],
+                proximityThreshold: 20,
+            });
+
+            transformer.attachTo(e.target);
             konva.layer.draw();
         }
     }

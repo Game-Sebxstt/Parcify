@@ -165,14 +165,12 @@ export class TransformerPoints {
         this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroy());
         this.arrowMap[this.activeAnchorType || ''] = [];
 
-        console.log(konva.getElements())
-
         konva.getElements().forEach((element: Konva.Node) => {
-            if (element === this.targetNode || 
-                (element instanceof Konva.Rect == false &&
-                element instanceof Konva.RegularPolygon == false &&
-                element instanceof Konva.Circle == false)
-            ) return;
+            if (element === this.targetNode || (
+                element instanceof Konva.Rect == false &&
+                element instanceof Konva.Circle == false &&
+                element instanceof Konva.RegularPolygon == false
+            )) return;
     
             if (!element.attrs.transformerTarget) {
                 const transformer = new TransformerPoints(this.stage, this.layer, this.layerUtilities, this.options);
@@ -266,6 +264,17 @@ export class TransformerPoints {
             this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroy());
             delete this.arrowMap[this.activeAnchorType || ''];
         }
+
+        konva.getElements().forEach((element: Konva.Node) => {
+            if (element === this.targetNode || (
+                element instanceof Konva.Rect == false &&
+                element instanceof Konva.Circle == false &&
+                element instanceof Konva.RegularPolygon == false
+            )) return;
+    
+            const transformer = element.attrs.transformerTarget as TransformerPoints;
+            transformer.detach();
+        })
     
         this.activeAnchorType = null;
         this.layer.batchDraw();
