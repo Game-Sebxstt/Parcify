@@ -268,6 +268,7 @@ konva.stage.on('mousedown touchstart', (e) => {
     }
 
     e.evt.preventDefault();
+    document.querySelector("#BarTool").style.pointerEvents = 'none';
     konva.setPositions({
         X1: konva.stage.getRelativePointerPosition().x,
         Y1: konva.stage.getRelativePointerPosition().y,
@@ -306,6 +307,7 @@ konva.stage.on('mousemove touchmove', (e) => {
 });
 
 konva.stage.on('mouseup touchend', (e) => {
+    document.querySelector("#BarTool").style.pointerEvents = 'auto';
     konva.setSelecting(false);
     if (!konva.selectionRectangle.visible()) {
         return;
@@ -425,6 +427,7 @@ konva.stage.on('click tap', function (e) {
     if (parent && parent instanceof Konva.Group) {
         konva.tr.moveToTop();
         konva.tr.nodes(parent.getChildren());
+        GlobalFunctions.showBarTool()
         return;
     }else if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
         return;
@@ -436,6 +439,7 @@ konva.stage.on('click tap', function (e) {
     if (!metaPressed && !isSelected) {
         konva.tr.moveToTop();
         konva.tr.nodes([e.target]);
+        GlobalFunctions.showBarTool()
     } else if (metaPressed && isSelected) {
         konva.tr.moveUp();
         const nodes = konva.tr.nodes().slice();
@@ -445,6 +449,7 @@ konva.stage.on('click tap', function (e) {
         konva.tr.moveUp();
         const nodes = konva.tr.nodes().concat([e.target]);
         konva.tr.nodes(nodes);
+        GlobalFunctions.showBarTool(nodes)
     }
 
 });
@@ -503,3 +508,5 @@ konva.stage.on("mousedown", (e) => {
         konva.setIsDrag(false);
     }
 });
+
+// window.addEventListener('resize', konva.fitStageIntoParentContainer);

@@ -8,6 +8,7 @@ import SectionPlugins from "../components/Sections/Options/section_plugins.astro
 import ProfileInvite from "../components/Articles/ProfileInvite.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
 import Presentations from "../components/Articles/Presentations.astro";
+import BarTool from "../components/Konva/BarTool.astro";
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -20,7 +21,7 @@ if(logged != 'true' && !id){
 
 <LayoutKonva title="Parcify - Konva">
     <div class="w-full h-screen flex flex-col">
-        <div class="w-full h-fit py-2.5 z-10 bg-[#383838] flex justify-between px-3 border-b-2 border-[#FC7F53]">
+        <div id="header-konva" class="w-full h-fit py-2.5 z-10 bg-[#383838] flex justify-between px-3 border-b-2 border-[#FC7F53]">
             <div class="w-fit h-full flex items-center gap-3">
                 <span id="back-index" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
                     <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-grid h-8 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
@@ -220,11 +221,9 @@ if(logged != 'true' && !id){
             </div>
             
             <div id="content-konva" class="w-full h-full bg-lime-400">
-                <div id="konva" class="bg-white w-full h-full">
-
-                </div>
-                
+                <div id="konva" class="bg-white w-full h-full"></div>
             </div>
+            
             <div id="right-slide" class="absolute -right-[25rem] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">
                 <section id="content-edit" class="w-full h-full flex flex-col">
                     <div class="w-full h-fit py-5 px-5 border-b-2 border-[#FC7F53]">
@@ -488,6 +487,8 @@ if(logged != 'true' && !id){
         </div>
     </div>
 </LayoutKonva>
+
+<BarTool/>
 
 <script src="../konva/js/KonvaLogic.js"></script>
 <script src="../konva/js/UpdateGUI.js"></script>

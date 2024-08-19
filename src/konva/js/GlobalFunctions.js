@@ -1,5 +1,6 @@
 import * as konva from "./KonvaLogic";
 import Konva from "konva";
+import * as States from "./StatesLogic";
 
 export function downloadURI(uri, name) {
     var link = document.createElement('a');
@@ -161,4 +162,184 @@ export function drawGuides(guides) {
 
 export function randomId(){
     return Math.random().toString(36).substr(2, 9);
+}
+
+export function showBarTool(nodes) {
+    const barTool = document.querySelector("#BarTool");
+    const stage = konva.stage;
+    let target = States.StatesCursor.select;
+    let boundingRect;
+
+    if (!target && (!nodes || nodes.length === 0)) return;
+
+    if (nodes && nodes.length > 0) {
+        boundingRect = createBoundingRectForNodes(nodes);
+        target = boundingRect;
+    } else {
+        initializeBarTool(target, barTool);
+    }
+
+    initializeBarTool(target, barTool);
+    setUpEventListeners(target, barTool, stage, nodes);
+
+    function createBoundingRectForNodes(nodes) {
+        const boundingRect = new Konva.Rect({
+            fill: 'rgba(0,0,0,0)',
+            strokeWidth: 1,
+            listening: false,
+        });
+
+        konva.layer.add(boundingRect);
+        updateBoundingRect(boundingRect, nodes);
+        konva.layer.draw();
+
+        nodes.forEach(node => {
+            node.on("dragmove transform", () => {
+                target.setAttr("barToolSelected", true);
+                updateBoundingRect(boundingRect, nodes);
+                updateBarToolPosition(target, barTool);
+            });
+        });
+
+        return boundingRect;
+    }
+
+    function updateBoundingRect(rect, nodes) {
+        let maxX = 0, maxY = 0, minX = Infinity, minY = Infinity;
+
+        nodes.forEach(node => {
+            const nodeX = node.x();
+            const nodeY = node.y();
+
+            if (nodeX + node.width() > maxX) maxX = nodeX + node.width();
+            if (nodeY + node.height() > maxY) maxY = nodeY + node.height();
+            if (nodeX < minX) minX = nodeX;
+            if (nodeY < minY) minY = nodeY;
+        });
+
+        rect.position({ x: minX, y: minY });
+        rect.size({ width: maxX - minX, height: maxY - minY });
+    }
+
+    function initializeBarTool(target, barTool) {
+        target.setAttr("barToolSelected", true);
+        barTool.style.display = 'flex';
+        updateBarToolPosition(target, barTool);
+    }
+
+    function setUpEventListeners(target, barTool, stage, nodes) {
+        target.on("dragstart", () => onDragStart(target, barTool));
+        target.on("dragmove transform", () => updateBarToolPosition(target, barTool));
+        target.on("dragend", () => onDragEnd(target, barTool));
+        stage.on("wheel", () => updateBarToolPosition(target, barTool));
+        stage.on("dragmove transform", () => updateBarToolPosition(target, barTool));
+        stage.on("click tap", (e) => onStageClick(e, target, barTool, nodes));
+    }
+
+    function onDragStart(target, barTool) {
+        if (!target.getAttr("barToolSelected")) return;
+        barTool.style.opacity = 0;
+        barTool.style.pointerEvents = "none";
+    }
+
+    function onDragEnd(target, barTool) {
+        if (!target.getAttr("barToolSelected")) return;
+        barTool.style.opacity = 1;
+        barTool.style.pointerEvents = "auto";
+        updateBarToolPosition(target, barTool);
+    }
+
+    function onStageClick(e, target, barTool, nodes) {
+        if (e.target !== target) {
+            target.setAttr("barToolSelected", false);
+            let isNodeElement = false;
+
+            if (nodes && nodes.length > 0 && boundingRect) {
+                nodes.forEach(node => {
+                    if (node === e.target) {
+                        isNodeElement = true;
+                    }
+                });
+
+                if (!isNodeElement) {
+                    boundingRect.destroy();
+                    konva.layer.draw();
+                } else {
+                    barTool.style.opacity = 1;
+                    barTool.style.pointerEvents = "auto";
+                }
+            }
+
+            if (e.target instanceof Konva.Stage) {
+                barTool.style.opacity = 0;
+                barTool.style.pointerEvents = "none";
+            }
+        } else {
+            updateBarToolPosition(target, barTool);
+        }
+    }
+
+    function isBarToolInsideTarget(barToolRect, targetX, targetY, targetWidth, targetHeight) {
+        const targetRight = targetX + targetWidth;
+        const targetBottom = targetY + targetHeight;
+    
+        const barToolLeft = barToolRect.left;
+        const barToolRight = barToolRect.left + barToolRect.width;
+        const barToolTop = barToolRect.top;
+        const barToolBottom = barToolRect.top + barToolRect.height;
+    
+        const isInsideHorizontally = (barToolLeft >= targetX) && (barToolRight <= targetRight);
+        const isInsideVertically = (barToolTop >= targetY) && (barToolBottom <= targetBottom);
+    
+        return isInsideHorizontally && isInsideVertically;
+    }
+    
+
+    function updateBarToolPosition(target, barTool) {
+        if (!target.getAttr("barToolSelected")) return;
+    
+        const { x, y } = target.absolutePosition();
+        const scaleX = target.scaleX() * stage.scaleX();
+        const scaleY = target.scaleY() * stage.scaleY();
+        const width = target instanceof Konva.Rect ? target.width() * scaleX : target.radius() * scaleX;
+        const height = target instanceof Konva.Rect ? target.height() * scaleY : target.radius() * scaleY;
+    
+        const barToolRect = barTool.getBoundingClientRect();
+        const barToolShape = {
+            width: parseFloat(window.getComputedStyle(barTool).width) || barToolRect.width || 0,
+            height: parseFloat(window.getComputedStyle(barTool).height) || barToolRect.height || 0,
+            originalWidth: konva.getWidthBarTool(),
+            originalHeight: konva.getHeightBarTool(),
+            scaleX: stage.scaleX() < 0.6 ? 0.6 : stage.scaleX() > 1.4 ? 1.4 : stage.scaleX(),
+            scaleY: stage.scaleY() < 0.6 ? 0.6 : stage.scaleY() > 0.8 ? 0.8 : stage.scaleY(),
+            x: barToolRect.left,
+            y: barToolRect.top,
+        }
+        const barToolHalfWidth = barToolRect.width / 2;
+        const barToolHalfHeight = barToolRect.height / 2;
+    
+        let leftTarget , topTarget;
+
+        if(target instanceof Konva.Rect){
+            topTarget = y - height / 4;
+            leftTarget = x - barToolHalfWidth + width / 2;
+        }else{
+            topTarget = y - barToolHalfHeight - height;
+            leftTarget = x - barToolHalfWidth;
+        }
+    
+        const headerHeight = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
+        let adjustedBarToolTop = topTarget <= headerHeight ? (y + height + barToolShape.height) + (height / 3): topTarget;
+        let adjustedBarToolLeft = leftTarget <= 0 ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
+
+        adjustedBarToolTop = adjustedBarToolTop < headerHeight ? headerHeight + barToolHalfHeight : adjustedBarToolTop > window.innerHeight - barToolShape.height ? window.innerHeight - barToolShape.height * 2: adjustedBarToolTop;
+
+        barTool.style.opacity = 1;
+        barTool.style.pointerEvents = "auto";
+        barTool.style.top = `${adjustedBarToolTop}px`;
+        barTool.style.left = `${adjustedBarToolLeft}px`;
+        barTool.style.width = `${barToolShape.originalWidth * barToolShape.scaleX}px`;
+        barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
+    }
+    
 }

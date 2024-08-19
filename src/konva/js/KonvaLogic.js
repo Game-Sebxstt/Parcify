@@ -30,10 +30,19 @@ var elementsLayerBackground = [];
 var historySave = [];
 var indexHistory = 0;
 
+// BarTool Variables
+var BarTool = document.querySelector('#BarTool');
+var widthBarTool = BarTool.offsetWidth;
+var heightBarTool = BarTool.offsetHeight;
+
 let konva = document.querySelector("#konva");
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
 let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
 
+
+export function setKonva(konvaChange) {
+    konva = konvaChange;
+}
 
 export function setScaleBy(scaleBy){
     SCALEBY = scaleBy;
@@ -70,6 +79,18 @@ export function setGuideline(guideline){
     GUIDELINE_OFFSET = guideline;
 }
 
+export function setWidthBarTool(widthBarToolChange){
+    widthBarTool = widthBarToolChange;
+}
+
+export function setHeightBarTool(heightBarToolChange){
+    heightBarTool = heightBarToolChange;
+}
+
+export function getKonva(){
+    return konva;
+}
+
 export function getScaleBy(){
     return SCALEBY;
 }
@@ -100,6 +121,14 @@ export function getPositions(){
 
 export function getGuideline(){
     return GUIDELINE_OFFSET;
+}
+
+export function getWidthBarTool(){
+    return widthBarTool;
+}
+
+export function getHeightBarTool(){
+    return heightBarTool;
 }
 
 export let stage;
@@ -233,8 +262,8 @@ export const transformer = new TransformerPoints(stage, layer, layerUtilities, {
 });
 
 transformer.init();
-
 saveHistory(stage.toJSON());
+// fitStageIntoParentContainer();
 
 async function getStage(id_stage) {
     const validation = await req.getProject(id_stage);
@@ -373,6 +402,16 @@ export function dbClickElement(e) {
     if (element instanceof Konva.Rect) {
         dbClickRect(element);
     }
+}
+
+export function fitStageIntoParentContainer() {
+    var containerWidth = konva.offsetWidth;
+
+    var scale = containerWidth / widthKonva;
+
+    stage.width(widthKonva * scale);
+    stage.height(heightKonva * scale);
+    stage.scale({ x: scale, y: scale });
 }
 
 function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {

@@ -144,3 +144,7 @@ document.addEventListener('keydown', function (e) {
         konva.tr.nodes([...konva.getElements()]);
     }
 });
+
+window.addEventListener('wheel', function(e) {
+    e.preventDefault();
+}, { passive: false });

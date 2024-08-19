@@ -21,11 +21,13 @@ export class TransformerPoints {
     private isDragging: boolean = false;
     private anchors: Konva.Circle[] = [];
     private transforms: TransformerPoints[] = [];
-    private separationOffset = 20;
+    public separationOffset = 20;
     private initialAnchorPosition: { x: number, y: number } = { x: 0, y: 0 };
     private activeAnchorType: string | null = null;
     private arrowMap: { [key: string]: Konva.Arrow[] } = {};
     private scale: number = 1;
+    private updateArrowsScheduled: boolean = false;
+    private updateAnchorsScheduled: boolean = false;
 
     constructor(stage: Konva.Stage, layer: Konva.Layer, layerUtilities: Konva.Layer, options?: ConnectorOptions) {
         this.stage = stage;
@@ -84,8 +86,8 @@ export class TransformerPoints {
     }
 
     private updateScale() {
-        this.scale = this.stage.scaleX() > 0.8 ? this.stage.scaleX() : 0.8;
-        this.scale = this.scale < 5 ? this.scale : 5;
+        this.scale = this.stage.scaleX() > 0.4 ? this.stage.scaleX() : 0.4;
+        this.scale = this.scale < 3 ? this.scale : 3;
         this.separationOffset = 20 / this.scale; 
     }
 
@@ -153,6 +155,7 @@ export class TransformerPoints {
         if (!this.targetNode) return;
     
         this.isDragging = true;
+        (document.querySelector("#BarTool") as HTMLDivElement).style.opacity = "0";
         this.activeAnchorType = anchor.name();
     
         const startX = anchor.x();
@@ -329,50 +332,64 @@ export class TransformerPoints {
     }
 
     private updateAnchors() {
-        if (!this.targetNode) return;
+        if (this.updateAnchorsScheduled) return;
+        this.updateAnchorsScheduled = true;
     
-        const anchorPositionsTarget = this.getAnchorPositions(this.targetNode);
+        requestAnimationFrame(() => {
+            if (!this.targetNode) return;
     
-        this.anchors.forEach(anchor => {
-            const anchorType = anchor.name();
-            const pos = anchorPositionsTarget[anchorType];
-            if (pos) {
-                anchor.setAttrs({
-                    x: (this.targetNode?.x() || 0) + pos.x,
-                    y: (this.targetNode?.y() || 0) + pos.y,
-                    radius: (this.options.anchorSize || 7) / this.scale,
-                    strokeWidth: 2 / this.scale,
-                });
-            }
+            const anchorPositionsTarget = this.getAnchorPositions(this.targetNode);
+    
+            this.anchors.forEach(anchor => {
+                const anchorType = anchor.name();
+                const pos = anchorPositionsTarget[anchorType];
+                if (pos) {
+                    anchor.setAttrs({
+                        x: (this.targetNode?.x() || 0) + pos.x,
+                        y: (this.targetNode?.y() || 0) + pos.y,
+                        radius: (this.options.anchorSize || 7) / this.scale,
+                        strokeWidth: 2 / this.scale,
+                    });
+                }
+            });
+    
+            this.updateAnchorsScheduled = false;
+            this.layer.batchDraw();
         });
     }
 
     private updateArrows() {
-        if (!this.targetNode) return;
-
-        Object.keys(this.arrowMap).forEach(anchorType => {
-            this.arrowMap[anchorType]?.forEach(arrow => {
-                const anchorA = arrow.getAttr("anchorA");
-                const anchorTypeA = arrow.getAttr("anchorTypeA");
-                const anchorB = arrow.getAttr("anchorB");
-                const anchorTypeB = arrow.getAttr("anchorTypeB");
-                
-                if (!anchorA || !anchorB) return;
+        if (this.updateArrowsScheduled) return;
+        this.updateArrowsScheduled = true;
     
-                const startPos = this.calculateArrowPosition(anchorA, anchorTypeA);
-                const endPos = this.calculateArrowPosition(anchorB, anchorTypeB);
-                const middlePos = this.calculateMiddlePosition(startPos, endPos, anchorTypeA);
+        requestAnimationFrame(() => {
+            if (!this.targetNode) return;
     
-                arrow.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
-                arrow.setAttrs({
-                    pointerLength: 10 / this.scale,
-                    pointerWidth: 10 / this.scale,
-                    strokeWidth: 2 / this.scale,
+            Object.keys(this.arrowMap).forEach(anchorType => {
+                this.arrowMap[anchorType]?.forEach(arrow => {
+                    const anchorA = arrow.getAttr("anchorA");
+                    const anchorTypeA = arrow.getAttr("anchorTypeA");
+                    const anchorB = arrow.getAttr("anchorB");
+                    const anchorTypeB = arrow.getAttr("anchorTypeB");
+                    
+                    if (!anchorA || !anchorB) return;
+    
+                    const startPos = this.calculateArrowPosition(anchorA, anchorTypeA);
+                    const endPos = this.calculateArrowPosition(anchorB, anchorTypeB);
+                    const middlePos = this.calculateMiddlePosition(startPos, endPos, anchorTypeA);
+    
+                    arrow.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
+                    arrow.setAttrs({
+                        pointerLength: 10 / this.scale,
+                        pointerWidth: 10 / this.scale,
+                        strokeWidth: 2 / this.scale,
+                    });
                 });
             });
-        });
     
-        this.layer.batchDraw();
+            this.updateArrowsScheduled = false;
+            this.layer.batchDraw();
+        });
     }
 
     private calculateArrowPosition(anchor: Konva.Node, anchorType: string) {
