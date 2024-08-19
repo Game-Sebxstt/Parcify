@@ -390,7 +390,7 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     textarea.contentEditable = true;
     textarea.id = "edit-text";
     document.body.appendChild(textarea);
-    textarea.innerText = value || " ";
+    textarea.innerText = value || "‎";
     textarea.style.position = 'absolute';
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
@@ -401,7 +401,7 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     textarea.style.padding = '0px';
     textarea.style.margin = 'none';
     textarea.style.overflow = 'hidden';
-    textarea.style.background = 'red';
+    textarea.style.background = 'none';
     textarea.style.outline = 'none';
     textarea.style.zIndex = "1"
     textarea.style.resize = 'none';
@@ -637,7 +637,7 @@ function dbClickRect(elementDrag) {
     });
 
     stage.on("wheel", updateTextArea)
-    elementDrag.on('transform', updateTextArea)
+    // elementDrag.on('transform', updateTextArea)
 
     function updateTextArea(){
         textPosition = elementDrag.absolutePosition();
