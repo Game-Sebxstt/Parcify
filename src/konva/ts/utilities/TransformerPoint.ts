@@ -169,17 +169,35 @@ export class TransformerPoints {
             if (element === this.targetNode || (
                 element instanceof Konva.Rect == false &&
                 element instanceof Konva.Circle == false &&
-                element instanceof Konva.RegularPolygon == false
+                element instanceof Konva.RegularPolygon == false &&
+                element instanceof Konva.Group == false
             )) return;
     
             if (!element.attrs.transformerTarget) {
-                const transformer = new TransformerPoints(this.stage, this.layer, this.layerUtilities, this.options);
-                element.setAttrs({ transformerTarget: transformer });
+                if (element instanceof Konva.Group){
+                    element.getChildren().forEach((child: Konva.Node) => {
+                        if (child instanceof Konva.Rect || child instanceof Konva.Circle || child instanceof Konva.RegularPolygon){
+                            if (!child.attrs.transformerTarget) {
+                                const transformer = new TransformerPoints(this.stage, this.layer, this.layerUtilities, this.options);
+                                child.setAttrs({ transformerTarget: transformer });
+                            }
+                    
+                            const transformer = child.attrs.transformerTarget as TransformerPoints;
+                            transformer.attachTo(child);
+                            this.transforms.push(transformer);
+                        }
+                    })
+                }else{
+                    const transformer = new TransformerPoints(this.stage, this.layer, this.layerUtilities, this.options);
+                    element.setAttrs({ transformerTarget: transformer });
+                }
             }
     
-            const transformer = element.attrs.transformerTarget as TransformerPoints;
-            transformer.attachTo(element);
-            this.transforms.push(transformer);
+            if(element.attrs.transformerTarget){
+                const transformer = element.attrs.transformerTarget as TransformerPoints;
+                transformer.attachTo(element);
+                this.transforms.push(transformer);
+            }
     
             const arrow = new Konva.Arrow({
                 points: [startX, startY, mousePos.x, mousePos.y],
@@ -269,11 +287,21 @@ export class TransformerPoints {
             if (element === this.targetNode || (
                 element instanceof Konva.Rect == false &&
                 element instanceof Konva.Circle == false &&
-                element instanceof Konva.RegularPolygon == false
+                element instanceof Konva.RegularPolygon == false && 
+                element instanceof Konva.Group == false
             )) return;
     
-            const transformer = element.attrs.transformerTarget as TransformerPoints;
-            transformer.detach();
+            if(element instanceof Konva.Group){
+                element.getChildren().forEach((child: Konva.Node) => {
+                    if (child instanceof Konva.Rect || child instanceof Konva.Circle || child instanceof Konva.RegularPolygon){
+                        const transformer = child.attrs.transformerTarget as TransformerPoints;
+                        transformer.detach();
+                    }
+                })
+            }else{
+                const transformer = element.attrs.transformerTarget as TransformerPoints;
+                transformer.detach();
+            }
         })
     
         this.activeAnchorType = null;
@@ -502,6 +530,18 @@ export class TransformerPoints {
 
                     if(element.attrs.id_unique === arrow.getAttr("anchorIdB")){
                         anchorB = element
+                    }
+
+                    if(element instanceof Konva.Group){
+                        element.getChildren().forEach((child: Konva.Node) => {
+                            if(child.attrs.id_unique === arrow.getAttr("anchorIdA")){
+                                anchorA = child
+                            }
+
+                            if(child.attrs.id_unique === arrow.getAttr("anchorIdB")){
+                                anchorB = child
+                            }
+                        })
                     }
                 });
 

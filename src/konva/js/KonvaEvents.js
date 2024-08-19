@@ -188,7 +188,7 @@ konva.tr.on("transformend", (e) => {
     }
 });
 
-konva.stage.on('dragmove', () => {
+konva.stage.on('dragmove', (e) => {
     konva.bg.absolutePosition({ x: 0, y: 0 });
 
     if(States.StatesCursor.textEditing){
@@ -207,6 +207,29 @@ konva.stage.on('dragmove', () => {
         textarea.style.height = States.StatesCursor.textEditing.height() * States.StatesCursor.textEditing.scaleY() + 'px';
     }
 });
+
+konva.getElements().forEach((element) => {
+    element.on("dragmove", (e) => {
+        if(element instanceof Konva.Group){
+            const groupNode = element
+
+            if(groupNode.attrs.name == "ShapeText"){
+                groupNode.getChildren().forEach(item => {
+                    if (item instanceof Konva.Text) {
+                        item.setAttrs({
+                            x: groupNode.getChildren().find(item => item instanceof Konva.Rect).x(),
+                            y: groupNode.getChildren().find(item => item instanceof Konva.Rect).y(),
+                            width: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).width() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleX(), konva.getMinWidth()), 
+                            height: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).height() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
+                            scaleX: 1,
+                            scaleY: 1,
+                        });
+                    }
+                });
+            }
+        }
+    })
+})
 
 konva.stage.on('mousemove', () => {
     if(!States.StatesCursor.addShape || States.StatesShapes.image){

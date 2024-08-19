@@ -364,6 +364,7 @@ export function updateElementsEvent(){
 
 export function dbClickElement(e) {
     let element = e.target;
+    tr.hide();
     
     if (element instanceof Konva.Text) {
         dbClickText(element);
@@ -393,15 +394,16 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     textarea.style.position = 'absolute';
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
-    textarea.style.width = elementDrag.width() * elementDrag.scaleX() + 'px';
-    textarea.style.height = elementDrag.height() * elementDrag.scaleY() + 'px';
-    textarea.style.fontSize = fontSize + 'px';
+    textarea.style.width = elementDrag.width() * elementDrag.scaleX() * stage.scaleX() + "px"
+    textarea.style.height = elementDrag.height() * elementDrag.scaleY() * stage.scaleY() + "px"
+    textarea.style.fontSize = fontSize * stage.scaleX() + "px";
     textarea.style.border = '0px';
     textarea.style.padding = '0px';
     textarea.style.margin = 'none';
     textarea.style.overflow = 'hidden';
     textarea.style.background = 'red';
     textarea.style.outline = 'none';
+    textarea.style.zIndex = "1"
     textarea.style.resize = 'none';
     textarea.style.lineHeight = 1;
     textarea.style.fontFamily = fontFamily;
@@ -465,9 +467,29 @@ function dbClickText(textNode) {
         setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x, textarea, textNode);
     });
 
+    stage.on("wheel", updateTextArea)
+    textNode.on('transform', updateTextArea)
+
+    function updateTextArea(){
+        textPosition = textNode.absolutePosition();
+        stageBox = stage.container().getBoundingClientRect();
+
+        areaPosition = {
+            x: stageBox.left + textPosition.x,
+            y: stageBox.top + textPosition.y,
+        }
+
+        textarea.style.top = areaPosition.y + 'px';
+        textarea.style.left = areaPosition.x + 'px';
+        textarea.style.width = textNode.width() * textNode.scaleX() * stage.scaleX() + "px"
+        textarea.style.height = textNode.height() * textNode.scaleY() * stage.scaleY() + "px"
+
+        textarea.style.fontSize = textNode.fontSize() * stage.scaleX() + "px";
+    }
+
     function handleOutsideClick(e) {
         if (e.target !== textarea) {
-            textNode.text(textarea.value);
+            textNode.text(textarea.innerText);
             removeTextarea();
         }
     }
@@ -531,6 +553,7 @@ function dbClickRect(elementDrag) {
         } else {
             group = new Konva.Group({
                 draggable: true,
+                name: "ShapeText"
             });
             
             layer.add(group);
@@ -612,6 +635,26 @@ function dbClickRect(elementDrag) {
     textarea.addEventListener('keydown', function () {
         setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x, textarea, textNode);
     });
+
+    stage.on("wheel", updateTextArea)
+    elementDrag.on('transform', updateTextArea)
+
+    function updateTextArea(){
+        textPosition = elementDrag.absolutePosition();
+        stageBox = stage.container().getBoundingClientRect();
+
+        areaPosition = {
+            x: stageBox.left + textPosition.x,
+            y: stageBox.top + textPosition.y,
+        }
+
+        textarea.style.top = areaPosition.y + 'px';
+        textarea.style.left = areaPosition.x + 'px';
+        textarea.style.width = elementDrag.width() * elementDrag.scaleX() * stage.scaleX() + "px"
+        textarea.style.height = elementDrag.height() * elementDrag.scaleY() * stage.scaleY() + "px"
+
+        textarea.style.fontSize = textNode.fontSize() * stage.scaleX() + "px";
+    }
 
     function handleOutsideClick(e) {
         if (e.target !== textarea) {
