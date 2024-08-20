@@ -51,12 +51,12 @@ export class CustomArrow {
         this.circle.hide();
 
         this.circle.on('dragmove', () => {
-            this.updateArrow(this.circle.position());
+            this.updateArrow();
             this.layer.draw();
         });
 
         this.stage.on("wheel", () => {
-            this.updateArrow(this.circle.position());
+            this.updateArrow();
             this.layer.draw();
         })
 
@@ -78,7 +78,8 @@ export class CustomArrow {
         return points;
     }
 
-    public updateArrow(anchorPos: { x: number, y: number }) {
+    public updateArrow() {
+        const anchorPos = this.circle.position();
         const newPoints = this.calculateLinePoints(anchorPos);
         this.arrow.points(newPoints);
         this.arrow.setAttrs({
@@ -91,8 +92,12 @@ export class CustomArrow {
     public updateAnchors(middlePos: { x: number, y: number }, endPos: { x: number, y: number }, startPos: { x: number, y: number }) {
         this.start = startPos;
         this.end = endPos;
-        this.circle.position({ x: middlePos.x, y: middlePos.y });
-        this.updateArrow(middlePos);
+        
+        if(middlePos){
+            this.circle.position({ x: middlePos.x, y: middlePos.y });
+        }
+        
+        this.updateArrow();
     }
 
     public initAnchors() {

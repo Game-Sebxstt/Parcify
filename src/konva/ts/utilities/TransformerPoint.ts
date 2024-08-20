@@ -62,8 +62,8 @@ export class TransformerPoints {
     }
 
     private addStageZoomListener() {
-        // this.stage.on('transform', () => this.handleZoomOrTransform());
-        // this.stage.on('wheel', () => this.handleZoomOrTransform());
+        this.stage.on('transform', () => this.handleZoomOrTransform());
+        this.stage.on('wheel', () => this.handleZoomOrTransform());
     }
 
     private handleZoomOrTransform() {
@@ -246,7 +246,9 @@ export class TransformerPoints {
             const endPos = mousePos;
             const middlePos = this.calculateMiddlePosition(startPos, endPos, this.activeAnchorType || '');
 
-            this.arrowCustom.updateAnchors(middlePos, endPos, startPos);
+            if(this.arrowCustom){
+                this.arrowCustom.updateAnchors(middlePos, endPos, startPos);
+            }
 
             arrow.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
         });
@@ -292,11 +294,15 @@ export class TransformerPoints {
                 arrow.setAttr('anchorTypeB', targetAnchor.name());
             });
 
-            this.arrowCustom.initAnchors();
+            if(this.arrowCustom){
+                this.arrowCustom.initAnchors();
+            }
         } else {
             this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroy());
             delete this.arrowMap[this.activeAnchorType || ''];
-            this.arrowCustom.destroyAnchors();
+            if(this.arrowCustom){
+                this.arrowCustom.destroyAnchors();
+            }
         }
 
         konva.getElements().forEach((element: Konva.Node) => {
