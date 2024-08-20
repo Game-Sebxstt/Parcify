@@ -35,9 +35,10 @@ var BarTool = document.querySelector('#BarTool');
 var widthBarTool = BarTool.offsetWidth;
 var heightBarTool = BarTool.offsetHeight;
 
-var BarToolColor = document.querySelector('#BarToolColor'); 
+var BarToolColor = document.querySelector('#BarToolExtra'); 
 var widthBarToolColor = BarToolColor.offsetWidth;
 var heightBarToolColor = BarToolColor.offsetHeight;
+// BarToolColor.style.display = "none";
 
 let konva = document.querySelector("#konva");
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);

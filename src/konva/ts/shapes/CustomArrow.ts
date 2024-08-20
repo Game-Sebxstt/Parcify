@@ -1,4 +1,3 @@
-import type { init } from 'astro/virtual-modules/prefetch.js';
 import Konva from 'konva';
 
 interface ConfigArrow {

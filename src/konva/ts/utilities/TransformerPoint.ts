@@ -197,32 +197,32 @@ export class TransformerPoints {
                 this.transforms.push(transformer);
             }
     
-            // const arrow = new Konva.Arrow({
-            //     points: [startX, startY, mousePos.x, mousePos.y],
-            //     pointerLength: 10 / this.scale,
-            //     pointerWidth: 10 / this.scale,
-            //     fill: this.options.arrowColor || 'white',
-            //     stroke: this.options.borderArrowColor || 'white',
-            //     strokeWidth: 2 / this.scale,
-            //     lineJoin: "round",
-            //     lineCap: "round",
-            //     draggable: false,
-            //     listening: false,
-            //     name: 'arrow',
-            // });
-
-            const options = {
+            const arrow = new Konva.Arrow({
                 points: [startX, startY, mousePos.x, mousePos.y],
-                fill: this.options.arrowColor || 'white',
-                stroke: this.options.borderArrowColor || 'white',
                 pointerLength: 10 / this.scale,
                 pointerWidth: 10 / this.scale,
+                fill: this.options.arrowColor || 'white',
+                stroke: this.options.borderArrowColor || 'white',
                 strokeWidth: 2 / this.scale,
-            }
+                lineJoin: "round",
+                lineCap: "round",
+                draggable: false,
+                listening: false,
+                name: 'arrow',
+            });
 
-            this.arrowCustom = new CustomArrow(options, this.layer, this.stage);
+            // const options = {
+            //     points: [startX, startY, mousePos.x, mousePos.y],
+            //     fill: this.options.arrowColor || 'white',
+            //     stroke: this.options.borderArrowColor || 'white',
+            //     pointerLength: 10 / this.scale,
+            //     pointerWidth: 10 / this.scale,
+            //     strokeWidth: 2 / this.scale,
+            // }
 
-            const arrow = this.arrowCustom.getArrow();
+            // this.arrowCustom = new CustomArrow(options, this.layer, this.stage);
+
+            // const arrow = this.arrowCustom.getArrow();
 
             arrow.setAttr('anchorA', this.targetNode)
             arrow.setAttr("anchorIdA", this.targetNode?.attrs.id_unique)

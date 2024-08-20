@@ -2,7 +2,7 @@
 
 ---
 
-<div id="BarToolColor" class="absolute -top-5 left-0 -translate-y-full z-[5] gap-x-2 pr-2 w-fit h-24 rounded-lg bg-[#313131] border-[rgba(255,255,255,.2)] border-[1px] flex opacity-100 justify-start items-center">
+<div id="BarToolExtra" class="absolute -top-5 left-0 -translate-y-full z-[5] pr-2 w-fit h-20 rounded-lg bg-[#313131] border-[rgba(255,255,255,.2)] border-[1px] flex opacity-100 justify-start items-center">
     <div id="nameBar" class="flex justify-center items-center h-full w-full gap-x-2 px-2 hover:bg-[rgba(30,30,30,.9)] rounded-md cursor-pointer">
         <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round" id="chevron" class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-left w-6 h-6">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -12,7 +12,7 @@
         <span id="name" class="text-white text-base">Color</span>
     </div>
 
-    <span class="w-0.5 h-[70%] rounded-full bg-[rgba(255,255,255,.3)]"></span>
+    <span class="w-0.5 h-[70%] mx-2 rounded-full bg-[rgba(255,255,255,.3)]"></span>
 
     <div id="style_color" class="childBarTool w-fit h-full flex justify-center items-center p-2 gap-x-2">
         <span id="input_color" data-fill="rgb(255 255 255 / 0.7)" class="w-6 h-6 bg-white/70 rounded-md border-[2px] border-white/70 cursor-pointer"></span>
@@ -27,7 +27,7 @@
 </div>
 
 <script>
-    const BarTool = document.getElementById("BarToolColor") as HTMLDivElement;
+    const BarTool = document.getElementById("BarToolExtra") as HTMLDivElement;
     let wheelTimeout: NodeJS.Timeout;
 
     BarTool.addEventListener("wheel", (e) => {

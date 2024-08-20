@@ -184,7 +184,7 @@ export function showBarTool(nodes) {
 
     function createBoundingRectForNodes(nodes) {
         const boundingRect = new Konva.Rect({
-            fill: 'rgba(0, 0, 0, 0)',
+            fill: 'rgba(0, 255, 255, 0)',
             strokeWidth: 1,
             listening: false,
         });
@@ -197,14 +197,14 @@ export function showBarTool(nodes) {
             node.on("dragmove transform", () => {
                 target.setAttr("barToolSelected", true);
                 updateBoundingRect(boundingRect, nodes);
-                updateBarToolPosition(target, barTool);
+                updateToolBar(target, barTool);
             });
         });
 
         stage.on("dragmove wheel", () => {
             target.setAttr("barToolSelected", true);
             updateBoundingRect(boundingRect, nodes);
-            updateBarToolPosition(target, barTool);
+            updateToolBar(target, barTool);
         })
 
         return boundingRect;
@@ -230,15 +230,16 @@ export function showBarTool(nodes) {
     function initializeBarTool(target, barTool) {
         target.setAttr("barToolSelected", true);
         barTool.style.display = 'flex';
-        updateBarToolPosition(target, barTool);
+        barTool.style.opacity = 1;
+        updateToolBar(target, barTool);
     }
 
     function setUpEventListeners(target, barTool, stage, nodes) {
         target.on("dragstart", () => onDragStart(target, barTool));
-        target.on("dragmove transform", () => updateBarToolPosition(target, barTool));
+        target.on("dragmove transform", () => updateToolBar(target, barTool));
         target.on("dragend", () => onDragEnd(target, barTool));
-        stage.on("wheel", () => updateBarToolPosition(target, barTool));
-        stage.on("dragmove transform", () => updateBarToolPosition(target, barTool));
+        stage.on("wheel", () => updateToolBar(target, barTool));
+        stage.on("dragmove transform", () => updateToolBar(target, barTool));
         stage.on("click tap", (e) => onStageClick(e, target, barTool, nodes));
     }
 
@@ -252,7 +253,7 @@ export function showBarTool(nodes) {
         if (!target.getAttr("barToolSelected")) return;
         barTool.style.opacity = 1;
         barTool.style.pointerEvents = "auto";
-        updateBarToolPosition(target, barTool);
+        updateToolBar(target, barTool);
     }
 
     function onStageClick(e, target, barTool, nodes) {
@@ -281,7 +282,7 @@ export function showBarTool(nodes) {
                 barTool.style.pointerEvents = "none";
             }
         } else {
-            updateBarToolPosition(target, barTool);
+            updateToolBar(target, barTool);
         }
     }
 
@@ -298,6 +299,12 @@ export function showBarTool(nodes) {
         const isInsideVertically = (barToolTop >= targetY) && (barToolBottom <= targetBottom);
     
         return isInsideHorizontally && isInsideVertically;
+    }
+
+    function updateToolBar(target, barTool){
+        requestAnimationFrame(() => {
+            updateBarToolPosition(target, barTool);
+        });
     }
 
     function updateBarToolPosition(target, barTool) {
@@ -324,8 +331,6 @@ export function showBarTool(nodes) {
         const barToolHalfHeight = barToolRect.height / 2;
     
         let leftTarget , topTarget;
-        // console.log("stage", stage.scaleX(), stage.scaleY());
-        // console.log("barToolShape", barToolShape.scaleX, barToolShape.scaleY);
 
         if(target instanceof Konva.Rect){
             topTarget = y - height / 4;
@@ -341,7 +346,7 @@ export function showBarTool(nodes) {
 
         adjustedBarToolTop = adjustedBarToolTop < headerHeight ? headerHeight + barToolHalfHeight : adjustedBarToolTop > window.innerHeight - barToolShape.height ? window.innerHeight - barToolShape.height * 2: adjustedBarToolTop;
 
-        barTool.style.opacity = 1;
+        // barTool.style.opacity = 1;
         barTool.style.pointerEvents = "auto";
         barTool.style.top = `${adjustedBarToolTop}px`;
         barTool.style.left = `${adjustedBarToolLeft}px`;
@@ -351,7 +356,7 @@ export function showBarTool(nodes) {
         document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
         document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
 
-        const BarToolColor = document.querySelector("#BarToolColor")
+        const BarToolColor = document.querySelector("#BarToolExtra")
         const BarToolColorShape = {
             width: parseFloat(window.getComputedStyle(BarToolColor).width) || BarToolColor.width || 0,
             height: parseFloat(window.getComputedStyle(BarToolColor).height) || BarToolColor.height || 0,
@@ -359,16 +364,10 @@ export function showBarTool(nodes) {
             originalHeight: konva.getHeightBarToolColor(),
         }
 
-        console.log("BarToolColorShape", BarToolColorShape);
-        console.log("width scale", BarToolColorShape.originalWidth * barToolShape.scaleX);
-        console.log("height scale", BarToolColorShape.originalHeight * barToolShape.scaleY);
-
         if(BarToolColor){
-            // BarToolColor.style.width = `${BarToolColorShape.originalWidth * barToolShape.scaleX}px`;
             BarToolColor.style.height = `${BarToolColorShape.originalHeight * barToolShape.scaleY}px`;
             BarToolColor.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
             document.querySelector("#nameBar").querySelector("#name").style.fontSize = `${24 * barToolShape.scaleX}px`;
-            // document.querySelector("#nameBar").querySelector("#chevron").style.width = `${24 * barToolShape.scaleX}px`;
             // document.querySelector("#nameBar").querySelector("#chevron").style.height = `${24 * barToolShape.scaleY}px`;
             document.querySelector("#style_color").style.padding = `${8 * barToolShape.scaleX}px`;
             document.querySelector("#style_color").style.gap = `${8 * barToolShape.scaleX} 0 px`;
@@ -377,7 +376,6 @@ export function showBarTool(nodes) {
                 child.style.height = `${36 * barToolShape.scaleX}px`;
                 child.style.borderRadius = `${6 * barToolShape.scaleX}px`;
             })
-            console.log(BarToolColor.querySelectorAll("#input_color"));
         }
 
         document.querySelectorAll(".childBarTool").forEach(child => {
