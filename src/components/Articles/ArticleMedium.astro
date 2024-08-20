@@ -7,10 +7,52 @@ interface Props{
 const {class_article, first_text} = Astro.props;
 ---
 
-<div class=`cursor-pointer hover:scale-[1.03] transition-all duration-200 ease-in w-full h-full ${Astro.props.class_article}`>
+<div class="carousel-container relative w-[1020px] mx-auto">
+    <button
+      class="arrow-button arrow-left absolute top-1/2 transform -translate-y-1/2 left-0 text-white bg-transparent border-none text-[50px] cursor-pointer z-10"
+      id="left_arrow"
+    >
+      &#8592;
+    </button>
+    <!-- Left Arrow -->
+    <div
+      class="carousel flex overflow-hidden justify-center items-center h-full w-full"
+    >
+      <div
+        class="carousel-inner flex transition-transform ease-in-out duration-500"
+        id="carousel-inner"
+      >
+        <div
+          class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black"
+        >
+          {first_text}
+        </div>
+        <div
+          class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[0.8] opacity-50 text-black"
+        >
+          {first_text}
+        </div>
+        <div
+          class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[0.8] opacity-50 text-black"
+        >
+          {first_text}
+        </div>
+      </div>
+    </div>
+    <button
+      class="arrow-button arrow-right absolute top-1/2 transform -translate-y-1/2 right-0 text-white bg-transparent border-none text-[50px] cursor-pointer z-10"
+      id="right_arrow"
+    >
+      &#8594;
+    </button>
+    <!-- Right Arrow -->
+  </div>
+
+
+<!-- <div class=`cursor-pointer hover:scale-[1.03] transition-all duration-200 ease-in w-full h-full ${Astro.props.class_article}`>
     <div class="relative bg-[#E6E6E6] w-full h-full rounded-md shadow-md shadow-black">
         <footer class="absolute bottom-0 bg-[#FB7F53] rounded-b-sm w-full h-fit flex px-2 py-2 items-center justify-center">
             <p class="text-white text-lg font-bold">{first_text}</p>
         </footer>
     </div>
-</div>
+</div> -->
