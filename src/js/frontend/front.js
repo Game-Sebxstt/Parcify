@@ -103,8 +103,6 @@ moreOptionIcons: document.querySelectorAll('#more-options-icon'),
 moreOptionDivs: document.querySelectorAll('#more-options-parceller')
 };
 
-console.log(elements)
-
 // Event Listeners
 const addEventListeners = () => {
 // Filter dropdown

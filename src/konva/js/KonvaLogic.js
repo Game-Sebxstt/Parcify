@@ -35,10 +35,13 @@ var BarTool = document.querySelector('#BarTool');
 var widthBarTool = BarTool.offsetWidth;
 var heightBarTool = BarTool.offsetHeight;
 
+var BarToolColor = document.querySelector('#BarToolColor'); 
+var widthBarToolColor = BarToolColor.offsetWidth;
+var heightBarToolColor = BarToolColor.offsetHeight;
+
 let konva = document.querySelector("#konva");
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
 let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
-
 
 export function setKonva(konvaChange) {
     konva = konvaChange;
@@ -87,6 +90,14 @@ export function setHeightBarTool(heightBarToolChange){
     heightBarTool = heightBarToolChange;
 }
 
+export function setWidthBarToolColor(widthBarToolColorChange){
+    widthBarToolColor = widthBarToolColorChange;
+}
+
+export function setHeightBarToolColor(heightBarToolColorChange){
+    heightBarToolColor = heightBarToolColorChange;
+}
+
 export function getKonva(){
     return konva;
 }
@@ -129,6 +140,14 @@ export function getWidthBarTool(){
 
 export function getHeightBarTool(){
     return heightBarTool;
+}
+
+export function getWidthBarToolColor(){
+    return widthBarToolColor;
+}
+
+export function getHeightBarToolColor(){
+    return heightBarToolColor;
 }
 
 export let stage;

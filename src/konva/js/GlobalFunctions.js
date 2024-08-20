@@ -347,8 +347,38 @@ export function showBarTool(nodes) {
         barTool.style.left = `${adjustedBarToolLeft}px`;
         barTool.style.width = `${barToolShape.originalWidth * barToolShape.scaleX}px`;
         barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
+        barTool.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
         document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
         document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
+
+        const BarToolColor = document.querySelector("#BarToolColor")
+        const BarToolColorShape = {
+            width: parseFloat(window.getComputedStyle(BarToolColor).width) || BarToolColor.width || 0,
+            height: parseFloat(window.getComputedStyle(BarToolColor).height) || BarToolColor.height || 0,
+            originalWidth: konva.getWidthBarToolColor(),
+            originalHeight: konva.getHeightBarToolColor(),
+        }
+
+        console.log("BarToolColorShape", BarToolColorShape);
+        console.log("width scale", BarToolColorShape.originalWidth * barToolShape.scaleX);
+        console.log("height scale", BarToolColorShape.originalHeight * barToolShape.scaleY);
+
+        if(BarToolColor){
+            // BarToolColor.style.width = `${BarToolColorShape.originalWidth * barToolShape.scaleX}px`;
+            BarToolColor.style.height = `${BarToolColorShape.originalHeight * barToolShape.scaleY}px`;
+            BarToolColor.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
+            document.querySelector("#nameBar").querySelector("#name").style.fontSize = `${24 * barToolShape.scaleX}px`;
+            // document.querySelector("#nameBar").querySelector("#chevron").style.width = `${24 * barToolShape.scaleX}px`;
+            // document.querySelector("#nameBar").querySelector("#chevron").style.height = `${24 * barToolShape.scaleY}px`;
+            document.querySelector("#style_color").style.padding = `${8 * barToolShape.scaleX}px`;
+            document.querySelector("#style_color").style.gap = `${8 * barToolShape.scaleX} 0 px`;
+            BarToolColor.querySelectorAll("#input_color").forEach(child => {
+                child.style.width = `${36 * barToolShape.scaleX}px`;
+                child.style.height = `${36 * barToolShape.scaleX}px`;
+                child.style.borderRadius = `${6 * barToolShape.scaleX}px`;
+            })
+            console.log(BarToolColor.querySelectorAll("#input_color"));
+        }
 
         document.querySelectorAll(".childBarTool").forEach(child => {
             child.style.padding = `${8 * barToolShape.scaleY}px ${8 * barToolShape.scaleX}px`;
