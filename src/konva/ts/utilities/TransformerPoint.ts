@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import * as GlobalFunctions from "../../js/GlobalFunctions";
 import * as konva from "../../js/KonvaLogic";
+import { CustomArrow } from '../shapes/CustomArrow';
 
 interface ConnectorOptions {
     enabledAnchors?: string[];
@@ -25,6 +26,7 @@ export class TransformerPoints {
     private initialAnchorPosition: { x: number, y: number } = { x: 0, y: 0 };
     private activeAnchorType: string | null = null;
     private arrowMap: { [key: string]: Konva.Arrow[] } = {};
+    private arrowCustom: any;
     private scale: number = 1;
     private updateArrowsScheduled: boolean = false;
     private updateAnchorsScheduled: boolean = false;
@@ -60,8 +62,8 @@ export class TransformerPoints {
     }
 
     private addStageZoomListener() {
-        this.stage.on('transform', () => this.handleZoomOrTransform());
-        this.stage.on('wheel', () => this.handleZoomOrTransform());
+        // this.stage.on('transform', () => this.handleZoomOrTransform());
+        // this.stage.on('wheel', () => this.handleZoomOrTransform());
     }
 
     private handleZoomOrTransform() {
@@ -195,19 +197,32 @@ export class TransformerPoints {
                 this.transforms.push(transformer);
             }
     
-            const arrow = new Konva.Arrow({
+            // const arrow = new Konva.Arrow({
+            //     points: [startX, startY, mousePos.x, mousePos.y],
+            //     pointerLength: 10 / this.scale,
+            //     pointerWidth: 10 / this.scale,
+            //     fill: this.options.arrowColor || 'white',
+            //     stroke: this.options.borderArrowColor || 'white',
+            //     strokeWidth: 2 / this.scale,
+            //     lineJoin: "round",
+            //     lineCap: "round",
+            //     draggable: false,
+            //     listening: false,
+            //     name: 'arrow',
+            // });
+
+            const options = {
                 points: [startX, startY, mousePos.x, mousePos.y],
-                pointerLength: 10 / this.scale,
-                pointerWidth: 10 / this.scale,
                 fill: this.options.arrowColor || 'white',
                 stroke: this.options.borderArrowColor || 'white',
+                pointerLength: 10 / this.scale,
+                pointerWidth: 10 / this.scale,
                 strokeWidth: 2 / this.scale,
-                lineJoin: "round",
-                lineCap: "round",
-                draggable: false,
-                listening: false,
-                name: 'arrow',
-            });
+            }
+
+            this.arrowCustom = new CustomArrow(options, this.layer, this.stage);
+
+            const arrow = this.arrowCustom.getArrow();
 
             arrow.setAttr('anchorA', this.targetNode)
             arrow.setAttr("anchorIdA", this.targetNode?.attrs.id_unique)
@@ -230,6 +245,8 @@ export class TransformerPoints {
             const startPos: { x: number, y: number } = this.initialAnchorPosition
             const endPos = mousePos;
             const middlePos = this.calculateMiddlePosition(startPos, endPos, this.activeAnchorType || '');
+
+            this.arrowCustom.updateAnchors(middlePos, endPos, startPos);
 
             arrow.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
         });
@@ -274,9 +291,12 @@ export class TransformerPoints {
                 arrow.setAttr("anchorIdB", targetClosest?.attrs.id_unique)
                 arrow.setAttr('anchorTypeB', targetAnchor.name());
             });
+
+            this.arrowCustom.initAnchors();
         } else {
             this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroy());
             delete this.arrowMap[this.activeAnchorType || ''];
+            this.arrowCustom.destroyAnchors();
         }
 
         konva.getElements().forEach((element: Konva.Node) => {

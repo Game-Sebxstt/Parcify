@@ -222,8 +222,25 @@ back_index?.addEventListener("click", () => {
 let options_parcel = document.querySelectorAll("#element-project");
 
 options_parcel?.forEach((item) => {
+
+  function changeStateWheelWindow(state) {
+    if (state) {
+        window.addEventListener('wheel', preventScroll, { passive: false });
+        window.addEventListener('mousewheel', preventScroll, { passive: false });
+    }else{
+        window.removeEventListener('wheel', preventScroll);
+        window.removeEventListener('mousewheel', preventScroll);
+    }
+}
+
+// Función que previene el scroll
+function preventScroll(event) {
+    event.preventDefault();
+}
+
   item.addEventListener("contextmenu", (e) => {
     e.preventDefault();
+    changeStateWheelWindow(true);
     item.parentNode.querySelector("#options-parcel").style.display = "flex";
     item.parentNode.querySelector("#options-parcel").style.top =
       e.clientY + "px";
@@ -232,13 +249,13 @@ options_parcel?.forEach((item) => {
 
     options_parcel.forEach((element) => {
       if (element != item) {
-        element.parentNode.querySelector("#options-parcel").style.display =
-          "none";
+        element.parentNode.querySelector("#options-parcel").style.display = "none";
       }
     });
 
     document.addEventListener("click", () => {
       item.parentNode.querySelector("#options-parcel").style.display = "none";
+      changeStateWheelWindow(false);
     });
   });
 });
@@ -601,124 +618,6 @@ function getCookie(name) {
   }
   return null;
 }
-
-// Carousel start
-
-const carouselInner = document.getElementById("carousel-inner");
-let currentIndex = 1; // Start with the first real item
-const items = document.querySelectorAll(".carousel-item");
-const totalItems = items.length;
-
-// Loop effect: clone first and last few items
-const carouselChildren = [...carouselInner.children];
-const elementos = document.querySelector(".carousel-item").offsetWidth;
-let cardPerView = Math.round(carouselInner.offsetWidth / elementos);
-
-// Cloning the items
-carouselChildren
-  .slice(-cardPerView)
-  .reverse()
-  .forEach((card) => {
-    carouselInner.insertAdjacentHTML("afterbegin", card.outerHTML);
-  });
-
-carouselChildren.slice(0, cardPerView).forEach((card) => {
-  carouselInner.insertAdjacentHTML("beforeend", card.outerHTML);
-});
-
-const allItems = document.querySelectorAll(".carousel-item");
-const realItemsCount = totalItems; // Number of real items without clones
-const totalCarouselItems = allItems.length; // Total items including clones
-
-// Update the currentIndex to the first real item
-currentIndex = cardPerView;
-
-function slide(direction) {
-  const items = document.querySelectorAll(".carousel-item");
-  const totalItems = items.length;
-
-  // Calculate the new index
-  currentIndex = (currentIndex + direction + totalItems) % totalItems;
-
-  // Handle infinite loop: reset position when reaching the clone items
-  if (currentIndex < cardPerView) {
-    setTimeout(() => {
-      carouselInner.style.transition = "none";
-      currentIndex = realItemsCount + currentIndex;
-      updateFocus();
-      const resetOffset =
-        -currentIndex * (items[0].offsetWidth + 20) +
-        (carouselInner.offsetWidth - items[0].offsetWidth) / 2;
-      carouselInner.style.transform = `translateX(${resetOffset}px)`;
-      setTimeout(() => {
-        carouselInner.style.transition = "transform 0.5s ease-in-out";
-      }, 50);
-    }, 500);
-  } else if (currentIndex >= realItemsCount + cardPerView) {
-    setTimeout(() => {
-      carouselInner.style.transition = "none";
-      currentIndex = currentIndex - realItemsCount;
-      updateFocus();
-      const resetOffset =
-        -currentIndex * (items[0].offsetWidth + 20) +
-        (carouselInner.offsetWidth - items[0].offsetWidth) / 2;
-      carouselInner.style.transform = `translateX(${resetOffset}px)`;
-      setTimeout(() => {
-        carouselInner.style.transition = "transform 0.5s ease-in-out";
-      }, 50);
-    }, 500);
-  }
-
-  // Center the active item
-  const offset =
-    -currentIndex * (items[0].offsetWidth + 20) +
-    (carouselInner.offsetWidth - items[0].offsetWidth) / 2;
-  carouselInner.style.transform = `translateX(${offset}px)`;
-
-  // Update focus state
-  updateFocus();
-}
-
-const left_arrow = document.getElementById("left_arrow");
-const right_arrow = document.getElementById("right_arrow");
-
-left_arrow.addEventListener("click", () => slide(-1));
-
-right_arrow.addEventListener("click", () => slide(1));
-
-function updateFocus() {
-  const items = document.querySelectorAll(".carousel-item");
-
-  items.forEach((item, index) => {
-    if (index === currentIndex) {
-      item.classList.add(
-        "scale-[1]",
-        "opacity-100",
-        "shadow-[rgb(216,212,212)_-17px_-7px]",
-        "cursor-pointer",
-        "hover:bg-gray-200"
-      );
-      item.classList.remove("scale-[0.8]", "opacity-50");
-    } else {
-      item.classList.remove(
-        "scale-[1]",
-        "opacity-100",
-        "shadow-[rgb(216,212,212)_-17px_-7px]",
-        "cursor-pointer",
-        "hover:bg-gray-200"
-      );
-      item.classList.add("scale-[0.8]", "opacity-50");
-    }
-  });
-}
-
-// Initial centering and focus
-const initialOffset =
-  -currentIndex * (items[0].offsetWidth + 20) +
-  (carouselInner.offsetWidth - items[0].offsetWidth) / 2;
-carouselInner.style.transform = `translateX(${initialOffset}px)`;
-updateFocus();
-// Carousel end
 
 //Código para opciones del parcelador (borrar, duplicar y añadir a favoritos)
 let moreOptionIcons = document.querySelectorAll('#more-options-icon')
