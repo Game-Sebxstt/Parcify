@@ -220,7 +220,7 @@ if(!layerBackground.getChildren().find(item => item.attrs.id == "bg")){
     elementsLayerBackground.push(bg);
 }
 
-export var tr = layer.getChildren().find(item => item.attrs.id == "transformer") || new Konva.Transformer({
+export var tr = layerUtilities.getChildren().find(item => item.attrs.id == "transformer") || new Konva.Transformer({
     padding: 1,
     flipEnabled: false,
     boundBoxFunc: (oldBox, newBox) => {
@@ -231,13 +231,12 @@ export var tr = layer.getChildren().find(item => item.attrs.id == "transformer")
     },
     ignoreStroke: true,
     visible: true,
-    // centeredScaling: true,
     rotationSnaps: [0, 90, 180, 270],
     id: "transformer"
 });
 
-if(!layer.getChildren().find(item => item.attrs.id == "transformer")){
-    layer.add(tr);
+if(!layerUtilities.getChildren().find(item => item.attrs.id == "transformer")){
+    layerUtilities.add(tr);
 }
 
 export var selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection") ||  new Konva.Rect({
@@ -506,7 +505,7 @@ function dbClickText(textNode) {
         setTextareaWidth(textNode.width() * textNode.getAbsoluteScale().x, textarea, textNode);
     });
 
-    stage.on("wheel", updateTextArea)
+    stage.on("wheel dragmove", updateTextArea)
     textNode.on('transform', updateTextArea)
 
     function updateTextArea(){
@@ -675,7 +674,7 @@ function dbClickRect(elementDrag) {
         setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x, textarea, textNode);
     });
 
-    stage.on("wheel", updateTextArea)
+    stage.on("wheel dragmove", updateTextArea)
     // elementDrag.on('transform', updateTextArea)
 
     function updateTextArea(){
@@ -692,7 +691,9 @@ function dbClickRect(elementDrag) {
         textarea.style.width = elementDrag.width() * elementDrag.scaleX() * stage.scaleX() + "px"
         textarea.style.height = elementDrag.height() * elementDrag.scaleY() * stage.scaleY() + "px"
 
-        textarea.style.fontSize = textNode.fontSize() * stage.scaleX() + "px";
+        if(textNode){
+            textarea.style.fontSize = textNode.fontSize() * stage.scaleX() + "px";
+        }
     }
 
     function handleOutsideClick(e) {

@@ -277,7 +277,7 @@ domElements.exportCanvas.addEventListener("click", () => {
         return;
     }
 
-    var dataURL = konva.stage.toDataURL({ pixelRatio: 3 });
+    var dataURL = konva.layer.toDataURL({ pixelRatio: 3 });
     GlobalFunctions.downloadURI(dataURL, 'stage.png');
 });
 

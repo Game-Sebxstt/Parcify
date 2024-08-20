@@ -184,7 +184,7 @@ export function showBarTool(nodes) {
 
     function createBoundingRectForNodes(nodes) {
         const boundingRect = new Konva.Rect({
-            fill: 'rgba(0,0,0,0)',
+            fill: 'rgba(0, 0, 0, 0)',
             strokeWidth: 1,
             listening: false,
         });
@@ -200,6 +200,12 @@ export function showBarTool(nodes) {
                 updateBarToolPosition(target, barTool);
             });
         });
+
+        stage.on("dragmove wheel", () => {
+            target.setAttr("barToolSelected", true);
+            updateBoundingRect(boundingRect, nodes);
+            updateBarToolPosition(target, barTool);
+        })
 
         return boundingRect;
     }
@@ -293,7 +299,6 @@ export function showBarTool(nodes) {
     
         return isInsideHorizontally && isInsideVertically;
     }
-    
 
     function updateBarToolPosition(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
@@ -310,8 +315,8 @@ export function showBarTool(nodes) {
             height: parseFloat(window.getComputedStyle(barTool).height) || barToolRect.height || 0,
             originalWidth: konva.getWidthBarTool(),
             originalHeight: konva.getHeightBarTool(),
-            scaleX: stage.scaleX() < 0.6 ? 0.6 : stage.scaleX() > 1.4 ? 1.4 : stage.scaleX(),
-            scaleY: stage.scaleY() < 0.6 ? 0.6 : stage.scaleY() > 0.8 ? 0.8 : stage.scaleY(),
+            scaleX: stage.scaleX() < 0.5 ? 0.5 : stage.scaleX() > 0.6 ? 0.6 : stage.scaleX(),
+            scaleY: stage.scaleY() < 0.4 ? 0.4 : stage.scaleY() > 0.5 ? 0.5 : stage.scaleY(),
             x: barToolRect.left,
             y: barToolRect.top,
         }
@@ -319,6 +324,8 @@ export function showBarTool(nodes) {
         const barToolHalfHeight = barToolRect.height / 2;
     
         let leftTarget , topTarget;
+        // console.log("stage", stage.scaleX(), stage.scaleY());
+        // console.log("barToolShape", barToolShape.scaleX, barToolShape.scaleY);
 
         if(target instanceof Konva.Rect){
             topTarget = y - height / 4;
@@ -340,6 +347,12 @@ export function showBarTool(nodes) {
         barTool.style.left = `${adjustedBarToolLeft}px`;
         barTool.style.width = `${barToolShape.originalWidth * barToolShape.scaleX}px`;
         barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
+        document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
+        document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
+
+        document.querySelectorAll(".childBarTool").forEach(child => {
+            child.style.padding = `${8 * barToolShape.scaleY}px ${8 * barToolShape.scaleX}px`;
+        })
     }
     
 }

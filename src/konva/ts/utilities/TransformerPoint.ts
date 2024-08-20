@@ -86,8 +86,8 @@ export class TransformerPoints {
     }
 
     private updateScale() {
-        this.scale = this.stage.scaleX() > 0.4 ? this.stage.scaleX() : 0.4;
-        this.scale = this.scale < 3 ? this.scale : 3;
+        this.scale = this.stage.scaleX() > 0.3 ? this.stage.scaleX() : 0.3;
+        this.scale = this.scale < 5 ? this.scale : 5;
         this.separationOffset = 20 / this.scale; 
     }
 
@@ -136,14 +136,7 @@ export class TransformerPoints {
     private addNodeEvents() {
         if (!this.targetNode) return;
 
-        this.targetNode.on('transform', (e) => {
-            this.targetNode = e.target
-            this.updateAnchors();
-            this.updateArrows();
-            this.layer.batchDraw();
-        });
-
-        this.targetNode.on("dragmove", (e) => {
+        this.targetNode.on('transform dragmove', (e) => {
             this.targetNode = e.target
             this.updateAnchors();
             this.updateArrows();
@@ -339,6 +332,7 @@ export class TransformerPoints {
             if (!this.targetNode) return;
     
             const anchorPositionsTarget = this.getAnchorPositions(this.targetNode);
+            const snapRotation = konva.tr;
     
             this.anchors.forEach(anchor => {
                 const anchorType = anchor.name();
