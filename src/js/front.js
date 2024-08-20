@@ -718,5 +718,19 @@ const initialOffset =
   (carouselInner.offsetWidth - items[0].offsetWidth) / 2;
 carouselInner.style.transform = `translateX(${initialOffset}px)`;
 updateFocus();
-
 // Carousel end
+
+//Código para opciones del parcelador (borrar, duplicar y añadir a favoritos)
+let moreOptionIcons = document.querySelectorAll('#more-options-icon')
+let moreOptionDivs = document.querySelectorAll('#more-options-parceller')
+
+moreOptionIcons.forEach((icon, index) => {
+    icon.addEventListener("click", () => {
+        const relatedOptionDiv = moreOptionDivs[index];
+        if (window.getComputedStyle(relatedOptionDiv).display === "none") {
+            relatedOptionDiv.style.display = "flex";
+        } else {
+            relatedOptionDiv.style.display = "none";
+        }
+    });
+});
