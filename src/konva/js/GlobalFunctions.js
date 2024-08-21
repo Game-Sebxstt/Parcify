@@ -308,79 +308,97 @@ export function showBarTool(nodes) {
     }
 
     function updateBarToolPosition(target, barTool) {
+        // Si la herramienta de barra no está seleccionada, no hacemos nada
         if (!target.getAttr("barToolSelected")) return;
     
+        // Obtener la posición y el tamaño del objetivo
         const { x, y } = target.absolutePosition();
         const scaleX = target.scaleX() * stage.scaleX();
         const scaleY = target.scaleY() * stage.scaleY();
         const width = target instanceof Konva.Rect ? target.width() * scaleX : target.radius() * scaleX;
         const height = target instanceof Konva.Rect ? target.height() * scaleY : target.radius() * scaleY;
     
+        // Obtener las dimensiones y escalas de la herramienta de barra
         const barToolRect = barTool.getBoundingClientRect();
         const barToolShape = {
             width: parseFloat(window.getComputedStyle(barTool).width) || barToolRect.width || 0,
             height: parseFloat(window.getComputedStyle(barTool).height) || barToolRect.height || 0,
             originalWidth: konva.getWidthBarTool(),
             originalHeight: konva.getHeightBarTool(),
-            scaleX: stage.scaleX() < 0.5 ? 0.5 : stage.scaleX() > 0.6 ? 0.6 : stage.scaleX(),
-            scaleY: stage.scaleY() < 0.4 ? 0.4 : stage.scaleY() > 0.5 ? 0.5 : stage.scaleY(),
+            scaleX: Math.min(Math.max(stage.scaleX(), 0.5), 0.6),
+            scaleY: Math.min(Math.max(stage.scaleY(), 0.4), 0.5),
             x: barToolRect.left,
             y: barToolRect.top,
-        }
+        };
+        
         const barToolHalfWidth = barToolRect.width / 2;
         const barToolHalfHeight = barToolRect.height / 2;
     
-        let leftTarget , topTarget;
-
-        if(target instanceof Konva.Rect){
+        // Calcular la posición de la herramienta de barra en relación al objetivo
+        let topTarget, leftTarget;
+        if (target instanceof Konva.Rect) {
             topTarget = y - height / 4;
             leftTarget = x - barToolHalfWidth + width / 2;
-        }else{
+        } else {
             topTarget = y - barToolHalfHeight - height;
             leftTarget = x - barToolHalfWidth;
         }
     
+        // Ajustar las posiciones en caso de que se salgan del viewport
         const headerHeight = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
-        let adjustedBarToolTop = topTarget <= headerHeight ? (y + height + barToolShape.height) + (height / 3): topTarget;
-        let adjustedBarToolLeft = leftTarget <= 0 ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
-
-        adjustedBarToolTop = adjustedBarToolTop < headerHeight ? headerHeight + barToolHalfHeight : adjustedBarToolTop > window.innerHeight - barToolShape.height ? window.innerHeight - barToolShape.height * 2: adjustedBarToolTop;
-
-        // barTool.style.opacity = 1;
+        let adjustedBarToolTop = topTarget <= headerHeight ? (y + height + barToolShape.height) + (height / 3) : topTarget;
+        let adjustedBarToolLeft = leftTarget <= 0 
+            ? barToolHalfHeight 
+            : leftTarget > window.innerWidth - barToolShape.width 
+            ? window.innerWidth - barToolShape.width - barToolHalfHeight 
+            : leftTarget;
+    
+        adjustedBarToolTop = Math.min(Math.max(adjustedBarToolTop, headerHeight + barToolHalfHeight), window.innerHeight - barToolShape.height * 2);
+    
+        // Aplicar los estilos de la herramienta de barra
         barTool.style.pointerEvents = "auto";
         barTool.style.top = `${adjustedBarToolTop}px`;
         barTool.style.left = `${adjustedBarToolLeft}px`;
         barTool.style.width = `${barToolShape.originalWidth * barToolShape.scaleX}px`;
         barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
         barTool.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
+    
+        // Actualizar los tamaños de fuente
         document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
         document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
-
-        const BarToolColor = document.querySelector("#BarToolExtra")
-        const BarToolColorShape = {
-            width: parseFloat(window.getComputedStyle(BarToolColor).width) || BarToolColor.width || 0,
-            height: parseFloat(window.getComputedStyle(BarToolColor).height) || BarToolColor.height || 0,
-            originalWidth: konva.getWidthBarToolColor(),
-            originalHeight: konva.getHeightBarToolColor(),
-        }
-
-        if(BarToolColor){
+    
+        // Configurar los estilos de la sección de color de la herramienta de barra
+        const BarToolColor = document.querySelector("#BarToolExtra");
+        if (BarToolColor) {
+            const BarToolColorShape = {
+                width: parseFloat(window.getComputedStyle(BarToolColor).width) || BarToolColor.width || 0,
+                height: parseFloat(window.getComputedStyle(BarToolColor).height) || BarToolColor.height || 0,
+                originalWidth: konva.getWidthBarToolColor(),
+                originalHeight: konva.getHeightBarToolColor(),
+            };
+    
             BarToolColor.style.height = `${BarToolColorShape.originalHeight * barToolShape.scaleY}px`;
             BarToolColor.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
+    
+            // Actualizar el tamaño de la fuente en el nombre de la barra
             document.querySelector("#nameBar").querySelector("#name").style.fontSize = `${24 * barToolShape.scaleX}px`;
-            // document.querySelector("#nameBar").querySelector("#chevron").style.height = `${24 * barToolShape.scaleY}px`;
+    
+            // Actualizar los estilos de los colores
             document.querySelector("#style_color").style.padding = `${8 * barToolShape.scaleX}px`;
-            document.querySelector("#style_color").style.gap = `${8 * barToolShape.scaleX} 0 px`;
+            document.querySelector("#style_color").style.gap = `${8 * barToolShape.scaleX} 0px`;
+    
+            // Actualizar los colores de entrada
             BarToolColor.querySelectorAll("#input_color").forEach(child => {
                 child.style.width = `${36 * barToolShape.scaleX}px`;
                 child.style.height = `${36 * barToolShape.scaleX}px`;
                 child.style.borderRadius = `${6 * barToolShape.scaleX}px`;
-            })
+            });
         }
-
+    
+        // Aplicar estilos de padding en todos los elementos hijos de la herramienta de barra
         document.querySelectorAll(".childBarTool").forEach(child => {
             child.style.padding = `${8 * barToolShape.scaleY}px ${8 * barToolShape.scaleX}px`;
-        })
+        });
     }
     
 }
