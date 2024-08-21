@@ -35,10 +35,25 @@ var BarTool = document.querySelector('#BarTool');
 var widthBarTool = BarTool.offsetWidth;
 var heightBarTool = BarTool.offsetHeight;
 
-var BarToolColor = document.querySelector('#BarToolExtra'); 
-var widthBarToolColor = BarToolColor.offsetWidth;
-var heightBarToolColor = BarToolColor.offsetHeight;
-// BarToolColor.style.display = "none";
+var BarToolExtra = document.querySelector('#BarToolExtra'); 
+var dimensionBarToolExtra = {
+    color: {
+        width: BarToolExtra.offsetWidth,
+        height: BarToolExtra.offsetHeight,
+    },
+    align: {
+        width: BarToolExtra.offsetWidth,
+        height: BarToolExtra.offsetHeight,
+    },
+    colorText: {
+        width: BarToolExtra.offsetWidth,
+        height: BarToolExtra.offsetHeight,
+    },
+    border: {
+        width: BarToolExtra.offsetWidth,
+        height: BarToolExtra.offsetHeight,
+    }
+};
 
 let konva = document.querySelector("#konva");
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
@@ -91,12 +106,10 @@ export function setHeightBarTool(heightBarToolChange){
     heightBarTool = heightBarToolChange;
 }
 
-export function setWidthBarToolColor(widthBarToolColorChange){
-    widthBarToolColor = widthBarToolColorChange;
-}
+export function setDimensionBarToolExtra(dimensionBarToolExtraChange, key){
+    if(!key) return;
 
-export function setHeightBarToolColor(heightBarToolColorChange){
-    heightBarToolColor = heightBarToolColorChange;
+    dimensionBarToolExtra[key] = dimensionBarToolExtraChange;
 }
 
 export function getKonva(){
@@ -143,12 +156,10 @@ export function getHeightBarTool(){
     return heightBarTool;
 }
 
-export function getWidthBarToolColor(){
-    return widthBarToolColor;
-}
+export function getDimensionBarToolExtra(key){
+    if(!key) return null;
 
-export function getHeightBarToolColor(){
-    return heightBarToolColor;
+    return dimensionBarToolExtra[key];
 }
 
 export let stage;

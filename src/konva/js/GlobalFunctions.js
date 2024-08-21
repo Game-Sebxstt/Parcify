@@ -164,6 +164,14 @@ export function randomId(){
     return Math.random().toString(36).substr(2, 9);
 }
 
+let isUpdateToolBar = false;
+let nodeSelect = null;
+
+export function setUpdateToolBar(state){
+    isUpdateToolBar = state;
+    showBarTool(nodeSelect);
+}
+
 export function showBarTool(nodes) {
     const barTool = document.querySelector("#BarTool");
     const stage = konva.stage;
@@ -179,6 +187,9 @@ export function showBarTool(nodes) {
         initializeBarTool(target, barTool);
     }
 
+    nodeSelect = target;
+
+    updateToolBarShape();
     initializeBarTool(target, barTool);
     setUpEventListeners(target, barTool, stage, nodes);
 
@@ -286,21 +297,6 @@ export function showBarTool(nodes) {
         }
     }
 
-    function isBarToolInsideTarget(barToolRect, targetX, targetY, targetWidth, targetHeight) {
-        const targetRight = targetX + targetWidth;
-        const targetBottom = targetY + targetHeight;
-    
-        const barToolLeft = barToolRect.left;
-        const barToolRight = barToolRect.left + barToolRect.width;
-        const barToolTop = barToolRect.top;
-        const barToolBottom = barToolRect.top + barToolRect.height;
-    
-        const isInsideHorizontally = (barToolLeft >= targetX) && (barToolRight <= targetRight);
-        const isInsideVertically = (barToolTop >= targetY) && (barToolBottom <= targetBottom);
-    
-        return isInsideHorizontally && isInsideVertically;
-    }
-
     function updateToolBar(target, barTool){
         requestAnimationFrame(() => {
             updateBarToolPosition(target, barTool);
@@ -308,17 +304,14 @@ export function showBarTool(nodes) {
     }
 
     function updateBarToolPosition(target, barTool) {
-        // Si la herramienta de barra no está seleccionada, no hacemos nada
         if (!target.getAttr("barToolSelected")) return;
-    
-        // Obtener la posición y el tamaño del objetivo
+
         const { x, y } = target.absolutePosition();
         const scaleX = target.scaleX() * stage.scaleX();
         const scaleY = target.scaleY() * stage.scaleY();
-        const width = target instanceof Konva.Rect ? target.width() * scaleX : target.radius() * scaleX;
-        const height = target instanceof Konva.Rect ? target.height() * scaleY : target.radius() * scaleY;
+        const width = target instanceof Konva.Rect || target instanceof Konva.Text ? target.width() * scaleX : target.radius() * scaleX;
+        const height = target instanceof Konva.Rect || target instanceof Konva.Text ? target.height() * scaleY : target.radius() * scaleY;
     
-        // Obtener las dimensiones y escalas de la herramienta de barra
         const barToolRect = barTool.getBoundingClientRect();
         const barToolShape = {
             width: parseFloat(window.getComputedStyle(barTool).width) || barToolRect.width || 0,
@@ -334,7 +327,6 @@ export function showBarTool(nodes) {
         const barToolHalfWidth = barToolRect.width / 2;
         const barToolHalfHeight = barToolRect.height / 2;
     
-        // Calcular la posición de la herramienta de barra en relación al objetivo
         let topTarget, leftTarget;
         if (target instanceof Konva.Rect) {
             topTarget = y - height / 4;
@@ -344,7 +336,6 @@ export function showBarTool(nodes) {
             leftTarget = x - barToolHalfWidth;
         }
     
-        // Ajustar las posiciones en caso de que se salgan del viewport
         const headerHeight = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
         let adjustedBarToolTop = topTarget <= headerHeight ? (y + height + barToolShape.height) + (height / 3) : topTarget;
         let adjustedBarToolLeft = leftTarget <= 0 
@@ -355,7 +346,6 @@ export function showBarTool(nodes) {
     
         adjustedBarToolTop = Math.min(Math.max(adjustedBarToolTop, headerHeight + barToolHalfHeight), window.innerHeight - barToolShape.height * 2);
     
-        // Aplicar los estilos de la herramienta de barra
         barTool.style.pointerEvents = "auto";
         barTool.style.top = `${adjustedBarToolTop}px`;
         barTool.style.left = `${adjustedBarToolLeft}px`;
@@ -363,42 +353,85 @@ export function showBarTool(nodes) {
         barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
         barTool.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
     
-        // Actualizar los tamaños de fuente
         document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
         document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
     
-        // Configurar los estilos de la sección de color de la herramienta de barra
-        const BarToolColor = document.querySelector("#BarToolExtra");
-        if (BarToolColor) {
-            const BarToolColorShape = {
-                width: parseFloat(window.getComputedStyle(BarToolColor).width) || BarToolColor.width || 0,
-                height: parseFloat(window.getComputedStyle(BarToolColor).height) || BarToolColor.height || 0,
-                originalWidth: konva.getWidthBarToolColor(),
-                originalHeight: konva.getHeightBarToolColor(),
+        if(!isUpdateToolBar) return;
+
+        let BarToolExtra = null;
+        document.querySelectorAll("#BarToolExtra").forEach(child => {
+            if (window.getComputedStyle(child).display !== "none") {
+                BarToolExtra = child;
+            }
+        });
+        const keyBarToolExtra = BarToolExtra.getAttribute("data-type")
+        if (BarToolExtra) {
+            const BarToolExtraShape = {
+                width: parseFloat(window.getComputedStyle(BarToolExtra).width) || BarToolExtra.width || 0,
+                height: parseFloat(window.getComputedStyle(BarToolExtra).height) || BarToolExtra.height || 0,
+                originalWidth: konva.getDimensionBarToolExtra(keyBarToolExtra).width,
+                originalHeight: konva.getDimensionBarToolExtra(keyBarToolExtra).height,
             };
+
+            BarToolExtra.style.height = `${BarToolExtraShape.originalHeight * barToolShape.scaleY}px`;
+            BarToolExtra.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
     
-            BarToolColor.style.height = `${BarToolColorShape.originalHeight * barToolShape.scaleY}px`;
-            BarToolColor.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
-    
-            // Actualizar el tamaño de la fuente en el nombre de la barra
             document.querySelector("#nameBar").querySelector("#name").style.fontSize = `${24 * barToolShape.scaleX}px`;
     
-            // Actualizar los estilos de los colores
             document.querySelector("#style_color").style.padding = `${8 * barToolShape.scaleX}px`;
             document.querySelector("#style_color").style.gap = `${8 * barToolShape.scaleX} 0px`;
     
-            // Actualizar los colores de entrada
-            BarToolColor.querySelectorAll("#input_color").forEach(child => {
+            BarToolExtra.querySelectorAll("#input_color").forEach(child => {
                 child.style.width = `${36 * barToolShape.scaleX}px`;
                 child.style.height = `${36 * barToolShape.scaleX}px`;
                 child.style.borderRadius = `${6 * barToolShape.scaleX}px`;
             });
         }
     
-        // Aplicar estilos de padding en todos los elementos hijos de la herramienta de barra
         document.querySelectorAll(".childBarTool").forEach(child => {
             child.style.padding = `${8 * barToolShape.scaleY}px ${8 * barToolShape.scaleX}px`;
         });
     }
     
+}
+
+export function updateToolBarShape(){
+    const node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+
+    const toolBarButtonAction = document.querySelectorAll("#tool_bar_button_action")
+
+    toolBarButtonAction.forEach((item) => {
+        const dataTypeButton = item ? item.getAttribute("data-type") : "default";
+        const dataValueButton = item ? item.getAttribute("data-value") : "default";
+
+        const attrNode = node.getAttr(dataTypeButton);
+
+        if(dataValueButton == attrNode){
+            item.classList.add("active");
+        }else{
+            item.classList.remove("active");
+        }
+    })
+}
+
+export function isGroupText(node){
+    let returnNode = false
+    if(node.parent instanceof Konva.Group){
+        node.parent.getChildren().forEach((item) => {
+            if(item instanceof Konva.Text){
+                returnNode = item;
+                return;
+            }
+        })
+    }
+
+    return returnNode;
+}
+
+export function actionToolBar(change, type){
+    const node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+    node.setAttr(type, change)
+    
+    updateToolBarShape();
+    konva.layer.draw();
 }
