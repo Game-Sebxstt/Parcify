@@ -427,6 +427,21 @@ export function updateToolBarShape(){
         toolBarFontSize.value = node.fontSize();
         actionToolBar(toolBarFontSize.value, "fontSize");
     }
+
+    const BarToolExtraList = document.querySelectorAll("#BarToolExtra")
+        
+    BarToolExtraList.forEach((item) => {
+        const dataTypeItem = item.getAttribute("data-type")
+
+        if(dataTypeItem == "color"){
+            const styleColor = item.querySelector("#style_color");
+            const inputColor = styleColor.querySelectorAll("#input_color");
+
+            inputColor.forEach((color) => {
+                const fillColor = color.getAttribute("data-fill")
+            })
+        }
+    })
 }
 
 export function isGroupText(node){

@@ -203,6 +203,22 @@ import BarToolColorText from "./BarToolColorText.astro";
     })
 
     //BarToolColor
-    
+    const BarToolExtraList = document.querySelectorAll("#BarToolExtra") as NodeListOf<HTMLElement>
+        
+    BarToolExtraList.forEach((item: HTMLElement) => {
+        const dataTypeItem = item.getAttribute("data-type")
+
+        if(dataTypeItem == "color"){
+            const styleColor = item.querySelector("#style_color") as HTMLElement;
+            const inputColor = styleColor.querySelectorAll("#input_color") as NodeListOf<HTMLElement>;
+
+            inputColor.forEach((element: HTMLElement) => {
+                element.addEventListener("click", () => {
+                    const dataFill = element.getAttribute("data-fill");
+                    GlobalFunctions.actionToolBar(dataFill, "fill", true)
+                })
+            })
+        }
+    })
 
 </script>
