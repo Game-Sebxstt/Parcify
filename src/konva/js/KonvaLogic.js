@@ -446,7 +446,7 @@ export function fitStageIntoParentContainer() {
 
 function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     let fillColor = "black";
-    let fontSize = elementDrag.attrs.font_size;
+    let fontSize = 20;
     let fontFamily = "Arial";
 
     if (textNode){
@@ -466,6 +466,9 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     textarea.style.width = elementDrag.width() * elementDrag.scaleX() * stage.scaleX() + "px"
     textarea.style.height = elementDrag.height() * elementDrag.scaleY() * stage.scaleY() + "px"
     textarea.style.fontSize = fontSize * stage.scaleX() + "px";
+    textarea.style.fontWeight = textNode ? textNode.fontStyle() : "normal";
+    textarea.style.fontStyle = textNode ? textNode.fontStyle() : "normal";
+    textarea.style.textDecoration = textNode ? textNode.textDecoration() : "none";
     textarea.style.border = '0px';
     textarea.style.padding = '0px';
     textarea.style.margin = 'none';
@@ -483,6 +486,7 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     textarea.style.alignItems = textAlign;
     textarea.style.color = fillColor;
     textarea.style.transform = `rotateZ(${elementDrag.rotation() ?? 0}deg)`;
+
     setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x, textarea, textNode);
     textarea.focus();
     moveCursorToEnd(textarea);
@@ -635,11 +639,13 @@ function dbClickRect(elementDrag) {
             width: elementDrag.width(),
             height: elementDrag.height(),
             text: textarea.innerText,
-            fontSize: elementDrag.attrs.font_size,
-            fontFamily: "Arial",
-            fill: "black",
-            align: "center",
-            verticalAlign: "middle",
+            fontSize: textNode ? textNode.fontSize() : 20,
+            fontFamily: textNode ? textNode.fontFamily() : "Arial",
+            fontStyle: textNode ? textNode.fontStyle() : "normal",
+            textDecoration: textNode ? textNode.textDecoration() : "none",
+            fill: textNode ? textNode.fill() : "black",
+            align: textNode ? textNode.align() : "center",
+            verticalAlign: textNode ? textNode.verticalAlign() : "middle",
             draggable: true,
             listening: false,
         }));

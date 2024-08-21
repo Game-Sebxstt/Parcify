@@ -356,6 +356,10 @@ export function showBarTool(nodes) {
         document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
         document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
     
+        document.querySelectorAll(".childBarTool").forEach(child => {
+            // child.style.padding = `${8 * barToolShape.scaleY}px ${8 * barToolShape.scaleX}px`;
+        });
+    
         if(!isUpdateToolBar) return;
 
         let BarToolExtra = null;
@@ -387,10 +391,6 @@ export function showBarTool(nodes) {
                 child.style.borderRadius = `${6 * barToolShape.scaleX}px`;
             });
         }
-    
-        document.querySelectorAll(".childBarTool").forEach(child => {
-            child.style.padding = `${8 * barToolShape.scaleY}px ${8 * barToolShape.scaleX}px`;
-        });
     }
     
 }
@@ -407,11 +407,26 @@ export function updateToolBarShape(){
         const attrNode = node.getAttr(dataTypeButton);
 
         if(dataValueButton == attrNode){
-            item.classList.add("active");
+            item.style.backgroundColor = "rgb(251, 127, 83)";
+            actionToolBar(dataValueButton, dataTypeButton);
         }else{
-            item.classList.remove("active");
+            item.style.backgroundColor = "transparent";
         }
     })
+    
+    const toolBarFontFamily = document.querySelector("#BarToolFontFamily");
+
+    if(toolBarFontFamily && node instanceof Konva.Text){
+        toolBarFontFamily.value = node.fontFamily();
+        actionToolBar(toolBarFontFamily.value, "fontFamily");
+    }
+
+    const toolBarFontSize = document.querySelector("#BarToolFontSize");
+
+    if(toolBarFontSize && node instanceof Konva.Text){
+        toolBarFontSize.value = node.fontSize();
+        actionToolBar(toolBarFontSize.value, "fontSize");
+    }
 }
 
 export function isGroupText(node){
@@ -428,10 +443,15 @@ export function isGroupText(node){
     return returnNode;
 }
 
-export function actionToolBar(change, type){
+export function actionToolBar(change, type, action){
     const node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
-    node.setAttr(type, change)
+
+    if(node.getAttr(type) == change && action){
+        change = null
+    }
+
+    change = parseFloat(change) ? parseFloat(change) : change;
+    node.setAttr(type, change);
     
-    updateToolBarShape();
     konva.layer.draw();
 }

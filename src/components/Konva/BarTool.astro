@@ -73,7 +73,7 @@ import BarToolColorText from "./BarToolColorText.astro";
     <div id="style_font_family" class="childBarTool w-full h-full flex justify-center items-center p-2 gap-x-2">
         <!--Section of to font family this is  -->
         <div class="w-full h-full flex justify-center items-center">
-            <select id="font_family" class="w-full h-full text-sm px-2 hover:bg-[rgba(30,30,30,.9)] rounded-md outline-none bg-transparent">
+            <select id="BarToolFontFamily" class="w-full h-full text-sm px-2 hover:bg-[rgba(30,30,30,.9)] rounded-md outline-none bg-transparent">
                 <option value="Arial">Arial</option>
                 <option value="Arial Black">Arial Black</option>
                 <option value="Comic Sans MS">Comic Sans MS</option>
@@ -94,7 +94,7 @@ import BarToolColorText from "./BarToolColorText.astro";
     <div id="style_font_size" class="childBarTool w-full h-full flex justify-center items-center p-2 gap-x-2">
         <!--This section is to font size this is input number -->
         <div class="w-full h-full flex justify-center items-center">
-            <input id="font_size" type="number" class="w-full h-full px-2 bg-[rgba(30,30,30,.9)] rounded-md outline-none font-bold text-sm text-center" value="12" min="1" max="100">
+            <input id="BarToolFontSize" type="number" class="w-full h-full px-2 bg-[rgba(30,30,30,.9)] rounded-md outline-none font-bold text-sm text-center" value="12" min="1" max="100">
         </div> 
     </div>
 
@@ -172,25 +172,37 @@ import BarToolColorText from "./BarToolColorText.astro";
 
     const toolBarButtonAction = document.querySelectorAll("#tool_bar_button_action") as NodeListOf<HTMLElement>
 
-    toolBarButtonAction.forEach((item: Element) => {
+    toolBarButtonAction.forEach((item: HTMLElement) => {
         item.addEventListener("click", () => {
             const dataTypeButton = item ? item.getAttribute("data-type") : "default";
             const dataValueButton = item ? item.getAttribute("data-value") : "default";
 
-            GlobalFunctions.actionToolBar(dataValueButton, dataTypeButton)
-            if(item.classList.contains("active")){
-                item.classList.remove("active");
-            }else{
-                item.classList.add("active");
-            }
+            GlobalFunctions.actionToolBar(dataValueButton, dataTypeButton, true)
+            item.style.backgroundColor = window.getComputedStyle(item).backgroundColor === "rgb(251, 127, 83)" ? "transparent" : "rgb(251, 127, 83)";
 
             toolBarButtonAction.forEach((element: HTMLElement) => {
                 const dataTypeElement = element ? element.getAttribute("data-type") : "default";
 
                 if (element !== item && dataTypeButton == dataTypeElement) {
-                    element.classList.remove("active");
+                    element.style.backgroundColor = "transparent";
                 }
             })
         })
     })
+    
+    const toolBarFontFamily = document.querySelector("#BarToolFontFamily") as HTMLSelectElement;
+
+    toolBarFontFamily.addEventListener("change", () => {
+        GlobalFunctions.actionToolBar(toolBarFontFamily.value, "fontFamily", true)
+    })
+
+    const toolBarFontSize = document.querySelector("#BarToolFontSize") as HTMLInputElement;
+
+    toolBarFontSize.addEventListener("change", () => {
+        GlobalFunctions.actionToolBar(toolBarFontSize.value, "fontSize", true)
+    })
+
+    //BarToolColor
+    
+
 </script>

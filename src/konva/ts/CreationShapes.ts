@@ -53,6 +53,7 @@ interface Line{
 interface Text{
     type: "text",
     text: string,
+    fill: string,
     align: string,
     fontStyle: any,
     fontSize: number,
@@ -130,6 +131,7 @@ let Text: Text = {
     ...PropertiesNecessary,
     text: "Escribe un texto.",
     align: "left",
+    fill: "rgb(0 0 0 / 0.7)",
     fontStyle: "normal",
     fontFamily: 'Arial',
     verticalAlign: "top",
