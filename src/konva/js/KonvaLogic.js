@@ -2,6 +2,7 @@ import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as req from '../../js/backend/requests';
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
+import { PickerCustom } from "../ts/utilities/PickerCustom";
 
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
@@ -430,6 +431,7 @@ export function dbClickElement(e) {
     }
 
     if (element instanceof Konva.Rect) {
+        if(element.getAttr("block") == true) return;
         dbClickRect(element);
     }
 }
@@ -643,7 +645,7 @@ function dbClickRect(elementDrag) {
             fontFamily: textNode ? textNode.fontFamily() : "Arial",
             fontStyle: textNode ? textNode.fontStyle() : "normal",
             textDecoration: textNode ? textNode.textDecoration() : "none",
-            fill: textNode ? textNode.fill() : "black",
+            fill: textNode ? textNode.fill() : "rgb(0 0 0 / 0.7)",
             align: textNode ? textNode.align() : "center",
             verticalAlign: textNode ? textNode.verticalAlign() : "middle",
             draggable: true,
@@ -744,3 +746,5 @@ function dbClickRect(elementDrag) {
         window.addEventListener('click', handleOutsideClick);
     });
 }
+
+const picker = new PickerCustom(stage, layer, layerUtilities)

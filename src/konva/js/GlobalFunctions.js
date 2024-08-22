@@ -445,13 +445,9 @@ export function updateToolBarShape(){
                     color.style.borderColor = "rgba(251, 127, 83)";
                     findColor = true;
 
-                    inputColor.forEach((colorChild) =>{
-                        if(colorChild !== color){
-                            if(colorChild.classList.contains("custom")){
-                                colorChild.style.borderSize = "0px";
-                            }else{
-                                colorChild.style.borderColor = "transparent"
-                            }
+                    inputColor.forEach((colorChild) => {
+                        if(colorChild != color){
+                            colorChild.style.borderColor = "transparent";
                         }
                     })
                 }
@@ -459,7 +455,7 @@ export function updateToolBarShape(){
 
             if(!findColor){
                 inputColor.forEach((color) => {
-                    if(color.classList.contains("custom")){
+                    if(color.getAttribute("data-fill") == "custom"){
                         color.style.borderColor = "rgba(251, 127, 83)";
                     }else{
                         color.style.borderColor = "transparent";

@@ -429,8 +429,14 @@ konva.stage.on('click tap', function (e) {
         konva.tr.nodes(parent.getChildren());
         GlobalFunctions.showBarTool()
         return;
-    }else if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
+    }
+    
+    if (!e.target.hasName("shape") && !e.target.hasName("text") && !e.target.hasName("image")) {
         return;
+    }
+
+    if(e.target.getAttr("block") == true){
+        return
     }
 
     const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;

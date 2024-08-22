@@ -485,7 +485,7 @@ export class TransformerPoints {
     }
 
     public attachTo(node: Konva.Node) {
-        if (!node || node.attrs.id === "anchorPoint") return;
+        if (!node || node.attrs.id === "anchorPoint" || node.getAttr("block") == true) return;
 
         this.targetNode = node;
         this.addNodeEvents();
