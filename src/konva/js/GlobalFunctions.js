@@ -436,10 +436,36 @@ export function updateToolBarShape(){
         if(dataTypeItem == "color"){
             const styleColor = item.querySelector("#style_color");
             const inputColor = styleColor.querySelectorAll("#input_color");
+            let findColor = false;
 
             inputColor.forEach((color) => {
                 const fillColor = color.getAttribute("data-fill")
+
+                if(node.fill() == fillColor){
+                    color.style.borderColor = "rgba(251, 127, 83)";
+                    findColor = true;
+
+                    inputColor.forEach((colorChild) =>{
+                        if(colorChild !== color){
+                            if(colorChild.classList.contains("custom")){
+                                colorChild.style.borderSize = "0px";
+                            }else{
+                                colorChild.style.borderColor = "transparent"
+                            }
+                        }
+                    })
+                }
             })
+
+            if(!findColor){
+                inputColor.forEach((color) => {
+                    if(color.classList.contains("custom")){
+                        color.style.borderColor = "rgba(251, 127, 83)";
+                    }else{
+                        color.style.borderColor = "transparent";
+                    }
+                })
+            }
         }
     })
 }

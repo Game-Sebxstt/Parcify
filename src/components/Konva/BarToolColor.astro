@@ -17,15 +17,28 @@
     <div id="style_color" class="childBarTool w-fit h-full flex justify-center items-center p-2 gap-x-2">
         <span id="input_color" data-fill="rgb(0 0 0 / 0.7)" class="w-6 h-6 bg-black/70 rounded-md border-[2px] border-black/70 cursor-pointer"></span>
         <span id="input_color" data-fill="rgb(255 255 255 / 0.7)" class="w-6 h-6 bg-white/70 rounded-md border-[2px] border-white/70 cursor-pointer"></span>
-        <span id="input_color" data-fill="rgb(239 239 239 / 0.7)" class="w-6 h-6 bg-gray-500/70 rounded-md border-[2px] border-gray-600/70 cursor-pointer"></span>
+        <span id="input_color" data-fill="rgb(107 114 128 / 0.7)" class="w-6 h-6 bg-gray-500/70 rounded-md border-[2px] border-gray-600/70 cursor-pointer"></span>
         <span id="input_color" data-fill="rgb(239 68 68 / 0.7)" class="w-6 h-6 bg-red-500/70 rounded-md border-[2px] border-red-600/70 cursor-pointer"></span>
         <span id="input_color" data-fill="rgb(239 68 239 / 0.7)" class="w-6 h-6 bg-pink-500/70 rounded-md border-[2px] border-pink-600/70 cursor-pointer"></span>
         <span id="input_color" data-fill="rgb(239 239 68 / 0.7)" class="w-6 h-6 bg-yellow-500/70 rounded-md border-[2px] border-yellow-600/70 cursor-pointer"></span>
         <span id="input_color" data-fill="rgb(68 239 68 / 0.7)" class="w-6 h-6 bg-green-500/70 rounded-md border-[2px] border-green-600/70 cursor-pointer"></span>
         <span id="input_color" data-fill="rgb(68 68 239 / 0.7)" class="w-6 h-6 bg-blue-500/70 rounded-md border-[2px] border-blue-600/70 cursor-pointer"></span>
         <span id="input_color" data-fill="rgb(68 239 239 / 0.7)" class="w-6 h-6 bg-cyan-500/70 rounded-md border-[2px] border-cyan-600/70 cursor-pointer"></span>
+        <span id="input_color" data-fill="custom" class="custom w-6 h-6 rounded-md cursor-pointer"></span>
     </div>
 </div>
+
+<style>
+
+    :root{
+        --color: radial-gradient(50% 50% at 50% 50%, #ffffff 0%, transparent 100%), conic-gradient(from 0deg at 50% 50%, red, #ffa800 47.73deg, #ff0 79.56deg, #0f0 121.33deg, #0ff 180.99deg, #00f 238.67deg, #f0f 294.36deg, red 360deg), #c4c4c4;
+    }
+
+    .custom{
+        background: var(--color);
+        border: 2px solid black;
+    }
+</style>
 
 <script>
     const BarTool = document.getElementById("BarToolExtra") as HTMLDivElement;
