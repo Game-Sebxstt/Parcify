@@ -292,6 +292,14 @@ export const transformer = new TransformerPoints(stage, layer, layerUtilities, {
     proximityThreshold: 20,
 });
 
+const config = {
+    blockWidth: 300,
+    blockHeight: 150,
+    stripWidth: 50
+};
+
+export const picker = new PickerCustom(stage, layer, layerUtilities, config);
+
 transformer.init();
 saveHistory(stage.toJSON());
 // fitStageIntoParentContainer();
@@ -746,5 +754,3 @@ function dbClickRect(elementDrag) {
         window.addEventListener('click', handleOutsideClick);
     });
 }
-
-const picker = new PickerCustom(stage, layer, layerUtilities)

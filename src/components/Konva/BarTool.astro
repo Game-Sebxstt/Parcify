@@ -104,16 +104,6 @@ import BarToolColorText from "./BarToolColorText.astro";
     <BarToolColorText/>
 </div>
 
-<style>
-    .active{
-        background-color: rgba(251, 127, 83);
-    }
-
-    .desactive{
-        background-color: transparent;
-    }
-</style>
-
 <script>
     import * as konva from "../../konva/js/KonvaLogic";
     import * as GlobalFunctions from "../../konva/js/GlobalFunctions";
@@ -230,7 +220,7 @@ import BarToolColorText from "./BarToolColorText.astro";
                     }
 
                     if(isCustomColor){
-                        
+                        konva.picker.changePos(konva.stage.getRelativePointerPosition())
                     }
                 })
             })

@@ -330,6 +330,9 @@ konva.stage.on('click tap', function (e) {
         }
     });
 
+    if(e.target instanceof Konva.Stage){
+    }
+
     if (e.target && e.target !== konva.stage) {
         States.StatesCursor.select = e.target;
 

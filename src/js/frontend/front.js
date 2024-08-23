@@ -368,8 +368,10 @@ document.querySelectorAll("#rename-parcel").forEach((item) => {
 
       h3.style.display = "none";
       input.style.display = "flex";
-      
+
       input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+
 
       const saveChanges = async () => {
         const newName = input.value;
@@ -403,7 +405,7 @@ document.querySelectorAll("#rename-parcel").forEach((item) => {
 
     input.addEventListener("blur", (e) => {
         saveChanges();
-    });
+    },{once: true});
 
   });
 });
