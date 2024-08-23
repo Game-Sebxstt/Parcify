@@ -1,7 +1,8 @@
 ---
 import TemplateView from '../Articles/TemplateView.astro';
 import Templates from '../Sections/Categories/Templates.astro';
-
+import { templateData } from '../../js/frontend/Templates';
+import Template from '../Articles/Template.astro';
 interface Props{
     id_content: string,
     templates: any;
@@ -41,8 +42,15 @@ console.log(templates)
                 <TemplateView first_text='Plantilla Vacia' second_text='by Parcify' url_image='../../../public/placeholder/image_preview.svg' template_id="0"/>
                 {
                     templates != "No hay plantillas." ? (
-                        templates.map((item: any) => (
-                            <TemplateView first_text={item.name} second_text={"By Parcify"} url_image={item.preview} template_id={item.template_id}/>
+                        templateData.map((item: any) => (
+                            // <TemplateView first_text={item.name} second_text={"By Parcify"} url_image={item.preview} template_id={item.template_id}/>
+                            <Template
+                                clase=''
+                                typeElement={item.typeElement}
+                                name={item.name}
+                                description={item.description}
+                                likes={item.likes}
+                            />
                         ))
                     ) : (
                         <span class="hidden"></span>

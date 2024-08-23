@@ -54,7 +54,7 @@ if(logged == 'true'){
                 <path d="M3 7l9 6l9 -6"></path>
               </svg>
               <input
-                class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
+                class="w-full py-3 pl-10 text-black placeholder:text-gray font-semibold text-base outline-none bg-[#FFFF] rounded-[4px]"
                 type="text"
                 name="name_register"
                 id="name_register"
@@ -83,7 +83,7 @@ if(logged == 'true'){
               <path d="M3 7l9 6l9 -6"></path>
             </svg>
             <input
-              class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
+              class="w-full py-3 pl-10 text-black placeholder:text-gray font-semibold text-base outline-none bg-[#FFFF] rounded-[4px]"
               type="email"
               name="email_register"
               id="email_register"
@@ -110,8 +110,25 @@ if(logged == 'true'){
                 <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"></path>
                 <path d="M8 11v-4a4 4 0 1 1 8 0v4"></path>
               </svg>
+              <!-- EYE CLOSED SVG -->
+              <svg  
+                xmlns="http://www.w3.org/2000/svg"   
+                viewBox="0 0 24 24"  
+                fill="none"
+                stroke="currentColor"  
+                stroke-width="2"  
+                stroke-linecap="round"  
+                stroke-linejoin="round"  
+                class="icon icon-tabler icons-tabler-outline icon-tabler-eye_off h-6 absolute right-2 text-black"
+                id="eye_toggle_off"
+                >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" />
+                <path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" />
+                <path d="M3 3l18 18" />
+              </svg>
+              <!-- EYE SVG -->
               <svg
-                class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6 absolute right-2"
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -119,15 +136,17 @@ if(logged == 'true'){
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6 absolute right-2 text-black"
+                id="eye_toggle"
               >
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                 <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"></path>
-                <path
+                <path   
                   d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"
                 ></path>
               </svg>
               <input
-                class="w-full py-3 pl-10 text-gray-800 placeholder:text-gray-800 font-semibold text-base outline-none bg-[#a5a5a5] rounded-[4px]"
+                class="w-full py-3 pl-10 text-black placeholder:text-gray font-semibold text-base outline-none bg-[#FFFF] rounded-[4px]"
                 type="password"
                 name="password_register"
                 id="password_register"
@@ -146,13 +165,13 @@ if(logged == 'true'){
             <div class="w-full flex justify-center items-center">
               <button
                 type="submit"
-                class="bg-[#FB7F53] w-full py-3 text-sm text-white font-semibold rounded-[4px] hover:bg-[#FB7F53]/80 active:bg-[#FB7F53]/60">
+                class="bg-[#1E90FF] w-full py-3 text-sm text-white font-semibold rounded-[4px] hover:bg-[#1E90FF]/80 active:bg-[#FB7F53]/60">
                 Register
               </button>
             </div>
 
             <div class="w-full flex justify-center items-center my-2">
-              <span class="flex uppercase text-white/70 font-semibold text-sm">
+              <span class="flex uppercase text-white font-semibold text-sm">
                 Or continue with
               </span>
             </div>
@@ -247,22 +266,39 @@ if(logged == 'true'){
             </div>
 
             <div class="w-full flex justify-center items-center gap-1 my-3 max-sm:text-sm">
-              <span class="text-white/60 font-semibold">You do have an account?</span>
+              <span class="text-white font-semibold">You do have an account?</span>
               <a href="/SignIn" class="font-bold text-blue-500">Sign In</a>
             </div>
           </form>
         </div>
       </div>
 
-      <div class="w-[45%] h-100% bg-[#FB7F53] rounded-2xl max-[820px]:hidden flex flex-col justify-center items-center px-5">
+      <div class="w-[45%] h-100% bg-[#1E90FF] rounded-2xl max-[820px]:hidden flex flex-col justify-center items-center px-5">
         <img src="/Business-plan-01.svg" class="h-[50%] max-[980px]:h-[35%]">
         <h3 class="text-white text-2xl text-center font-bold mt-5 max-w-[20rem] max-[980px]:text-xl">
             Gestiona tus parceladores fácilmente con Parcify
         </h3>
-        <h4 class="text-gray-200/80 font-semibold text-sm mt-2 text-center max-[980px]:text-xs">
-            Gestiona tus parceladores con Parcify: simple y eficaz
-        </h4>
       </div>
     </div>
   </div>
 </LayoutForm>
+
+<script>
+  // password visualization SignUp
+
+    //call elements by id 
+    const password_register = document.getElementById('password_register') as HTMLInputElement
+    const eye_toggle = document.getElementById('eye_toggle') as HTMLElement
+    const eye_toggle_off = document.getElementById('eye_toggle_off') as HTMLElement
+  
+    eye_toggle_off.classList.add('hidden'); //hide second svg
+
+    function showpass(){
+      const type = password_register.getAttribute('type') === 'password' ? 'text' : 'password';
+
+        password_register.setAttribute('type', type);
+        eye_toggle_off.classList.contains('hidden') ? eye_toggle_off.classList.remove('hidden') : eye_toggle_off.classList.add('hidden'); 
+    }
+
+    eye_toggle.addEventListener("click", () => showpass());
+</script>
