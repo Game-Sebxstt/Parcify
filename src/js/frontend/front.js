@@ -318,6 +318,16 @@ const addEventListeners = () => {
     item.addEventListener("click", async () => {
       const projectId = item.getAttribute("data-id");
       const validation = await req.deleteProject(projectId);
+      
+      const projectContent = item.parentElement.parentElement.parentElement; // Entré al papá del papá del papá y lo almacené en una variable
+      const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
+      const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
+
+      h3.style.display = "none";
+      input.style.display = "flex";
+
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
 
       if (!validation.state || !validation) {
         utils.handleError(validation);
@@ -358,6 +368,9 @@ const addEventListeners = () => {
       window.location.reload();
     });
   });
+    input.addEventListener("blur", (e) => {
+        saveChanges();
+    },{once: true});
 
   // Redirect to project
   document.querySelectorAll("#element-project").forEach((item) => {
