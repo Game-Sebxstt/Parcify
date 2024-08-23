@@ -109,9 +109,10 @@ const {id, name, last_modified, project_id, preview, stage, collaborators} = Ast
     }
   </div>
 
-  <div class="flex justify-between items-center">
-    <div class="flex flex-col">
-      <h3 class="text-white text-xl font-bold max-xl:text-lg">{name}</h3>
+  <div class="flex justify-between w-full items-center">
+    <div class="flex flex-col w-full">
+      <h3 id ="name-of-parcel" class="text-white text-xl font-bold max-xl:text-lg truncate w-full">{name}</h3>
+      <input id="input-of-parcel" type="text" value={name} class="bg-transparent hidden text-white text-xl font-bold max-xl:text-lg truncate w-full">
       <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {lastModified([last_modified])}</h4>
     </div>
   </div>

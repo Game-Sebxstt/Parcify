@@ -148,3 +148,26 @@ export async function duplicateProject(id_project){
 
     return {state: true, data: responseData};
 }
+
+// Rename project with method POST
+export async function renameProject(id_project, name){
+    const data = {
+        id_project: id_project,
+        name: name
+    }
+
+    const response = await fetch(`http://localhost:4000/project/rename`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }   
+    return {state: true, data: responseData};
+}
