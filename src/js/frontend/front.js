@@ -357,6 +357,57 @@ document.querySelectorAll("#duplicate-parcel").forEach((item) => {
   });
 });
 
+// Rename project
+document.querySelectorAll("#rename-parcel").forEach((item) => {
+  item.addEventListener("click", async () => {
+      const projectId = item.getAttribute("data-id");
+      
+      const projectContent = item.parentElement.parentElement.parentElement; // Entré al papá del papá del papá y lo almacené en una variable
+      const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
+      const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
+
+      h3.style.display = "none";
+      input.style.display = "flex";
+      
+      input.focus();
+
+      const saveChanges = async () => {
+        const newName = input.value;
+
+        if (!newName){
+          utils.handleError("El nombre no puede estar vacío.");
+          window.location.reload(); 
+          message("El nombre no puede estar vacío")
+          return;
+        }
+
+      const validation = await req.renameProject(projectId, newName);
+
+      if (!validation.state) {
+        utils.handleError(validation);
+        return;
+      }
+
+      h3.textContent = newName;
+      h3.style.display = "flex";
+      input.style.display = "none";
+
+      window.location.reload();
+    }
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        saveChanges();
+      }
+    });
+
+    input.addEventListener("blur", (e) => {
+        saveChanges();
+    });
+
+  });
+});
+
 // Redirect to project
 document.querySelectorAll("#element-project").forEach((item) => {
   item.addEventListener("click", () => {

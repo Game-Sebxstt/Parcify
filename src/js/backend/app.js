@@ -161,6 +161,29 @@ app.post("/project/duplicate", async (req, res) => {
     return res.status(200).send({ status: "Good Request", message: project_id })
 })
 
+//Cambio de nombre
+app.post("/project/rename", async (req,res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+    const { id_project, name } = req.body;
+
+    const connection = await getConnection();
+    const [data] = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
+
+    if (data.length === 0) {
+        return res.status(400).send({ status: "Bad Request", message: "El Proyecto no existe." });
+    }
+
+    const result = await connection.query("UPDATE projects SET name = ? WHERE project_id = ?", [name, id_project]);
+
+    if (result.affectedRows === 0) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo cambiar el nombre al proyecto." });
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "Nombre del proyecto actualizado correctamente." });
+})
+
 app.post("/project/save", async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
