@@ -131,7 +131,7 @@ let Text: Text = {
     ...PropertiesNecessary,
     text: "Escribe un texto.",
     align: "left",
-    fill: "rgb(0 0 0 / 0.7)",
+    fill: "rgb(0 0 0 / 1)",
     fontStyle: "normal",
     fontFamily: 'Arial',
     verticalAlign: "top",

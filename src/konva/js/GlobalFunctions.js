@@ -167,6 +167,10 @@ export function randomId(){
 let isUpdateToolBar = false;
 let nodeSelect = null;
 
+export function getNodeSelectToolBar(){
+    return nodeSelect;
+}
+
 export function setUpdateToolBar(state){
     isUpdateToolBar = state;
     showBarTool(nodeSelect);
@@ -240,8 +244,9 @@ export function showBarTool(nodes) {
 
     function initializeBarTool(target, barTool) {
         target.setAttr("barToolSelected", true);
-        barTool.style.display = 'flex';
         barTool.style.opacity = 1;
+        barTool.classList.remove("hidden");
+        barTool.classList.add("flex");
         updateToolBar(target, barTool);
     }
 
@@ -337,15 +342,10 @@ export function showBarTool(nodes) {
         }
     
         const headerHeight = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
-        let adjustedBarToolTop = topTarget <= headerHeight ? (y + height + barToolShape.height) + (height / 3) : topTarget;
-        let adjustedBarToolLeft = leftTarget <= 0 
-            ? barToolHalfHeight 
-            : leftTarget > window.innerWidth - barToolShape.width 
-            ? window.innerWidth - barToolShape.width - barToolHalfHeight 
-            : leftTarget;
+        let adjustedBarToolTop = topTarget <= headerHeight ? konva.stage.height() : topTarget;
+        let adjustedBarToolLeft = leftTarget <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
     
-        adjustedBarToolTop = Math.min(Math.max(adjustedBarToolTop, headerHeight + barToolHalfHeight), window.innerHeight - barToolShape.height * 2);
-    
+        barTool.style.opacity = 1;
         barTool.style.pointerEvents = "auto";
         barTool.style.top = `${adjustedBarToolTop}px`;
         barTool.style.left = `${adjustedBarToolLeft}px`;
@@ -392,7 +392,6 @@ export function showBarTool(nodes) {
             });
         }
     }
-    
 }
 
 export function updateToolBarShape(){

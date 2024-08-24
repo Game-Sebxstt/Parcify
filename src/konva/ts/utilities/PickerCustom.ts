@@ -136,7 +136,7 @@ export class PickerCustom {
             listening: false,
             draggable: false,
         });
-        this.layer.add(this.picker);
+        // this.layer.add(this.picker);
     }
 
     private startPickHue(e: Konva.KonvaEventObject<MouseEvent>) {

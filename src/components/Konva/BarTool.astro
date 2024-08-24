@@ -3,10 +3,11 @@ import BarToolAlign from "./BarToolAlign.astro";
 import BarToolBorder from "./BarToolBorder.astro";
 import BarToolColor from "./BarToolColor.astro";
 import BarToolColorText from "./BarToolColorText.astro";
+import PickCustom from "./PickCustom.astro";
 
 ---
 
-<div id="BarTool" class="absolute top-28 left-28 z-[5] w-full max-w-3xl h-24 p-0 rounded-lg bg-[#313131] border-[1px] flex opacity-0 justify-center items-center">
+<div id="BarTool" class="absolute top-28 left-28 z-[5] w-full max-w-3xl h-24 p-0 rounded-lg bg-[#313131] border-[1px] hidden justify-center items-center">
     <div id="style_color" class="childBarTool w-full h-full flex justify-center items-center p-2 gap-x-2">
         <button id="tool_bar_button" data-type="color" class="w-full h-full flex justify-center items-center px-2 hover:bg-[rgba(30,30,30,.9)] rounded-md outline-none">
             <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(255,255,255,1)" class="icon icon-tabler icons-tabler-filled icon-tabler-circle  w-full max-w-7 h-full max-h-7">
@@ -102,7 +103,14 @@ import BarToolColorText from "./BarToolColorText.astro";
     <BarToolBorder/>
     <BarToolAlign/>
     <BarToolColorText/>
+    <PickCustom/>
 </div>
+
+<style>
+    #BarTool{
+        visiblity: hidden;
+    }
+</style>
 
 <script>
     import * as konva from "../../konva/js/KonvaLogic";
@@ -220,7 +228,8 @@ import BarToolColorText from "./BarToolColorText.astro";
                     }
 
                     if(isCustomColor){
-                        konva.picker.changePos(konva.stage.getRelativePointerPosition())
+                        konva.picker.changePos({x: 0, y: 0})
+                        document.querySelector("#konvaPickCustom")?.classList.replace("hidden", "flex")
                     }
                 })
             })

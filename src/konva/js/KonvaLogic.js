@@ -33,28 +33,40 @@ var indexHistory = 0;
 
 // BarTool Variables
 var BarTool = document.querySelector('#BarTool');
+BarTool.style.display = "flex";
 var widthBarTool = BarTool.offsetWidth;
 var heightBarTool = BarTool.offsetHeight;
+BarTool.style.display = "none"
 
 var BarToolExtra = document.querySelector('#BarToolExtra'); 
 var dimensionBarToolExtra = {
     color: {
+        x: 0,
+        y: 0,
         width: BarToolExtra.offsetWidth,
         height: BarToolExtra.offsetHeight,
     },
     align: {
+        x: 0,
+        y: 0,
         width: BarToolExtra.offsetWidth,
         height: BarToolExtra.offsetHeight,
     },
     colorText: {
+        x: 0,
+        y: 0,
         width: BarToolExtra.offsetWidth,
         height: BarToolExtra.offsetHeight,
     },
     border: {
+        x: 0,
+        y: 0,
         width: BarToolExtra.offsetWidth,
         height: BarToolExtra.offsetHeight,
     }
 };
+
+console.log(dimensionBarToolExtra)
 
 let konva = document.querySelector("#konva");
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
@@ -159,7 +171,7 @@ export function getHeightBarTool(){
 
 export function getDimensionBarToolExtra(key){
     if(!key) return null;
-
+    
     return dimensionBarToolExtra[key];
 }
 
@@ -177,6 +189,19 @@ if(new_stage_db){
 }
 
 stage.stopDrag();
+
+const stagePickCustom = new Konva.Stage({
+    container: 'konvaPickCustom',
+    width: 320,
+    height: 110,
+    draggable: false,
+});
+
+stagePickCustom.stopDrag();
+
+const layerPickCustom = new Konva.Layer();
+
+stagePickCustom.add(layerPickCustom);
 
 export var layerUtilities = stage.getLayers().find(item => item.attrs.id == "layerUtilities") || new Konva.Layer({
     id: "layerUtilities"
@@ -293,12 +318,12 @@ export const transformer = new TransformerPoints(stage, layer, layerUtilities, {
 });
 
 const config = {
-    blockWidth: 300,
-    blockHeight: 150,
-    stripWidth: 50
+    blockWidth: 200,
+    blockHeight: 100,
+    stripWidth: 30
 };
 
-export const picker = new PickerCustom(stage, layer, layerUtilities, config);
+export const picker = new PickerCustom(stagePickCustom, layer, layerPickCustom, config);
 
 transformer.init();
 saveHistory(stage.toJSON());
@@ -455,7 +480,7 @@ export function fitStageIntoParentContainer() {
 }
 
 function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
-    let fillColor = "black";
+    let fillColor = "rgb(0 0 0 / 1)";
     let fontSize = 20;
     let fontFamily = "Arial";
 
@@ -653,7 +678,7 @@ function dbClickRect(elementDrag) {
             fontFamily: textNode ? textNode.fontFamily() : "Arial",
             fontStyle: textNode ? textNode.fontStyle() : "normal",
             textDecoration: textNode ? textNode.textDecoration() : "none",
-            fill: textNode ? textNode.fill() : "rgb(0 0 0 / 0.7)",
+            fill: textNode ? textNode.fill() : "rgb(0 0 0 / 1)",
             align: textNode ? textNode.align() : "center",
             verticalAlign: textNode ? textNode.verticalAlign() : "middle",
             draggable: true,
