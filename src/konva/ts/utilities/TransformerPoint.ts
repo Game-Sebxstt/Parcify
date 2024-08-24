@@ -29,7 +29,6 @@ export class TransformerPoints {
     private arrowCustom: any;
     private scale: number = 1;
     private updateArrowsScheduled: boolean = false;
-    private updateAnchorsScheduled: boolean = false;
 
     constructor(stage: Konva.Stage, layer: Konva.Layer, layerUtilities: Konva.Layer, options?: ConnectorOptions) {
         this.stage = stage;
@@ -207,9 +206,14 @@ export class TransformerPoints {
                 lineJoin: "round",
                 lineCap: "round",
                 draggable: false,
-                listening: false,
                 name: 'arrow',
             });
+
+            arrow.on('dblclick', (e) => {
+                console.log("dbclick")
+                arrow.destroy();
+                delete this.arrowMap[this.activeAnchorType || ''];
+            })
 
             // const options = {
             //     points: [startX, startY, mousePos.x, mousePos.y],
@@ -351,31 +355,24 @@ export class TransformerPoints {
     }
 
     private updateAnchors() {
-        if (this.updateAnchorsScheduled) return;
-        this.updateAnchorsScheduled = true;
-    
-        requestAnimationFrame(() => {
-            if (!this.targetNode) return;
-    
-            const anchorPositionsTarget = this.getAnchorPositions(this.targetNode);
-            const snapRotation = konva.tr;
-    
-            this.anchors.forEach(anchor => {
-                const anchorType = anchor.name();
-                const pos = anchorPositionsTarget[anchorType];
-                if (pos) {
-                    anchor.setAttrs({
-                        x: (this.targetNode?.x() || 0) + pos.x,
-                        y: (this.targetNode?.y() || 0) + pos.y,
-                        radius: (this.options.anchorSize || 7) / this.scale,
-                        strokeWidth: 2 / this.scale,
-                    });
-                }
-            });
-    
-            this.updateAnchorsScheduled = false;
-            this.layer.batchDraw();
+        if (!this.targetNode) return;
+
+        const anchorPositionsTarget = this.getAnchorPositions(this.targetNode);
+
+        this.anchors.forEach(anchor => {
+            const anchorType = anchor.name();
+            const pos = anchorPositionsTarget[anchorType];
+            if (pos) {
+                anchor.setAttrs({
+                    x: (this.targetNode?.x() || 0) + pos.x,
+                    y: (this.targetNode?.y() || 0) + pos.y,
+                    radius: (this.options.anchorSize || 7) / this.scale,
+                    strokeWidth: 2 / this.scale,
+                });
+            }
         });
+
+        this.layer.batchDraw();
     }
 
     private updateArrows() {
@@ -555,6 +552,11 @@ export class TransformerPoints {
 
         Object.keys(this.arrowMap).forEach((anchorType) => {
             this.arrowMap[anchorType].forEach(arrow => {
+                arrow.on('dblclick', (e) => {
+                    arrow.destroy();
+                    delete this.arrowMap[anchorType];
+                })
+
                 if(arrow.getAttr("anchorA") || arrow.getAttr("anchorB")) return;
 
                 let anchorA

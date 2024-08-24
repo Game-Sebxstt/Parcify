@@ -244,10 +244,22 @@ export function showBarTool(nodes) {
 
     function initializeBarTool(target, barTool) {
         target.setAttr("barToolSelected", true);
-        barTool.style.opacity = 1;
-        barTool.classList.remove("hidden");
-        barTool.classList.add("flex");
+        barTool.style.display = "flex"
         updateToolBar(target, barTool);
+    }
+
+    function nodeContainText(){
+        if(!nodeSelect.parent instanceof Konva.Group) return false;
+
+        let isContain = false;
+
+        nodeSelect.parent.getChildren().forEach((item) => {
+            if(item instanceof Konva.Text){
+                isContain = true;
+            }
+        })
+
+        return isContain;
     }
 
     function setUpEventListeners(target, barTool, stage, nodes) {
@@ -261,13 +273,13 @@ export function showBarTool(nodes) {
 
     function onDragStart(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
-        barTool.style.opacity = 0;
+        barTool.style.display = "none"
         barTool.style.pointerEvents = "none";
     }
 
     function onDragEnd(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
-        barTool.style.opacity = 1;
+        barTool.style.display = "flex"
         barTool.style.pointerEvents = "auto";
         updateToolBar(target, barTool);
     }
@@ -288,13 +300,13 @@ export function showBarTool(nodes) {
                     boundingRect.destroy();
                     konva.layer.draw();
                 } else {
-                    barTool.style.opacity = 1;
+                    barTool.style.display = "flex"
                     barTool.style.pointerEvents = "auto";
                 }
             }
 
             if (e.target instanceof Konva.Stage) {
-                barTool.style.opacity = 0;
+                barTool.style.display = "none"
                 barTool.style.pointerEvents = "none";
             }
         } else {
@@ -310,6 +322,27 @@ export function showBarTool(nodes) {
 
     function updateBarToolPosition(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
+
+        // barTool.childNodes.forEach((item) => {
+        //     let idItem = item.id;
+        //     if(!idItem) return;
+
+        //     idItem = idItem.split("_").filter((item) => item == "font");
+
+        //     if(idItem.length > 0){
+        //         if(nodeContainText()){
+        //             item.style.display = "flex";
+        //             document.querySelectorAll("#sep").forEach(item => {
+        //                 item.style.display = "flex";
+        //             })
+        //         }else{
+        //             item.style.display = "none";
+        //             document.querySelectorAll("#sep").forEach(item => {
+        //                 item.style.display = "none";
+        //             })
+        //         }
+        //     }
+        // })
 
         const { x, y } = target.absolutePosition();
         const scaleX = target.scaleX() * stage.scaleX();
@@ -345,7 +378,7 @@ export function showBarTool(nodes) {
         let adjustedBarToolTop = topTarget <= headerHeight ? konva.stage.height() : topTarget;
         let adjustedBarToolLeft = leftTarget <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
     
-        barTool.style.opacity = 1;
+        barTool.style.display = "flex"
         barTool.style.pointerEvents = "auto";
         barTool.style.top = `${adjustedBarToolTop}px`;
         barTool.style.left = `${adjustedBarToolLeft}px`;
