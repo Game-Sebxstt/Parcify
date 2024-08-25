@@ -79,6 +79,19 @@ function updateNodeAttrs(select, node) {
     select.setAttrs(commonAttrs);
 }
 
+function rgbaToHex(rgba) {
+    const parts = rgba
+        .replace(/rgba?\(|\s+|\)/g, '')
+        .split(',');
+
+    const r = parseInt(parts[0], 10).toString(16).padStart(2, '0');
+    const g = parseInt(parts[1], 10).toString(16).padStart(2, '0');
+    const b = parseInt(parts[2], 10).toString(16).padStart(2, '0');
+
+    return `#${r}${g}${b}`;
+}
+
+
 function updateElement() {
     const selectedNodes = konva.tr.nodes();
     if (selectedNodes.length === 0) {
@@ -91,7 +104,7 @@ function updateElement() {
 }
 
 function changeLayout(attrs) {
-    domElements.colorStyle.value = attrs.fill || "black";
+    domElements.colorStyle.value = rgbaToHex(attrs.fill || "black");
     domElements.colorStyleBorder.value = attrs.stroke || "black";
 
     if (attrs.text) {

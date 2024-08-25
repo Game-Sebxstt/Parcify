@@ -192,6 +192,7 @@ export function showBarTool(nodes) {
     }
 
     nodeSelect = target;
+    konva.picker.updateNodeSelect(nodeSelect);
 
     updateToolBarShape();
     initializeBarTool(target, barTool);

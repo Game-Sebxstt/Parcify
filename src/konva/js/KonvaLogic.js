@@ -200,8 +200,13 @@ const stagePickCustom = new Konva.Stage({
 stagePickCustom.stopDrag();
 
 const layerPickCustom = new Konva.Layer();
+const layerBasePickCustom = new Konva.Layer();
 
 stagePickCustom.add(layerPickCustom);
+stagePickCustom.add(layerBasePickCustom);
+
+layerPickCustom.zIndex(1);
+layerBasePickCustom.zIndex(2);
 
 export var layerUtilities = stage.getLayers().find(item => item.attrs.id == "layerUtilities") || new Konva.Layer({
     id: "layerUtilities"
@@ -323,7 +328,7 @@ const config = {
     stripWidth: 30
 };
 
-export const picker = new PickerCustom(stagePickCustom, layer, layerPickCustom, config);
+export const picker = new PickerCustom(stagePickCustom, layerBasePickCustom, layerPickCustom, config);
 
 transformer.init();
 saveHistory(stage.toJSON());
