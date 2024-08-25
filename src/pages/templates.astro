@@ -7,7 +7,6 @@ import Template from "../components/Articles/Template.astro"
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Filter from '../components/Articles/Filter.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
-import PreviewTemplate from '../components/Popups/PreviewTemplate.astro';
 import { templateData }  from "../js/frontend/Templates";
 
 const logged = Astro.cookies.get("logged")?.value;
@@ -53,16 +52,6 @@ try{
 
 				<article class="w-full">
 					<div id="content-grid" data-section="templates" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-						<!-- <Template typeElement="template" name='Desidia' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='Desidia' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='ArchiPlane' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='Desidia' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='asdasd' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='PPPPPP' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='jsdasdasd' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='pipe' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name='Desidia' description='By Sebxstt' likes="100K"/>
-						<Template typeElement="template" name="tecnoresti" description='By Sebxstt' likes="100K"/> -->
 						{
 							templateData.length > 0 ? (
 								templateData.map((template) => (
@@ -79,12 +68,10 @@ try{
 							)
 						}
 					</div>
-					<!-- la opcion para usar la plantilla -->
 					
 				</article>
 			</article>
 		</Content>
-		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
 
 	</div>
 </Layout>

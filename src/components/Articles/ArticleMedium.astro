@@ -22,12 +22,12 @@ const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
         <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
           {first_text}
         </div>
-
-        <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[0.8] opacity-50 text-black">
+        
+        <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
           {first_text}
         </div>
 
-        <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[0.8] opacity-50 text-black">
+        <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
           {first_text}
         </div>
       </div>
@@ -45,7 +45,6 @@ const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
   // Carousel start
   
   const carouselInner = document.querySelector("#carousel-inner");
-  console.log(carouselInner)
   let currentIndex = 1; // Start with the first real item
   const items = document.querySelectorAll(".carousel-item");
   const totalItems = items.length;
@@ -110,13 +109,11 @@ const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
       }, 500);
     }
   
-    // Center the active item
     const offset =
       -currentIndex * (items[0].offsetWidth + 20) +
       (carouselInner.offsetWidth - items[0].offsetWidth) / 2;
     carouselInner.style.transform = `translateX(${offset}px)`;
   
-    // Update focus state
     updateFocus();
   }
   

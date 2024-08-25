@@ -11,6 +11,7 @@ import CreateParceller from '../components/Popups/CreateParceller.astro';
 import Invite from '../components/Popups/Invite.astro';
 import Header from '../components/Sections/Header.astro';
 import Settings from '../components/Sections/Settings.astro';
+import PreviewTemplate from '../components/Popups/PreviewTemplate.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -69,6 +70,7 @@ try{
 		<CreateParceller id_content='content-create-parcel' templates={templates}/>
 		<Invite data={data}/>
 		<Settings username='' email=''></Settings>
+		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
 		<slot />
 		<script src="../js/frontend/front.js"></script>
 		<!-- <script src="../js/canvas.js"></script> -->

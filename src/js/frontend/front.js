@@ -527,21 +527,22 @@ const addEventListeners = () => {
 
   //previewParceller
   elements.template.forEach((item) => {
-
-    let tittle = document.getElementById("tittleTemplate")
-    let author = document.getElementById("authorTemplate")
-
-    let tittlePrew  = document.querySelectorAll("#tittlePreview")
-    let authorPrew  = document.querySelectorAll("#authorPreview")
+    let tittlePrew  = document.querySelector("#tittlePreview")
+    let authorPrew  = document.querySelector("#authorPreview")
     let infoPrew = document.getElementById("infoPreview")
 
-    tittlePrew.forEach(text =>{
-      text.textContent = tittle.textContent
-    })
+    // const carousel_items = document.querySelectorAll(".carousel-item");
+    // carousel_items.forEach((item) => {
+    //   item.addEventListener("click", () => {
+    //     elements.previewTemplate.style.display = "flex"
+    //     tittlePrew.textContent = item.getAttribute("data-name")
+    //     authorPrew.textContent = item.getAttribute("data-author")
+    //     infoPrew.textContent = item.getAttribute("data-info")
+    //   });
+    // });
 
     item.addEventListener("click", (e) => {
       window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
-      
     });
   });
 
