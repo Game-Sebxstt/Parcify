@@ -462,7 +462,7 @@ export function updateElementsEvent(){
 
 export function dbClickElement(e) {
     let element = e.target;
-    tr.hide();
+    // tr.hide();
     
     if (element instanceof Konva.Text) {
         dbClickText(element);
@@ -752,7 +752,7 @@ function dbClickRect(elementDrag) {
     });
 
     stage.on("wheel dragmove", updateTextArea)
-    // elementDrag.on('transform', updateTextArea)
+    elementDrag.on('transform', updateTextArea)
 
     function updateTextArea(){
         textPosition = elementDrag.absolutePosition();
@@ -774,7 +774,18 @@ function dbClickRect(elementDrag) {
     }
 
     function handleOutsideClick(e) {
-        if (e.target !== textarea) {
+        let isBarTool = false;
+        let element = e.target;
+        while(element){
+            if(element.id == "BarTool"){
+                isBarTool = true;
+                break;
+            }
+
+            element = element.parentElement;
+        }
+
+        if (e.target !== textarea && !isBarTool) {
             elementDrag.attrs.text = textarea.innerText;
             removeTextarea();
         }

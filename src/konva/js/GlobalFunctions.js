@@ -177,6 +177,7 @@ export function setUpdateToolBar(state){
 }
 
 export function showBarTool(nodes) {
+    console.log("init")
     const barTool = document.querySelector("#BarTool");
     const stage = konva.stage;
     let target = States.StatesCursor.select;
@@ -362,9 +363,18 @@ export function showBarTool(nodes) {
             x: barToolRect.left,
             y: barToolRect.top,
         };
+
+        let BarToolExtra = null;
+        document.querySelectorAll("#BarToolExtra").forEach(child => {
+            if (window.getComputedStyle(child).display !== "none") {
+                BarToolExtra = child;
+            }
+        });
         
         const barToolHalfWidth = barToolRect.width / 2;
         const barToolHalfHeight = barToolRect.height / 2;
+        let adjustedBarToolTop;
+        let adjustedBarToolLeft;
     
         let topTarget, leftTarget;
         if (target instanceof Konva.Rect) {
@@ -374,10 +384,17 @@ export function showBarTool(nodes) {
             topTarget = y - barToolHalfHeight - height;
             leftTarget = x - barToolHalfWidth;
         }
-    
+
         const headerHeight = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
-        let adjustedBarToolTop = topTarget <= headerHeight ? konva.stage.height() : topTarget;
-        let adjustedBarToolLeft = leftTarget <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
+    
+        if(BarToolExtra){
+            const BarToolExtraRect = BarToolExtra.getBoundingClientRect();
+            adjustedBarToolTop = BarToolExtraRect.y <= headerHeight ? konva.stage.height() : topTarget;
+            adjustedBarToolLeft = BarToolExtraRect.x <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
+        }else{
+            adjustedBarToolTop = topTarget <= headerHeight ? konva.stage.height() : topTarget;
+            adjustedBarToolLeft = leftTarget <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
+        }
     
         barTool.style.display = "flex"
         barTool.style.pointerEvents = "auto";
@@ -390,20 +407,10 @@ export function showBarTool(nodes) {
         document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
         document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
     
-        document.querySelectorAll(".childBarTool").forEach(child => {
-            // child.style.padding = `${8 * barToolShape.scaleY}px ${8 * barToolShape.scaleX}px`;
-        });
-    
         if(!isUpdateToolBar) return;
 
-        let BarToolExtra = null;
-        document.querySelectorAll("#BarToolExtra").forEach(child => {
-            if (window.getComputedStyle(child).display !== "none") {
-                BarToolExtra = child;
-            }
-        });
-        const keyBarToolExtra = BarToolExtra.getAttribute("data-type")
         if (BarToolExtra) {
+            const keyBarToolExtra = BarToolExtra.getAttribute("data-type")
             const BarToolExtraShape = {
                 width: parseFloat(window.getComputedStyle(BarToolExtra).width) || BarToolExtra.width || 0,
                 height: parseFloat(window.getComputedStyle(BarToolExtra).height) || BarToolExtra.height || 0,
@@ -428,10 +435,16 @@ export function showBarTool(nodes) {
     }
 }
 
-export function updateToolBarShape(){
-    const node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+export function updateToolBarShape() {
+    let node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
 
-    const toolBarButtonAction = document.querySelectorAll("#tool_bar_button_action")
+    updateToolBarButtons(node);
+    updateToolBarFont(node);
+    updateBarToolExtra(node);
+}
+
+function updateToolBarButtons(node) {
+    const toolBarButtonAction = document.querySelectorAll("#tool_bar_button_action");
 
     toolBarButtonAction.forEach((item) => {
         const dataTypeButton = item ? item.getAttribute("data-type") : "default";
@@ -439,65 +452,102 @@ export function updateToolBarShape(){
 
         const attrNode = node.getAttr(dataTypeButton);
 
-        if(dataValueButton == attrNode){
+        if (dataValueButton == attrNode) {
             item.style.backgroundColor = "rgb(251, 127, 83)";
             actionToolBar(dataValueButton, dataTypeButton);
-        }else{
+        } else {
             item.style.backgroundColor = "transparent";
         }
-    })
-    
-    const toolBarFontFamily = document.querySelector("#BarToolFontFamily");
+    });
+}
 
-    if(toolBarFontFamily && node instanceof Konva.Text){
+function updateToolBarFont(node) {
+    // Actualiza el font family si el nodo es un texto
+    const toolBarFontFamily = document.querySelector("#BarToolFontFamily");
+    if (toolBarFontFamily && node instanceof Konva.Text) {
         toolBarFontFamily.value = node.fontFamily();
         actionToolBar(toolBarFontFamily.value, "fontFamily");
     }
 
+    // Actualiza el font size si el nodo es un texto
     const toolBarFontSize = document.querySelector("#BarToolFontSize");
-
-    if(toolBarFontSize && node instanceof Konva.Text){
+    if (toolBarFontSize && node instanceof Konva.Text) {
         toolBarFontSize.value = node.fontSize();
         actionToolBar(toolBarFontSize.value, "fontSize");
     }
-
-    const BarToolExtraList = document.querySelectorAll("#BarToolExtra")
-        
-    BarToolExtraList.forEach((item) => {
-        const dataTypeItem = item.getAttribute("data-type")
-
-        if(dataTypeItem == "color"){
-            const styleColor = item.querySelector("#style_color");
-            const inputColor = styleColor.querySelectorAll("#input_color");
-            let findColor = false;
-
-            inputColor.forEach((color) => {
-                const fillColor = color.getAttribute("data-fill")
-
-                if(node.fill() == fillColor){
-                    color.style.borderColor = "rgba(251, 127, 83)";
-                    findColor = true;
-
-                    inputColor.forEach((colorChild) => {
-                        if(colorChild != color){
-                            colorChild.style.borderColor = "transparent";
-                        }
-                    })
-                }
-            })
-
-            if(!findColor){
-                inputColor.forEach((color) => {
-                    if(color.getAttribute("data-fill") == "custom"){
-                        color.style.borderColor = "rgba(251, 127, 83)";
-                    }else{
-                        color.style.borderColor = "transparent";
-                    }
-                })
-            }
-        }
-    })
 }
+
+function updateBarToolExtra(node) {
+    const BarToolExtraList = document.querySelectorAll("#BarToolExtra");
+
+    BarToolExtraList.forEach((item) => {
+        const dataTypeItem = item.getAttribute("data-type");
+        const newDataTypeItem = dataTypeItem == "color" ? "fill" : dataTypeItem;
+
+        const inputColor = item.querySelectorAll(`#input_${dataTypeItem}`);
+        let findColor = false;
+
+        inputColor.forEach((color) => {
+            const fillColor = color.getAttribute(`data-${newDataTypeItem}`);
+
+            if (dataTypeItem == "border") {
+                node = nodeSelect;
+            }else{
+                node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+            }
+
+            // Maneja selección de color o borde
+            findColor = handleColorSelection(node, color, inputColor, fillColor, dataTypeItem, newDataTypeItem);
+
+            if(dataTypeItem == "color"){
+                // Si no se encuentra color, establece el color personalizado por defecto
+                if (!findColor) {
+                    // resetCustomColor(inputColor, newDataTypeItem);
+                }
+            }
+
+        });
+
+
+    });
+}
+
+function handleColorSelection(node, color, inputColor, fillColor, dataTypeItem, newDataTypeItem) {
+    let findColor = false;
+
+    if (node.getAttr(newDataTypeItem) == fillColor) {
+        findColor = true;
+
+        if (dataTypeItem == "color") {
+            color.style.borderColor = "rgba(251, 127, 83)";
+            resetOtherColors(inputColor, color, "borderColor");
+        } else {
+            color.style.backgroundColor = "rgba(251, 127, 83)";
+            resetOtherColors(inputColor, color, "backgroundColor", "rgba(30,30,30,.9)");
+        }
+    }
+
+    return findColor;
+}
+
+function resetOtherColors(inputColor, selectedColor, property, resetValue = "transparent") {
+    inputColor.forEach((colorChild) => {
+        if (colorChild !== selectedColor) {
+            colorChild.style[property] = resetValue;
+        }
+    });
+}
+
+function resetCustomColor(inputColor, newDataTypeItem) {
+    inputColor.forEach((color) => {
+        if (color.getAttribute(`data-${newDataTypeItem}`) == "custom") {
+            color.style.borderColor = "rgba(251, 127, 83)";
+        } else {
+            color.style.borderColor = "transparent";
+        }
+    });
+}
+
 
 export function isGroupText(node){
     let returnNode = false
@@ -514,14 +564,56 @@ export function isGroupText(node){
 }
 
 export function actionToolBar(change, type, action){
-    const node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+    let node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+    let extra;
 
     if(node.getAttr(type) == change && action){
         change = null
     }
 
     change = parseFloat(change) ? parseFloat(change) : change;
-    node.setAttr(type, change);
+
+    if(type == "border"){
+        node = nodeSelect;
+
+        if(change == "dash"){
+            change = [10, 5];
+            type = "dash";
+            extra = {
+                stroke: node.stroke() || "white",
+                strokeWidth: node.strokeWidth() || 2,
+                border: "dash",
+            }
+        }
+
+        if(change == "normal"){
+            change = null;
+            type = null;
+            extra = {
+                dash: null,
+                stroke: node.stroke() || "white",
+                strokeWidth: node.strokeWidth() || 2,
+                border: "normal",
+            }
+        }
+
+        if(change == "none"){
+            change = null;
+            type = null;
+            extra = {
+                dash: null,
+                stroke: null,
+                strokeWidth: null,
+                border: "none",
+            }
+        }
+
+    }
+
+    node.setAttrs({
+        [type]: change,
+        ...extra
+    })
     
     konva.layer.draw();
 }

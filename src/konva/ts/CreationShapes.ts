@@ -30,6 +30,7 @@ interface Square{
     height: number,
     listening: boolean,
     draggable: boolean,
+    border: string,
 }
 
 interface Circle{
@@ -92,6 +93,7 @@ let Square: Square = {
     type: "rect",
     listening: true,
     draggable: true,
+    border: "none",
 }
 
 let Circle: Circle = {

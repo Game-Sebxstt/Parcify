@@ -210,8 +210,7 @@ export class TransformerPoints {
             });
 
             arrow.on('dblclick', (e) => {
-                console.log("dbclick")
-                arrow.destroy();
+                e.target.destroy();
                 delete this.arrowMap[this.activeAnchorType || ''];
             })
 
@@ -553,8 +552,8 @@ export class TransformerPoints {
         Object.keys(this.arrowMap).forEach((anchorType) => {
             this.arrowMap[anchorType].forEach(arrow => {
                 arrow.on('dblclick', (e) => {
-                    arrow.destroy();
-                    delete this.arrowMap[anchorType];
+                    e.target.destroy();
+                    delete this.arrowMap[anchorType || ''];
                 })
 
                 if(arrow.getAttr("anchorA") || arrow.getAttr("anchorB")) return;

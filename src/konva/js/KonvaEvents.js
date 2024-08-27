@@ -334,18 +334,20 @@ konva.stage.on('click tap', function (e) {
         States.StatesCursor.select = e.target;
 
         if (e.target instanceof Konva.Node){
-            const transformer = new TransformerPoints(konva.stage, konva.layer, konva.layerUtilities, {
-                arrowColor: 'white',
-                borderArrowColor: '#80D0FF',
-                anchorColor: 'white',
-                borderColor: '#80D0FF',
-                anchorSize: 5,
-                enabledAnchors: ["left", "right", "top", "bottom"],
-                proximityThreshold: 20,
-            });
-
-            transformer.attachTo(e.target);
-            konva.layer.draw();
+            if(!e.target.getAttr("block")){
+                const transformer = new TransformerPoints(konva.stage, konva.layer, konva.layerUtilities, {
+                    arrowColor: 'white',
+                    borderArrowColor: '#80D0FF',
+                    anchorColor: 'white',
+                    borderColor: '#80D0FF',
+                    anchorSize: 5,
+                    enabledAnchors: ["left", "right", "top", "bottom"],
+                    proximityThreshold: 20,
+                });
+    
+                transformer.attachTo(e.target);
+                konva.layer.draw();
+            }
         }
     }
 
