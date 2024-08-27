@@ -19,17 +19,19 @@ const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
 
     <div class="carousel flex overflow-hidden justify-center items-center h-full w-full">
       <div class="carousel-inner flex transition-transform ease-in-out duration-500" id="carousel-inner">
-        <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
-          {first_text}
-        </div>
-        
-        <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
-          {first_text}
-        </div>
-
-        <div class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
-          {first_text}
-        </div>
+        {
+        templateData.length > 0 ? (
+          templateData.map((template) => (
+          <div
+          id="template"
+          class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
+            <span class="absolute -bottom-10 text-white ">{template.name}</span>
+          </div>
+        ))
+        ) : (
+          <p>No templates available</p>
+        )
+        }
       </div>
     </div>
 
@@ -125,30 +127,34 @@ const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
   right_arrow.addEventListener("click", () => slide(1));
   
   function updateFocus() {
-    const items = document.querySelectorAll(".carousel-item");
-  
-    items.forEach((item, index) => {
-      if (index === currentIndex) {
-        item.classList.add(
-          "scale-[1]",
-          "opacity-100",
-          "shadow-[rgb(216,212,212)_-17px_-7px]",
-          "cursor-pointer",
-          "hover:bg-gray-200"
-        );
-        item.classList.remove("scale-[0.8]", "opacity-50");
-      } else {
-        item.classList.remove(
-          "scale-[1]",
-          "opacity-100",
-          "shadow-[rgb(216,212,212)_-17px_-7px]",
-          "cursor-pointer",
-          "hover:bg-gray-200"
-        );
-        item.classList.add("scale-[0.8]", "opacity-50");
-      }
-    });
-  }
+  const items = document.querySelectorAll(".carousel-item");
+
+  items.forEach((item, index) => {
+    if (index === currentIndex) {
+      item.classList.add(
+        "scale-[1]",
+        "opacity-100",
+        "shadow-[rgb(216,212,212)_-17px_-7px]",
+        "cursor-pointer",
+        "hover:bg-gray-200"
+      );
+      item.classList.remove("scale-[0.8]", "opacity-50");
+
+    } else {
+      item.classList.remove(
+        "scale-[1]",
+        "opacity-100",
+        "shadow-[rgb(216,212,212)_-17px_-7px]",
+        "cursor-pointer",
+        "hover:bg-gray-200"
+      );
+      item.classList.add("scale-[0.8]", "opacity-50");
+
+    }
+  });
+}
+
+ 
   
   // Initial centering and focus
   const initialOffset =
@@ -157,5 +163,6 @@ const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
   carouselInner.style.transform = `translateX(${initialOffset}px)`;
   updateFocus();
   // Carousel end
+
 
 </script>
