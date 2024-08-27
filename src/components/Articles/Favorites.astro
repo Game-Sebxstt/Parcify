@@ -1,0 +1,67 @@
+---
+import { favorite } from "../../js/backend/requests";
+
+//id usuario
+const id = Astro.cookies.get("ID-USER")?.value;
+
+// datos de los favoritos
+let getDataPreferences:any = await fetch(`http://localhost:4000/preferences/data?id_user=${id}`);
+let dataPreferences = await getDataPreferences.json();
+
+// data del usuario
+let getDataUser:any = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
+let dataUser = await getDataUser.json();
+
+let dataFilter:any = [];
+const isData = getDataPreferences.ok ? true : false;
+let isFind = false;
+
+if (isData){
+    const elementParsed = JSON.parse(dataPreferences.message[0].favorites)
+    const projectUser = dataUser.message.projects;
+
+    elementParsed.forEach((item:any) => { // 2 -> [0] - [1] -> elementParsed
+        projectUser.forEach((elementUser:any) => { // 2 -> [0] - [1] -> projectUser
+            if (elementUser.project_id === item.id) { // elementParsed[0].id === projectUser[0].project_id
+                elementUser["type"] = item.type; // project_id, user_id, name, preview, stage, collaborators, last_modified -> elementParsed[0] || [1]
+                dataFilter.push(elementUser); // dataFilter = [elementParsed[0] || [1]]
+            }
+        });
+    });
+}
+
+
+const svgIcons = {
+    project: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="grey" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-brush"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21v-4a4 4 0 1 1 4 4h-4"/><path d="M21 3a16 16 0 0 0 -12.8 10.2"/><path d="M21 3a16 16 0 0 1 -10.2 12.8"/><path d="M10.6 9a9 9 0 0 1 4.4 4.4"/></svg>`,
+    template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="grey" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-template"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z"/><path d="M4 12m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 12l6 0"/><path d="M14 16l6 0"/><path d="M14 20l6 0"/></svg>`
+};
+
+---
+<article class="flex flex-col">
+    <h3 class="text-lg text-white pt-3 px-5 ">Favorites</h3>
+    <div class="py-3 px-6 text-white font-semibold flex flex-col gap-4">
+        {
+            !isData ? (
+                <p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>
+            ) : (
+                dataFilter.map((favorite:any)=>{
+                    return (
+                        <div id="useFavorite" class="gap-2 p-2 justify-between rounded relative flex items-center cursor-pointer active:bg-stone-950">
+                            <p>{favorite.name}</p>
+                            <i id="typeDescription" class="group cursor-help"  set:html={favorite.type === "project" ? svgIcons.project : svgIcons.template}>
+                                <div class="hidden group-hover:block">
+                                    <div class="group absolute -top-12 left-[85%] z-50 flex -translate-x-1/2 flex-col items-center rounded-sm text-center text-sm text-slate-300 before:-top-2">
+                                        <div class="rounded-sm bg-blue-600 py-1 px-2">
+                                            <p class="whitespace-nowrap">This is a {favorite.type}</p>
+                                        </div>
+                                        <div class=" translate-x-8 h-0 w-fit border-l-8 border-r-8 border-t-8 border-transparent border-t-blue-700"></div>
+                                    </div>
+                                </div>
+                            </i>
+                        </div>
+                    );
+                })
+            )
+        }
+    </div>
+</article>
