@@ -103,6 +103,7 @@ const elements = {
   moreOptionDivs: document.querySelectorAll('#more-options-parceller'),
   template: document.querySelectorAll("#template"),
   previewTemplate: document.getElementById("previewTemplate"),
+  favorite: document.querySelectorAll("#favorite"),
 };
 
 // Event Listeners
@@ -543,6 +544,28 @@ const addEventListeners = () => {
 
     item.addEventListener("click", (e) => {
       window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
+    });
+  });
+
+  //*favorites
+  elements.favorite.forEach(item =>{
+    item.addEventListener("click", async ()=>{
+      const userId = utils.getCookie("ID-USER");
+      const idElement = Number(item.getAttribute("data-id"));
+      const typeElement = item.getAttribute("data-type");
+      
+      const data = {
+        id_project:idElement,
+        type:typeElement,
+      }
+
+      const petition = await req.favorite(userId, data);
+
+      if (!petition.state) {
+        return petition.data;
+      }
+      window.location.reload();
+      console.log(petition.data);
     });
   });
 

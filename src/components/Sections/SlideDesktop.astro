@@ -1,4 +1,6 @@
 ---
+import Favorites from "../Articles/Favorites.astro";
+
 ---
 <div id="slide" class="fixed top-0 z-10 w-[20rem] left-0 border-r-[1px] max-md:hidden border-blue-400 h-screen bg-[#2b2929] flex flex-col justify-between">
     <header class="flex flex-col">
@@ -65,35 +67,7 @@
     
         <hr class="border-blue-400">
     
-        <article class="flex flex-col">
-            <h3 class="text-lg text-white pt-3 px-5 ">Favorites</h3>
-            <div class="py-3 px-6 text-white font-semibold flex flex-col gap-4">
-                <div class="flex justify-start items-center gap-3 p-2 cursor-pointer transition-all hover:bg-[#1E90FF]">
-                    <i class="w-5 h-5 ml-2 bg-[#FB7F53] "></i>
-                    <p>Recourting Weekly Me...</p>
-                </div>
-                <div class="flex justify-start items-center gap-3 p-2 cursor-pointer transition-all hover:bg-[#1E90FF]">
-                    <i class="w-5 h-5 ml-2 bg-red-500 "></i>
-                    <p>Recourting Weekly Me...</p>
-                </div>
-                <div class="flex justify-start items-center gap-3 p-2 cursor-pointer transition-all hover:bg-[#1E90FF]">
-                    <i class="w-5 h-5 ml-2 bg-indigo-500 "></i>
-                    <p>Recourting Weekly Me...</p>
-                </div>
-                <div class="flex justify-start items-center gap-3 p-2 cursor-pointer transition-all hover:bg-[#1E90FF]">
-                    <i class="w-5 h-5 ml-2 bg-yellow-500 "></i>
-                    <p>Recourting Weekly Me...</p>
-                </div>
-                <div class="flex justify-start items-center gap-3 p-2 cursor-pointer transition-all hover:bg-[#1E90FF]">
-                    <i class="w-5 h-5 ml-2 bg-blue-500 "></i>
-                    <p>Recourting Weekly Me...</p>
-                </div>
-                <div class="flex justify-start items-center gap-3 p-2 cursor-pointer transition-all hover:bg-[#1E90FF]">
-                    <i class="w-5 h-5 ml-2 bg-purple-500 "></i>
-                    <p>Recourting Weekly Me...</p>
-                </div>
-            </div>
-        </article>
+        <Favorites></Favorites>
     
     </section>
     
