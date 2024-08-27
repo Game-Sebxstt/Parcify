@@ -1,0 +1,122 @@
+---
+
+
+---
+
+<div class="flex-col">
+    <div class=" w-full h-fit border-b-2 border-[#757575] pb-2 mb-3">
+        <h1 class="text-[#FFFFFF] text-xl pb-3 font-medium">
+           <!--Titulo -->
+           Profile Settings
+        </h1>
+        <h4 class="text-[#FFFFFF] text-sm">
+           <!--Subtitulo-->
+           Profile
+        </h4>
+          <!-- Descripción -->
+          <p class="font-light text-sm pb-2 text-[#6a6b6a] ">Change essential information in your profile</p>
+    </div>
+  
+    <!-- Edit profile picture -->
+    <div class="w-full h-fit flex-col border-b-2 border-[#757575] py-2 mb-2">
+        <span class="w-[55%]">
+            <h3 class="text-[#FFFFFF] text-sm">Profile Photo</h3>
+            <h4 class="text-[#757575] text-sm font-light">
+               Edit or Delete your profile photo
+            </h4>   
+        </span>
+        <div class="flex mt-2 justify-start items-center mb-2 w-full h-fit">
+            <div class="flex items-center justify-start w-full h-fit">
+                <label for="dropzone-file" class=" rounded-[50%] w-32 h-32 bg-[#2B2B2B] flex flex-col items-center justify-center border-2 border-[#626362] cursor-pointer ">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6 w-full">
+                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  
+                         stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-edit">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/>
+                            <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/>
+                            <path d="M16 5l3 3" />
+                        </svg>
+                    </div>
+                    <input id="dropzone-file" type="file" class="hidden"/>
+                </label>
+            </div>    
+        </div>
+    </div>
+
+    <!-- Edit username -->
+    <div class="py-4 mb-2 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
+        <span class="w-[55%] max-sm:w-full max-md:w-full">
+          <h3 class="text-[#FFFFFF] text-sm">Username</h3>
+          <h4 class="text-[#757575] text-sm font-light">
+             Edit your username
+          </h4>
+        </span>
+        <div class="flex w-full h-full">
+            <input
+                type="text"
+                id="username"
+                name="username"
+                class="w-[50%] bg-[#1E1E1E] text-gray-200 rounded-md px-4 py-2 outline-none mt-1 max-sm:w-full max-sm:text-xs max-sm:mt-2 max-md:w-[70%] max-md:text-[12.9px]"
+                placeholder="Enter new username"
+            />
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
+             stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+                <path d="M13.5 6.5l4 4" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- Edit email -->
+    <div class="py-4 mb-2 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
+        <span class="w-[55%] max-sm:w-full max-md:w-full">
+          <h3 class="text-[#FFFFFF] text-sm">Email</h3>
+          <h4 class="text-[#757575] text-sm font-light">
+            Edit your email
+        </h4>
+        </span>
+        <div class="flex w-full">
+            <input
+                type="email"
+                id="email"
+                name="email"
+                class="w-[50%] bg-[#1E1E1E] text-gray-200 rounded-md px-4 py-2 outline-none mt-1 max-sm:w-full max-sm:text-xs max-sm:mt-2 max-md:w-[70%] max-md:text-[12.9px]"
+                placeholder="Enter your new email"
+            />
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
+             stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+                <path d="M13.5 6.5l4 4" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- Edit Biography -->
+    <div class="py-4 mb-4 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
+        <span class="w-[55%] max-sm:w-full max-md:w-full">
+          <h3 class="text-[#FFFFFF] text-sm">Your Bio</h3>
+          <h4 class="text-[#757575] text-sm font-light">
+             Customize your biography
+          </h4>
+        </span>
+        <div class="flex w-full">
+            <textarea
+                id="biography"
+                name="biography"
+                class="w-[50%] bg-[#1E1E1E] resize-none text-gray-200 rounded-md px-4 py-2 outline-none mt-1  max-sm:w-full max-sm:text-xs max-sm:mt-2 max-md:w-[70%] max-md:text-[12.9px]"
+                placeholder="Biographical username"
+            />
+        </div>
+    </div>
+
+    <!-- Buttons to save changes or cancel -->
+    <div id="options-buttons" class="flex gap-4 justify-end mb-4" style="display: none;">
+    <button type="button" class="bg-[#1E1E1E] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
+        Cancel
+    </button>
+    <button type="button" class="bg-[#FF7300] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
+      Save Changes
+    </button>
+  </div>
+</div>  

@@ -1,19 +1,106 @@
 ---
+// interface Props {
+//     username:string,
+//     email:string,
+// }
 
-interface Props {
-    username:string,
-    email:string,
-}
-
-const {username, email} = Astro.props;
+// const {username, email} = Astro.props;
+import Profile from "../Sections/Profile.astro"
+import Appareance from "./Appareance.astro"
+import Security from "./Security.astro"
 ---
-<section id="settings" class="bg-black/50 backdrop-blur-sm fixed h-full w-full z-50 hidden items-center justify-center">
-    <article class="bg-red-500 h-[30rem] w-[45rem] rounded-lg shadow-sm flex flex-row items-center max-[800px]:w-[40rem] max-[800px]:h-auto max-[800px]:flex-col">
-        <header>
-            <h1>pe</h1>
+
+<section id="content-configurations"class="bg-black/50 fixed h-full w-full z-50 justify-end flex" style="display">
+    <div class="bg-[#302f31] shadow-lg shadow-gray-900 w-full flex flex-col animate-displace">
+        <header class="pl-2 flex justify-end items-center rounded-t-sm w-full h-fit">
+            <!-- Icon to close configurations -->
+            <span id="close_configurations" class="w-fit h-fit cursor-pointer hover:bg-slate-700 transition-all duration-150 ease-in rounded-[3px]">
+                <svg class="icon icon-tabler icons-tabler-outline icon-tabler-x h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                 <path d="M18 6l-12 12" />
+                 <path d="M6 6l12 12" />
+                </svg>
+            </span>
         </header>
-        <section>
-            <h4>fff</h4>
+
+        <section class="w-full h-[90%] flex justify-center">
+            <div class="w-[20%] max-lg:w-[30%] max-sm:w-fit max-sm:px-2 h-full flex flex-col py-5 px-4 gap-4">
+                <!-- Options panel -->
+                <div class="flex w-full gap-5 h-fit max-sm:w-fit max-sm:gap-0">
+                    <!-- Image and user -->
+                    <div class="w-fit h-fit">
+                        <div class="flex text-center align-middle items-center rounded-full w-12 h-12  max-sm:w-10">
+                            <img class="rounded-full" src="/oink.jpeg" alt="">
+                        </div>
+                    </div>
+                    <div class="w-full flex justify-between align-middle">
+                        <span>
+                            <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">Ladeuth</h1>
+                            <p class="text-[#a7a5a5] text-xs max-xl:text-base max-sm:hidden">lorem ipsum dolor sit amet</p>
+                        </span>
+                       <span>
+                  </div>
+                </div>
+                <div class="my-4 w-full h-full z-50">
+                    <div>
+                        <h1 class="text-xl max-sm:hidden max-sm:px-2">Settings</h1>
+                    </div>
+
+                    <!-- Configuration options -->
+                    <div class="flex flex-col items-start py-3 w-full h-full max-sm:items-center">
+                        <div id="profile-option" class="flex py-3 px-2 w-full my-2 gap-4 cursor-pointer hover:bg-slate-600 text-white text-xl max-sm:w-fit">
+                            <span class="max-sm:px-2">
+                                <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
+                                stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-user">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+                                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                                </svg>
+                            </span>
+                            <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">Profile</h1>
+                      </div>
+
+                      <div id="appareance-option" class="flex py-3 px-2 w-full my-2 gap-4 cursor-pointer hover:bg-slate-600 text-white text-xl max-sm:w-fit">
+                            <span class="max-sm:px-2">
+                                <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
+                                stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-sparkles">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z" />
+                                </svg>
+                            </span>
+                            <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">Appareance</h1>
+                      </div>
+
+                      <div id="security-option" class="flex py-3 px-2 w-full my-2 gap-4 cursor-pointer hover:bg-slate-600 text-white text-xl max-sm:w-fit">
+                            <span class="max-sm:px-2">
+                                <svg class="icon icon-tabler icons-tabler-filled icon-tabler-shield-lock" xmlns="http://www.w3.org/2000/svg" 
+                                width="24"  height="24"  viewBox="0 0 24 24"  fill="none" stroke="white" stroke-width="2" stroke-lstroke-linecap="round"  stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M11.998 2l.118 .007l.059 .008l.061 .013l.111 .034a.993 .993 0 0 1 .217 .112l.104 .082l.255 .218a11 11 0 0 0 7.189 2.537l.342 -.01a1 1 0 0 1 1.005 .717a13 13 0 0 1 -9.208 16.25a1 1 0 0 1 -.502 0a13 13 0 0 1 -9.209 -16.25a1 1 0 0 1 1.005 -.717a11 11 0 0 0 7.531 -2.527l.263 -.225l.096 -.075a.993 .993 0 0 1 .217 -.112l.112 -.034a.97 .97 0 0 1 .119 -.021l.115 -.007zm.002 7a2 2 0 0 0 -1.995 1.85l-.005 .15l.005 .15a2 2 0 0 0 .995 1.581v1.769l.007 .117a1 1 0 0 0 1.993 -.117l.001 -1.768a2 2 0 0 0 -1.001 -3.732z" />
+                                </svg>
+                            </span>
+                            <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">Security</h1>
+                      </div>
+                    </div>
+                </div>       
+            </div>
+
+            <div class="w-full pr-8">
+              <div class="px-8 w-full h-full bg-black/50 pb-8 pt-8 flex overflow-y-auto flex-col max-sm:w-full rounded-xl gap-5 max-sm:px-5">
+                <div id="profile-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5">
+                    <Profile></Profile>
+                </div>
+                <div id="appareance-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5" style="display: none" >
+                    <Appareance></Appareance>
+                </div>
+                <div id="security-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5" style="display:none">
+                    <Security></Security>
+                </div>
+            
+              </div>
+            </div>
         </section>
-    </article>
+        <footer class= "flex justify-start items-center py-4 rounded-t-sm w-full h-fit">
+        </footer>
+    </div>
 </section>

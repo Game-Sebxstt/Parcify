@@ -554,3 +554,51 @@ const init = () => {
 
 // Run initialization
 init();
+
+
+// ------------------------- Show settings content -------------------------------
+// Options buttons
+const profileOption = document.querySelector('#profile-option')
+const appareanceOption = document.querySelector('#appareance-option')
+const securityOption = document.querySelector('#security-option')
+
+//Content buttons
+const profileContent = document.querySelector('#profile-content')
+const appareanceContent = document.querySelector('#appareance-content')
+const securityContent = document.querySelector('#security-content')
+
+profileOption?.addEventListener("click", () => {
+
+    profileContent.style.display = "flex";
+    appareanceContent.style.display = "none";
+    securityContent.style.display = "none";
+});
+
+appareanceOption?.addEventListener("click", () => {
+  profileContent.style.display = "none";
+    appareanceContent.style.display = "flex";
+    securityContent.style.display = "none";
+});
+
+securityOption?.addEventListener("click", () => {
+  profileContent.style.display = "none";
+    appareanceContent.style.display = "none";
+    securityContent.style.display = "flex";  
+});
+
+//Close settings
+const closeButton = document.querySelector('#close_configurations');
+
+closeButton?.addEventListener("click", () => {
+  document.querySelector('#content-configurations').style.display = "none";
+  document.documentElement.style.overflow = "";
+
+});
+
+//Open settings
+const openButton = document.querySelector('#openSettings');
+
+openButton?.addEventListener("click", () => {
+  document.querySelector('#content-configurations').style.display = "flex";
+  document.documentElement.style.overflow = "hidden";
+});
