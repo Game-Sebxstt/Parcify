@@ -1,14 +1,39 @@
 ---
 import TemplateView from '../Articles/TemplateView.astro';
 import Templates from '../Sections/Categories/Templates.astro';
-import { templateData } from '../../js/frontend/Templates';
-import Template from '../Articles/Template.astro';
+import { getAllTemplates } from '../../js/backend/requests';
+
 interface Props{
     id_content: string,
-    templates: any;
 }
 
-const {id_content, templates} = Astro.props;
+const reqTemplates = await getAllTemplates();
+let templates;
+
+if(!reqTemplates.state){
+    templates = [
+      {
+        name: "Plantilla Vacia",
+        template_id: 0,
+        preview: "../../../public/placeholder/image_preview.svg",
+		description: "Plantilla Vacia.",
+		autor: "Parcify",
+		likes: null
+      }
+    ]
+}else{
+    templates = reqTemplates.data.message;
+	templates.push({
+		name: "Plantilla Vacia",
+		template_id: 0,
+		preview: "../../../public/placeholder/image_preview.svg",
+		description: "Plantilla Vacia.",
+		autor: "Parcify",
+		likes: null
+	})
+}
+
+const {id_content} = Astro.props;
 ---
 
 <div id={id_content} class="content-all fixed z-50 hidden animate-deployment justify-center items-center w-full h-full px-3">
@@ -38,36 +63,23 @@ const {id_content, templates} = Astro.props;
         <!-- section Popup -->
         <section class="w-full h-full px-5 py-3 gap-y-3 overflow-x-auto">
             <Templates category='Recomendados'>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify' url_image='../../../public/placeholder/image_preview.svg' template_id="0"/>
                 {
-                    templates != "No hay plantillas." ? (
-                        templateData.map((item: any) => (
-                            // <TemplateView first_text={item.name} second_text={"By Parcify"} url_image={item.preview} template_id={item.template_id}/>
-                            <Template
-                                clase=''
-                                typeElement={item.typeElement}
-                                name={item.name}
-                                description={item.description}
-                                likes={item.likes}
+                    templates.length > 0 ? (
+                        templates.map((template: any) => (
+                            <TemplateView 
+                                first_text={template.name} 
+                                second_text={template.autor} 
+                                url_image={template.preview} 
+                                template_id={template.template_id} 
+                                description={template.description}
+                                likes={template.likes}
                             />
                         ))
                     ) : (
-                        <span class="hidden"></span>
+                        <p>No templates available</p>
                     )
                 }
             </Templates>
-
-            <!-- <Templates category='Educativos'>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify'/>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify'/>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify'/>
-            </Templates>
-
-            <Templates category='Empresariales'>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify'/>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify'/>
-                <TemplateView first_text='Plantilla Vacia' second_text='by Parcify'/>
-            </Templates> -->
         </section>
     </div>
  </div>
@@ -89,8 +101,6 @@ cls_btn.forEach(item =>  {
         (item.parentNode?.parentNode?.parentNode as HTMLElement).style.display = "none";
     });
 })
-
-    
 </script>
 
     

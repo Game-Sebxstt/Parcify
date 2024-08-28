@@ -11,7 +11,7 @@ const {tittle, author, description, location} = Astro.props;
 
 
 ---
-<section id="previewTemplate" data-location={location} class="fixed w-full h-full z-50 hidden justify-center items-center bg-black/80">
+<section id="previewTemplate" data-id="0" data-location={location} class="fixed w-full h-full z-50 hidden justify-center items-center bg-black/80">
     <!-- caja principal -->
     <section class="w-[50rem] h-[26rem] bg-[#1E1E1E] rounded-md p-3 flex flex-col gap-2 animate-deployment">
         <!-- encabezado -->
@@ -30,8 +30,8 @@ const {tittle, author, description, location} = Astro.props;
         <!-- contenido -->
         <main class="h-full flex justify-between gap-2">
             <!-- previsualizacion de la plantilla -->
-            <section class="bg-white h-full/2 w-[55%]">
-                <img src="https://image.isu.pub/200525205800-f2414d10a0f4960b2a8d0db27a9b4af3/jpg/page_1_thumb_large.jpg"></img>
+            <section class="h-full/2 w-[55%] bg-gray-200 relative">
+                <img id="infoPreview" class="absolute w-full h-full" src="https://image.isu.pub/200525205800-f2414d10a0f4960b2a8d0db27a9b4af3/jpg/page_1_thumb_large.jpg"></img>
             </section>
 
             <!-- data de la plantilla -->
@@ -40,7 +40,7 @@ const {tittle, author, description, location} = Astro.props;
                     <div class="flex flex-col gap-1">
                         <h1 id="tittlePreview" class="text-white text-4xl font-bold">{tittle}</h1>
                         <p id="authorPreview" class="text-white text-lg font-semibold">By {author}</p>
-                        <p id="infoPreview" class="text-gray-400 text-justify">{description}</p>
+                        <p id="infoDescription" class="text-gray-400 text-justify">{description}</p>
                     </div>
                 </article>
 

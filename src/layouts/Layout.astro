@@ -61,17 +61,24 @@ try{
 		<meta name="viewport" content="width=device-width" />
 		<link rel="icon" type="image/svg+xml" href="/Logo.jpg" />
 		<meta name="generator" content={Astro.generator} />
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@latest/dist/css/splide.min.css">
 		<title>{title}</title>
 	</head>
 	<body>
 		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username} email={data.users.email}></Header>
 		<MesageError id="danger"></MesageError>
-		<CreateParceller id_content='content-create-parcel' templates={templates}/>
+		<CreateParceller id_content='content-create-parcel'/>
 		<Invite data={data}/>
 		<Settings username='' email=''></Settings>
 		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
 		<slot />
 		<script src="../js/frontend/front.js"></script>
+
+
+		<script src="../js/frontend/utilities/slide.js"></script>
+
+		<!-- <script src="../js/canvas.js"></script> -->
+
 	</body>
 </html>
 <style is:global>

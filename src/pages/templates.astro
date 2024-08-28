@@ -3,11 +3,38 @@ import Layout from '../layouts/Layout.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import Content from '../components/Sections/Content.astro';
 import Header from '../components/Sections/Header.astro';
-import Template from "../components/Articles/Template.astro"
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Filter from '../components/Articles/Filter.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
-import { templateData }  from "../js/frontend/Templates";
+import TemplateView from '../components/Articles/TemplateView.astro';
+
+import { getAllTemplates } from '../js/backend/requests';
+
+const reqTemplates = await getAllTemplates();
+let templates;
+
+if(!reqTemplates.state){
+    templates = [
+      {
+        name: "Plantilla Vacia",
+        template_id: 0,
+        preview: "../../../public/placeholder/image_preview.svg",
+		description: "Plantilla Vacia.",
+		autor: "Parcify",
+		likes: null
+      }
+    ]
+}else{
+    templates = reqTemplates.data.message;
+	templates.push({
+		name: "Plantilla Vacia",
+		template_id: 0,
+		preview: "../../../public/placeholder/image_preview.svg",
+		description: "Plantilla Vacia.",
+		autor: "Parcify",
+		likes: null
+	})
+}
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -53,15 +80,16 @@ try{
 				<article class="w-full">
 					<div id="content-grid" data-section="templates" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
 						{
-							templateData.length > 0 ? (
-								templateData.map((template) => (
-								<Template
-									clase=''
-									typeElement={template.typeElement}
-									name={template.name}
-									description={template.description}
-									likes={template.likes}
-								/>
+							templates.length > 0 ? (
+								templates.map((template: any) => (
+									<TemplateView 
+										first_text={template.name} 
+										second_text={template.autor} 
+										url_image={template.preview} 
+										template_id={template.template_id} 
+										description={template.description}
+										likes={template.likes}
+									/>
 								))
 							) : (
 								<p>No templates available</p>

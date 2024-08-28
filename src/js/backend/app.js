@@ -277,6 +277,25 @@ app.get("/user/data", async (req, res) =>{
     res.status(200).send({ status: "Good Request", message: info_user })
 });
 
+//Obtenere todos los proyectos de un usuario
+app.get("/user/projects", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const id_user = req.query.id_user;
+
+    const connection = await getConnection();
+    const data = await connection.query("SELECT * FROM projects WHERE user_id = ?", [id_user]);
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "El Usuario no tiene proyectos." })
+    }
+
+    res.status(200).send({ status: "Good Request", message: data })
+});
+
+//Obtener un solo proyecto por su id
 app.get("/user/project", async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
@@ -296,7 +315,7 @@ app.get("/user/project", async (req, res) => {
 
 app.get("/templates", async (req, res) => {
     const connection = await getConnection();
-    const data = await connection.query("SELECT * FROM templates");
+    const data = await connection.query("SELECT * FROM templates ORDER BY date_create ASC");
 
     if(!data.length > 0){
         return res.status(400).send({ status: "Bad Request", message: "No hay plantillas." })

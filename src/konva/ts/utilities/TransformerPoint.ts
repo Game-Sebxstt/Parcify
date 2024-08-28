@@ -209,11 +209,6 @@ export class TransformerPoints {
                 name: 'arrow',
             });
 
-            arrow.on('dblclick', (e) => {
-                e.target.destroy();
-                delete this.arrowMap[this.activeAnchorType || ''];
-            })
-
             // const options = {
             //     points: [startX, startY, mousePos.x, mousePos.y],
             //     fill: this.options.arrowColor || 'white',
@@ -226,6 +221,11 @@ export class TransformerPoints {
             // this.arrowCustom = new CustomArrow(options, this.layer, this.stage);
 
             // const arrow = this.arrowCustom.getArrow();
+
+            arrow.on('dblclick', (e) => {
+                e.target.destroy();
+                delete this.arrowMap[this.activeAnchorType || ''];
+            })
 
             arrow.setAttr('anchorA', this.targetNode)
             arrow.setAttr("anchorIdA", this.targetNode?.attrs.id_unique)

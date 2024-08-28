@@ -4,7 +4,7 @@ import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Content from '../components/Sections/Content.astro';
 import Article from "../components//Articles/Article.astro"
-import ArticleMedium from "../components//Articles/ArticleMedium.astro"
+import CarouselTemplates from "../components/Articles/CarouselTemplates.astro"
 import Filter from '../components/Articles/Filter.astro';
 import ArticlePlus from '../components/Articles/ArticlePlus.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
@@ -42,8 +42,8 @@ try{
 		<Slide/>
 		<SlideMobile/>
 		<Content>
-			<article class="w-full h-64 flex justify-center items-center">
-				<ArticleMedium first_text='Parcelador Básico'/>
+			<article class="w-full h-80 max-[880px]:h-60 max-md:h-80 max-[500px]:h-64 relative flex justify-center items-center">
+				<CarouselTemplates first_text='Parcelador Básico' id_user={id}/>
 			</article>
 
 			<article class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-start items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
