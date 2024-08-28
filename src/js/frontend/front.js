@@ -403,6 +403,11 @@ const addEventListeners = () => {
         if (e.key === "Enter") {
           saveChanges();
         }
+
+        if (e.key === "Escape") {
+          h3.style.display = "flex";
+          input.style.display = "none";
+        }
       });
 
       input.addEventListener("blur", (e) => {
