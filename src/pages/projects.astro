@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import Content from '../components/Sections/Content.astro';
+import Graphic from "../components/Articles/Graphics.astro"
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Template from '../components/Articles/Template.astro'
 import Filter from '../components/Articles/Filter.astro';
@@ -58,11 +59,23 @@ try{
 				</div>
 
 				<article class="w-full">
+
+					<div id="content-grid" class="w-full grid grid-cols-2 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
+						<Graphic name ='Estadisticas Freefire' description='By luisk' likes="300k"/>
+						<Graphic name ='Estadisticas Desidia' description='By sebas' likes="300k"/>
+						<Graphic name ='Estadisticas redcolsi' description='By marcos' likes="300k"/>
+						<Graphic name ='Estadisticas Redes' description='By ladeuth' likes="300k"/>
+						<Graphic name ='Estadisticas Bra' description='By isail' likes="300k"/>
+						<Graphic name ='Estadisticas maincra' description='By jorge'likes="300k"/>
+
 					<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
 						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+
 					</div>
 				</article>
 			</article>
 		</Content>
 	</div>
 </Layout>
+
+
