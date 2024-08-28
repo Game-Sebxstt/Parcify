@@ -1,12 +1,35 @@
 ---
-import { templateData } from "../../js/frontend/Templates";
+import { getAllTemplates } from '../../js/backend/requests';
 
-interface Props{
-    first_text: string;
+const reqTemplates = await getAllTemplates();
+let templates;
+
+if(!reqTemplates.state){
+    templates = [
+      {
+        name: "Plantilla Vacia",
+        template_id: 0,
+        preview: "../../../public/placeholder/image_preview.svg",
+        description: "Plantilla Vacia.",
+		    autor: "Parcify",
+        likes: null,
+      }
+    ]
+}else{
+    templates = reqTemplates.data.message.slice(0, 5);
+
+    if(!(templates.length >= 5)){
+        templates.push({
+          name: "Plantilla Vacia",
+          template_id: 0,
+          preview: "../../../public/placeholder/image_preview.svg",
+          description: "Plantilla Vacia.",
+		      autor: "Parcify",
+          likes: null,
+        })
+    }
 }
 
-const {first_text} = Astro.props;
-const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
 ---
 
 <div class="carousel-container absolute flex justify-center items-center h-full w-[90%] mx-auto">
@@ -20,12 +43,11 @@ const hasTemplates = Array.isArray(templateData) && templateData.length > 0;
     <div class="carousel flex overflow-hidden justify-center items-center h-full w-full">
       <div class="carousel-inner flex transition-transform ease-in-out duration-500" id="carousel-inner">
         {
-        templateData.length > 0 ? (
-          templateData.map((template) => (
-          <div
-          id="template"
-          class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
-            <span class="absolute -bottom-10 text-white ">{template.name}</span>
+        templates.length > 0 ? (
+          templates.map((template: any) => (
+          <div id="create-template" data-id={template.template_id} data-name={template.name} data-preview={template.preview} data-author={template.autor} data-description={template.description} class="carousel-item transition-transform duration-500 ease w-[300px] h-[200px] mx-[10px] bg-white rounded-[2px] flex justify-center items-center text-[24px] scale-[1] opacity-100 shadow-[rgb(216,212,212)_-17px_-7px] text-black">
+              <span class="absolute -bottom-10 text-white ">{template.name}</span>
+              <img src={template.preview} class="w-full h-full">
           </div>
         ))
         ) : (

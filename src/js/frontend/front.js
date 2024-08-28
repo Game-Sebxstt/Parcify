@@ -101,9 +101,10 @@ const elements = {
   changeUserPhoto: document.querySelector("#inputfile"),
   moreOptionIcons: document.querySelectorAll('#more-options-icon'),
   moreOptionDivs: document.querySelectorAll('#more-options-parceller'),
-  template: document.querySelectorAll("#template"),
+  template: document.querySelectorAll("#create-template"),
   previewTemplate: document.getElementById("previewTemplate"),
   favorite: document.querySelectorAll("#favorite"),
+  createTemplate: document.querySelector("#createTemplate"),
 };
 
 // Event Listeners
@@ -340,19 +341,17 @@ const addEventListeners = () => {
   });
 
   // Create project
-  document.querySelectorAll("#create-template").forEach((item) => {
-    item.addEventListener("click", async () => {
-      const templateId = item.getAttribute("data-id");
-      const userId = utils.getCookie("ID-USER");
-      const validation = await req.createProject(userId, "Untitled", templateId);
+  elements.createTemplate?.addEventListener("click",  async () => {
+    const templateId = elements.previewTemplate.getAttribute("data-id");
+    const userId = utils.getCookie("ID-USER");
+    const validation = await req.createProject(userId, "Untitled", templateId);
 
-      if (!validation.state || !validation) {
-        utils.handleError(validation);
-        return;
-      }
+    if (!validation.state || !validation) {
+      utils.handleError(validation);
+      return;
+    }
 
-      window.location.reload();
-    });
+    window.location.reload();
   });
 
   // Duplicate project
@@ -528,21 +527,25 @@ const addEventListeners = () => {
 
   //previewParceller
   elements.template.forEach((item) => {
-    let tittlePrew  = document.querySelector("#tittlePreview")
-    let authorPrew  = document.querySelector("#authorPreview")
-    let infoPrew = document.getElementById("infoPreview")
-
-    // const carousel_items = document.querySelectorAll(".carousel-item");
-    // carousel_items.forEach((item) => {
-    //   item.addEventListener("click", () => {
-    //     elements.previewTemplate.style.display = "flex"
-    //     tittlePrew.textContent = item.getAttribute("data-name")
-    //     authorPrew.textContent = item.getAttribute("data-author")
-    //     infoPrew.textContent = item.getAttribute("data-info")
-    //   });
-    // });
-
     item.addEventListener("click", (e) => {
+      let tittlePrew  = document.querySelector("#tittlePreview")
+      let authorPrew  = document.querySelector("#authorPreview")
+      let infoPrew = document.getElementById("infoPreview")
+      let infoDescription = document.getElementById("infoDescription")
+
+      const dataId = item.getAttribute("data-id");
+      const dataName = item.getAttribute("data-name");
+      const dataAuthor = item.getAttribute("data-author");
+      const dataPreview = item.getAttribute("data-preview");
+      const dataDescription = item.getAttribute("data-description");
+
+      tittlePrew.textContent = dataName;
+      authorPrew.textContent =  "By " + dataAuthor;
+      infoPrew.src = dataPreview;
+      infoDescription.textContent = dataDescription;
+
+      elements.previewTemplate.setAttribute("data-id", dataId);
+
       window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
     });
   });

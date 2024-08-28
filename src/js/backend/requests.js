@@ -93,6 +93,41 @@ export async function saveProject(stageJson, project_id, preview) {
     return {state: true, data: responseData};
 }
 
+export async function getAllTemplates(){
+    const response = await fetch(`http://localhost:4000/templates`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+//Funcion para obtener todos los proyectos de un usuario
+export async function getAllProjects(user_id) {
+    const response = await fetch(`http://localhost:4000/user/projects?id_user=${user_id}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
 export async function getProject(id_project){
     const response = await fetch(`http://localhost:4000/user/project?id_project=${id_project}`, {
         method: "GET",
