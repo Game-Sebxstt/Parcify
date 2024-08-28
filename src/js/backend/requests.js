@@ -191,6 +191,10 @@ export async function renameProject(id_project, name){
         name: name
     }
 
+    if(name.length > 20 || name.length <= 0 || name.trim().length === 0){
+        return {state: false, data: "Nombre no valido"};
+    }
+
     const response = await fetch(`http://localhost:4000/project/rename`, {
         method: "POST",
         body: JSON.stringify(data),
@@ -203,7 +207,8 @@ export async function renameProject(id_project, name){
     
     if (!response.ok) {
         return {state: false, data: responseData.message};
-    }   
+    }
+
     return {state: true, data: responseData};
 }
 

@@ -385,28 +385,19 @@ const addEventListeners = () => {
         input.setSelectionRange(input.value.length, input.value.length);
 
         const saveChanges = async () => {
-          const newName = input.value;
+          const validation = await req.renameProject(projectId, input.value);
 
-          if (!newName){
-            utils.handleError("El nombre no puede estar vacío.");
-            window.location.reload(); 
-            message("El nombre no puede estar vacío")
+          if (!validation.state) {
+            utils.handleError(validation);
             return;
           }
 
-        const validation = await req.renameProject(projectId, newName);
+          h3.textContent = input.value;
+          h3.style.display = "flex";
+          input.style.display = "none";
 
-        if (!validation.state) {
-          utils.handleError(validation);
-          return;
+          window.location.reload();
         }
-
-        h3.textContent = newName;
-        h3.style.display = "flex";
-        input.style.display = "none";
-
-        window.location.reload();
-      }
 
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {

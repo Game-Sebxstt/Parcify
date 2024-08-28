@@ -3,6 +3,10 @@ import TemplateView from '../Articles/TemplateView.astro';
 import Templates from '../Sections/Categories/Templates.astro';
 import { getAllTemplates } from '../../js/backend/requests';
 
+interface Props{
+    id_content: string,
+}
+
 const reqTemplates = await getAllTemplates();
 let templates;
 
@@ -27,10 +31,6 @@ if(!reqTemplates.state){
 		autor: "Parcify",
 		likes: null
 	})
-}
-
-interface Props{
-    id_content: string,
 }
 
 const {id_content} = Astro.props;
