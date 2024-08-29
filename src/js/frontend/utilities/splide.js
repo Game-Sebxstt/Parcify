@@ -7,7 +7,7 @@ const options = {
   focus: 'center',
   keyboard: 'global',
   perPage: 1,
-  wheel: true,
+  wheel: false,
   autoplay: true,
   pauseOnHover: true,
   arrows: false,

@@ -135,6 +135,7 @@ const addEventListeners = () => {
   document.querySelector("#menu-header")?.addEventListener("click", () => {
     const slide = document.querySelector("#slideMobile");
     slide.style.left = window.getComputedStyle(slide).left === "0px" ? "-100%" : "0%";
+    document.querySelector("body").style.overflow = window.getComputedStyle(slide).left === "0px" ? "auto" : "hidden";
   });
 
   // Logo header
