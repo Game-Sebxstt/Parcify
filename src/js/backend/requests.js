@@ -186,8 +186,6 @@ export async function getProject(id_project){
     return {state: true, data: responseData};
 }
 
-
-
 //Delete project with method post
 export async function deleteProject(id_project){
     const response = await fetch(`http://localhost:4000/project/delete`, {
@@ -284,4 +282,49 @@ export async function favorite(id, element) {
 
     // retornamos la respuesta para tratarla mas adelante
     return {state: true, data: responseData.message};
+}
+
+// quit project in favorites
+export async function unfavorite(id_user, id_element) {
+
+    const data = {
+        id:id_user,
+        element:id_element,
+    }; 
+
+    const response = await fetch(`http://localhost:4000/preferences/favorite`, {
+        method: "DELETE",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+    
+    //recibimos la respuesta
+    const responseData = await response.json();
+    
+    //si hay un error detenemos la ejecucion
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    // retornamos la respuesta para tratarla mas adelante
+    return {state: true, data: responseData.message};
+}
+
+export async function getFavorites(id_user) {
+    const response = await fetch(`http://localhost:4000/preferences/data?id_user=${id_user}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+    
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
 }

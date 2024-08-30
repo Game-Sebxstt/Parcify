@@ -457,7 +457,7 @@ app.get("/preferences/data", async (req, res) => {
 
     const connection = await getConnection();
     const data = await connection.query("SELECT favorites FROM preferences WHERE user_id = ?", [id_user]);
-    //console.log(JSON.parse(data));
+    
     if(!data.length > 0 ){
         return res.status(400).send({ status: "Bad Request", message: "No se encuentran favoritos." })
     }
@@ -465,6 +465,44 @@ app.get("/preferences/data", async (req, res) => {
     res.status(200).send({ status: "Good Request", message: data })
 });
 
+//delete favorites
+app.delete("/preferences/favorite", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { id, element } = req.body;
+    const connection = await getConnection();
+
+    // Consulta para ver si el usuario ya tiene favoritos almacenados
+    const userExist = await connection.query("SELECT * FROM preferences WHERE user_id = ?", [id]);
+
+    if (userExist.length > 0) {
+        let actualFavorite = userExist[0].favorites ? JSON.parse(userExist[0].favorites) : [];
+
+        // Asegúrate de que `actualFavorite` es un array
+        if (!Array.isArray(actualFavorite)) {
+            actualFavorite = [];
+        }
+
+        // Filtrar el array para eliminar el favorito con el ID correspondiente
+        const newFavorites = actualFavorite.filter(fav => fav.id != element);
+
+        if (newFavorites.length === actualFavorite.length) {
+            return res.status(404).send({ status: "Not Found", message: "Favorite not found" });
+        }
+
+        // Convierte el array actualizado en una cadena JSON
+        const updatedFavorites = JSON.stringify(newFavorites);
+
+        // Actualiza la base de datos
+        const updateFavorite = await connection.query("UPDATE preferences SET favorites = ? WHERE user_id = ?", [updatedFavorites, id]);
+
+        return res.status(200).send({ status: "Good Request", message: "Favorite removed successfully" });
+    } else {
+        return res.status(404).send({ status: "Not Found", message: "User has no favorites" });
+    }
+});
 
 async function generateIdUser(connection) {
     let user_id;
