@@ -1,13 +1,5 @@
 ---
 import Favorites from "../Articles/Favorites.astro";
-import { getFavorites } from "../../js/backend/requests";
-//id usuario
-const id = Astro.cookies.get("ID-USER")?.value;
-
-// datos de los favoritos
-let getDataPreferences:any = await getFavorites(id);
-let preferences:any = await getDataPreferences.data;
-
 
 ---
 <div id="slide" class="fixed top-0 z-10 w-[20rem] left-0 border-r-[1px] max-md:hidden border-blue-400 h-screen bg-[#2b2929] flex flex-col justify-between">
