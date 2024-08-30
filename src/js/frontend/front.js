@@ -104,6 +104,7 @@ const elements = {
   template: document.querySelectorAll("#create-template"),
   previewTemplate: document.getElementById("previewTemplate"),
   favorite: document.querySelectorAll("#favorite"),
+  unfavorite: document.querySelectorAll("#unfavorite"),
   createTemplate: document.querySelector("#createTemplate"),
 };
 
@@ -563,9 +564,21 @@ const addEventListeners = () => {
       if (!petition.state) {
         return petition.data;
       }
+
       window.location.reload();
-      console.log(petition.data);
     });
+  });
+
+  //unfavorite
+  elements.unfavorite.forEach((item)=>{
+    item.addEventListener("click", async ()=>{
+      const userId = utils.getCookie("ID-USER");
+      const idElement = Number(item.getAttribute("data-id"));
+      const petition = await req.unfavorite(userId, idElement);
+      if (!petition.state) {
+        return petition.data;
+      }      
+    })
   });
 
 };

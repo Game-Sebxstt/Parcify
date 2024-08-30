@@ -12,6 +12,7 @@ import Invite from '../components/Popups/Invite.astro';
 import Header from '../components/Sections/Header.astro';
 import Settings from '../components/Sections/Settings.astro';
 import PreviewTemplate from '../components/Popups/PreviewTemplate.astro';
+import MoreFavorites from '../components/Popups/MoreFavorites.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -72,6 +73,7 @@ try{
 		<Invite data={data}/>
 		<Settings username='' email=''></Settings>
 		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
+		<MoreFavorites></MoreFavorites>
 		<slot />
 		<script src="../js/frontend/front.js"></script>
 		<script src="../js/frontend/utilities/slide.js"></script>
