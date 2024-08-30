@@ -1,4 +1,7 @@
 import * as req from "../backend/requests";
+import * as globals from './utilities/globals'
+import * as chart from './utilities/chart'
+
 
 // Utility Functions
 const utils = {
@@ -58,28 +61,40 @@ const utils = {
     errorMessage.style.display = "flex";
     errorMessage.querySelector("#txt").textContent = validation.data;
   },
-  setCookie: (name, value, days) => {
-    let expires = "";
-    if (days) {
-      const date = new Date();
-      date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-      expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
-  },
-  getCookie: (name) => {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(";");
-    for (let i = 0; i < ca.length; i++) {
-      let c = ca[i];
-      while (c.charAt(0) == " ") c = c.substring(1, c.length);
-      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-    }
-    return null;
-  },
   validateEmail: (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  },
+  getCommitsByMonth: (data, startDate, endDate) => {
+    const commitsByMonth = {};
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+  
+    let current = new Date(start);
+    while (current <= end) {
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+      commitsByMonth[key] = 0;
+      current.setMonth(current.getMonth() + 1);
+    }
+  
+    // Contar commits por mes
+    data.forEach(item => {
+      item.commits.forEach(commit => {
+        const commitDate = new Date(commit.date);
+        const commitMonth = `${commitDate.getFullYear()}-${String(commitDate.getMonth() + 1).padStart(2, '0')}`; // 'YYYY-MM'
+        if (commitsByMonth[commitMonth] !== undefined) {
+          commitsByMonth[commitMonth] += 1;
+        }
+      });
+    });
+  
+    return commitsByMonth;
+  },
+  formatDataForChart:(commitsByMonth) => {
+    const labels = Object.keys(commitsByMonth);
+    const data = Object.values(commitsByMonth);
+
+    return { labels, data };
   }
 };
 
@@ -105,6 +120,7 @@ const elements = {
   previewTemplate: document.getElementById("previewTemplate"),
   favorite: document.querySelectorAll("#favorite"),
   createTemplate: document.querySelector("#createTemplate"),
+  analytics: document.querySelector("#analytics"),
 };
 
 // Event Listeners
@@ -239,7 +255,7 @@ const addEventListeners = () => {
 
   // Back to index
   document.querySelector("#back-index")?.addEventListener("click", () => {
-    window.location.href = "/";
+    globals.endSession();
   });
 
   // Context menu for projects
@@ -256,6 +272,66 @@ const addEventListeners = () => {
         optionsParcel.style.display = "none";
         utils.changeStateWheelWindow(false);
       });
+    });
+  });
+
+  //Metric for projects
+  document.querySelectorAll("#metric-project").forEach((item) => {
+    item.addEventListener("click", async () => {
+      elements.analytics.style.display = window.getComputedStyle(elements.analytics).display === "none" ? "flex" : "none";
+      const dataId = item.getAttribute("data-id");
+      elements.analytics.setAttribute("data-id", dataId);
+  
+      const project = await req.getProject(dataId);
+  
+      if (!project.state) {
+        utils.handleError(project);
+        return;
+      }
+  
+      const collaboratorsProject = JSON.parse(project.data.message.collaborators);
+  
+      const startDate = project.data.message.create_date;
+      const endDate = new Date().toISOString();
+
+      function createGraphicOfCommits(){
+        const commitsByMonth = utils.getCommitsByMonth(collaboratorsProject, startDate, endDate);
+        const { labels, data } = utils.formatDataForChart(commitsByMonth);
+    
+        chart.createGraphic(
+          document.querySelector("#commits"),
+          "bar",
+          startDate,
+          endDate,
+          data,
+          labels,
+          "rgba(147, 197, 253, 0.2)",
+          "rgb(147, 197, 253)",
+          1
+        );
+      }
+  
+      function createGraphicOfTimeWorked() {
+        const timeWorked = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).time_worked;
+        const labels = timeWorked.map(c => c.date);
+        const data = timeWorked.map(c => c.time);
+    
+        chart.createGraphic(
+          document.querySelector("#time_worked"),
+          "line",
+          startDate,
+          endDate,
+          data,
+          labels,
+          "rgba(147, 197, 253, 0.2)",
+          "rgb(147, 197, 253)",
+          1
+        );
+      }
+
+      createGraphicOfCommits();
+      createGraphicOfTimeWorked();
+
     });
   });
 
@@ -344,7 +420,7 @@ const addEventListeners = () => {
   // Create project
   elements.createTemplate?.addEventListener("click",  async () => {
     const templateId = elements.previewTemplate.getAttribute("data-id");
-    const userId = utils.getCookie("ID-USER");
+    const userId = globals.getCookie("ID-USER");
     const validation = await req.createProject(userId, "Untitled", templateId);
 
     if (!validation.state || !validation) {
@@ -422,7 +498,21 @@ const addEventListeners = () => {
   document.querySelectorAll("#element-project").forEach((item) => {
     item.addEventListener("click", () => {
       const projectId = item.getAttribute("data-id");
-      window.location.href = `/konva?id=${projectId}`;
+      const collaborators = {
+        user_id: globals.getCookie("ID-USER"),
+        last_access: new Date(),
+      }
+
+      req.saveCollaborators(projectId, collaborators).then((data) => {
+        if (!data.state) {
+          utils.handleError(data);
+          return;
+        }
+
+        globals.startSession(projectId);
+
+        window.location.href = `/konva?id=${projectId}`;
+      })
     });
   });
 
@@ -457,17 +547,17 @@ const addEventListeners = () => {
       return;
     }
 
-    utils.setCookie("ID-USER", validation.data.message, 1);
-    utils.setCookie("logged", true, 1);
+    globals.setCookie("ID-USER", validation.data.message, 1);
+    globals.setCookie("logged", true, 1);
     window.location.href = "/";
   });
 
   // Logout
   document.querySelector("#logout")?.addEventListener("click", (e) => {
     e.preventDefault();
-    utils.setCookie("ID-USER", "", -1);
-    utils.setCookie("logged", "", -1);
-    if (!utils.getCookie("ID-USER") && !utils.getCookie("logged")) {
+    globals.setCookie("ID-USER", "", -1);
+    globals.setCookie("logged", "", -1);
+    if (!globals.getCookie("ID-USER") && !globals.getCookie("logged")) {
       window.location.reload();
     }
   });
@@ -550,7 +640,7 @@ const addEventListeners = () => {
   //*favorites
   elements.favorite.forEach(item =>{
     item.addEventListener("click", async ()=>{
-      const userId = utils.getCookie("ID-USER");
+      const userId = globals.getCookie("ID-USER");
       const idElement = Number(item.getAttribute("data-id"));
       const typeElement = item.getAttribute("data-type");
       

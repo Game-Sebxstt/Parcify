@@ -69,11 +69,12 @@ export async function createProject(id, name, template_id){
     return {state: true, data: responseData};
 }
 
-export async function saveProject(stageJson, project_id, preview) {
+export async function saveProject(stageJson, project_id, preview, user_id) {
     const data = {
         stage: stageJson,
         project_id: project_id,
-        preview: preview
+        preview: preview,
+        user_id: user_id
     }
 
     const response = await fetch(`http://localhost:4000/project/save`, {
@@ -91,6 +92,46 @@ export async function saveProject(stageJson, project_id, preview) {
     }
 
     return {state: true, data: responseData};
+}
+
+export async function saveCollaborators(project_id, collaborators) {
+    const data = {
+        project_id: project_id,
+        collaborators: collaborators
+    }
+
+    const response = await fetch(`http://localhost:4000/project/collaborators`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+export async function getCollaborators(project_id) {
+    const response = await fetch(`http://localhost:4000/project/collaborators/${project_id}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return { state: false, message: responseData.message };
+    }
+
+    return { state: true, collaborators: responseData.collaborators };
 }
 
 export async function getAllTemplates(){

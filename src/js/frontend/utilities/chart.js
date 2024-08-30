@@ -1,72 +1,87 @@
 import Chart from 'chart.js/auto';
 
-const ctx = document.querySelectorAll('#myChart')
-ctx.forEach((item) => {
-  const myChart = new Chart(item.getContext('2d'), {
-    type: 'line',
-    data: {
-        labels: ['Freefire', 'Desidia', 'Redcolsi', 'Redes', 'Bra', 'Maincra'],
-        datasets: [{
-            label: '# de Likes',
-            data: [0, 300000, 200000, 100000, 400000, 300000],
-            backgroundColor: [
-                'rgba(255, 99, 132, 0.2)',
-                'rgba(54, 162, 235, 0.2)',
-                'rgba(255, 206, 86, 0.2)',
-                'rgba(75, 192, 192, 0.2)',
-                'rgba(153, 102, 255, 0.2)',
-                'rgba(255, 159, 64, 0.2)'
-            ],
-            borderColor: [
-                'rgba(255, 99, 132, 1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)',
-                'rgba(255, 159, 64, 1)'
-            ],
-            borderWidth: 1
-        }]
-    },
+function formatLabels(startDate, endDate, dataLabels) {
+  const labels = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const diffInMonths = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+  const diffInYears = end.getFullYear() - start.getFullYear();
+  const maxLabels = 10;
+  let labelFormat = 'dates';
+
+  if (dataLabels.length > maxLabels) {
+    if (diffInYears > 1) {
+      labelFormat = 'years';
+    } else if (diffInMonths > 6) {
+      labelFormat = 'months';
+    }
+  }
+
+  if (labelFormat === 'years') {
+    let year = start.getFullYear();
+    while (year <= end.getFullYear()) {
+      labels.push(year.toString());
+      year++;
+    }
+  } else if (labelFormat === 'months') {
+    let current = new Date(start);
+    while (current <= end) {
+      labels.push(`${current.getMonth()}/${current.getFullYear()}`);
+      current.setMonth(current.getMonth());
+    }
+  } else {
+    dataLabels.forEach(label => {
+      const date = new Date(label);
+      labels.push(`${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`);
+    });
+  }
+
+  return labels;
+}
+
+
+export function createGraphic(element, typeGraphic, startDate, endDate, data, dataLabels, backGroundColor, borderColor, borderWidth) {
+  const ctx = element.getContext('2d');
+  
+  const labels = formatLabels(startDate, endDate, dataLabels);
+
+  const dataGraphic = {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Sebxstt',
+        data: data,
+        backgroundColor: backGroundColor,
+        borderColor: borderColor,
+        borderWidth: borderWidth,
+        fill: false,
+      }
+    ]
+  };
+
+  const config = {
+    type: typeGraphic || 'line',
+    data: dataGraphic,
     options: {
-      animations: {
-        tension: {
-          duration: 400,
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true
         }
       },
-      responsive:true,
-      maintainAspectRatio:false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                display:false
-            },
-            x:{
-              display:false
-            }
-        },
-        transitions: {
-          show: {
-            animations: {
-              x: {
-                from: 0
-              },
-              y: {
-                from: 0
-              }
-            }
-          },
-          hide: {
-            animations: {
-              x: {
-                to: 0
-              },
-              y: {
-                to: 0
-              }
-            }
-          }
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: {
+          display: false
         }
-    }
-  });
-});
+      },
+    },
+  };
+
+  return new Chart(ctx, config);
+}
