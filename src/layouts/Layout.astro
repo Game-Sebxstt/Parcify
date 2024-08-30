@@ -2,7 +2,6 @@
 interface Props {
 	title: string;
 }
-
 const { title } = Astro.props;
 
 import '@fontsource/roboto';
@@ -22,8 +21,6 @@ if(logged != 'true' && !id){
 }
 
 let get_data: any;
-let get_templates: any;
-let templates: any;
 let data: any;
 
 try{
@@ -35,16 +32,6 @@ try{
 		Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
 		Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
 		return Astro.redirect("/SignIn")
-	}
-
-	get_templates = await fetch(`http://localhost:4000/templates?id_user=${id}`);
-	templates = await get_templates.json();
-	templates = templates.message;
-
-	if(templates == "No hay plantillas."){
-		// Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
-		// Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
-		// return Astro.redirect("/SignIn")
 	}
 
 }catch(e){
@@ -64,6 +51,9 @@ try{
 		<link rel="icon" type="image/svg+xml" href="/Logo.jpg" />
 		<meta name="generator" content={Astro.generator} />
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@latest/dist/css/splide.min.css">
+		<script src="../js/frontend/front.js"></script>
+		<script src="../js/frontend/utilities/splide.js"></script>
+		<script src="../js/frontend/utilities/chart.js"></script>
 		<title>{title}</title>
 	</head>
 	<body>
@@ -75,10 +65,6 @@ try{
 		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
 		<MoreFavorites></MoreFavorites>
 		<slot />
-		<script src="../js/frontend/front.js"></script>
-		<script src="../js/frontend/utilities/slide.js"></script>
-
-		<!-- <script src="../js/canvas.js"></script> -->
 	</body>
 </html>
 <style is:global>
@@ -144,3 +130,5 @@ try{
 	}
 
 </style>
+
+

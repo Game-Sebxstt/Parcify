@@ -3,8 +3,9 @@ import Layout from '../layouts/Layout.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import Content from '../components/Sections/Content.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
-import Template from '../components/Articles/Template.astro'
 import Filter from '../components/Articles/Filter.astro';
+import Analytics from '../components/Popups/Analytics.astro';
+import ProjectMetric from '../components/Articles/ProjectMetric.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -38,6 +39,7 @@ try{
 	<div class="w-full h-fit flex">
 		<Slide/>
 		<SlideMobile/>
+		<Analytics id_content='analytics'/>
 		<Content>
 			<article class="w-full">
 				<div class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-between items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
@@ -59,10 +61,15 @@ try{
 
 				<article class="w-full">
 					<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-						<Template first_text='Parcelador (Parcify)' second_text='By Sebxstt'/>
+						{
+							data.projects.map((item: any) => (
+								<ProjectMetric name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
+							))
+						}
 					</div>
-				</article>
 			</article>
 		</Content>
 	</div>
 </Layout>
+
+

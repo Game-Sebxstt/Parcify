@@ -19,14 +19,18 @@ if (!reqTemplates.state) {
   templates = reqTemplates.data.message.slice(0, 5);
 
   if (!(templates.length >= 5)) {
-    templates.push({
-      name: "Plantilla Vacia",
-      template_id: 0,
-      preview: "../../../public/placeholder/image_preview.svg",
-      description: "Plantilla Vacia.",
-      autor: "Parcify",
-      likes: null,
-    });
+    const lengthRest = 5 - templates.length
+
+    for(let i = 0; i < lengthRest; i++) {
+      templates.push({
+        name: "Plantilla Vacia",
+        template_id: 0,
+        preview: "../../../public/placeholder/image_preview.svg",
+        description: "Plantilla Vacia.",
+        autor: "Parcify",
+        likes: null,
+      });
+    }
   }
 }
 ---

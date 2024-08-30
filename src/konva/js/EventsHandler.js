@@ -2,6 +2,7 @@ import Konva from "konva";
 import * as konva from "./KonvaLogic";
 import * as req from '../../js/backend/requests'
 import * as GlobalFunctions from "./GlobalFunctions";
+import * as globals from '../../js/frontend/utilities/globals'
 
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key.toLowerCase() === 's') {
@@ -20,7 +21,7 @@ document.addEventListener('keydown', function (e) {
         localStorage.removeItem("STAGEJSON");
         localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
         var dataURL = stageClone.toDataURL({ pixelRatio: 3 });
-        req.saveProject(stageJSON, konva.id_stage, dataURL);
+        req.saveProject(stageJSON, konva.id_stage, dataURL, globals.getCookie("ID-USER"));
     }
 
     if (e.ctrlKey && e.key.toLowerCase() === 'z') {

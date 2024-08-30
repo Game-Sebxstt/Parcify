@@ -340,7 +340,7 @@ konva.stage.on('click tap', function (e) {
                     borderArrowColor: '#80D0FF',
                     anchorColor: 'white',
                     borderColor: '#80D0FF',
-                    anchorSize: 5,
+                    anchorSize: 6,
                     enabledAnchors: ["left", "right", "top", "bottom"],
                     proximityThreshold: 20,
                 });

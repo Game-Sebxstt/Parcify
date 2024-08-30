@@ -1,0 +1,25 @@
+---
+    interface Props{
+        type: string,
+        metric: string,
+        id_graphic: string,
+    }
+
+    const {type, metric, id_graphic} = Astro.props;
+---
+
+<div class="bg-[#1E1E1E] w-full h-[22rem] rounded-md border-2 border-[rgba(255,255,255,.2)] flex flex-col">
+    <div class="w-full flex justify-between items-center p-3 text-white border-b-2 border-[rgba(255,255,255,.2)]">
+        <h2 class="font-semibold text-xl">
+            {metric}
+        </h2>
+
+        <h3 class="font-light text-gray-300 text-sm">
+            Last 30 days
+        </h3>
+    </div>
+
+    <div class="w-full flex-grow flex">
+        <canvas id={id_graphic} data-metric={metric} data-type={type}></canvas>
+    </div>
+</div>

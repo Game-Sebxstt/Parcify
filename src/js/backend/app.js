@@ -108,9 +108,25 @@ app.post("/project/create", async (req, res) => {
         ]
     }
 
+    const dataUser = await connection.query("SELECT * FROM users WHERE user_id = ?", [id]);
+
+    const collaborators = [
+        {
+            user_id: id,
+            name: dataUser[0].username,
+            role: "owner",
+            commits: [],
+            last_commit: "",
+            last_access: "",
+            time_worked: [],
+            pages_created: 0,
+            elements_used: 0,
+            plugins_used: 0
+        },
+    ];
     const project_id = await generateIdProject(connection);
     const date_now = new Date();
-    const data = await connection.query("INSERT INTO projects (project_id, user_id, name, preview, stage, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?, ?)",[project_id, id, name, template[0].preview, template[0].stage, "", date_now]);
+    const data = await connection.query("INSERT INTO projects (project_id, user_id, name, preview, stage, collaborators, last_modified, create_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",[project_id, id, name, template[0].preview, template[0].stage, JSON.stringify(collaborators), date_now, date_now]);
 
     if (!data) {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo crear el proyecto" })
@@ -188,18 +204,86 @@ app.post("/project/save", async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
     }
+    const {stage, project_id, preview, user_id} = req.body;
 
-    const {stage, project_id, preview} = req.body;
+    const dateCommit = new Date();
 
     const connection = await getConnection();
-    const update_project = await connection.query("UPDATE projects SET stage = ?, preview = ? WHERE project_id = ?", [stage, preview, project_id]);
-
+    const update_project = await connection.query("UPDATE projects SET stage = ?, preview = ?, last_modified = ? WHERE project_id = ?", [stage, preview, dateCommit, project_id]);
 
     if(!update_project){
         return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el proyecto." })
     }
 
+    const collaborators = await connection.query("SELECT collaborators FROM projects WHERE project_id = ?", [project_id]);
+    const data = JSON.parse(collaborators[0].collaborators);
+
+    data.forEach(async (element) => {
+        if(element.user_id != user_id) return;
+
+        element.commits.push({
+            date: dateCommit,
+        });
+        element.last_commit = dateCommit;
+    });
+
+    const update_collaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(data), project_id]);
+
+    if(!update_collaborators){
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el proyecto." })
+    }
+
     return res.status(200).send({ status: "Good Request", message: "El proyecto se guardo correctamente." })
+});
+
+//Save collaborators of project
+app.post("/project/collaborators", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const connection = await getConnection();
+    const { project_id, collaborators } = req.body;
+
+    const collaboratorsProject = await connection.query("SELECT collaborators FROM projects WHERE project_id = ?", [project_id]);
+
+    if(!collaboratorsProject.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo encontrar el proyecto."});
+    }
+
+    const existingCollaborators = JSON.parse(collaboratorsProject[0].collaborators);
+
+    let updated = false;
+
+    existingCollaborators.forEach((element, index) => {
+        if (Number(element.user_id) === Number(collaborators.user_id)) {
+            element.role = collaborators.role || element.role;
+            element.commits = collaborators.commits || element.commits;
+            element.last_commit = collaborators.last_commit || element.last_commit;
+            element.last_access = collaborators.last_access || element.last_access;
+            element.time_worked = collaborators.time_worked || element.time_worked;
+            element.pages_created = collaborators.pages_created || element.pages_created;
+            element.elements_used = collaborators.elements_used || element.elements_used;
+            element.plugins_used = collaborators.plugins_used || element.plugins_used;
+            updated = true;
+        }
+    });
+
+
+    if (!updated) {
+        console.log("No se actualizó ningún colaborador, se añadirá uno nuevo.");
+        existingCollaborators.push(collaborators);
+    }
+
+    console.log("Colaboradores actualizados:", existingCollaborators[0]);
+
+    const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);
+
+    if (!updateCollaborators) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar los colaboradores." });
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "Los colaboradores se guardaron correctamente." });
 });
 
 app.post("/preferences/favorite", async (req, res) => {
@@ -294,6 +378,34 @@ app.get("/user/projects", async (req, res) => {
 
     res.status(200).send({ status: "Good Request", message: data })
 });
+
+//Obtener los colaboradores de un proyecto
+app.get("/project/collaborators/:project_id", async (req, res) => {
+    const project_id = req.params.project_id;
+
+    try {
+        const connection = await getConnection();
+        const collaboratorsProject = await connection.query("SELECT collaborators FROM projects WHERE project_id = ?", [project_id]);
+
+        if (!collaboratorsProject.length) {
+            return res.status(404).send({ status: "Not Found", message: "Proyecto no encontrado." });
+        }
+
+        let data;
+        try {
+            data = JSON.parse(collaboratorsProject[0].collaborators);
+        } catch (error) {
+            return res.status(500).send({ status: "Internal Server Error", message: "Error al procesar los datos de colaboradores." });
+        }
+
+        res.status(200).send({ state: true, collaborators: data });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ status: "Internal Server Error", message: "Error al conectar con la base de datos." });
+    }
+});
+
 
 //Obtener un solo proyecto por su id
 app.get("/user/project", async (req, res) => {
