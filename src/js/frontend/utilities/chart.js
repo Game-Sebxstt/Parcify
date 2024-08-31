@@ -32,6 +32,7 @@ function formatLabels(startDate, endDate, dataLabels) {
     }
   } else {
     dataLabels.forEach(label => {
+      console.log("label",label)
       const date = new Date(label);
       labels.push(`${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`);
     });

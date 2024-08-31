@@ -65,37 +65,6 @@ const utils = {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   },
-  getCommitsByMonth: (data, startDate, endDate) => {
-    const commitsByMonth = {};
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-  
-    let current = new Date(start);
-    while (current <= end) {
-      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
-      commitsByMonth[key] = 0;
-      current.setMonth(current.getMonth() + 1);
-    }
-  
-    // Contar commits por mes
-    data.forEach(item => {
-      item.commits.forEach(commit => {
-        const commitDate = new Date(commit.date);
-        const commitMonth = `${commitDate.getFullYear()}-${String(commitDate.getMonth() + 1).padStart(2, '0')}`; // 'YYYY-MM'
-        if (commitsByMonth[commitMonth] !== undefined) {
-          commitsByMonth[commitMonth] += 1;
-        }
-      });
-    });
-  
-    return commitsByMonth;
-  },
-  formatDataForChart:(commitsByMonth) => {
-    const labels = Object.keys(commitsByMonth);
-    const data = Object.values(commitsByMonth);
-
-    return { labels, data };
-  }
 };
 
 // DOM Elements
@@ -296,9 +265,10 @@ const addEventListeners = () => {
       const endDate = new Date().toISOString();
 
       function createGraphicOfCommits(){
-        const commitsByMonth = utils.getCommitsByMonth(collaboratorsProject, startDate, endDate);
-        const { labels, data } = utils.formatDataForChart(commitsByMonth);
-    
+        const commits = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).commits;
+        const labels = commits.map(c => c.date);
+        const data = commits.map(c => c.commits);
+
         chart.createGraphic(
           document.querySelector("#commits"),
           "bar",
@@ -316,7 +286,7 @@ const addEventListeners = () => {
         const timeWorked = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).time_worked;
         const labels = timeWorked.map(c => c.date);
         const data = timeWorked.map(c => c.time);
-    
+
         chart.createGraphic(
           document.querySelector("#time_worked"),
           "line",
@@ -653,12 +623,14 @@ const addEventListeners = () => {
   //unfavorite
   elements.unfavorite.forEach((item)=>{
     item.addEventListener("click", async ()=>{
-      const userId = utils.getCookie("ID-USER");
+      const userId = globals.getCookie("ID-USER");
       const idElement = Number(item.getAttribute("data-id"));
       const petition = await req.unfavorite(userId, idElement);
       if (!petition.state) {
         return petition.data;
-      }      
+      }
+      
+      window.location.reload();
     })
   });
 
