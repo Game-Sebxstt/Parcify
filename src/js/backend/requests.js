@@ -328,3 +328,138 @@ export async function getFavorites(id_user) {
 
     return {state: true, data: responseData};
 }
+
+// Obtener email
+export async function checkEmail(id_user, email) {
+
+    const data = {
+        id: id_user,
+        email: email,
+    };
+
+    const response = await fetch(`http://localhost:4000/user/checkEmail`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData.message};
+}
+// Actualizar nombre de usuario
+export async function updateUsername(id_user, newUsername){
+    const newData = {
+        id: id_user,
+        username: newUsername,
+    };
+
+    const response = await fetch(`http://localhost:4000/user/updateUsername`, {
+        method: "POST",
+        body: JSON.stringify(newData),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+export async function checkPassword(user, password){
+    const data = {
+        user: user,
+        password: password,
+    };
+
+    const response = await fetch(`http://localhost:4000/user/checkPassword`,{
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function updatePassword(user, newPassword) {
+    const data = {
+        user: user,
+        password: newPassword,
+    };
+    
+    const response = await fetch(`http://localhost:4000/user/updatePassword`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function updateBiography(user, newBio){
+    const data = {
+        id: user,
+        biography: newBio,
+    };
+    
+    const response = await fetch(`http://localhost:4000/user/updateBiography`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function updateProfile(data){
+    const response = await fetch(`http://localhost:4000/user/updateProfile`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}

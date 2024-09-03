@@ -1,13 +1,15 @@
 ---
-// interface Props {
-//     username:string,
-//     email:string,
-// }
-
-// const {username, email} = Astro.props;
 import Profile from "../Sections/Profile.astro"
 import Appareance from "./Appareance.astro"
 import Security from "./Security.astro"
+
+interface Props {
+    username: string;
+    email: string;
+    biography: string;
+}
+
+const {username, email, biography} = Astro.props;
 ---
 
 <section id="content-configurations"class="bg-black/50 fixed h-full w-full z-50 justify-end hidden">
@@ -35,7 +37,7 @@ import Security from "./Security.astro"
                     </div>
                     <div class="w-full flex justify-between align-middle">
                         <span>
-                            <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">Ladeuth</h1>
+                            <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">{username}</h1>
                             <p class="text-[#a7a5a5] text-xs max-xl:text-base max-sm:hidden">lorem ipsum dolor sit amet</p>
                         </span>
                        <span>
@@ -88,7 +90,7 @@ import Security from "./Security.astro"
             <div class="w-full pr-8">
               <div class="px-8 w-full h-full bg-black/50 pb-8 pt-8 flex overflow-y-auto flex-col max-sm:w-full rounded-xl gap-5 max-sm:px-5">
                 <div id="profile-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5">
-                    <Profile></Profile>
+                    <Profile username = {username}, email = {email} biography={biography}></Profile>
                 </div>
                 <div id="appareance-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5" style="display: none" >
                     <Appareance></Appareance>

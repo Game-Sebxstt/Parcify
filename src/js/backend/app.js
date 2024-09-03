@@ -344,6 +344,146 @@ app.post("/preferences/favorite", async (req, res) => {
     res.status(200).send({ status: "Good Request", message: "Favorite Succeful" })
 });
 
+//Update profile
+app.post("/user/updateProfile", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    let {id, username, email, biography} = req.body;
+    console.log(id, username, email, biography);
+    const connection = await getConnection();
+
+    const userExists = await connection.query('SELECT * FROM users WHERE user_id = ?', [id]);
+
+    if (userExists.length > 0) {
+        username = username || userExists[0].username;
+        email = email || userExists[0].email;
+        biography = biography || userExists[0].biography;
+
+        await connection.query('UPDATE users SET username = ?, email = ?, biography = ? WHERE user_id = ?', [(username), email, biography, id]);
+
+        return res.status(200).send({ status: "Success", message: "Profile updated successfully" });
+    }
+
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+})
+
+//Update username
+app.post("/user/updateUsername", async (req,res) =>{
+    if (!req.body){
+        return res.status(400).send({status: "Bad Request", message: "Body is empty"})
+    }
+    const {id, username} = req.body;
+    const connection = await getConnection();
+    
+    const userExists = await connection.query('Select * FROM users WHERE user_id = ?', [id]);
+    
+    if (userExists.length > 0){
+        await connection.query('UPDATE users SET username = ? WHERE user_id = ?', [username, id]);
+        
+        return res.status(200).send({status: "Success", message: "Username updated successfully"});   
+    }
+    
+    return res.status(404).send({status: "Not Found", message: "User does not exist"});
+})
+
+//Verify 
+app.post('/user/checkPassword', async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { user, password } = req.body;
+    const connection = await getConnection();
+
+    const [userExists] = await connection.query('SELECT * FROM users WHERE user_id = ?', [user]);
+
+    if (userExists) {
+        const isPasswordValid = compareEncrypt(password, userExists.password);
+        
+        if(isPasswordValid){
+            return res.status(200).send({ status: "Success", message: isPasswordValid });
+        }else{
+            return res.status(401).send({ status: "Unauthorized", message: "Incorrect password" });
+        }
+    }
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+});
+
+//Update password
+app.post("/user/updatePassword", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { user, password } = req.body;
+    const connection = await getConnection();
+
+    const userExists = await connection.query('SELECT * FROM users WHERE user_id = ?', [user]);
+
+    if (userExists.length > 0) {
+        const hashPassword = encrypt(password);
+
+        const result = await connection.query('UPDATE users SET password = ? WHERE user_id = ?', [hashPassword, user]);
+
+        if (result.affectedRows > 0) {            
+            return res.status(200).send({ status: "Success", message: "Contraseña actualizada con éxito" });
+        } else {
+            return res.status(500).send({ status: "Error", message: "Error al actualizar la contraseña." });
+        }
+    } 
+    return res.status(404).send({ status: "Not Found", message: "El Usuario no existe." }); 
+});
+
+//Update biography
+app.post("/user/updateBiography", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const {id, biography} = req.body;
+    const connection = await getConnection();
+
+    const userExist = await connection.query("SELECT * FROM users WHERE user_id = ?",[id]);
+    
+    if (userExist.length > 0) {
+        await connection.query("UPDATE users SET biography = ? WHERE user_id = ?", [biography, id]);
+        console.log("Yupiii");
+
+        return res.status(200).send({ status: "Good Request", message: "Biografía actualizada con éxito" });
+    }
+    console.log("bugarron");
+    
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+});
+
+// Verificar el email
+app.post("/user/checkEmail", async (req, res)  => {
+    if (!req.body) {
+        return res.status(400).send({status: "Bad Request", message: "Body is empty"})
+    }
+    
+    const {id, email} = req.body;
+
+    const connection = await getConnection();
+    
+    const [userExists] = await connection.query("SELECT * FROM users WHERE user_id = ?", [id]) 
+    
+    if (userExists) {
+        if (email === userExists.email) {
+            console.log("Es igual esta mondá")
+            return res.status(200).send({ status: "Good Request", message: userExists.email })
+        }else{
+            console.log("No es igual esta mondá, vaya y chupele la mondá a un burro")
+            return res.status(400).send({ status: "Bad Request", message: "El email no coincide con el del usuario." })
+        }
+    }
+    console.log("No se encontró al hpta");
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+});
+
+
 app.get("/user/data", async (req, res) =>{
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
@@ -569,5 +709,6 @@ function encrypt(value){
 }
 
 function compareEncrypt(compare, value){
-    return compare == encrypt(value);
+    const compareHash = encrypt(compare);
+    return compareHash === value;
 }
