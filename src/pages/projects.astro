@@ -1,14 +1,15 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Slide from '../components/Sections/SlideDesktop.astro';
-import Content from '../components/Sections/Content.astro';
-import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Filter from '../components/Articles/Filter.astro';
-import Analytics from '../components/Popups/Analytics.astro';
 import ProjectMetric from '../components/Articles/ProjectMetric.astro';
-
+import SearchBar from '../components/Articles/SearchBar.astro';
+import Analytics from '../components/Popups/Analytics.astro';
+import Content from '../components/Sections/Content.astro';
+import Slide from '../components/Sections/SlideDesktop.astro';
+import SlideMobile from '../components/Sections/SlideMobile.astro';
+import Layout from '../layouts/Layout.astro';
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
+
 
 if(logged != 'true' && !id){
   return Astro.redirect("/SignIn")
@@ -50,12 +51,12 @@ try{
 								<path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
 								<path d="M21 21l-6 -6" />
 							</svg>
-							<input type="search" placeholder="Search projects" class="pl-11 pr-3 bg-[#292929] border-2 border-[#3e3e3e] rounded-lg text-white px-6 py-3 text-base hover:border-[#1E90FF] outline-none cursor-pointer transition max-[880px]:w-full">
+							<SearchBar placeholder='Search Projects' article='project' section='projects'></SearchBar>
 						</li>
 					</ul>
 
 					<div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
-						<Filter/>
+						<Filter section='projects' article='project'/>
 					</div>
 				</div>
 
@@ -63,7 +64,7 @@ try{
 					<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
 						{
 							data.projects.map((item: any) => (
-								<ProjectMetric name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
+								<ProjectMetric id="project" name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
 							))
 						}
 					</div>
