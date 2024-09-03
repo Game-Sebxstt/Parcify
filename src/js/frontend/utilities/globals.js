@@ -56,7 +56,7 @@ export function endSession() {
         const existingCollaborator = data.collaborators.find(c => c.user_id === Number(user_id));
         const currentDate = new Date();
         const timeWorkedPerDay = existingCollaborator ? existingCollaborator.time_worked || [] : [];
-        const existingEntry = timeWorkedPerDay.find(entry => entry.date === currentDate);
+        const existingEntry = timeWorkedPerDay.find(entry => entry.date.split("T")[0] === currentDate.toISOString().split("T")[0]);
 
         if (existingEntry) {
             existingEntry.time += sessionTimeWorked;

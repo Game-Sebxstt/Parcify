@@ -221,9 +221,17 @@ app.post("/project/save", async (req, res) => {
     data.forEach(async (element) => {
         if(element.user_id != user_id) return;
 
-        element.commits.push({
-            date: dateCommit,
-        });
+        const existingEntry = element.commits.find(entry => entry.date.split("T")[0] === dateCommit.toISOString().split("T")[0]);
+
+        if (existingEntry) {
+            existingEntry.commits += 1;
+        } else {
+            element.commits.push({
+                date: dateCommit,
+                commits: 1,
+            });
+        }
+
         element.last_commit = dateCommit;
     });
 
