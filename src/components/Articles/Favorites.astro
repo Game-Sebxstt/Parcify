@@ -14,11 +14,12 @@ let dataUser = await getDataUser.json();
 
 let dataFilter:any = [];
 const isData = getDataPreferences.state ? true : false;
-const isVoid = preferences.message[0].favorites != "[]" ? true : false; 
-let numFavorites = JSON.parse(preferences.message[0].favorites)
-
+let isVoid; 
+let numFavorites;
 
 if (isData){
+    isVoid = preferences.message[0].favorites != "[]" ? true : false;
+    numFavorites = JSON.parse(preferences.message[0].favorites)
     const elementParsed = JSON.parse(preferences.message[0].favorites)
     const projectUser = dataUser.message.projects;
 
@@ -40,7 +41,7 @@ const svgIcons = {
 ---
 <article class="flex flex-col">
     <h3 class="text-lg text-white pt-3 px-5">Favorites</h3>
-    <div class="py-3 px-6 text-white font-semibold flex flex-col gap-2">
+    <div class="py-4 px-6 text-white font-semibold flex flex-col gap-4">
         <div class="flex flex-col gap-4">
             {
                 !isData || !isVoid ? (
@@ -68,8 +69,8 @@ const svgIcons = {
         </div>
         <div>
             {
-                numFavorites.length > 4 && (  // Mostrar "más..." si hay más de 4 favoritos
-                    <p id="openMoreView" class=" hover:underline cursor-pointer font-normal text-sky-400">Ver más...</p>
+                numFavorites && numFavorites.length > 4 && (  // Mostrar "más..." si hay más de 4 favoritos
+                    <p id="showMoreFavorites" class=" hover:underline cursor-pointer font-normal text-sky-400">Ver más...</p>
                 )
             }
         </div>

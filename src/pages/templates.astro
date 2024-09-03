@@ -1,12 +1,11 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Slide from '../components/Sections/SlideDesktop.astro';
-import Content from '../components/Sections/Content.astro';
-import Header from '../components/Sections/Header.astro';
-import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Filter from '../components/Articles/Filter.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
 import TemplateView from '../components/Articles/TemplateView.astro';
+import Content from '../components/Sections/Content.astro';
+import Slide from '../components/Sections/SlideDesktop.astro';
+import SlideMobile from '../components/Sections/SlideMobile.astro';
+import Layout from '../layouts/Layout.astro';
 
 import { getAllTemplates } from '../js/backend/requests';
 
@@ -82,7 +81,8 @@ try{
 						{
 							templates.length > 0 ? (
 								templates.map((template: any) => (
-									<TemplateView 
+									<TemplateView
+									    id="template"
 										first_text={template.name} 
 										second_text={template.autor} 
 										url_image={template.preview} 

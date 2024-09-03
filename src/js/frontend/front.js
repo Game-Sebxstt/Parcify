@@ -116,7 +116,7 @@ const elements = {
   changeUserPhoto: document.querySelector("#inputfile"),
   moreOptionIcons: document.querySelectorAll('#more-options-icon'),
   moreOptionDivs: document.querySelectorAll('#more-options-parceller'),
-  template: document.querySelectorAll("#create-template"),
+  template: document.querySelectorAll(".create-template"),
   previewTemplate: document.getElementById("previewTemplate"),
   favorite: document.querySelectorAll("#favorite"),
   unfavorite: document.querySelectorAll("#unfavorite"),
@@ -358,13 +358,25 @@ const addEventListeners = () => {
 
       switch (index) {
         case 0: // Sort by Name
-          const namesAndElements = elements.map(el => ({
-            name: el.getAttribute("data-name"),
-            element: el
-          }));
-          const arrow = document.querySelector("#orden").firstChild.id;
-          utils.sortElements(namesAndElements, 'name', arrow === 'arrowUp');
-          break;
+        const namesAndElements = elements.map(el => ({
+          name: el.getAttribute("data-name").toLowerCase(),  // Use lowercase for consistent comparison
+          element: el
+        }));
+
+        const arrow = document.querySelector("#orden").firstChild.id;
+        
+        // Sort elements by name
+        namesAndElements.sort((a, b) => {
+          if (a.name < b.name) return arrow === 'arrowUp' ? -1 : 1;
+          if (a.name > b.name) return arrow === 'arrowUp' ? 1 : -1;
+          return 0;
+        });
+
+        // Append sorted elements back to the DOM
+        namesAndElements.forEach(item => {
+          item.element.parentElement.appendChild(item.element);
+        });
+        break;
 
         case 1: // Sort by Date
           const datesAndElements = elements.map(el => ({
