@@ -18,7 +18,6 @@ let isVoid;
 let numFavorites;
 
 if (isData){
-    isVoid = preferences.message[0].favorites != "[]" ? true : false;
     isVoid = preferences.message[0].favorites != "[]" ? true : false; 
     numFavorites = JSON.parse(preferences.message[0].favorites)
     const elementParsed = JSON.parse(preferences.message[0].favorites)
