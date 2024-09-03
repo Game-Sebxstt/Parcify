@@ -82,3 +82,17 @@ export function endSession() {
         });
     });
 }
+
+export function formatEmail(email) {
+    const [user, domain] = email.split("@");
+    const visibleChars = Math.ceil(user.length * 0.3);
+
+    if (user.length <= visibleChars) {
+        return email;
+    }
+
+    const hiddenPart = "*".repeat(user.length - visibleChars);
+    const formattedEmail = `${user.slice(0, visibleChars)}${hiddenPart}@${domain}`;
+
+    return formattedEmail;
+}

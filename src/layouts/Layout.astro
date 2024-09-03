@@ -61,7 +61,7 @@ try{
 		<MesageError id="danger"></MesageError>
 		<CreateParceller id_content='content-create-parcel'/>
 		<Invite data={data}/>
-		<Settings username='' email=''></Settings>
+		<Settings username={data.users.username} email={data.users.email} biography={data.users.biography}></Settings>
 		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
 		<MoreFavorites></MoreFavorites>
 		<slot />

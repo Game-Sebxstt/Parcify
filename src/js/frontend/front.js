@@ -1,5 +1,6 @@
 import * as req from "../backend/requests";
 import * as globals from './utilities/globals'
+import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
 
 
@@ -64,6 +65,48 @@ const utils = {
   validateEmail: (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  },
+  getCommitsByMonth: (data, startDate, endDate) => {
+    const commitsByMonth = {};
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+  
+    let current = new Date(start);
+    while (current <= end) {
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+      commitsByMonth[key] = 0;
+      current.setMonth(current.getMonth() + 1);
+    }
+  
+    // Contar commits por mes
+    data.forEach(item => {
+      item.commits.forEach(commit => {
+        const commitDate = new Date(commit.date);
+        const commitMonth = `${commitDate.getFullYear()}-${String(commitDate.getMonth() + 1).padStart(2, '0')}`; // 'YYYY-MM'
+        if (commitsByMonth[commitMonth] !== undefined) {
+          commitsByMonth[commitMonth] += 1;
+        }
+      });
+    });
+  
+    return commitsByMonth;
+  },
+  formatDataForChart:(commitsByMonth) => {
+    const labels = Object.keys(commitsByMonth);
+    const data = Object.values(commitsByMonth);
+
+    return { labels, data };
+  },
+  createInput: (id, classInput, type, placeholder, value, parent) => {
+    const input = document.createElement("input");
+    input.id = id;
+    input.className = classInput;
+    input.type = type;
+    input.placeholder = placeholder;
+    input.value = value;
+
+    parent.appendChild(input);
+    return input;
   },
 };
 
@@ -690,4 +733,215 @@ const openButton = document.querySelector('#openSettings');
 openButton?.addEventListener("click", () => {
   document.querySelector('#content-configurations').style.display = "flex";
   document.documentElement.style.overflow = "hidden";
+});
+
+
+//Edit Username
+document.querySelector('#edit-icon-username')?.addEventListener("click", async () => {
+  const editIcon = document.querySelector("#edit-icon-username");
+  const usernameInput = document.querySelector("#profile-username");
+  const optionsButtons = document.querySelector("#options-buttons-profile");
+
+  usernameInput.removeAttribute("readonly");
+  usernameInput.style.opacity = 1;
+  usernameInput.value = "";
+  usernameInput.focus();
+
+  optionsButtons.style.display = "flex";
+  editIcon.style.pointerEvents = "none";
+  editIcon.style.opacity = '0.5';
+
+  document.querySelector("#options-buttons-profile").addEventListener("click", async () => {
+    const userId = globals.getCookie("ID-USER");
+    const usernameInput = document.querySelector("#profile-username");
+    const newUsername = usernameInput.value;
+  
+    if(!newUsername.trim()){
+      utils.handleError("Please enter a username valid")
+    }
+
+    const validation = await req.updateProfile({
+      id: userId,
+      username: newUsername
+    });
+
+    if(!validation.state){
+      utils.handleError(validation);
+      return;
+    }
+
+    usernameInput.setAttribute("readonly", "");
+    usernameInput.style.opacity = 0.5;
+    optionsButtons.style.display = "auto";
+    editIcon.style.opacity = '1';
+
+    window.location.reload();
+
+  })
+});
+
+//Seleccionar theme (diseño)
+document?.addEventListener('DOMContentLoaded', () => {
+  const themeOptions = document.querySelectorAll('.theme-option');
+
+  themeOptions.forEach(option => {
+      option?.addEventListener('click', () => {
+          themeOptions.forEach(item => item.classList.remove('border-4', 'border-blue-500', 'shadow-lg'));
+
+          option.classList.add('border-4', 'border-blue-500', 'shadow-lg');
+      });
+  });
+});
+
+//Chequear el email
+document.querySelector('#edit-icon-email')?.addEventListener("click", async () => {
+  const emailInput = document.querySelector('#profile-email');
+  const editIcon = document.querySelector('#edit-icon-email');
+  // const confirmationDiv = document.createElement("div")
+
+  const contentEditEmail = document.querySelector('#div-edit-email');
+  const optionsButtons = document.querySelector('#options-buttons-profile');
+
+  if(document.querySelectorAll(".containerEditEmail").length > 0){
+    return;
+  }
+  
+  for(let i = 0; i < 2; i++){
+    const containerEmailInput = document.createElement("div");
+    containerEmailInput.className = "w-full flex items-center containerEditEmail";
+  
+    contentEditEmail.appendChild(containerEmailInput);
+
+    const inputEmail = templates.getCloneInputEmail(containerEmailInput)
+    inputEmail.focus();
+  }
+
+  optionsButtons.style.display = "flex";
+
+  const saveChanges = document.querySelector('#button-save-changes');
+  saveChanges.addEventListener("click", async () => {
+    const userId = globals.getCookie("ID-USER");
+    const currentEmails = document.querySelectorAll(".containerEditEmail");
+
+    if(currentEmails[0].querySelector("input").value != currentEmails[1].querySelector("input").value){
+      console.log("Los correos no son iguales");
+      utils.handleError("The emails are not the same");
+      return;
+    }
+
+    const validationEmail = await req.updateProfile({
+      id: userId,
+      email: currentEmails[0].querySelector("input").value
+    });
+
+    if(!validationEmail.state){
+      utils.handleError(validationEmail);
+      return;
+    }
+
+    window.location.reload();
+  })
+});
+
+//iniciar el modo de edición de contraseña
+document.querySelector('#edit-icon-password')?.addEventListener('click', async () => {
+  const editIcon = document.querySelector('#edit-icon-password');
+  const passwordInput = document.querySelector('#password');
+
+  passwordInput.removeAttribute("readonly");
+  passwordInput.style.opacity = 1;
+  passwordInput.value = "";
+  passwordInput.focus();
+
+  editIcon.style.pointerEvents = 'none';
+  editIcon.style.opacity = '0.5';
+
+  const comparePassword = async () => {
+    const optionsButtons = document.querySelector('#options-buttons-password');
+    const inputsEdits = document.querySelector('#edit-password');
+    const inputNewPassword = document.querySelector('#newPassword');
+
+    const userId = globals.getCookie("ID-USER");
+    const currentPassword = passwordInput.value;
+    
+    const validation = await req.checkPassword(userId, currentPassword);
+
+    if (validation.state) {
+      inputsEdits.style.display = "flex";
+      passwordInput.setAttribute("readonly", true);
+      optionsButtons.style.display = "flex";
+      inputNewPassword.focus();
+    } else {
+      utils.handleError(validation);
+    }
+  };
+
+  const saveChangesButton = document.querySelector("#button-save-security");
+  saveChangesButton?.addEventListener('click', async () => {
+  const newPassword = document.querySelector('#newPassword').value;
+  const confirmNewPassword = document.querySelector('#confirmNewPassword').value;
+  const userId = globals.getCookie('ID-USER');
+
+    if (newPassword === confirmNewPassword){
+      const updatePassword = await req.updatePassword(userId, newPassword);
+      
+      if (updatePassword.state) {
+        window.location.reload();
+      } else {
+        utils.handleError("Error al actualizar la contraseña.");
+      }
+    } else {
+      console.log("No son iguales :(");
+      utils.handleError("Las contraseñas no coinciden.");
+    }
+  });
+
+  passwordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      console.log("Se presionó Enter");
+      comparePassword();
+    }
+  });
+});
+
+document.querySelector("#textarea-biography")?.addEventListener("click", () => {
+
+  const textareaBiography = document.querySelector('#textarea-biography');
+  const optionButtons = document.querySelector('#options-buttons-profile');
+  const saveChanges = document.querySelector('#button-save-changes');
+  const cancelChanges = document.querySelector('#button-cancel-changes');
+
+  textareaBiography?.addEventListener("input", () =>{
+    optionButtons.style.display = "flex";
+  })
+
+  const updateBiography = async () => {
+    const userId = globals.getCookie("ID-USER");
+    const biography = textareaBiography.value;
+
+    if (biography.trim() === "") {
+      console.log("Esa mondá no puede estar en blanco");
+      
+    }
+
+    const validation = await req.updateProfile({
+      id: userId,
+      biography: biography
+    });
+
+    if(!validation.state){
+      utils.handleError(validation);
+      return;
+    }
+
+    window.location.reload(); 
+  }
+
+  saveChanges.addEventListener("click",updateBiography);
+
+  cancelChanges.addEventListener("click", () => {
+    textareaBiography.value = "";
+    optionButtons.style.display = "none";
+    window.location.reload();
+  });
 });

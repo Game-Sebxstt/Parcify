@@ -35,10 +35,11 @@
                         type="password"
                         id="password"
                         name="password"
-                        class="w-[50%] bg-[#1E1E1E] text-gray-200 rounded-md px-4 py-2 outline-none mt-1 max-sm:w-[100%] max-sm:text-[8.7px] max-sm:mt-2 max-md:w-[70%] md:text-[12.9px] max-md:text-[12.9px]"
+                        readonly
+                        class="w-[50%] bg-[#1E1E1E] opacity-70 text-gray-200 rounded-md px-4 py-2 outline-none mt-1 max-sm:w-[100%] max-sm:text-[8.7px] max-sm:mt-2 max-md:w-[70%] md:text-[12.9px] max-md:text-[12.9px]"
                         placeholder="Enter your password"
                     />
-                    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
+                    <svg id="edit-icon-password"  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
                     stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
@@ -46,7 +47,7 @@
                     </svg>
                 </div>
             </div>
-            <div id="edit-password" class="mt-4 hidden">
+            <div id="edit-password" class="mt-4 flex-col hidden">
                 <div class="flex-col w-full h-full items-center gap-2">
                     <p class="text-[10px]">New password</p>
                     <input
@@ -61,8 +62,8 @@
                    <p class="text-[10px]">Confirm New Password</p>
                     <input
                         type="password"
-                        id="confirmPassword"
-                        name="confirmPassword"
+                        id="confirmNewPassword"
+                        name="confirmNewPassword"
                         class="w-[50%] bg-[#1E1E1E] text-gray-200 rounded-md px-4 py-2 outline-none mt-1 max-sm:w-full max-sm:text-xs max-sm:mt-2 max-md:w-[70%] max-md:text-[12.9px]"
                         placeholder="Confirm your new password"
                     />
@@ -89,11 +90,11 @@
     </div>  
 
     <!-- Buttons to save changes or cancel -->
-    <div id="options-buttons" class="flex gap-4 justify-end" style="display: none;">
-        <button type="button" class="bg-[#1E1E1E] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
+    <div id="options-buttons-password" class="flex gap-4 justify-end" style="display: none;">
+        <button id="button-cancel-changes" type="button" class="bg-[#1E1E1E] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
             Cancel
         </button>
-        <button type="button" class="bg-[#FF7300] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
+        <button id="button-save-security" type="button" class="bg-[#FF7300] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
           Save Changes
         </button>
       </div>      
