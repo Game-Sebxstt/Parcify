@@ -1,4 +1,5 @@
 ---
+import * as globals from '../../js/frontend/utilities/globals'
 
 interface Props{
   id:string,
@@ -9,36 +10,6 @@ interface Props{
   stage: string,
   collaborators: string,
 }
-
-export function lastModified(fechas: any) {
-    const fechasObjeto = fechas.map((fecha: any) => new Date(fecha));
-    const ultimaModificacion: any = new Date(Math.max(...fechasObjeto));
-    const ahora: any = new Date();
-
-    const diferencia = ahora - ultimaModificacion;
-
-    const segundos = Math.floor(diferencia / 1000);
-    const minutos = Math.floor(segundos / 60);
-    const horas = Math.floor(minutos / 60);
-    const dias = Math.floor(horas / 24);
-    const meses = Math.floor(dias / 30);
-    const años = Math.floor(meses / 12);
-
-    if (años > 0) {
-        return `${años} año${años !== 1 ? 's' : ''}`;
-    } else if (meses > 0) {
-        return `${meses} mes${meses !== 1 ? 'es' : ''}`;
-    } else if (dias > 0) {
-        return `${dias} día${dias !== 1 ? 's' : ''}`;
-    } else if (horas > 0) {
-        return `${horas} hora${horas !== 1 ? 's' : ''}`;
-    } else if (minutos > 0) {
-        return `${minutos} minuto${minutos !== 1 ? 's' : ''}`;
-    } else {
-        return `${segundos} segundo${segundos !== 1 ? 's' : ''}`;
-    }
-}
-
 
 async function isFavorite(project_id:number) {
   const id = Astro.cookies.get("ID-USER")?.value;
@@ -92,7 +63,7 @@ const {id, name, last_modified, project_id, preview, stage, collaborators} = Ast
     <div class="flex flex-col w-full">
       <h3 id ="name-of-parcel" class="text-white text-xl font-bold max-xl:text-lg truncate w-full">{name}</h3>
       <input id="input-of-parcel" type="text" value={name} class="bg-transparent hidden text-white text-xl font-bold max-xl:text-lg truncate w-full">
-      <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {lastModified([last_modified])}</h4>
+      <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {globals.lastModified([last_modified])}</h4>
     </div>
   </div>
 </div>

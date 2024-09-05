@@ -23,11 +23,11 @@ if (isData){
     const elementParsed = JSON.parse(preferences.message[0].favorites)
     const projectUser = dataUser.message.projects;
 
-    elementParsed.forEach((item:any) => { // 2 -> [0] - [1] -> elementParsed
-        projectUser.forEach((elementUser:any) => { // 2 -> [0] - [1] -> projectUser
-            if (elementUser.project_id === item.id) { // elementParsed[0].id === projectUser[0].project_id
-                elementUser["type"] = item.type; // project_id, user_id, name, preview, stage, collaborators, last_modified -> elementParsed[0] || [1]
-                dataFilter.push(elementUser); // dataFilter = [elementParsed[0] || [1]]
+    elementParsed.forEach((item:any) => {
+        projectUser.forEach((elementUser:any) => {
+            if (elementUser.project_id === item.id) {
+                elementUser["type"] = item.type;
+                dataFilter.push(elementUser);
             }
         });
     });
@@ -42,40 +42,24 @@ const svgIcons = {
 <article class="flex flex-col">
     <h3 class="text-lg text-white pt-3 px-5">Favorites</h3>
     <div class="py-4 px-6 text-white font-semibold flex flex-col gap-4">
-        <div class="flex flex-col gap-4">
-            {
-                !isData || !isVoid ? (
+        <div id="content-favorites" class="flex flex-col gap-4">
+            {!isData || !isVoid ? (
                     <p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>
                 ) : (
-                    dataFilter.slice(0, 4).map((favorite: any) => {  // Mostrar solo los primeros 4 elementos
+                    dataFilter.slice(0, 4).map((favorite: any) => {
                         return (
                             <div id="useFavorite" class="gap-3 p-2 rounded flex items-center cursor-pointer active:bg-stone-950">
-                                <i id="typeDescription" class="group cursor-help" set:html={favorite.type === "project" ? svgIcons.project : svgIcons.template}>
-                                    <div class="hidden relative group-hover:block">
-                                        <div class="group absolute -top-12 left-[120%] z-50 flex -translate-x-1/2 flex-col items-center rounded-sm text-center text-sm text-slate-300 before:-top-2">
-                                            <div class="rounded-sm bg-blue-600 py-1 px-2">
-                                                <p class="whitespace-nowrap">This is a {favorite.type}</p>
-                                            </div>
-                                            <div class="-translate-x-4 h-0 w-fit border-l-8 border-r-8 border-t-8 border-transparent border-t-blue-600"></div>
-                                        </div>
-                                    </div>
-                                </i>
+                                <i id="typeDescription" class="group" set:html={favorite.type === "project" ? svgIcons.project : svgIcons.template}></i>
                                 <p>{favorite.name}</p>
                             </div>
                         );
                     })
-                )
-            }
+                )}
         </div>
         <div>
-            {
-                numFavorites && numFavorites.length > 4 && (  // Mostrar "más..." si hay más de 4 favoritos
-
-                    <p id="showMoreFavorites" class=" hover:underline cursor-pointer font-normal text-sky-400">Ver más...</p>
-                    <p id="openMoreView" class=" hover:underline cursor-pointer font-normal text-sky-400">Ver más...</p>
-
-                )
-            }
+            {numFavorites && numFavorites.length > 4 && (
+                <p id="showMoreFavorites" class="hover:underline cursor-pointer font-normal text-sky-400">Ver más...</p>
+            )}
         </div>
     </div>
 </article>

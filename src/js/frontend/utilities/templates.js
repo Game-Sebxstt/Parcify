@@ -1,3 +1,8 @@
+import * as globals from '../utilities/globals'
+import * as reusable from '../utilities/reusable'
+import * as front from '../front'
+import * as req from '../../backend/requests'
+
 const inputEmail = document.createElement('input');
 inputEmail.type = "email";
 inputEmail.id = "new-email";
@@ -13,4 +18,194 @@ export function getCloneInputEmail(parent){
     }
     
     return inputEmail.cloneNode(true);
+}
+
+export function renderProject(props, parent){
+    let {
+        name,
+        last_modified,
+        project_id,
+        preview,
+    } = props;
+
+    if(!preview){
+        preview = "../../../public/placeholder/image_preview.svg";
+    }
+
+    const divContent = document.createElement("div");
+    divContent.className = "w-full h-fit relative";
+    divContent.setAttribute("data-name", props.name);
+    divContent.setAttribute("data-modified", props.last_modified);
+
+    const elementProject = document.createElement("div");
+    elementProject.id = "element-project";
+    elementProject.className = "bg-transparent border-2 border-transparent hover:border-[#1E90FF]/70 hover:bg-[#1E90FF]/30 rounded-md shadow-md shadow-black mb-2 absolute cursor-pointer w-full h-72 z-10";
+    elementProject.setAttribute("data-id", project_id);
+
+    const divImage = document.createElement("div");
+    divImage.className = "bg-[#f5f5f5] rounded-md shadow-md shadow-black mb-2 relative cursor-pointer w-full h-72";
+
+    const imgPreview = document.createElement("img");
+    imgPreview.className = "w-full h-full"
+    imgPreview.src = preview;
+
+    const divInfo = document.createElement("div");
+    divInfo.className = "flex justify-between w-full items-center";
+
+    const divInfoInter = document.createElement("div");
+    divInfoInter.className = "flex flex-col w-full";
+
+    const h3Name = document.createElement("h3");
+    h3Name.id = "name-of-parcel";
+    h3Name.className = "text-white text-xl font-bold max-xl:text-lg truncate w-full";
+    h3Name.textContent = name;
+
+    const inputName = document.createElement("input");
+    inputName.type = "text";
+    inputName.id = "input-of-parcel";
+    inputName.className = "bg-transparent hidden text-white text-xl font-bold max-xl:text-lg truncate w-full";
+    inputName.value = name;
+
+    const h4LastModified = document.createElement("h4");
+    h4LastModified.className = "text-gray-300 text-lg max-xl:text-base";
+    h4LastModified.textContent = `Editado hace ${globals.lastModified([last_modified])}`;
+
+    divContent.appendChild(elementProject);
+    divContent.appendChild(divImage);
+    divContent.appendChild(divInfo);
+
+    divImage.appendChild(imgPreview);
+
+    divInfo.appendChild(divInfoInter);
+    divInfoInter.appendChild(h3Name);
+    divInfoInter.appendChild(inputName);
+    divInfoInter.appendChild(h4LastModified);
+
+    parent.appendChild(divContent);
+
+    document.querySelector("#close-bg").parentNode.style.display = "none";
+    document.querySelector("#previewTemplate").style.display = "none";
+
+    // Event listeners
+    reusable.showContextMenu(front.utils);
+    reusable.redirectProject();
+
+    return divContent;
+}
+
+export async function renderFavorites() {
+    try {
+        let favorites = await req.getFavorites(globals.getCookie("ID-USER"))
+  
+        if (!favorites.state) {
+          front.utils.handleError(favorites)
+          return
+        }
+
+        favorites = JSON.parse(favorites.data.message[0].favorites);
+
+        const content_favorites = document.querySelector("#content-favorites");
+        const svgIcons = {
+            project: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="grey" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-brush"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21v-4a4 4 0 1 1 4 4h-4"/><path d="M21 3a16 16 0 0 0 -12.8 10.2"/><path d="M21 3a16 16 0 0 1 -10.2 12.8"/><path d="M10.6 9a9 9 0 0 1 4.4 4.4"/></svg>`,
+            template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="grey" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-template"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z"/><path d="M4 12m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 12l6 0"/><path d="M14 16l6 0"/><path d="M14 20l6 0"/></svg>`
+        };
+
+        if (favorites.length === 0) {
+            content_favorites.innerHTML = `<p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>`;
+            return content_favorites;
+        }
+
+        let templates = await req.getAllTemplates();
+
+        if(!templates.state){
+            front.utils.handleError(templates);
+            return;
+        }
+
+        let projects = await req.getAllProjects(globals.getCookie("ID-USER"));
+
+        if(!projects.state){
+            front.utils.handleError(projects);
+            return;
+        }
+        
+        templates = templates.data.message;
+        projects = projects.data.message;
+
+        content_favorites.innerHTML = "";
+        
+        const pShowMoreFavorites = document.querySelector("#showMoreFavorites");
+        if(pShowMoreFavorites){
+            pShowMoreFavorites.remove();
+        }
+
+        const length_favorites = favorites.length;
+        const favorites_slice = favorites.slice(0, 4);
+
+        console.log(length_favorites);
+
+        favorites_slice.forEach( async (favorite) => {
+            let name;
+
+            if(favorite.type == "template"){
+                templates.forEach( (template) => {
+                    if(template.template_id == favorite.id){
+                        name = template.name;
+                    }
+                })
+            }else{
+                projects.forEach( (project) => {
+                    if(project.project_id == favorite.id){
+                        name = project.name;
+                    }
+                })
+            }
+
+            const divFavorite = document.createElement('div');
+            divFavorite.id = "useFavorite";
+            divFavorite.className = "gap-3 p-2 rounded flex items-center cursor-pointer active:bg-stone-950";
+
+            const typeDescription = document.createElement('i');
+            typeDescription.id = "typeDescription";
+            typeDescription.className = "group";
+            
+            typeDescription.innerHTML = favorite.type === "project" ? svgIcons.project : svgIcons.template;
+
+            const favoriteName = document.createElement('p');
+            favoriteName.textContent = favorite.name || name;
+
+            divFavorite.appendChild(typeDescription);
+            divFavorite.appendChild(favoriteName);
+
+            content_favorites.appendChild(divFavorite);
+        });
+
+        if(length_favorites > 4){
+            const pShowMoreFavorites = document.createElement('p');
+            pShowMoreFavorites.id = "showMoreFavorites";
+            pShowMoreFavorites.className = "hover:underline cursor-pointer font-normal text-sky-400";
+            pShowMoreFavorites.textContent = `Ver más...`;
+
+            content_favorites.parentNode.appendChild(pShowMoreFavorites);
+        }
+
+        return content_favorites;
+
+    } catch (error) {
+        return error;
+    }
+}
+
+export function deleteProject(projectId) {
+    const project = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
+    project.remove();
+}
+
+export function renameProject(projectId, newName){
+    const project = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
+    const name = project.querySelector("#name-of-parcel");
+    const input = project.querySelector("#input-of-parcel");
+
+    name.textContent = newName;
+    input.value = newName;
 }

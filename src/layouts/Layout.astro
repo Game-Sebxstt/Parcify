@@ -12,6 +12,7 @@ import Header from '../components/Sections/Header.astro';
 import Settings from '../components/Sections/Settings.astro';
 import PreviewTemplate from '../components/Popups/PreviewTemplate.astro';
 import MoreFavorites from '../components/Popups/MoreFavorites.astro';
+import Options from '../components/Articles/Options.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -51,6 +52,7 @@ try{
 		<link rel="icon" type="image/svg+xml" href="/Logo.jpg" />
 		<meta name="generator" content={Astro.generator} />
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@latest/dist/css/splide.min.css">
+		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 		<script src="../js/frontend/front.js"></script>
 		<script src="../js/frontend/utilities/splide.js"></script>
 		<script src="../js/frontend/utilities/chart.js"></script>
@@ -60,6 +62,7 @@ try{
 		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username} email={data.users.email}></Header>
 		<MesageError id="danger"></MesageError>
 		<CreateParceller id_content='content-create-parcel'/>
+		<Options/>
 		<Invite data={data}/>
 		<Settings username={data.users.username} email={data.users.email} biography={data.users.biography}></Settings>
 		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
