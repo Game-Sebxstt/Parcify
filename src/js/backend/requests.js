@@ -151,6 +151,23 @@ export async function getAllTemplates(){
     return {state: true, data: responseData};
 }
 
+export async function getTemplate(id_template){
+    const response = await fetch(`http://localhost:4000/template/${id_template}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
 //Funcion para obtener todos los proyectos de un usuario
 export async function getAllProjects(user_id) {
     const response = await fetch(`http://localhost:4000/user/projects?id_user=${user_id}`, {
@@ -253,17 +270,14 @@ export async function renameProject(id_project, name){
 
 //add project in Favorites
 export async function favorite(id, element) {
-    //creamos las variables de tipo y el id de lo que queremos favoritear
     const { id_project, type } = element;
 
-    // ahora creamos el yeison a mandar
     const data = {
-        id:Number(id), // id del usuario
-        id_project:Number(id_project), //id del elemento
-        type:type, // el tipo
+        id: Number(id),
+        id_project: Number(id_project),
+        type: type,
     }
 
-    //creamos y enviamos la peticion
     const response = await fetch(`http://localhost:4000/preferences/favorite`, {
         method: "POST",
         body: JSON.stringify(data),
@@ -272,15 +286,12 @@ export async function favorite(id, element) {
         }
     });
     
-    //recibimos la respuesta
     const responseData = await response.json();
     
-    //si hay un error detenemos la ejecucion
     if (!response.ok) {
         return {state: false, data: responseData.message};
     }
 
-    // retornamos la respuesta para tratarla mas adelante
     return {state: true, data: responseData.message};
 }
 
@@ -300,15 +311,12 @@ export async function unfavorite(id_user, id_element) {
         }
     });
     
-    //recibimos la respuesta
     const responseData = await response.json();
     
-    //si hay un error detenemos la ejecucion
     if (!response.ok) {
         return {state: false, data: responseData.message};
     }
 
-    // retornamos la respuesta para tratarla mas adelante
     return {state: true, data: responseData.message};
 }
 
@@ -326,5 +334,141 @@ export async function getFavorites(id_user) {
         return {state: false, data: responseData.message};
     }
 
+    return {state: true, data: responseData};
+}
+
+// Obtener email
+export async function checkEmail(id_user, email) {
+
+    const data = {
+        id: id_user,
+        email: email,
+    };
+
+    const response = await fetch(`http://localhost:4000/user/checkEmail`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData.message};
+}
+
+// Actualizar nombre de usuario
+export async function updateUsername(id_user, newUsername){
+    const newData = {
+        id: id_user,
+        username: newUsername,
+    };
+
+    const response = await fetch(`http://localhost:4000/user/updateUsername`, {
+        method: "POST",
+        body: JSON.stringify(newData),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+export async function checkPassword(user, password){
+    const data = {
+        user: user,
+        password: password,
+    };
+
+    const response = await fetch(`http://localhost:4000/user/checkPassword`,{
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function updatePassword(user, newPassword) {
+    const data = {
+        user: user,
+        password: newPassword,
+    };
+    
+    const response = await fetch(`http://localhost:4000/user/updatePassword`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function updateBiography(user, newBio){
+    const data = {
+        id: user,
+        biography: newBio,
+    };
+    
+    const response = await fetch(`http://localhost:4000/user/updateBiography`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function updateProfile(data){
+    const response = await fetch(`http://localhost:4000/user/updateProfile`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
     return {state: true, data: responseData};
 }

@@ -1,10 +1,13 @@
 import * as req from "../backend/requests";
 import * as globals from './utilities/globals'
+import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
-
+import * as reusable from './utilities/reusable'
+import Toastify from 'toastify-js'
+import { positionHighlight } from "astro/runtime/client/dev-toolbar/apps/utils/highlight.js";
 
 // Utility Functions
-const utils = {
+export const utils = {
   toggleDisplay: (element, displayStyle) => {
     element.style.display = window.getComputedStyle(element).display === "none" ? displayStyle : "none";
   },
@@ -57,9 +60,17 @@ const utils = {
     sorted.forEach(item => item.element.parentElement.appendChild(item.element));
   },
   handleError: (validation) => {
-    const errorMessage = document.getElementById("danger");
-    errorMessage.style.display = "flex";
-    errorMessage.querySelector("#txt").textContent = validation.data;
+    console.error(validation);
+    Toastify({
+      text: validation.data ?? validation,
+      gravity: "bottom",
+      position: "right",
+      duration: 3000,
+      close: true,
+      style: {
+        background: "#1E90FF",
+      },
+    }).showToast();
   },
   validateEmail: (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -95,6 +106,32 @@ const utils = {
     const data = Object.values(commitsByMonth);
 
     return { labels, data };
+  },
+  createInput: (id, classInput, type, placeholder, value, parent) => {
+    const input = document.createElement("input");
+    input.id = id;
+    input.className = classInput;
+    input.type = type;
+    input.placeholder = placeholder;
+    input.value = value;
+
+    parent.appendChild(input);
+    return input;
+  },
+  showPreviewTemplate: (props) => {
+    let tittlePrew  = document.querySelector("#tittlePreview")
+    let authorPrew  = document.querySelector("#authorPreview")
+    let infoPrew = document.getElementById("infoPreview")
+    let infoDescription = document.getElementById("infoDescription")
+
+    tittlePrew.textContent = props.dataName;
+    authorPrew.textContent =  "By " + props.dataAuthor;
+    infoPrew.src = props.dataPreview;
+    infoDescription.textContent = props.dataDescription;
+
+    elements.previewTemplate.setAttribute("data-id", props.dataId);
+
+    window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
   }
 };
 
@@ -129,8 +166,11 @@ const addEventListeners = () => {
   // Filter dropdown
   document.querySelectorAll("#filter").forEach((element, index) => {
     element?.addEventListener("click", () => {
-      const moreOptionsFilter = document.querySelectorAll("#more-options-filter")[index];
-      const arrowDownFilter = document.querySelectorAll("#arrow-down-filter")[index];
+      const moreOptionsFilter = element.parentNode.querySelector("#more-options-filter");
+      const arrowDownFilter = element.querySelector("#arrow-down-filter");
+
+      console.log(moreOptionsFilter, arrowDownFilter)
+
       utils.toggleDisplay(moreOptionsFilter, "flex");
       utils.setTransform(arrowDownFilter, window.getComputedStyle(moreOptionsFilter).display === "none" ? "0deg" : "180deg");
     });
@@ -260,21 +300,7 @@ const addEventListeners = () => {
   });
 
   // Context menu for projects
-  document.querySelectorAll("#element-project").forEach((item) => {
-    item.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      utils.changeStateWheelWindow(true);
-      const optionsParcel = item.parentNode.querySelector("#options-parcel");
-      optionsParcel.style.display = "flex";
-      optionsParcel.style.top = `${e.clientY}px`;
-      optionsParcel.style.left = `${e.clientX}px`;
-
-      document.addEventListener("click", () => {
-        optionsParcel.style.display = "none";
-        utils.changeStateWheelWindow(false);
-      });
-    });
-  });
+  reusable.showContextMenu()
 
   //Metric for projects
   document.querySelectorAll("#metric-project").forEach((item) => {
@@ -296,9 +322,10 @@ const addEventListeners = () => {
       const endDate = new Date().toISOString();
 
       function createGraphicOfCommits(){
-        const commitsByMonth = utils.getCommitsByMonth(collaboratorsProject, startDate, endDate);
-        const { labels, data } = utils.formatDataForChart(commitsByMonth);
-    
+        const commits = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).commits;
+        const labels = commits.map(c => c.date);
+        const data = commits.map(c => c.commits);
+
         chart.createGraphic(
           document.querySelector("#commits"),
           "bar",
@@ -316,7 +343,7 @@ const addEventListeners = () => {
         const timeWorked = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).time_worked;
         const labels = timeWorked.map(c => c.date);
         const data = timeWorked.map(c => c.time);
-    
+
         chart.createGraphic(
           document.querySelector("#time_worked"),
           "line",
@@ -341,7 +368,7 @@ const addEventListeners = () => {
     item?.addEventListener("input", (e) => {
       const searchTerm = item.value.toLowerCase();
       const typeElement = item.getAttribute("data-article");
-      const elementsToFilter = document.querySelectorAll(`#${typeElement}`);
+      const elementsToFilter = document.querySelectorAll(`.${typeElement}`) || document.querySelectorAll(`#${typeElement}`);
 
       elementsToFilter.forEach((element) => {
         const name = element.getAttribute("data-name")?.toLowerCase();
@@ -354,7 +381,7 @@ const addEventListeners = () => {
   document.querySelectorAll("#filtro").forEach((item, index) => {
     item.addEventListener("click", () => {
       const mainBox = item.parentElement.getAttribute("data-article");
-      const elements = Array.from(document.querySelectorAll(`#${mainBox}`));
+      const elements = Array.from(document.querySelectorAll(`.${mainBox}`) || document.querySelectorAll(`#${mainBox}`));
 
       switch (index) {
         case 0: // Sort by Name
@@ -362,7 +389,6 @@ const addEventListeners = () => {
           name: el.getAttribute("data-name").toLowerCase(),  // Use lowercase for consistent comparison
           element: el
         }));
-        
 
         const arrow = document.querySelector("#orden").firstChild.id;
         
@@ -500,25 +526,40 @@ const addEventListeners = () => {
       window.location.reload();
     });
   });
-
+  
   // Create project
   elements.createTemplate?.addEventListener("click",  async () => {
     const templateId = elements.previewTemplate.getAttribute("data-id");
     const userId = globals.getCookie("ID-USER");
+
     const validation = await req.createProject(userId, "Untitled", templateId);
 
     if (!validation.state || !validation) {
       utils.handleError(validation);
       return;
     }
+    
+    const props = {
+        name: "Untitled",
+        last_modified: new Date(),
+        project_id: validation.data.message.project_id,
+        preview: validation.data.message.preview,
+        stage: validation.data.message.stage,
+        collaborators: validation.data.message.collaborators,
+    }
 
-    window.location.reload();
+    if(!document.querySelector("#content-grid")){
+      window.location.href = "/"
+      return
+    }
+
+    templates.renderProject(props, document.querySelector("#content-grid"));
   });
 
   // Duplicate project
   document.querySelectorAll("#duplicate-parcel").forEach((item) => {
     item.addEventListener("click", async () => {
-      const projectId = item.getAttribute("data-id");
+      const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
       const validation = await req.duplicateProject(projectId);
 
       if (!validation.state || !validation) {
@@ -526,79 +567,126 @@ const addEventListeners = () => {
         return;
       }
 
-      window.location.reload();
+      const props = {
+          name: validation.data.message.name,
+          last_modified: new Date(),
+          project_id: validation.data.message.project_id,
+          preview: validation.data.message.preview,
+          stage: validation.data.message.stage,
+          collaborators: validation.data.message.collaborators,
+      }
+
+      if(!document.querySelector("#content-grid")){
+        window.location.href = "/"
+        return
+      }
+
+      templates.renderProject(props, document.querySelector("#content-grid"));
+      });
+  });
+
+  // Delete project
+  document.querySelectorAll("#delete-parcel").forEach((item) => {
+    item.addEventListener("click", async () => {
+      const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+      const validation = await req.deleteProject(projectId);
+      
+      if (!validation.state || !validation) {
+        utils.handleError(validation);
+        return;
+      }
+
+      templates.deleteProject(projectId);
+      await req.unfavorite(globals.getCookie("ID-USER"), projectId);
+    
+      const renderResponse = await templates.renderFavorites()
+
+      if(!renderResponse){
+        utils.handleError(renderResponse)
+        return
+      }
     });
   });
     
   // Rename project
-  document.querySelectorAll("#rename-parcel").forEach((item) => {
-    item.addEventListener("click", async () => {
-        const projectId = item.getAttribute("data-id");
+  document.querySelector("#rename-parcel")?.addEventListener("click", async () => {
+    const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+    const projectContent = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
+  
+    if (!projectContent) {
+      utils.handleError(`Could not find project with id ${projectId}`);
+      return;
+    }
+  
+    const h3 = projectContent.querySelector('#name-of-parcel');
+    const input = projectContent.querySelector('#input-of-parcel');
+  
+    h3.style.display = "none";
+    input.style.display = "flex";
+  
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  
+    const saveChanges = async () => {
+      console.log("Save changes");
+      const validation = await req.renameProject(projectId, input.value);
+  
+      if (!validation.state) {
+        utils.handleError(validation);
+  
+        h3.style.display = "flex";
+        input.style.display = "none";
+        input.value = h3.textContent;
+  
+        return;
+      }
+  
+      h3.textContent = input.value;
+      h3.style.display = "flex";
+      input.style.display = "none";
+  
+      templates.renameProject(projectId, input.value);
+  
+      const renderResponse = await templates.renderFavorites();
+  
+      if (!renderResponse) {
+        utils.handleError(renderResponse);
+        return;
+      }
 
-        const projectContent = item.parentElement.parentElement.parentElement; // Entré al papá del papá del papá y lo almacené en una variable
-        const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
-        const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
-
-        h3.style.display = "none";
-        input.style.display = "flex";
-
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
-
-        const saveChanges = async () => {
-          const validation = await req.renameProject(projectId, input.value);
-
-          if (!validation.state) {
-            utils.handleError(validation);
-            return;
-          }
-
-          h3.textContent = input.value;
-          h3.style.display = "flex";
-          input.style.display = "none";
-
-          window.location.reload();
-        }
-
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          saveChanges();
-        }
-
-        if (e.key === "Escape") {
-          h3.style.display = "flex";
-          input.style.display = "none";
-        }
-      });
-
-      input.addEventListener("blur", (e) => {
-          saveChanges();
-      });
-
-    });
+      return
+    };
+  
+    const cancelChanges = () => {
+      h3.style.display = "flex";
+      input.style.display = "none";
+      input.value = h3.textContent;
+    };
+  
+    const handleKeydown = (e) => {
+      if (e.key === "Enter") {
+        saveChanges();
+        input.removeEventListener("blur", handleBlur);
+        input.removeEventListener("keydown", handleKeydown);
+      }
+  
+      if (e.key === "Escape") {
+        cancelChanges();
+        input.removeEventListener("blur", handleBlur);
+        input.removeEventListener("keydown", handleKeydown);
+      }
+    };
+  
+    const handleBlur = () => {
+      saveChanges();
+    };
+  
+    input.addEventListener("keydown", handleKeydown);
+    input.addEventListener("blur", handleBlur);
   });
 
   // Redirect to project
-  document.querySelectorAll("#element-project").forEach((item) => {
-    item.addEventListener("click", () => {
-      const projectId = item.getAttribute("data-id");
-      const collaborators = {
-        user_id: globals.getCookie("ID-USER"),
-        last_access: new Date(),
-      }
-
-      req.saveCollaborators(projectId, collaborators).then((data) => {
-        if (!data.state) {
-          utils.handleError(data);
-          return;
-        }
-
-        globals.startSession(projectId);
-
-        window.location.href = `/konva?id=${projectId}`;
-      })
-    });
-  });
+  reusable.redirectProject();
 
   // User authentication
   elements.formRegister?.addEventListener("submit", async (e) => {
@@ -699,34 +787,36 @@ const addEventListeners = () => {
   //previewParceller
   elements.template.forEach((item) => {
     item.addEventListener("click", (e) => {
-      let tittlePrew  = document.querySelector("#tittlePreview")
-      let authorPrew  = document.querySelector("#authorPreview")
-      let infoPrew = document.getElementById("infoPreview")
-      let infoDescription = document.getElementById("infoDescription")
-
       const dataId = item.getAttribute("data-id");
       const dataName = item.getAttribute("data-name");
       const dataAuthor = item.getAttribute("data-author");
       const dataPreview = item.getAttribute("data-preview");
       const dataDescription = item.getAttribute("data-description");
 
-      tittlePrew.textContent = dataName;
-      authorPrew.textContent =  "By " + dataAuthor;
-      infoPrew.src = dataPreview;
-      infoDescription.textContent = dataDescription;
-
-      elements.previewTemplate.setAttribute("data-id", dataId);
-
-      window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
+      utils.showPreviewTemplate({
+        dataId,
+        dataName,
+        dataAuthor,
+        dataPreview,
+        dataDescription
+      })
     });
   });
 
-  //*favorites
+  elements.previewTemplate.querySelector("#share").addEventListener("click", () => {
+    const dataId = elements.previewTemplate.getAttribute("data-id");
+    const urlCopy = `${window.location.origin}/?template_id=${dataId}`;
+    navigator.clipboard.writeText(urlCopy);
+
+    utils.handleError("Link copied to clipboard");
+  })
+
+  //favorites
   elements.favorite.forEach(item =>{
     item.addEventListener("click", async ()=>{
       const userId = globals.getCookie("ID-USER");
-      const idElement = Number(item.getAttribute("data-id"));
-      const typeElement = item.getAttribute("data-type");
+      const idElement = Number(document.querySelector("#options-parcel").getAttribute("data-id"));
+      const typeElement = document.querySelector("#options-parcel").getAttribute("data-type");
       
       const data = {
         id_project:idElement,
@@ -736,25 +826,39 @@ const addEventListeners = () => {
       const petition = await req.favorite(userId, data);
 
       if (!petition.state) {
+        utils.handleError(petition)
         return petition.data;
       }
+    
+      const renderResponse = await templates.renderFavorites()
 
-      window.location.reload();
+      if(!renderResponse){
+        utils.handleError(renderResponse)
+        return
+      }
     });
   });
 
   //unfavorite
   elements.unfavorite.forEach((item)=>{
     item.addEventListener("click", async ()=>{
-      const userId = utils.getCookie("ID-USER");
-      const idElement = Number(item.getAttribute("data-id"));
+      const userId = globals.getCookie("ID-USER");
+      const idElement = Number(document.querySelector("#options-parcel").getAttribute("data-id"));
       const petition = await req.unfavorite(userId, idElement);
+
       if (!petition.state) {
+        utils.handleError(petition)
         return petition.data;
-      }      
+      }
+    
+      const renderResponse = await templates.renderFavorites()
+
+      if(!renderResponse){
+        utils.handleError(renderResponse)
+        return
+      }
     })
   });
-
 };
 
 // Initialize
@@ -764,7 +868,6 @@ const init = () => {
 
 // Run initialization
 init();
-
 
 // ------------------------- Show settings content -------------------------------
 // Options buttons
@@ -802,7 +905,6 @@ const closeButton = document.querySelector('#close_configurations');
 closeButton?.addEventListener("click", () => {
   document.querySelector('#content-configurations').style.display = "none";
   document.documentElement.style.overflow = "";
-
 });
 
 //Open settings
@@ -813,27 +915,212 @@ openButton?.addEventListener("click", () => {
   document.documentElement.style.overflow = "hidden";
 });
 
+//Edit Username
+document.querySelector('#edit-icon-username')?.addEventListener("click", async () => {
+  const editIcon = document.querySelector("#edit-icon-username");
+  const usernameInput = document.querySelector("#profile-username");
+  const optionsButtons = document.querySelector("#options-buttons-profile");
 
+  usernameInput.removeAttribute("readonly");
+  usernameInput.style.opacity = 1;
+  usernameInput.value = "";
+  usernameInput.focus();
 
+  optionsButtons.style.display = "flex";
+  editIcon.style.pointerEvents = "none";
+  editIcon.style.opacity = '0.5';
 
+  document.querySelector("#options-buttons-profile").addEventListener("click", async () => {
+    const userId = globals.getCookie("ID-USER");
+    const usernameInput = document.querySelector("#profile-username");
+    const newUsername = usernameInput.value;
+  
+    if(!newUsername.trim()){
+      utils.handleError("Please enter a username valid")
+    }
 
+    const validation = await req.updateProfile({
+      id: userId,
+      username: newUsername
+    });
 
+    if(!validation.state){
+      utils.handleError(validation);
+      return;
+    }
 
+    usernameInput.setAttribute("readonly", "");
+    usernameInput.style.opacity = 0.5;
+    optionsButtons.style.display = "auto";
+    editIcon.style.opacity = '1';
 
+    window.location.reload();
 
+  })
+});
 
+//Seleccionar theme (diseño)
+document?.addEventListener('DOMContentLoaded', () => {
+  const themeOptions = document.querySelectorAll('.theme-option');
 
+  themeOptions.forEach(option => {
+      option?.addEventListener('click', () => {
+          themeOptions.forEach(item => item.classList.remove('border-4', 'border-blue-500', 'shadow-lg'));
 
+          option.classList.add('border-4', 'border-blue-500', 'shadow-lg');
+      });
+  });
+});
 
+//Chequear el email
+document.querySelector('#edit-icon-email')?.addEventListener("click", async () => {
+  const emailInput = document.querySelector('#profile-email');
+  const editIcon = document.querySelector('#edit-icon-email');
+  // const confirmationDiv = document.createElement("div")
 
+  const contentEditEmail = document.querySelector('#div-edit-email');
+  const optionsButtons = document.querySelector('#options-buttons-profile');
 
+  if(document.querySelectorAll(".containerEditEmail").length > 0){
+    return;
+  }
+  
+  for(let i = 0; i < 2; i++){
+    const containerEmailInput = document.createElement("div");
+    containerEmailInput.className = "w-full flex items-center containerEditEmail";
+  
+    contentEditEmail.appendChild(containerEmailInput);
 
+    const inputEmail = templates.getCloneInputEmail(containerEmailInput)
+    inputEmail.focus();
+  }
 
+  optionsButtons.style.display = "flex";
 
+  const saveChanges = document.querySelector('#button-save-changes');
+  saveChanges.addEventListener("click", async () => {
+    const userId = globals.getCookie("ID-USER");
+    const currentEmails = document.querySelectorAll(".containerEditEmail");
 
+    if(currentEmails[0].querySelector("input").value != currentEmails[1].querySelector("input").value){
+      console.log("Los correos no son iguales");
+      utils.handleError("The emails are not the same");
+      return;
+    }
 
+    const validationEmail = await req.updateProfile({
+      id: userId,
+      email: currentEmails[0].querySelector("input").value
+    });
 
+    if(!validationEmail.state){
+      utils.handleError(validationEmail);
+      return;
+    }
 
+    window.location.reload();
+  })
+});
 
+//iniciar el modo de edición de contraseña
+document.querySelector('#edit-icon-password')?.addEventListener('click', async () => {
+  const editIcon = document.querySelector('#edit-icon-password');
+  const passwordInput = document.querySelector('#password');
 
-   
+  passwordInput.removeAttribute("readonly");
+  passwordInput.style.opacity = 1;
+  passwordInput.value = "";
+  passwordInput.focus();
+
+  editIcon.style.pointerEvents = 'none';
+  editIcon.style.opacity = '0.5';
+
+  const comparePassword = async () => {
+    const optionsButtons = document.querySelector('#options-buttons-password');
+    const inputsEdits = document.querySelector('#edit-password');
+    const inputNewPassword = document.querySelector('#newPassword');
+
+    const userId = globals.getCookie("ID-USER");
+    const currentPassword = passwordInput.value;
+    
+    const validation = await req.checkPassword(userId, currentPassword);
+
+    if (validation.state) {
+      inputsEdits.style.display = "flex";
+      passwordInput.setAttribute("readonly", true);
+      optionsButtons.style.display = "flex";
+      inputNewPassword.focus();
+    } else {
+      utils.handleError(validation);
+    }
+  };
+
+  const saveChangesButton = document.querySelector("#button-save-security");
+  saveChangesButton?.addEventListener('click', async () => {
+  const newPassword = document.querySelector('#newPassword').value;
+  const confirmNewPassword = document.querySelector('#confirmNewPassword').value;
+  const userId = globals.getCookie('ID-USER');
+
+    if (newPassword === confirmNewPassword){
+      const updatePassword = await req.updatePassword(userId, newPassword);
+      
+      if (updatePassword.state) {
+        window.location.reload();
+      } else {
+        utils.handleError("Error al actualizar la contraseña.");
+      }
+    } else {
+      console.log("No son iguales :(");
+      utils.handleError("Las contraseñas no coinciden.");
+    }
+  });
+
+  passwordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      console.log("Se presionó Enter");
+      comparePassword();
+    }
+  });
+});
+
+document.querySelector("#textarea-biography")?.addEventListener("click", () => {
+
+  const textareaBiography = document.querySelector('#textarea-biography');
+  const optionButtons = document.querySelector('#options-buttons-profile');
+  const saveChanges = document.querySelector('#button-save-changes');
+  const cancelChanges = document.querySelector('#button-cancel-changes');
+
+  textareaBiography?.addEventListener("input", () =>{
+    optionButtons.style.display = "flex";
+  })
+
+  const updateBiography = async () => {
+    const userId = globals.getCookie("ID-USER");
+    const biography = textareaBiography.value;
+
+    if (biography.trim() === "") {
+      console.log("Esa mondá no puede estar en blanco");
+      
+    }
+
+    const validation = await req.updateProfile({
+      id: userId,
+      biography: biography
+    });
+
+    if(!validation.state){
+      utils.handleError(validation);
+      return;
+    }
+
+    window.location.reload(); 
+  }
+
+  saveChanges.addEventListener("click",updateBiography);
+
+  cancelChanges.addEventListener("click", () => {
+    textareaBiography.value = "";
+    optionButtons.style.display = "none";
+    window.location.reload();
+  });
+});

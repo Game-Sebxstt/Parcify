@@ -1,5 +1,5 @@
 ---
-import { formatNumber } from '../../js/frontend/utilities/globals'
+import { formatNumber } from '../../js/frontend/utilities/globals';
 
 interface Props{
   id:string,
@@ -12,14 +12,13 @@ interface Props{
 }
 
 const {id, first_text, second_text, url_image, template_id, description, likes} = Astro.props;
-
 const formatLikes = formatNumber(likes);
 ---
 
-<div id={id} data-id={template_id} data-name={first_text} data-preview={url_image} data-author={second_text} data-description={description} data-likes={likes} class="create-template w-full h-fit cursor-pointer">
+<div id={id} data-id={template_id} data-name={first_text} data-preview={url_image} data-author={second_text} data-description={description} data-likes={likes} class="create-template template w-full h-fit cursor-pointer">
     <div class="w-full h-72 relative mb-2">
         {
-          url_image != "../../../public/placeholder/image_preview.svg" ? (      
+          url_image != "../../../public/placeholder/image_preview.svg" ? (
             <div class="w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0">
               <img src={url_image} class="w-full h-full rounded-md">
             </div>

@@ -1,15 +1,16 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Slide from '../components/Sections/SlideDesktop.astro';
-import Content from '../components/Sections/Content.astro';
-import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Filter from '../components/Articles/Filter.astro';
-import Analytics from '../components/Popups/Analytics.astro';
 import ProjectMetric from '../components/Articles/ProjectMetric.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
+import Analytics from '../components/Popups/Analytics.astro';
+import Content from '../components/Sections/Content.astro';
+import Slide from '../components/Sections/SlideDesktop.astro';
+import SlideMobile from '../components/Sections/SlideMobile.astro';
+import Layout from '../layouts/Layout.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
+
 
 if(logged != 'true' && !id){
   return Astro.redirect("/SignIn")

@@ -132,7 +132,7 @@ app.post("/project/create", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo crear el proyecto" })
     }
 
-    return res.status(200).send({state: "Good Request", message: project_id})
+    return res.status(200).send({state: "Good Request", message: {project_id: project_id, stage: template[0].stage, preview: template[0].preview, collaborators: collaborators}})
 })
 
 app.post("/project/delete", async (req, res) => {
@@ -174,7 +174,7 @@ app.post("/project/duplicate", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo duplicar el proyecto." })
     }
 
-    return res.status(200).send({ status: "Good Request", message: project_id })
+    return res.status(200).send({ status: "Good Request", message: {project_id: project_id, stage: data[0].stage, preview: data[0].preview, collaborators: data[0].collaborators, name: data[0].name} })
 })
 
 //Cambio de nombre
@@ -221,9 +221,17 @@ app.post("/project/save", async (req, res) => {
     data.forEach(async (element) => {
         if(element.user_id != user_id) return;
 
-        element.commits.push({
-            date: dateCommit,
-        });
+        const existingEntry = element.commits.find(entry => entry.date.split("T")[0] === dateCommit.toISOString().split("T")[0]);
+
+        if (existingEntry) {
+            existingEntry.commits += 1;
+        } else {
+            element.commits.push({
+                date: dateCommit,
+                commits: 1,
+            });
+        }
+
         element.last_commit = dateCommit;
     });
 
@@ -296,13 +304,11 @@ app.post("/preferences/favorite", async (req, res) => {
 
     let favorites = [];
 
-    // Consulta para ver si el usuario ya tiene favoritos almacenados
     const userExist = await connection.query("SELECT * FROM preferences WHERE user_id = ?", [id]);
 
     if (userExist.length > 0) {
         let actualFavorite = userExist[0].favorites ? JSON.parse(userExist[0].favorites) : [];
 
-        // Asegúrate de que `actualFavorite` es un array
         if (!Array.isArray(actualFavorite)) {
             actualFavorite = [];
         }
@@ -310,31 +316,171 @@ app.post("/preferences/favorite", async (req, res) => {
         const isDuplicate = actualFavorite.some(fav => fav.id === id_project && fav.type === type);
 
         if (isDuplicate) {
-            return res.status(200).send({ status: "No Action", message: "Favorite already exists" });
+            return res.status(200).send({ status: "Bad Request", message: "Favorite already exists" });
         }
 
-        // Agrega el nuevo favorito al array existente
-        actualFavorite.push({ id: id_project, type: type });
+        actualFavorite.push({ id: id_project, type: type});
 
-        // Convierte el array actualizado en una cadena JSON
         const newFavorites = JSON.stringify(actualFavorite);
-
-        console.log(newFavorites);
-        
         const updateFavorite = await connection.query("UPDATE preferences SET favorites = ? WHERE user_id = ?",[newFavorites, id]);
 
+        if(!updateFavorite){
+            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el favorito." })
+        }
     } else {
+        favorites.push({ id: id_project, type: type});
 
-        favorites.push({ id: id_project, type: type });
-
-        // Convierte el array actualizado en una cadena JSON
         const newFavorites = JSON.stringify(favorites);
-
         const addFavorite = await connection.query(`INSERT INTO preferences (user_id, favorites) VALUES (?, ?)`, [id, newFavorites]);
+
+        if(!addFavorite){
+            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el favorito." })
+        }
     }
 
-    res.status(200).send({ status: "Good Request", message: "Favorite Succeful" })
+    return res.status(200).send({ status: "Good Request", message: "Favorito guardado correctamente." });
+
 });
+
+//Update profile
+app.post("/user/updateProfile", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    let {id, username, email, biography} = req.body;
+    console.log(id, username, email, biography);
+    const connection = await getConnection();
+
+    const userExists = await connection.query('SELECT * FROM users WHERE user_id = ?', [id]);
+
+    if (userExists.length > 0) {
+        username = username || userExists[0].username;
+        email = email || userExists[0].email;
+        biography = biography || userExists[0].biography;
+
+        await connection.query('UPDATE users SET username = ?, email = ?, biography = ? WHERE user_id = ?', [(username), email, biography, id]);
+
+        return res.status(200).send({ status: "Success", message: "Profile updated successfully" });
+    }
+
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+})
+
+//Update username
+app.post("/user/updateUsername", async (req,res) =>{
+    if (!req.body){
+        return res.status(400).send({status: "Bad Request", message: "Body is empty"})
+    }
+    const {id, username} = req.body;
+    const connection = await getConnection();
+    
+    const userExists = await connection.query('Select * FROM users WHERE user_id = ?', [id]);
+    
+    if (userExists.length > 0){
+        await connection.query('UPDATE users SET username = ? WHERE user_id = ?', [username, id]);
+        
+        return res.status(200).send({status: "Success", message: "Username updated successfully"});   
+    }
+    
+    return res.status(404).send({status: "Not Found", message: "User does not exist"});
+})
+
+//Verify 
+app.post('/user/checkPassword', async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { user, password } = req.body;
+    const connection = await getConnection();
+
+    const [userExists] = await connection.query('SELECT * FROM users WHERE user_id = ?', [user]);
+
+    if (userExists) {
+        const isPasswordValid = compareEncrypt(password, userExists.password);
+        
+        if(isPasswordValid){
+            return res.status(200).send({ status: "Success", message: isPasswordValid });
+        }else{
+            return res.status(401).send({ status: "Unauthorized", message: "Incorrect password" });
+        }
+    }
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+});
+
+//Update password
+app.post("/user/updatePassword", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { user, password } = req.body;
+    const connection = await getConnection();
+
+    const userExists = await connection.query('SELECT * FROM users WHERE user_id = ?', [user]);
+
+    if (userExists.length > 0) {
+        const hashPassword = encrypt(password);
+
+        const result = await connection.query('UPDATE users SET password = ? WHERE user_id = ?', [hashPassword, user]);
+
+        if (result.affectedRows > 0) {            
+            return res.status(200).send({ status: "Success", message: "Contraseña actualizada con éxito" });
+        } else {
+            return res.status(500).send({ status: "Error", message: "Error al actualizar la contraseña." });
+        }
+    } 
+    return res.status(404).send({ status: "Not Found", message: "El Usuario no existe." }); 
+});
+
+//Update biography
+app.post("/user/updateBiography", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const {id, biography} = req.body;
+    const connection = await getConnection();
+
+    const userExist = await connection.query("SELECT * FROM users WHERE user_id = ?",[id]);
+    
+    if (userExist.length > 0) {
+        await connection.query("UPDATE users SET biography = ? WHERE user_id = ?", [biography, id]);
+        console.log("Yupiii");
+
+        return res.status(200).send({ status: "Good Request", message: "Biografía actualizada con éxito" });
+    }
+    console.log("bugarron");
+    
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+});
+
+// Verificar el email
+app.post("/user/checkEmail", async (req, res)  => {
+    if (!req.body) {
+        return res.status(400).send({status: "Bad Request", message: "Body is empty"})
+    }
+    
+    const {id, email} = req.body;
+
+    const connection = await getConnection();
+    
+    const [userExists] = await connection.query("SELECT * FROM users WHERE user_id = ?", [id]) 
+    
+    if (userExists) {
+        if (email === userExists.email) {
+            console.log("Es igual esta mondá")
+            return res.status(200).send({ status: "Good Request", message: userExists.email })
+        }else{
+            console.log("No es igual esta mondá, vaya y chupele la mondá a un burro")
+            return res.status(400).send({ status: "Bad Request", message: "El email no coincide con el del usuario." })
+        }
+    }
+    console.log("No se encontró al hpta");
+    return res.status(404).send({ status: "Not Found", message: "User does not exist" });
+});
+
 
 app.get("/user/data", async (req, res) =>{
     if (!req.body) {
@@ -435,6 +581,19 @@ app.get("/templates", async (req, res) => {
 
     res.status(200).send({ status: "Good Request", message: data })
 });
+
+app.get("/template/:id_template", async (req, res) => {
+    const id_template = req.params.id_template;
+
+    const connection = await getConnection();
+    const data = await connection.query("SELECT * FROM templates WHERE template_id = ?", [id_template]);
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "La plantilla no existe." })
+    }
+
+    res.status(200).send({ status: "Good Request", message: data[0] })
+})
 
 //search templates
 app.get("/templates/search", async (req, res) => {
@@ -561,5 +720,6 @@ function encrypt(value){
 }
 
 function compareEncrypt(compare, value){
-    return compare == encrypt(value);
+    const compareHash = encrypt(compare);
+    return compareHash === value;
 }

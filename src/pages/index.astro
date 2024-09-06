@@ -1,13 +1,13 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import Article from "../components//Articles/Article.astro";
+import ArticlePlus from '../components/Articles/ArticlePlus.astro';
+import CarouselTemplates from "../components/Articles/CarouselTemplates.astro";
+import Filter from '../components/Articles/Filter.astro';
+import SearchBar from '../components/Articles/SearchBar.astro';
+import Content from '../components/Sections/Content.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
-import Content from '../components/Sections/Content.astro';
-import Article from "../components//Articles/Article.astro"
-import CarouselTemplates from "../components/Articles/CarouselTemplates.astro"
-import Filter from '../components/Articles/Filter.astro';
-import ArticlePlus from '../components/Articles/ArticlePlus.astro';
-import SearchBar from '../components/Articles/SearchBar.astro';
+import Layout from '../layouts/Layout.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
