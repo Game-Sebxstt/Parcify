@@ -1,78 +1,16 @@
 ---
+import * as globals from '../../js/frontend/utilities/globals'
 
 interface Props{
-  id:string,
+  id?: string,
   name: string,
   last_modified: string,
   project_id: string,
   preview: string,
-  stage: string,
-  collaborators: string,
-}
-
-export function lastModified(fechas: any) {
-    const fechasObjeto = fechas.map((fecha: any) => new Date(fecha));
-    const ultimaModificacion: any = new Date(Math.max(...fechasObjeto));
-    const ahora: any = new Date();
-
-    const diferencia = ahora - ultimaModificacion;
-
-    const segundos = Math.floor(diferencia / 1000);
-    const minutos = Math.floor(segundos / 60);
-    const horas = Math.floor(minutos / 60);
-    const dias = Math.floor(horas / 24);
-    const meses = Math.floor(dias / 30);
-    const años = Math.floor(meses / 12);
-
-    if (años > 0) {
-        return `${años} año${años !== 1 ? 's' : ''}`;
-    } else if (meses > 0) {
-        return `${meses} mes${meses !== 1 ? 'es' : ''}`;
-    } else if (dias > 0) {
-        return `${dias} día${dias !== 1 ? 's' : ''}`;
-    } else if (horas > 0) {
-        return `${horas} hora${horas !== 1 ? 's' : ''}`;
-    } else if (minutos > 0) {
-        return `${minutos} minuto${minutos !== 1 ? 's' : ''}`;
-    } else {
-        return `${segundos} segundo${segundos !== 1 ? 's' : ''}`;
-    }
-}
-
-
-async function isFavorite(project_id:number) {
-  const id = Astro.cookies.get("ID-USER")?.value;
-
-  // datos de los favoritos
-  let getDataPreferences:any = await fetch(`http://localhost:4000/preferences/data?id_user=${id}`);
-  let dataPreferences = await getDataPreferences.json();
-
-  // data del usuario
-  let getDataUser:any = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
-  let dataUser = await getDataUser.json();
-
-  let dataFilter:any = [];
-  const isData = getDataPreferences.ok ? true : false;
-
-  if (isData){
-      const elementParsed = JSON.parse(dataPreferences.message[0].favorites)
-      const projectUser = dataUser.message.projects;
-
-      elementParsed.forEach((item:any) => { // 2 -> [0] - [1] -> elementParsed
-          projectUser.forEach((elementUser:any) => { // 2 -> [0] - [1] -> projectUser
-              if (elementUser.project_id === item.id) { // elementParsed[0].id === projectUser[0].project_id
-                  elementUser["type"] = item.type; // project_id, user_id, name, preview, stage, collaborators, last_modified -> elementParsed[0] || [1]
-                  dataFilter.push(elementUser); // dataFilter = [elementParsed[0] || [1]]
-              }
-          });
-      });
-  }
-
-  return dataFilter.some((favorite:any) => favorite.project_id === project_id);
 }
 
 //Data variables
-const {id, name, last_modified, project_id, preview, stage, collaborators} = Astro.props;
+const { id, name, last_modified, project_id, preview} = Astro.props;
 ---
 
 <div id={id} class="w-full h-fit relative" data-name={name} data-modified={last_modified}>
@@ -140,6 +78,7 @@ const {id, name, last_modified, project_id, preview, stage, collaborators} = Ast
     </ul>
   </div>
 
+<div class=`w-full h-fit relative ${id}` data-name={name} data-modified={last_modified}>
   <div id="element-project" data-id={project_id} class="bg-transparent border-2 border-transparent hover:border-[#1E90FF]/70 hover:bg-[#1E90FF]/30 rounded-md shadow-md shadow-black mb-2 absolute cursor-pointer w-full h-72 z-10"></div>
 
   <div class="bg-[#f5f5f5] rounded-md shadow-md shadow-black mb-2 relative cursor-pointer w-full h-72">
@@ -156,7 +95,7 @@ const {id, name, last_modified, project_id, preview, stage, collaborators} = Ast
     <div class="flex flex-col w-full">
       <h3 id ="name-of-parcel" class="text-white text-xl font-bold max-xl:text-lg truncate w-full">{name}</h3>
       <input id="input-of-parcel" type="text" value={name} class="bg-transparent hidden text-white text-xl font-bold max-xl:text-lg truncate w-full">
-      <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {lastModified([last_modified])}</h4>
+      <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {globals.lastModified([last_modified])}</h4>
     </div>
   </div>
 

@@ -3,16 +3,15 @@ import { formatNumber } from '../../js/frontend/utilities/globals';
 
 interface Props{
   id:string,
-  first_text: string,
-  second_text: string,
+  first_text: string;
+  second_text: string;
   url_image: string,
   template_id: string,
   description: string,
   likes: number,
 }
 
-const { id, first_text, second_text, url_image, template_id, description, likes} = Astro.props;
-
+const {id, first_text, second_text, url_image, template_id, description, likes} = Astro.props;
 const formatLikes = formatNumber(likes);
 ---
 

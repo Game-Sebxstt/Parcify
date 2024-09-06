@@ -1,7 +1,7 @@
 ---
 import ProfileInvite from "../Articles/ProfileInvite.astro";
+import * as globals from '../../js/frontend/utilities/globals'
 
-import * as lastModified from '../Articles/Article.astro';
 
 interface Props{
     data: any,
@@ -11,7 +11,7 @@ const {data} = Astro.props;
 let new_last_modified: any;
 
 if(data.projects[0] && data.projects[0].last_modified){
-    new_last_modified = lastModified.lastModified([data.projects[0].last_modified])
+    new_last_modified = globals.lastModified([data.projects[0].last_modified])
 }
 
 ---

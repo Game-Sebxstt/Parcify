@@ -50,7 +50,7 @@ try{
 
 				<div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
 					<Filter section='home' article='project'/>
-				</div>
+				</div> 
 			</article>
 
 			<article class="w-full">
@@ -58,7 +58,7 @@ try{
 					<ArticlePlus/>
 					{
 						data.projects.map((item: any) => (
-							<Article id="project" name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
+							<Article id="project" name={item.name} project_id={item.project_id} preview={item.preview} last_modified={item.last_modified} />
 						))
 					}
 				</div>

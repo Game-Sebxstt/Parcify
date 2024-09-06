@@ -49,13 +49,12 @@ if (!reqTemplates.state) {
                 <div class="w-full h-full bg-[#1E1E1E] flex justify-center items-center text-[24px] text-black cursor-pointer">
                   <img src={template.preview} class="w-full h-full" />
                   <div
-                    id="create-template"
                     data-id={template.template_id}
                     data-name={template.name}
                     data-preview={template.preview}
                     data-author={template.autor}
                     data-description={template.description}
-                    class="background-animation w-full h-full absolute hover:bg-[#1E1E1E]/60 transition-all ease duration-300"
+                    class="background-animation w-full h-full absolute hover:bg-[#1E1E1E]/60 transition-all ease duration-300 create-template"
                   />
                   <span class="absolute bottom-8 left-5 text-white ">
                     {template.name}

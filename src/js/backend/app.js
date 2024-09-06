@@ -22,7 +22,7 @@ app.use(bodyParser.json({ limit: '100mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '100mb' }));
 app.use(cors({
     origin: (origin, callback) => {
-      const allowedOrigins = ['http://localhost:4321', 'http://localhost:4322', 'https://1rhbb29z-4321.use2.devtunnels.ms', 'https://7qjgdqdv-4321.use2.devtunnels.ms'];
+      const allowedOrigins = ['http://localhost:4321', 'http://localhost:4322', 'https://b9h1g7vh-4321.use2.devtunnels.ms'];
       if (allowedOrigins.includes(origin) || !origin) {
         callback(null, true);
       } else {
@@ -135,7 +135,7 @@ app.post("/project/create", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo crear el proyecto" })
     }
 
-    return res.status(200).send({state: "Good Request", message: project_id})
+    return res.status(200).send({state: "Good Request", message: {project_id: project_id, stage: template[0].stage, preview: template[0].preview, collaborators: collaborators}})
 })
 
 app.post("/project/delete", async (req, res) => {
@@ -177,7 +177,7 @@ app.post("/project/duplicate", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo duplicar el proyecto." })
     }
 
-    return res.status(200).send({ status: "Good Request", message: project_id })
+    return res.status(200).send({ status: "Good Request", message: {project_id: project_id, stage: data[0].stage, preview: data[0].preview, collaborators: data[0].collaborators, name: data[0].name} })
 })
 
 //Cambio de nombre
@@ -307,13 +307,11 @@ app.post("/preferences/favorite", async (req, res) => {
 
     let favorites = [];
 
-    // Consulta para ver si el usuario ya tiene favoritos almacenados
     const userExist = await connection.query("SELECT * FROM preferences WHERE user_id = ?", [id]);
 
     if (userExist.length > 0) {
         let actualFavorite = userExist[0].favorites ? JSON.parse(userExist[0].favorites) : [];
 
-        // Asegúrate de que `actualFavorite` es un array
         if (!Array.isArray(actualFavorite)) {
             actualFavorite = [];
         }
@@ -321,30 +319,30 @@ app.post("/preferences/favorite", async (req, res) => {
         const isDuplicate = actualFavorite.some(fav => fav.id === id_project && fav.type === type);
 
         if (isDuplicate) {
-            return res.status(200).send({ status: "No Action", message: "Favorite already exists" });
+            return res.status(200).send({ status: "Bad Request", message: "Favorite already exists" });
         }
 
-        // Agrega el nuevo favorito al array existente
-        actualFavorite.push({ id: id_project, type: type });
+        actualFavorite.push({ id: id_project, type: type});
 
-        // Convierte el array actualizado en una cadena JSON
         const newFavorites = JSON.stringify(actualFavorite);
-
-        console.log(newFavorites);
-        
         const updateFavorite = await connection.query("UPDATE preferences SET favorites = ? WHERE user_id = ?",[newFavorites, id]);
 
+        if(!updateFavorite){
+            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el favorito." })
+        }
     } else {
+        favorites.push({ id: id_project, type: type});
 
-        favorites.push({ id: id_project, type: type });
-
-        // Convierte el array actualizado en una cadena JSON
         const newFavorites = JSON.stringify(favorites);
-
         const addFavorite = await connection.query(`INSERT INTO preferences (user_id, favorites) VALUES (?, ?)`, [id, newFavorites]);
+
+        if(!addFavorite){
+            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el favorito." })
+        }
     }
 
-    res.status(200).send({ status: "Good Request", message: "Favorite Succeful" })
+    return res.status(200).send({ status: "Good Request", message: "Favorito guardado correctamente." });
+
 });
 
 //Update profile
@@ -589,13 +587,8 @@ app.get("/templates", async (req, res) => {
     res.status(200).send({ status: "Good Request", message: data })
 });
 
-// obtain unique template
-app.get("/user/template", async (req, res) => {
-    if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
-    }
-
-    const id_template = req.query.id_template;
+app.get("/template/:id_template", async (req, res) => {
+    const id_template = req.params.id_template;
 
     const connection = await getConnection();
     const data = await connection.query("SELECT * FROM templates WHERE template_id = ?", [id_template]);

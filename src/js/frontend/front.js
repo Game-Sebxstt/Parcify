@@ -3,10 +3,11 @@ import * as globals from './utilities/globals'
 import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
 import * as key from "./utilities/keyEvents"
-
+import * as reusable from './utilities/reusable'
+import Toastify from 'toastify-js'
 
 // Utility Functions
-const utils = {
+export const utils = {
   toggleDisplay: (element, displayStyle) => {
     element.style.display = window.getComputedStyle(element).display === "none" ? displayStyle : "none";
   },
@@ -59,9 +60,17 @@ const utils = {
     sorted.forEach(item => item.element.parentElement.appendChild(item.element));
   },
   handleError: (validation) => {
-    const errorMessage = document.getElementById("danger");
-    errorMessage.style.display = "flex";
-    errorMessage.querySelector("#txt").textContent = validation.data;
+    console.error(validation);
+    Toastify({
+      text: validation.data ?? validation,
+      gravity: "bottom",
+      position: "right",
+      duration: 3000,
+      close: true,
+      style: {
+        background: "#1E90FF",
+      },
+    }).showToast();
   },
   validateEmail: (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -109,10 +118,26 @@ const utils = {
     parent.appendChild(input);
     return input;
   },
+  showPreviewTemplate: (props) => {
+    console.log(props)
+    let tittlePrew  = document.querySelector("#tittlePreview")
+    let authorPrew  = document.querySelector("#authorPreview")
+    let infoPrew = document.getElementById("infoPreview")
+    let infoDescription = document.getElementById("infoDescription")
+
+    tittlePrew.textContent = props.dataName;
+    authorPrew.textContent =  "By " + props.dataAuthor;
+    infoPrew.src = props.dataPreview;
+    infoDescription.textContent = props.dataDescription;
+
+    elements.previewTemplate.setAttribute("data-id", props.dataId);
+
+    window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
+  }
 };
 
 // DOM Elements
-const elements = {
+export const elements = {
   projectBox: document.querySelectorAll("#parceler-box"),
   projectSelected: document.querySelectorAll(".projectSelected"),
   copyLink: document.getElementById("continue"),
@@ -155,8 +180,11 @@ const addEventListeners = () => {
   // Filter dropdown
   document.querySelectorAll("#filter").forEach((element, index) => {
     element?.addEventListener("click", () => {
-      const moreOptionsFilter = document.querySelectorAll("#more-options-filter")[index];
-      const arrowDownFilter = document.querySelectorAll("#arrow-down-filter")[index];
+      const moreOptionsFilter = element.parentNode.querySelector("#more-options-filter");
+      const arrowDownFilter = element.querySelector("#arrow-down-filter");
+
+      console.log(moreOptionsFilter, arrowDownFilter)
+
       utils.toggleDisplay(moreOptionsFilter, "flex");
       utils.setTransform(arrowDownFilter, window.getComputedStyle(moreOptionsFilter).display === "none" ? "0deg" : "180deg");
     });
@@ -286,21 +314,7 @@ const addEventListeners = () => {
   });
 
   // Context menu for projects
-  document.querySelectorAll("#element-project").forEach((item) => {
-    item.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      utils.changeStateWheelWindow(true);
-      const optionsParcel = item.parentNode.querySelector("#options-parcel");
-      optionsParcel.style.display = "flex";
-      optionsParcel.style.top = `${e.clientY}px`;
-      optionsParcel.style.left = `${e.clientX}px`;
-
-      document.addEventListener("click", () => {
-        optionsParcel.style.display = "none";
-        utils.changeStateWheelWindow(false);
-      });
-    });
-  });
+  reusable.showContextMenu()
 
   //Metric for projects
   document.querySelectorAll("#metric-project").forEach((item) => {
@@ -368,7 +382,7 @@ const addEventListeners = () => {
     item?.addEventListener("input", (e) => {
       const searchTerm = item.value.toLowerCase();
       const typeElement = item.getAttribute("data-article");
-      const elementsToFilter = document.querySelectorAll(`#${typeElement}`);
+      const elementsToFilter = document.querySelectorAll(`.${typeElement}`) || document.querySelectorAll(`#${typeElement}`);
 
       elementsToFilter.forEach((element) => {
         const name = element.getAttribute("data-name")?.toLowerCase();
@@ -381,7 +395,7 @@ const addEventListeners = () => {
   document.querySelectorAll("#filtro").forEach((item, index) => {
     item.addEventListener("click", () => {
       const mainBox = item.parentElement.getAttribute("data-article");
-      const elements = Array.from(document.querySelectorAll(`#${mainBox}`));
+      const elements = Array.from(document.querySelectorAll(`.${mainBox}`) || document.querySelectorAll(`#${mainBox}`));
 
       switch (index) {
         case 0: // Sort by Name
@@ -432,39 +446,148 @@ const addEventListeners = () => {
     });
   });
 
+  // filter template
+  document.querySelectorAll("#filtroTemplate").forEach((item, index) => {
+    item.addEventListener("click", async () => {
+        const mainBox = item.parentElement.getAttribute("data-article");
+        const elements = Array.from(document.querySelectorAll(`#${mainBox}`));
+        
+        switch (index) {
+            case 0:
+                const namesAndElements = elements.map(el => ({
+                    name: el.getAttribute("data-name").toLowerCase(),
+                    element: el
+                }));
+                
+                const arrow = document.querySelector("#orden").firstChild.id;
+
+                namesAndElements.sort((a, b) => {
+                    if (a.name < b.name) return arrow === 'arrowUp' ? -1 : 1;
+                    if (a.name > b.name) return arrow === 'arrowUp' ? 1 : -1;
+                    return 0;
+                });
+
+                namesAndElements.forEach(item => {
+                    item.element.parentElement.appendChild(item.element);
+                });
+                break;
+
+            case 1:
+                const templates_db = await req.getAllTemplates();
+                let templates_data = templates_db.data.message;
+
+                const arrowDate = item.children[1].firstChild.id;
+
+                templates_data = globals.sortByKey(templates_data, "date_create", arrowDate === 'arrowUp' ? 'asc' : 'desc');
+                
+                const contentGrid = document.querySelector("#content-grid-templates");
+                if(!contentGrid){
+                    utils.handleError("No se encontró el contenedor de los templates");
+                    return;
+                }
+
+                contentGrid.innerHTML = ""
+
+                const templateVoid = {
+                  template_id: 0,
+                  name: "Plantilla vacia",
+                  autor: "Parcify",
+                  description: "Plantilla vacia",
+                  likes: null,
+                }
+
+                templates_data = [templateVoid, ...templates_data];
+
+                templates_data.forEach( async (template) => {
+                  const props = {
+                    template_id: template.template_id,
+                    name: template.name,
+                    author: template.autor,
+                    preview: template.preview,
+                    description: template.description,
+                    likes: template.likes,
+                  }
+
+                  templates.renderTemplate(props, contentGrid);
+                });
+                break;
+
+          case 2:
+            const sharedProjects = document.querySelectorAll("#projectShared");
+            elements.forEach(project => {
+                const isShared = Array.from(sharedProjects).includes(project);
+                utils.toggleHidden(project, !isShared);
+            });
+          break;
+
+          case 3:
+            elements.forEach(item => utils.toggleHidden(item, false));
+          break;
+
+          default:
+          console.error("Error al filtrar");
+      }
+    });
+  });
+
   // Delete project
   document.querySelectorAll("#delete-parcel").forEach((item) => {
     item.addEventListener("click", async () => {
       const projectId = item.getAttribute("data-id");
       const validation = await req.deleteProject(projectId);
       
+      const projectContent = item.parentElement.parentElement.parentElement;
+      const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
+      const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
+
+      h3.style.display = "none";
+      input.style.display = "flex";
+
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+
       if (!validation.state || !validation) {
         utils.handleError(validation);
         return;
       }
 
-      window.location.reload();
+      templates.deleteProject(projectId);
     });
   });
-
+  
   // Create project
   elements.createTemplate?.addEventListener("click",  async () => {
     const templateId = elements.previewTemplate.getAttribute("data-id");
     const userId = globals.getCookie("ID-USER");
+
     const validation = await req.createProject(userId, "Untitled", templateId);
 
     if (!validation.state || !validation) {
       utils.handleError(validation);
       return;
     }
+    
+    const props = {
+        name: "Untitled",
+        last_modified: new Date(),
+        project_id: validation.data.message.project_id,
+        preview: validation.data.message.preview,
+        stage: validation.data.message.stage,
+        collaborators: validation.data.message.collaborators,
+    }
 
-    window.location.reload();
+    if(!document.querySelector("#content-grid")){
+      window.location.href = "/"
+      return
+    }
+
+    templates.renderProject(props, document.querySelector("#content-grid"));
   });
 
   // Duplicate project
   document.querySelectorAll("#duplicate-parcel").forEach((item) => {
     item.addEventListener("click", async () => {
-      const projectId = item.getAttribute("data-id");
+      const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
       const validation = await req.duplicateProject(projectId);
 
       if (!validation.state || !validation) {
@@ -472,56 +595,22 @@ const addEventListeners = () => {
         return;
       }
 
-      window.location.reload();
-    });
-  });
-    
-  // Rename project
-  document.querySelectorAll("#rename-parcel").forEach((item) => {
-    item.addEventListener("click", async () => {
-        const projectId = item.getAttribute("data-id");
+      const props = {
+          name: validation.data.message.name,
+          last_modified: new Date(),
+          project_id: validation.data.message.project_id,
+          preview: validation.data.message.preview,
+          stage: validation.data.message.stage,
+          collaborators: validation.data.message.collaborators,
+      }
 
-        const projectContent = item.parentElement.parentElement.parentElement; // Entré al papá del papá del papá y lo almacené en una variable
-        const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
-        const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
+      if(!document.querySelector("#content-grid")){
+        window.location.href = "/"
+        return
+      }
 
-        h3.style.display = "none";
-        input.style.display = "flex";
-
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
-
-        const saveChanges = async () => {
-          const validation = await req.renameProject(projectId, input.value);
-
-          if (!validation.state) {
-            utils.handleError(validation);
-            return;
-          }
-
-          h3.textContent = input.value;
-          h3.style.display = "flex";
-          input.style.display = "none";
-
-          window.location.reload();
-        }
-
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          saveChanges();
-        }
-
-        if (e.key === "Escape") {
-          h3.style.display = "flex";
-          input.style.display = "none";
-        }
+      templates.renderProject(props, document.querySelector("#content-grid"));
       });
-
-      input.addEventListener("blur", (e) => {
-          saveChanges();
-      });
-
-    });
   });
 
   // Redirect to project
@@ -531,20 +620,109 @@ const addEventListeners = () => {
       const collaborators = {
         user_id: globals.getCookie("ID-USER"),
         last_access: new Date(),
+        
+  // Delete project
+  document.querySelectorAll("#delete-parcel").forEach((item) => {
+    item.addEventListener("click", async () => {
+      const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+      const validation = await req.deleteProject(projectId);
+      
+      if (!validation.state || !validation) {
+        utils.handleError(validation);
+        return;
       }
 
-      req.saveCollaborators(projectId, collaborators).then((data) => {
-        if (!data.state) {
-          utils.handleError(data);
-          return;
-        }
+      templates.deleteProject(projectId);
+      await req.unfavorite(globals.getCookie("ID-USER"), projectId);
+    
+      const renderResponse = await templates.renderFavorites()
 
-        globals.startSession(projectId);
-
-        window.location.href = `/konva?id=${projectId}`;
-      })
+      if(!renderResponse){
+        utils.handleError(renderResponse)
+        return
+      }
     });
   });
+    
+  // Rename project
+  document.querySelector("#rename-parcel")?.addEventListener("click", async () => {
+    const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+    const projectContent = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
+  
+    if (!projectContent) {
+      utils.handleError(`Could not find project with id ${projectId}`);
+      return;
+    }
+  
+    const h3 = projectContent.querySelector('#name-of-parcel');
+    const input = projectContent.querySelector('#input-of-parcel');
+  
+    h3.style.display = "none";
+    input.style.display = "flex";
+  
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  
+    const saveChanges = async () => {
+      console.log("Save changes");
+      const validation = await req.renameProject(projectId, input.value);
+  
+      if (!validation.state) {
+        utils.handleError(validation);
+  
+        h3.style.display = "flex";
+        input.style.display = "none";
+        input.value = h3.textContent;
+  
+        return;
+      }
+  
+      h3.textContent = input.value;
+      h3.style.display = "flex";
+      input.style.display = "none";
+  
+      templates.renameProject(projectId, input.value);
+  
+      const renderResponse = await templates.renderFavorites();
+  
+      if (!renderResponse) {
+        utils.handleError(renderResponse);
+        return;
+      }
+
+      return
+    };
+  
+    const cancelChanges = () => {
+      h3.style.display = "flex";
+      input.style.display = "none";
+      input.value = h3.textContent;
+    };
+  
+    const handleKeydown = (e) => {
+      if (e.key === "Enter") {
+        saveChanges();
+        input.removeEventListener("blur", handleBlur);
+        input.removeEventListener("keydown", handleKeydown);
+      }
+  
+      if (e.key === "Escape") {
+        cancelChanges();
+        input.removeEventListener("blur", handleBlur);
+        input.removeEventListener("keydown", handleKeydown);
+      }
+    };
+  
+    const handleBlur = () => {
+      saveChanges();
+    };
+  
+    input.addEventListener("keydown", handleKeydown);
+    input.addEventListener("blur", handleBlur);
+  });
+
+  // Redirect to project
+  reusable.redirectProject();
 
   // User authentication
   elements.formRegister?.addEventListener("submit", async (e) => {
@@ -643,36 +821,22 @@ const addEventListeners = () => {
   });
 
   //previewParceller
-  elements.template.forEach((item) => {
-    item.addEventListener("click", (e) => {
-      let tittlePrew  = document.querySelector("#tittlePreview")
-      let authorPrew  = document.querySelector("#authorPreview")
-      let infoPrew = document.getElementById("infoPreview")
-      let infoDescription = document.getElementById("infoDescription")
+  reusable.showPreviewTemplate();
 
-      const dataId = item.getAttribute("data-id");
-      const dataName = item.getAttribute("data-name");
-      const dataAuthor = item.getAttribute("data-author");
-      const dataPreview = item.getAttribute("data-preview");
-      const dataDescription = item.getAttribute("data-description");
+  elements.previewTemplate.querySelector("#share").addEventListener("click", () => {
+    const dataId = elements.previewTemplate.getAttribute("data-id");
+    const urlCopy = `${window.location.origin}/?template_id=${dataId}`;
+    navigator.clipboard.writeText(urlCopy);
 
-      tittlePrew.textContent = dataName;
-      authorPrew.textContent =  "By " + dataAuthor;
-      infoPrew.src = dataPreview;
-      infoDescription.textContent = dataDescription;
+    utils.handleError("Link copied to clipboard");
+  })
 
-      elements.previewTemplate.setAttribute("data-id", dataId);
-
-      window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
-    });
-  });
-
-  //*favorites
+  //favorites
   elements.favorite.forEach(item =>{
     item.addEventListener("click", async ()=>{
       const userId = globals.getCookie("ID-USER");
-      const idElement = Number(item.getAttribute("data-id"));
-      const typeElement = item.getAttribute("data-type");
+      const idElement = Number(document.querySelector("#options-parcel").getAttribute("data-id"));
+      const typeElement = document.querySelector("#options-parcel").getAttribute("data-type");
       
       const data = {
         id_project:idElement,
@@ -682,10 +846,16 @@ const addEventListeners = () => {
       const petition = await req.favorite(userId, data);
 
       if (!petition.state) {
+        utils.handleError(petition)
         return petition.data;
       }
+    
+      const renderResponse = await templates.renderFavorites()
 
-      window.location.reload();
+      if(!renderResponse){
+        utils.handleError(renderResponse)
+        return
+      }
     });
   });
 
@@ -693,13 +863,20 @@ const addEventListeners = () => {
   elements.unfavorite.forEach((item)=>{
     item.addEventListener("click", async ()=>{
       const userId = globals.getCookie("ID-USER");
-      const idElement = Number(item.getAttribute("data-id"));
+      const idElement = Number(document.querySelector("#options-parcel").getAttribute("data-id"));
       const petition = await req.unfavorite(userId, idElement);
+
       if (!petition.state) {
+        utils.handleError(petition)
         return petition.data;
       }
-      
-      window.location.reload();
+    
+      const renderResponse = await templates.renderFavorites()
+
+      if(!renderResponse){
+        utils.handleError(renderResponse)
+        return
+      }
     })
   });
 
@@ -726,7 +903,6 @@ const addEventListeners = () => {
       return;
     }
   });
-
 };
 
 // Initialize
@@ -736,7 +912,6 @@ const init = () => {
 
 // Run initialization
 init();
-
 
 // ------------------------- Show settings content -------------------------------
 // Options buttons
@@ -774,7 +949,6 @@ const closeButton = document.querySelector('#close_configurations');
 closeButton?.addEventListener("click", () => {
   document.querySelector('#content-configurations').style.display = "none";
   document.documentElement.style.overflow = "";
-
 });
 
 //Open settings
@@ -784,7 +958,6 @@ openButton?.addEventListener("click", () => {
   document.querySelector('#content-configurations').style.display = "flex";
   document.documentElement.style.overflow = "hidden";
 });
-
 
 //Edit Username
 document.querySelector('#edit-icon-username')?.addEventListener("click", async () => {

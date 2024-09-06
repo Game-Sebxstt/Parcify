@@ -4,7 +4,8 @@ interface Props {
     article?:string,
     isSpecificTemplate?: boolean,
 }
-const {section, article, isSpecificTemplate } = Astro.props;
+
+const {section, article } = Astro.props;
 ---
 
 <div class="flex items-center justify-between w-full pr-2">
@@ -54,7 +55,16 @@ const {section, article, isSpecificTemplate } = Astro.props;
     </div>
 </div>
 
-<script>
+<script >
+    import * as req from '../../js/backend/requests'
+    import * as globals from '../../js/frontend/utilities/globals'
+
+    const templates = await req.getAllTemplates();
+    const templates_data = templates.data.message
+
+    let templates_sort = globals.sortByKey(templates_data, "date_create", 'desc')
+    console.log(templates_sort)
+
     //texto a cambiar
     let typeFilter = document.querySelector('#typeFilter') as HTMLSpanElement;
 
@@ -89,7 +99,7 @@ const {section, article, isSpecificTemplate } = Astro.props;
     //evento
     filtros.forEach((item)=>{
         item?.addEventListener("click",()=>{
-            //cambiar el texto de que tiene dentro typefilter por el texto 
+            //cambiar el texto de que tiene dentro typefilter por el texto
             //que tiene el filtro seleccionado
             typeFilter.textContent = item.textContent;
             // Subrayar el filtro seleccionado

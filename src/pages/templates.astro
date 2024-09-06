@@ -1,4 +1,10 @@
 ---
+import Layout from '../layouts/Layout.astro';
+import Slide from '../components/Sections/SlideDesktop.astro';
+import Content from '../components/Sections/Content.astro';
+import Header from '../components/Sections/Header.astro';
+import SlideMobile from '../components/Sections/SlideMobile.astro';
+import FilterTemplates from '../components/Articles/FilterTemplates.astro';
 import Filter from '../components/Articles/Filter.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
 import TemplateView from '../components/Articles/TemplateView.astro';
@@ -12,27 +18,20 @@ import { getAllTemplates } from '../js/backend/requests';
 const reqTemplates = await getAllTemplates();
 let templates;
 
+let templateVoid = {
+	name: "Plantilla Vacia",
+	template_id: 0,
+	preview: "../../../public/placeholder/image_preview.svg",
+	description: "Plantilla Vacia.",
+	autor: "Parcify",
+	likes: null
+}
+
 if(!reqTemplates.state){
-    templates = [
-      {
-        name: "Plantilla Vacia",
-        template_id: 0,
-        preview: "../../../public/placeholder/image_preview.svg",
-		description: "Plantilla Vacia.",
-		autor: "Parcify",
-		likes: null
-      }
-    ]
+    templates = [templateVoid]
 }else{
     templates = reqTemplates.data.message;
-	templates.push({
-		name: "Plantilla Vacia",
-		template_id: 0,
-		preview: "../../../public/placeholder/image_preview.svg",
-		description: "Plantilla Vacia.",
-		autor: "Parcify",
-		likes: null
-	})
+	templates = [templateVoid, ...templates];
 }
 
 const logged = Astro.cookies.get("logged")?.value;
@@ -72,12 +71,12 @@ try{
 				<div class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-start items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
 					<SearchBar section="templates" article='template' placeholder='Search Projects'></SearchBar>
 					<div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
-						<Filter section='templates' article='template'/>
+						<FilterTemplates section='templates' article='template'/>
 					</div>
 				</div>
 
 				<article class="w-full">
-					<div id="content-grid" data-section="templates" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
+					<div id="content-grid-templates" data-section="templates" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
 						{
 							templates.length > 0 ? (
 								templates.map((template: any) => (
