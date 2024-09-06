@@ -4,7 +4,6 @@ import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
 import * as reusable from './utilities/reusable'
 import Toastify from 'toastify-js'
-import { positionHighlight } from "astro/runtime/client/dev-toolbar/apps/utils/highlight.js";
 
 // Utility Functions
 export const utils = {
@@ -439,52 +438,55 @@ const addEventListeners = () => {
         const elements = Array.from(document.querySelectorAll(`#${mainBox}`));
         
         switch (index) {
-            case 0: // Sort by Name
+            case 0:
                 const namesAndElements = elements.map(el => ({
-                    name: el.getAttribute("data-name").toLowerCase(),  // Use lowercase for consistent comparison
+                    name: el.getAttribute("data-name").toLowerCase(),
                     element: el
                 }));
                 
                 const arrow = document.querySelector("#orden").firstChild.id;
 
-                // Sort elements by name
                 namesAndElements.sort((a, b) => {
                     if (a.name < b.name) return arrow === 'arrowUp' ? -1 : 1;
                     if (a.name > b.name) return arrow === 'arrowUp' ? 1 : -1;
                     return 0;
                 });
 
-                // Append sorted elements back to the DOM
                 namesAndElements.forEach(item => {
                     item.element.parentElement.appendChild(item.element);
                 });
                 break;
 
-            case 1: // Sort by Date
-                // Fetch the templates data if it's not already fetched
-                const templates = await req.getAllTemplates();
-                let templates_data = templates.data.message;
+            case 1:
+                const templates_db = await req.getAllTemplates();
+                let templates_data = templates_db.data.message;
 
                 const arrowDate = item.children[1].firstChild.id;
 
-                // Sort templates based on date and arrow direction
                 templates_data = globals.sortByKey(templates_data, "date_create", arrowDate === 'arrowUp' ? 'asc' : 'desc');
-                console.log(templates_data);
                 
-                // Clear the container and repopulate sorted templates
-                const contentGrid = document.querySelector("#content-grid");
-                contentGrid.innerHTML = "";  // Clear previous elements
+                const contentGrid = document.querySelector("#content-grid-templates");
+                if(!contentGrid){
+                    utils.handleError("No se encontró el contenedor de los templates");
+                    return;
+                }
 
-                templates_data.forEach(template => {
-                    const projectDiv = document.createElement("div");
-                    projectDiv.innerHTML = `
-                        <Article id="project" name="${template.name}" project_id="${template.project_id}" preview="${template.preview}" stage="${template.stage}" collaborators="${template.collaborators}" last_modified="${template.date_create}" />
-                    `;
-                    contentGrid.appendChild(projectDiv);
+                contentGrid.innerHTML = ""
+
+                templates_data.forEach( async (template) => {
+                  console.log(template)
+                  const props = {
+                    name: template.name,
+                    last_modified: template.date_create,
+                    project_id: template.template_id,
+                    preview: template.preview,
+                  }
+
+                  templates.renderProject(props, contentGrid);
                 });
                 break;
 
-          case 2: // Show Shared Projects
+          case 2:
             const sharedProjects = document.querySelectorAll("#projectShared");
             elements.forEach(project => {
                 const isShared = Array.from(sharedProjects).includes(project);
@@ -492,7 +494,7 @@ const addEventListeners = () => {
             });
           break;
 
-          case 3: // Show All Projects
+          case 3:
             elements.forEach(item => utils.toggleHidden(item, false));
           break;
 
@@ -508,7 +510,7 @@ const addEventListeners = () => {
       const projectId = item.getAttribute("data-id");
       const validation = await req.deleteProject(projectId);
       
-      const projectContent = item.parentElement.parentElement.parentElement; // Entré al papá del papá del papá y lo almacené en una variable
+      const projectContent = item.parentElement.parentElement.parentElement;
       const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
       const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
 
@@ -523,7 +525,7 @@ const addEventListeners = () => {
         return;
       }
 
-      window.location.reload();
+      templates.deleteProject(projectId);
     });
   });
   
