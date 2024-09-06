@@ -582,11 +582,11 @@ app.get("/templates", async (req, res) => {
     res.status(200).send({ status: "Good Request", message: data })
 });
 
-app.get("/templates/:id", async (req, res) => {
-    const id = req.params.id;
+app.get("/template/:id_template", async (req, res) => {
+    const id_template = req.params.id_template;
 
     const connection = await getConnection();
-    const data = await connection.query("SELECT * FROM templates WHERE template_id = ?", [id]);
+    const data = await connection.query("SELECT * FROM templates WHERE template_id = ?", [id_template]);
 
     if(!data.length > 0){
         return res.status(400).send({ status: "Bad Request", message: "La plantilla no existe." })

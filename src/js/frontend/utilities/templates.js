@@ -89,6 +89,7 @@ export function renderProject(props, parent){
     // Event listeners
     reusable.showContextMenu(front.utils);
     reusable.redirectProject();
+    front.utils.handleError("Project rendered successfully");
 
     return divContent;
 }
@@ -98,8 +99,9 @@ export async function renderFavorites() {
         let favorites = await req.getFavorites(globals.getCookie("ID-USER"))
   
         if (!favorites.state) {
-          front.utils.handleError(favorites)
-          return
+            console.log(favorites)
+            front.utils.handleError(favorites)
+            return
         }
 
         favorites = JSON.parse(favorites.data.message[0].favorites);
@@ -110,29 +112,26 @@ export async function renderFavorites() {
             template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="grey" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-template"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z"/><path d="M4 12m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 12l6 0"/><path d="M14 16l6 0"/><path d="M14 20l6 0"/></svg>`
         };
 
-        if (favorites.length === 0) {
-            content_favorites.innerHTML = `<p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>`;
-            return content_favorites;
-        }
-
         let templates = await req.getAllTemplates();
 
         if(!templates.state){
             front.utils.handleError(templates);
-            return;
         }
 
         let projects = await req.getAllProjects(globals.getCookie("ID-USER"));
 
         if(!projects.state){
             front.utils.handleError(projects);
-            return;
         }
         
         templates = templates.data.message;
         projects = projects.data.message;
 
         content_favorites.innerHTML = "";
+
+        if (favorites.length === 0) {
+            content_favorites.innerHTML = `<p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>`;
+        }
         
         const pShowMoreFavorites = document.querySelector("#showMoreFavorites");
         if(pShowMoreFavorites){
@@ -142,7 +141,10 @@ export async function renderFavorites() {
         const length_favorites = favorites.length;
         const favorites_slice = favorites.slice(0, 4);
 
-        console.log(length_favorites);
+        if (favorites.length === 0) {
+            front.utils.handleError("Favorites rendered successfully");
+            return content_favorites;
+        }
 
         favorites_slice.forEach( async (favorite) => {
             let name;
@@ -189,6 +191,7 @@ export async function renderFavorites() {
             content_favorites.parentNode.appendChild(pShowMoreFavorites);
         }
 
+        front.utils.handleError("Favorites rendered successfully");
         return content_favorites;
 
     } catch (error) {
@@ -199,6 +202,7 @@ export async function renderFavorites() {
 export function deleteProject(projectId) {
     const project = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
     project.remove();
+    front.utils.handleError("Project deleted successfully");
 }
 
 export function renameProject(projectId, newName){

@@ -152,7 +152,7 @@ export async function getAllTemplates(){
 }
 
 export async function getTemplate(id_template){
-    const response = await fetch(`http://localhost:4000/template?id_template=${id_template}`, {
+    const response = await fetch(`http://localhost:4000/template/${id_template}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",

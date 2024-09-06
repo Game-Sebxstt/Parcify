@@ -60,8 +60,9 @@ export const utils = {
     sorted.forEach(item => item.element.parentElement.appendChild(item.element));
   },
   handleError: (validation) => {
+    console.error(validation);
     Toastify({
-      text: validation.data || validation,
+      text: validation.data ?? validation,
       gravity: "bottom",
       position: "right",
       duration: 3000,
@@ -117,6 +118,21 @@ export const utils = {
     parent.appendChild(input);
     return input;
   },
+  showPreviewTemplate: (props) => {
+    let tittlePrew  = document.querySelector("#tittlePreview")
+    let authorPrew  = document.querySelector("#authorPreview")
+    let infoPrew = document.getElementById("infoPreview")
+    let infoDescription = document.getElementById("infoDescription")
+
+    tittlePrew.textContent = props.dataName;
+    authorPrew.textContent =  "By " + props.dataAuthor;
+    infoPrew.src = props.dataPreview;
+    infoDescription.textContent = props.dataDescription;
+
+    elements.previewTemplate.setAttribute("data-id", props.dataId);
+
+    window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
+  }
 };
 
 // DOM Elements
@@ -150,8 +166,11 @@ const addEventListeners = () => {
   // Filter dropdown
   document.querySelectorAll("#filter").forEach((element, index) => {
     element?.addEventListener("click", () => {
-      const moreOptionsFilter = document.querySelectorAll("#more-options-filter")[index];
-      const arrowDownFilter = document.querySelectorAll("#arrow-down-filter")[index];
+      const moreOptionsFilter = element.parentNode.querySelector("#more-options-filter");
+      const arrowDownFilter = element.querySelector("#arrow-down-filter");
+
+      console.log(moreOptionsFilter, arrowDownFilter)
+
       utils.toggleDisplay(moreOptionsFilter, "flex");
       utils.setTransform(arrowDownFilter, window.getComputedStyle(moreOptionsFilter).display === "none" ? "0deg" : "180deg");
     });
@@ -349,7 +368,7 @@ const addEventListeners = () => {
     item?.addEventListener("input", (e) => {
       const searchTerm = item.value.toLowerCase();
       const typeElement = item.getAttribute("data-article");
-      const elementsToFilter = document.querySelectorAll(`#${typeElement}`);
+      const elementsToFilter = document.querySelectorAll(`.${typeElement}`) || document.querySelectorAll(`#${typeElement}`);
 
       elementsToFilter.forEach((element) => {
         const name = element.getAttribute("data-name")?.toLowerCase();
@@ -362,7 +381,7 @@ const addEventListeners = () => {
   document.querySelectorAll("#filtro").forEach((item, index) => {
     item.addEventListener("click", () => {
       const mainBox = item.parentElement.getAttribute("data-article");
-      const elements = Array.from(document.querySelectorAll(`#${mainBox}`));
+      const elements = Array.from(document.querySelectorAll(`.${mainBox}`) || document.querySelectorAll(`#${mainBox}`));
 
       switch (index) {
         case 0: // Sort by Name
@@ -495,66 +514,81 @@ const addEventListeners = () => {
   });
     
   // Rename project
-    document.querySelector("#rename-parcel")?.addEventListener("click", async () => {
-        const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
-        const projectContent = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
+  document.querySelector("#rename-parcel")?.addEventListener("click", async () => {
+    const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+    const projectContent = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
+  
+    if (!projectContent) {
+      utils.handleError(`Could not find project with id ${projectId}`);
+      return;
+    }
+  
+    const h3 = projectContent.querySelector('#name-of-parcel');
+    const input = projectContent.querySelector('#input-of-parcel');
+  
+    h3.style.display = "none";
+    input.style.display = "flex";
+  
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  
+    const saveChanges = async () => {
+      console.log("Save changes");
+      const validation = await req.renameProject(projectId, input.value);
+  
+      if (!validation.state) {
+        utils.handleError(validation);
+  
+        h3.style.display = "flex";
+        input.style.display = "none";
+        input.value = h3.textContent;
+  
+        return;
+      }
+  
+      h3.textContent = input.value;
+      h3.style.display = "flex";
+      input.style.display = "none";
+  
+      templates.renameProject(projectId, input.value);
+  
+      const renderResponse = await templates.renderFavorites();
+  
+      if (!renderResponse) {
+        utils.handleError(renderResponse);
+        return;
+      }
 
-        if(!projectContent){
-          utils.handleError(`Could not find project with id ${projectId}`);
-          return;
-        }
-
-        const h3 = projectContent.querySelector('#name-of-parcel');
-        const input = projectContent.querySelector('#input-of-parcel');
-
-        h3.style.display = "none";
-        input.style.display = "flex";
-
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
-
-        const saveChanges = async () => {
-          const validation = await req.renameProject(projectId, input.value);
-
-          if (!validation.state) {
-            utils.handleError(validation);
-
-            h3.style.display = "flex";
-            input.style.display = "none";
-            input.value = h3.textContent;
-
-            return;
-          }
-
-          h3.textContent = input.value;
-          h3.style.display = "flex";
-          input.style.display = "none";
-
-          templates.renameProject(projectId, input.value);
-    
-          const renderResponse = await templates.renderFavorites()
-    
-          if(!renderResponse){
-            utils.handleError(renderResponse)
-            return
-          }
-        }
-
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          saveChanges();
-        }
-
-        if (e.key === "Escape") {
-          h3.style.display = "flex";
-          input.style.display = "none";
-        }
-      });
-
-      input.addEventListener("blur", (e) => {
-          saveChanges();
-      });
-    });
+      return
+    };
+  
+    const cancelChanges = () => {
+      h3.style.display = "flex";
+      input.style.display = "none";
+      input.value = h3.textContent;
+    };
+  
+    const handleKeydown = (e) => {
+      if (e.key === "Enter") {
+        saveChanges();
+        input.removeEventListener("blur", handleBlur);
+        input.removeEventListener("keydown", handleKeydown);
+      }
+  
+      if (e.key === "Escape") {
+        cancelChanges();
+        input.removeEventListener("blur", handleBlur);
+        input.removeEventListener("keydown", handleKeydown);
+      }
+    };
+  
+    const handleBlur = () => {
+      saveChanges();
+    };
+  
+    input.addEventListener("keydown", handleKeydown);
+    input.addEventListener("blur", handleBlur);
+  });
 
   // Redirect to project
   reusable.redirectProject();
@@ -658,29 +692,31 @@ const addEventListeners = () => {
   //previewParceller
   elements.template.forEach((item) => {
     item.addEventListener("click", (e) => {
-      let tittlePrew  = document.querySelector("#tittlePreview")
-      let authorPrew  = document.querySelector("#authorPreview")
-      let infoPrew = document.getElementById("infoPreview")
-      let infoDescription = document.getElementById("infoDescription")
-
       const dataId = item.getAttribute("data-id");
       const dataName = item.getAttribute("data-name");
       const dataAuthor = item.getAttribute("data-author");
       const dataPreview = item.getAttribute("data-preview");
       const dataDescription = item.getAttribute("data-description");
 
-      tittlePrew.textContent = dataName;
-      authorPrew.textContent =  "By " + dataAuthor;
-      infoPrew.src = dataPreview;
-      infoDescription.textContent = dataDescription;
-
-      elements.previewTemplate.setAttribute("data-id", dataId);
-
-      window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
+      utils.showPreviewTemplate({
+        dataId,
+        dataName,
+        dataAuthor,
+        dataPreview,
+        dataDescription
+      })
     });
   });
 
-  //*favorites
+  elements.previewTemplate.querySelector("#share").addEventListener("click", () => {
+    const dataId = elements.previewTemplate.getAttribute("data-id");
+    const urlCopy = `${window.location.origin}/?template_id=${dataId}`;
+    navigator.clipboard.writeText(urlCopy);
+
+    utils.handleError("Link copied to clipboard");
+  })
+
+  //favorites
   elements.favorite.forEach(item =>{
     item.addEventListener("click", async ()=>{
       const userId = globals.getCookie("ID-USER");
@@ -728,7 +764,6 @@ const addEventListeners = () => {
       }
     })
   });
-
 };
 
 // Initialize
@@ -738,7 +773,6 @@ const init = () => {
 
 // Run initialization
 init();
-
 
 // ------------------------- Show settings content -------------------------------
 // Options buttons
@@ -776,7 +810,6 @@ const closeButton = document.querySelector('#close_configurations');
 closeButton?.addEventListener("click", () => {
   document.querySelector('#content-configurations').style.display = "none";
   document.documentElement.style.overflow = "";
-
 });
 
 //Open settings
