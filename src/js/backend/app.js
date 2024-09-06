@@ -44,9 +44,6 @@ app.use((req, res, next) => {
 server.listen(app.get("port"));
 console.log("Escuchando el puerto " + app.get("port"));
 
-/**
- * ? Endpoints de tipo POST
- */
 app.post('/register/auth', async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty"});
@@ -484,9 +481,6 @@ app.post("/user/checkEmail", async (req, res)  => {
     return res.status(404).send({ status: "Not Found", message: "User does not exist" });
 });
 
-/**
- * ? Endpoints de tipo GET
- */
 
 app.get("/user/data", async (req, res) =>{
     if (!req.body) {
@@ -558,6 +552,7 @@ app.get("/project/collaborators/:project_id", async (req, res) => {
     }
 });
 
+
 //Obtener un solo proyecto por su id
 app.get("/user/project", async (req, res) => {
     if (!req.body) {
@@ -598,7 +593,7 @@ app.get("/template/:id_template", async (req, res) => {
     }
 
     res.status(200).send({ status: "Good Request", message: data[0] })
-});
+})
 
 //search templates
 app.get("/templates/search", async (req, res) => {
@@ -628,10 +623,6 @@ app.get("/preferences/data", async (req, res) => {
 
     res.status(200).send({ status: "Good Request", message: data })
 });
-
-/**
- *  ? Endpoints de tipo DELETE
- */
 
 //delete favorites
 app.delete("/preferences/favorite", async (req, res) => {
@@ -671,10 +662,6 @@ app.delete("/preferences/favorite", async (req, res) => {
         return res.status(404).send({ status: "Not Found", message: "User has no favorites" });
     }
 });
-
-/**
- *  ? Funciones
- */
 
 async function generateIdUser(connection) {
     let user_id;

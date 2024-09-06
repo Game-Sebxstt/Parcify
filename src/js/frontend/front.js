@@ -2,7 +2,6 @@ import * as req from "../backend/requests";
 import * as globals from './utilities/globals'
 import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
-import * as key from "./utilities/keyEvents"
 import * as reusable from './utilities/reusable'
 import Toastify from 'toastify-js'
 
@@ -158,25 +157,12 @@ export const elements = {
   previewTemplate: document.getElementById("previewTemplate"),
   favorite: document.querySelectorAll("#favorite"),
   unfavorite: document.querySelectorAll("#unfavorite"),
-  favoriteTemplate:document.querySelector("#favoriteTemplate"),
-  unfavoriteTemplate:document.querySelectorAll("#unfavoriteTemplate"),
-  showMoreFavorites:document.querySelector("#showMoreFavorites"),
-  moreFavorites:document.querySelector("#moreFavorites"),
   createTemplate: document.querySelector("#createTemplate"),
   analytics: document.querySelector("#analytics"),
 };
 
 // Event Listeners
 const addEventListeners = () => {
-
-  document.addEventListener("keydown", (press)=>{
-    if (press.shiftKey) {
-      key.shiftSelect();
-    }else if(press.ctrlKey || press.metaKey){
-      key.crtlSelect();
-    }
-  });
-
   // Filter dropdown
   document.querySelectorAll("#filter").forEach((element, index) => {
     element?.addEventListener("click", () => {
@@ -613,14 +599,6 @@ const addEventListeners = () => {
       });
   });
 
-  // Redirect to project
-  document.querySelectorAll("#element-project").forEach((item) => {
-    item.addEventListener("dblclick", () => {
-      const projectId = item.getAttribute("data-id");
-      const collaborators = {
-        user_id: globals.getCookie("ID-USER"),
-        last_access: new Date(),
-        
   // Delete project
   document.querySelectorAll("#delete-parcel").forEach((item) => {
     item.addEventListener("click", async () => {
@@ -878,30 +856,6 @@ const addEventListeners = () => {
         return
       }
     })
-  });
-
-  // open more favorites
-  elements.showMoreFavorites?.addEventListener("click", ()=>{
-    window.getComputedStyle(elements.moreFavorites).display == "none" ? elements.moreFavorites.style.display = "flex" : elements.moreFavorites.style.display = "none"
-  });
-
-  // send template to Favorite
-  elements.favoriteTemplate.addEventListener("click", async ()=>{
-    const userId = globals.getCookie("ID-USER")
-    const templateId = elements.previewTemplate.getAttribute("data-id")
-    const template = (await req.getTemplate(templateId)).data.message;
-
-    const data = {
-      id_project:templateId,
-      type:"template",
-    }
-
-    console.log(template.template_id);
-    const petition = await req.favorite(userId, data)
-    if (!petition.state) {
-      utils.handleError(petition);
-      return;
-    }
   });
 };
 
