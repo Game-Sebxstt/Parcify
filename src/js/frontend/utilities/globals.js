@@ -1,5 +1,7 @@
 import * as req from "../../backend/requests";
 
+let templates;
+
 export function formatNumber(num) {
     if (num >= 1e9) {
         return (num / 1e9).toFixed(1) + 'B';
@@ -80,6 +82,21 @@ export function endSession() {
                 window.location.href = "/";
             }
         });
+    });
+}
+
+export function sortByKey(arr, key, order = 'asc') {
+    return arr.sort((a, b) => {
+        const dateA = Date.parse(a[key]);
+        const dateB = Date.parse(b[key]);
+
+        if (order === 'asc') {
+            return dateA - dateB;
+        } else if (order === 'desc') {
+            return dateB - dateA;
+        }
+
+        return 0;
     });
 }
 

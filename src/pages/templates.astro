@@ -1,4 +1,10 @@
 ---
+import Layout from '../layouts/Layout.astro';
+import Slide from '../components/Sections/SlideDesktop.astro';
+import Content from '../components/Sections/Content.astro';
+import Header from '../components/Sections/Header.astro';
+import SlideMobile from '../components/Sections/SlideMobile.astro';
+import FilterTemplates from '../components/Articles/FilterTemplates.astro';
 import Filter from '../components/Articles/Filter.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
 import TemplateView from '../components/Articles/TemplateView.astro';
@@ -72,7 +78,7 @@ try{
 				<div class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-start items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
 					<SearchBar section="templates" article='template' placeholder='Search Projects'></SearchBar>
 					<div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
-						<Filter section='templates' article='template'/>
+						<FilterTemplates section='templates' article='template'/>
 					</div>
 				</div>
 
