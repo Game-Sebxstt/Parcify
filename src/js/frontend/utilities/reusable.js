@@ -64,3 +64,24 @@ export function redirectProject(){
         });
     });
 }
+
+export function showPreviewTemplate(){
+    document.querySelectorAll(".create-template").forEach((item) => {
+        item.addEventListener("click", (e) => {
+        console.log("click")
+          const dataId = item.getAttribute("data-id");
+          const dataName = item.getAttribute("data-name");
+          const dataAuthor = item.getAttribute("data-author");
+          const dataPreview = item.getAttribute("data-preview");
+          const dataDescription = item.getAttribute("data-description");
+    
+          front.utils.showPreviewTemplate({
+            dataId,
+            dataName,
+            dataAuthor,
+            dataPreview,
+            dataDescription
+          })
+        });
+    });
+}

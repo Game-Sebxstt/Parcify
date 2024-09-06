@@ -18,27 +18,20 @@ import { getAllTemplates } from '../js/backend/requests';
 const reqTemplates = await getAllTemplates();
 let templates;
 
+let templateVoid = {
+	name: "Plantilla Vacia",
+	template_id: 0,
+	preview: "../../../public/placeholder/image_preview.svg",
+	description: "Plantilla Vacia.",
+	autor: "Parcify",
+	likes: null
+}
+
 if(!reqTemplates.state){
-    templates = [
-      {
-        name: "Plantilla Vacia",
-        template_id: 0,
-        preview: "../../../public/placeholder/image_preview.svg",
-		description: "Plantilla Vacia.",
-		autor: "Parcify",
-		likes: null
-      }
-    ]
+    templates = [templateVoid]
 }else{
     templates = reqTemplates.data.message;
-	templates.push({
-		name: "Plantilla Vacia",
-		template_id: 0,
-		preview: "../../../public/placeholder/image_preview.svg",
-		description: "Plantilla Vacia.",
-		autor: "Parcify",
-		likes: null
-	})
+	templates = [templateVoid, ...templates];
 }
 
 const logged = Astro.cookies.get("logged")?.value;

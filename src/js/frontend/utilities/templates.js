@@ -94,6 +94,111 @@ export function renderProject(props, parent){
     return divContent;
 }
 
+export function renderTemplate(props, parent){
+    let {
+        template_id,
+        name,
+        author,
+        preview,
+        description,
+        likes,
+    } = props;
+
+    console.log(props)
+
+    if(!preview){
+        preview = "../../../public/placeholder/image_preview.svg";
+    }
+
+    const divContent = document.createElement("div");
+    divContent.className = "create-template template w-full h-fit cursor-pointer"
+    divContent.setAttribute("data-id", Number(template_id));
+    divContent.setAttribute("data-name", name);
+    divContent.setAttribute("data-author", author);
+    divContent.setAttribute("data-preview", preview);
+    divContent.setAttribute("data-likes", likes);
+    divContent.setAttribute("data-description", description);
+
+    const divTemplate = document.createElement("div");
+    divTemplate.className = "w-full h-72 relative mb-2"
+
+    const divImage = document.createElement("div");
+    divImage.className = "w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0"
+
+    if(preview === "../../../public/placeholder/image_preview.svg"){
+        divImage.className = "bg-[#E6E6E6] w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0"
+    }
+
+    const imgPreview = document.createElement("img");
+    imgPreview.className = "w-full h-full rounded-md"
+    imgPreview.src = preview;
+
+    const divSVG = document.createElement("div");
+    divSVG.className = "w-full h-full flex justify-center items-center rounded-md shadow-md shadow-black mb-2 border-2 border-transparent cursor-pointer transition-all duration-[500] ease-in hover:border-[#1E90FF] hover:bg-[#1E90FF]/70 [&>svg]:hover:opacity-100 absolute top-0 left-0"
+
+    divSVG.innerHTML = `
+        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-plus w-12 opacity-0 transition-all duration-[500] ease-in" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M12 5l0 14" />
+          <path d="M5 12l14 0" />
+        </svg>
+    `
+
+    const divInfo = document.createElement("div");
+    divInfo.className = "flex justify-start gap-5 items-center relative"
+
+    const divLog = document.createElement("div");
+
+    const imgLog = document.createElement("img");
+    imgLog.className = "h-12 max-xl:h-10"
+    imgLog.src = "../../../Logo-no-background-no-text.png";
+
+    const divInfoInter = document.createElement("div");
+    divInfoInter.className = "w-full h-full flex justify-between pr-2"
+
+    const divInfoTemplate = document.createElement("div");
+    divInfoTemplate.className = "flex flex-col";
+
+    divInfoTemplate.innerHTML = `
+        <h3 class="text-white text-xl font-bold max-xl:text-lg">${name}</h3>
+        <h4 class="text-gray-300 text-lg max-xl:text-base">${author}</h4>
+    `
+
+    let contentLikes = document.createElement("span");
+
+    if(likes !== null){
+        contentLikes = document.createElement("div");
+        contentLikes.className = "flex items-center gap-1 justify-between";
+
+        contentLikes.innerHTML = `
+            <h3 class="text-white text-sm font-bold max-xl:text-sm">${globals.formatNumber(likes)}</h3>
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="#ffffff" ><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6.979 3.074a6 6 0 0 1 4.988 1.425l.037 .033l.034 -.03a6 6 0 0 1 4.733 -1.44l.246 .036a6 6 0 0 1 3.364 10.008l-.18 .185l-.048 .041l-7.45 7.379a1 1 0 0 1 -1.313 .082l-.094 -.082l-7.493 -7.422a6 6 0 0 1 3.176 -10.215z" /></svg>
+        `
+    }
+
+    divContent.appendChild(divTemplate);
+    divContent.appendChild(divInfo);
+
+    divTemplate.appendChild(divImage);
+    divTemplate.appendChild(divSVG);
+
+    divImage.appendChild(imgPreview);
+
+    divInfo.appendChild(divLog);
+    divInfo.appendChild(divInfoInter);
+
+    divLog.appendChild(imgLog);
+    divInfoInter.appendChild(divInfoTemplate);
+    divInfoInter.appendChild(contentLikes);
+    
+    parent.appendChild(divContent);
+
+    reusable.showPreviewTemplate();
+    front.utils.handleError("Project rendered successfully");
+
+    return divContent;
+}
+
 export async function renderFavorites() {
     try {
         let favorites = await req.getFavorites(globals.getCookie("ID-USER"))

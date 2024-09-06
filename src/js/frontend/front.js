@@ -118,6 +118,7 @@ export const utils = {
     return input;
   },
   showPreviewTemplate: (props) => {
+    console.log(props)
     let tittlePrew  = document.querySelector("#tittlePreview")
     let authorPrew  = document.querySelector("#authorPreview")
     let infoPrew = document.getElementById("infoPreview")
@@ -135,7 +136,7 @@ export const utils = {
 };
 
 // DOM Elements
-const elements = {
+export const elements = {
   projectBox: document.querySelectorAll("#parceler-box"),
   projectSelected: document.querySelectorAll(".projectSelected"),
   copyLink: document.getElementById("continue"),
@@ -473,16 +474,27 @@ const addEventListeners = () => {
 
                 contentGrid.innerHTML = ""
 
+                const templateVoid = {
+                  template_id: 0,
+                  name: "Plantilla vacia",
+                  autor: "Parcify",
+                  description: "Plantilla vacia",
+                  likes: null,
+                }
+
+                templates_data = [templateVoid, ...templates_data];
+
                 templates_data.forEach( async (template) => {
-                  console.log(template)
                   const props = {
+                    template_id: template.template_id,
                     name: template.name,
-                    last_modified: template.date_create,
-                    project_id: template.template_id,
+                    author: template.autor,
                     preview: template.preview,
+                    description: template.description,
+                    likes: template.likes,
                   }
 
-                  templates.renderProject(props, contentGrid);
+                  templates.renderTemplate(props, contentGrid);
                 });
                 break;
 
@@ -787,23 +799,7 @@ const addEventListeners = () => {
   });
 
   //previewParceller
-  elements.template.forEach((item) => {
-    item.addEventListener("click", (e) => {
-      const dataId = item.getAttribute("data-id");
-      const dataName = item.getAttribute("data-name");
-      const dataAuthor = item.getAttribute("data-author");
-      const dataPreview = item.getAttribute("data-preview");
-      const dataDescription = item.getAttribute("data-description");
-
-      utils.showPreviewTemplate({
-        dataId,
-        dataName,
-        dataAuthor,
-        dataPreview,
-        dataDescription
-      })
-    });
-  });
+  reusable.showPreviewTemplate();
 
   elements.previewTemplate.querySelector("#share").addEventListener("click", () => {
     const dataId = elements.previewTemplate.getAttribute("data-id");
