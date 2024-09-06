@@ -116,7 +116,7 @@ const elements = {
   changeUserPhoto: document.querySelector("#inputfile"),
   moreOptionIcons: document.querySelectorAll('#more-options-icon'),
   moreOptionDivs: document.querySelectorAll('#more-options-parceller'),
-  template: document.querySelectorAll("#create-template"),
+  template: document.querySelectorAll(".create-template"),
   previewTemplate: document.getElementById("previewTemplate"),
   favorite: document.querySelectorAll("#favorite"),
   unfavorite: document.querySelectorAll("#unfavorite"),
@@ -358,13 +358,26 @@ const addEventListeners = () => {
 
       switch (index) {
         case 0: // Sort by Name
-          const namesAndElements = elements.map(el => ({
-            name: el.getAttribute("data-name"),
-            element: el
-          }));
-          const arrow = document.querySelector("#orden").firstChild.id;
-          utils.sortElements(namesAndElements, 'name', arrow === 'arrowUp');
-          break;
+        const namesAndElements = elements.map(el => ({
+          name: el.getAttribute("data-name").toLowerCase(),  // Use lowercase for consistent comparison
+          element: el
+        }));
+        
+
+        const arrow = document.querySelector("#orden").firstChild.id;
+        
+        // Sort elements by name
+        namesAndElements.sort((a, b) => {
+          if (a.name < b.name) return arrow === 'arrowUp' ? -1 : 1;
+          if (a.name > b.name) return arrow === 'arrowUp' ? 1 : -1;
+          return 0;
+        });
+
+        // Append sorted elements back to the DOM
+        namesAndElements.forEach(item => {
+          item.element.parentElement.appendChild(item.element);
+        });
+        break;
 
         case 1: // Sort by Date
           const datesAndElements = elements.map(el => ({
@@ -388,6 +401,76 @@ const addEventListeners = () => {
           break;
 
         default:
+          console.error("Error al filtrar");
+      }
+    });
+  });
+
+  // filter template
+  document.querySelectorAll("#filtroTemplate").forEach((item, index) => {
+    item.addEventListener("click", async () => {
+        const mainBox = item.parentElement.getAttribute("data-article");
+        const elements = Array.from(document.querySelectorAll(`#${mainBox}`));
+        
+        switch (index) {
+            case 0: // Sort by Name
+                const namesAndElements = elements.map(el => ({
+                    name: el.getAttribute("data-name").toLowerCase(),  // Use lowercase for consistent comparison
+                    element: el
+                }));
+                
+                const arrow = document.querySelector("#orden").firstChild.id;
+
+                // Sort elements by name
+                namesAndElements.sort((a, b) => {
+                    if (a.name < b.name) return arrow === 'arrowUp' ? -1 : 1;
+                    if (a.name > b.name) return arrow === 'arrowUp' ? 1 : -1;
+                    return 0;
+                });
+
+                // Append sorted elements back to the DOM
+                namesAndElements.forEach(item => {
+                    item.element.parentElement.appendChild(item.element);
+                });
+                break;
+
+            case 1: // Sort by Date
+                // Fetch the templates data if it's not already fetched
+                const templates = await req.getAllTemplates();
+                let templates_data = templates.data.message;
+
+                const arrowDate = item.children[1].firstChild.id;
+
+                // Sort templates based on date and arrow direction
+                templates_data = globals.sortByKey(templates_data, "date_create", arrowDate === 'arrowUp' ? 'asc' : 'desc');
+                console.log(templates_data);
+                
+                // Clear the container and repopulate sorted templates
+                const contentGrid = document.querySelector("#content-grid");
+                contentGrid.innerHTML = "";  // Clear previous elements
+
+                templates_data.forEach(template => {
+                    const projectDiv = document.createElement("div");
+                    projectDiv.innerHTML = `
+                        <Article id="project" name="${template.name}" project_id="${template.project_id}" preview="${template.preview}" stage="${template.stage}" collaborators="${template.collaborators}" last_modified="${template.date_create}" />
+                    `;
+                    contentGrid.appendChild(projectDiv);
+                });
+                break;
+
+          case 2: // Show Shared Projects
+            const sharedProjects = document.querySelectorAll("#projectShared");
+            elements.forEach(project => {
+                const isShared = Array.from(sharedProjects).includes(project);
+                utils.toggleHidden(project, !isShared);
+            });
+          break;
+
+          case 3: // Show All Projects
+            elements.forEach(item => utils.toggleHidden(item, false));
+          break;
+
+          default:
           console.error("Error al filtrar");
       }
     });
@@ -729,3 +812,28 @@ openButton?.addEventListener("click", () => {
   document.querySelector('#content-configurations').style.display = "flex";
   document.documentElement.style.overflow = "hidden";
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   

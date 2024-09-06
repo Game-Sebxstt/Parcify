@@ -1,5 +1,7 @@
 import * as req from "../../backend/requests";
 
+let templates;
+
 export function formatNumber(num) {
     if (num >= 1e9) {
         return (num / 1e9).toFixed(1) + 'B';
@@ -56,7 +58,7 @@ export function endSession() {
         const existingCollaborator = data.collaborators.find(c => c.user_id === Number(user_id));
         const currentDate = new Date();
         const timeWorkedPerDay = existingCollaborator ? existingCollaborator.time_worked || [] : [];
-        const existingEntry = timeWorkedPerDay.find(entry => entry.date === currentDate);
+        const existingEntry = timeWorkedPerDay.find(entry => entry.date.split("T")[0] === currentDate.toISOString().split("T")[0]);
 
         if (existingEntry) {
             existingEntry.time += sessionTimeWorked;
@@ -80,5 +82,20 @@ export function endSession() {
                 window.location.href = "/";
             }
         });
+    });
+}
+
+export function sortByKey(arr, key, order = 'asc') {
+    return arr.sort((a, b) => {
+        const dateA = Date.parse(a[key]);
+        const dateB = Date.parse(b[key]);
+
+        if (order === 'asc') {
+            return dateA - dateB;
+        } else if (order === 'desc') {
+            return dateB - dateA;
+        }
+
+        return 0;
     });
 }
