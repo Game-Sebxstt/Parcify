@@ -1,6 +1,66 @@
 ---
-import Template from "../Articles/Template.astro"
+import Template from "../Articles/Template.astro";
+import TemplateView from "../Articles/TemplateView.astro";
+import Article from "../Articles/Article.astro";
+import { getAllTemplates, getFavorites } from "../../js/backend/requests";
+
+// Obtener el ID del usuario
+const id = Astro.cookies.get("ID-USER")?.value;
+let getDataUser:any = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
+let dataUser = await getDataUser.json();
+
+let getTemplates:any = await getAllTemplates();
+let getFavorite:any = await getFavorites(id)
+
+let isDataFavorite = getFavorite.state ? true : false;
+
+let arrayFavorites:any;
+let arrayProjects:any = [];
+let arrayTemplates:any = [];
+
+let filteredProjects;
+let filteredTemplates;
+
+if (isDataFavorite) {
+    // Cargar proyectos y plantillas en arrays
+    dataUser.message.projects.forEach((element:any) => {
+        arrayProjects.push({
+            id:element.project_id,
+            name:element.name,
+            edited:element.last_modified,
+            preview:element.preview,
+            collaborators:element.collaborators,
+            stage:element.stage,
+        });
+    });
+
+    getTemplates.data.message.forEach((element:any) => {
+        arrayTemplates.push({
+            id:element.template_id,
+            name:element.name,
+            author:element.autor,
+            likes:element.likes,
+            url_image:element.preview,
+            description:element.description,
+        });
+    });
+
+    getFavorite.data.message.forEach((element:any) => {
+        arrayFavorites = JSON.parse(element.favorites)
+    });
+
+    // Filtrar proyectos y plantillas según los favoritos
+    filteredProjects = arrayProjects.filter((project:any) => 
+        arrayFavorites.some((fav:any) => fav.id === project.id && fav.type === "project")
+    );
+
+    filteredTemplates = arrayTemplates.filter((template:any) => 
+        arrayFavorites.some((fav:any) => fav.id === template.id && fav.type === "template")
+    );
+}
+
 ---
+
 <section id="moreFavorites" class="fixed w-full h-full z-50 hidden justify-center items-center bg-black/80">
     <!-- caja principal -->
     <section class="max-w-[72rem] h-[40rem] max-h-[60rem] bg-[#1E1E1E] rounded-md p-3 flex flex-col gap-2 animate-deployment">
@@ -19,11 +79,44 @@ import Template from "../Articles/Template.astro"
         <hr class="border-blue-500">
 
         <!-- contenido -->
-        <main class="h-full p-2 grid grid-cols-3 gap-5 overflow-auto">
-            <div class="relative h-[15rem] w-[20rem] flex flex-col items-center gap-2 p-2 cursor-pointer">
-                <Template clase="h-[13rem] w-full" name="Untitled" description="jausjaus" likes="12K" typeElement=""></Template>
-                <svg class="absolute -top-[1%] left-[94%]"  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="#fbff00"  ><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z" /></svg>
-            </div>
+        <main class="h-full p-2 grid grid-cols-2 gap-5 overflow-auto">
+            <!-- Renderizar Proyectos Favoritos -->
+            {
+                filteredProjects && filteredProjects.length > 0 ? (
+                    filteredProjects.map((project:any) => (
+                        <Article
+                        id="projectFavorite"
+                        last_modified={project.edited}
+                        name={project.name}
+                        preview={project.preview}
+                        project_id={project.id}
+                        collaborators={project.collaborators}
+                        stage={project.stage}
+                        ></Article>
+                    ))
+                ):(
+                    <span></span>
+                )
+            } 
+
+            <!-- Renderizar Plantillas Favoritas -->
+            {
+                filteredTemplates && filteredTemplates.length > 0 ? (
+                    filteredTemplates.map((template:any) => (
+                        <TemplateView
+                            id=""
+                            first_text={template.name}
+                            second_text={template.author}
+                            url_image={template.url_image}
+                            template_id={template.id}
+                            description={template.description}
+                            likes={template.likes}
+                        ></TemplateView>
+                    ))
+                ) : (
+                    <span></span>
+                )
+            }
         </main>
     </section>
 </section>

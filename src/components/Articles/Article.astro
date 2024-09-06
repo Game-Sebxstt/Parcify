@@ -76,6 +76,7 @@ const {id, name, last_modified, project_id, preview, stage, collaborators} = Ast
 ---
 
 <div id={id} class="w-full h-fit relative" data-name={name} data-modified={last_modified}>
+
   <div id="options-parcel" class="w-fit h-fit hidden fixed z-50">
     <ul id="more-options-filter" class="bg-[#2b2929] rounded-md shadow-lg shadow-[#181818] w-fit flex flex-col justify-center item-start text-white animate-deployment">
       <li id="duplicate-parcel" data-id={project_id} class="hover:bg-[#1E90FF] transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-t-md flex gap-2" data-filter="test">
@@ -158,4 +159,6 @@ const {id, name, last_modified, project_id, preview, stage, collaborators} = Ast
       <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {lastModified([last_modified])}</h4>
     </div>
   </div>
+
+  <div id="selectionIdentifier" class=" hidden absolute top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] h-full w-full z-[10] cursor-pointer p-1 border-2 border-[#1E90FF]/70 bg-[#1E90FF]/30 rounded"></div>
 </div>

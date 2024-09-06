@@ -151,6 +151,23 @@ export async function getAllTemplates(){
     return {state: true, data: responseData};
 }
 
+export async function getTemplate(id_template){
+    const response = await fetch(`http://localhost:4000/user/template?id_template=${id_template}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
 //Funcion para obtener todos los proyectos de un usuario
 export async function getAllProjects(user_id) {
     const response = await fetch(`http://localhost:4000/user/projects?id_user=${user_id}`, {
