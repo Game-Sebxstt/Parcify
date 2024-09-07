@@ -39,12 +39,18 @@
                         class="w-[50%] bg-[#1E1E1E] opacity-70 text-gray-200 rounded-md px-4 py-2 outline-none mt-1 max-sm:w-[100%] max-sm:text-[8.7px] max-sm:mt-2 max-md:w-[70%] md:text-[12.9px] max-md:text-[12.9px]"
                         placeholder="Enter your password"
                     />
-                    <svg id="edit-icon-password"  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
-                    stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
-                        <path d="M13.5 6.5l4 4" />
-                    </svg>
+                   <div class="flex items-center">
+                <div class="relative group flex items-center">
+                  <svg id="edit-icon-password" class="cursor-pointer icon icon-tabler icon-tabler-pencil" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+                    <path d="M13.5 6.5l4 4" />
+                  </svg>
+                  <span class="ml-2 opacity-0 group-hover:opacity-100 group-hover:ml-2 duration-300 text-white text-sm">
+                    Editar
+                  </span>
+                </div>
+            </div>
                 </div>
             </div>
             <div id="edit-password" class="mt-4 flex-col hidden">
@@ -91,11 +97,11 @@
 
     <!-- Buttons to save changes or cancel -->
     <div id="options-buttons-password" class="flex gap-4 justify-end" style="display: none;">
-        <button id="button-cancel-changes" type="button" class="bg-[#1E1E1E] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
+        <button id="button-cancel-security" type="button" class="bg-[#1E1E1E] text-white text-sm font-base px-4 py-2 rounded-sm mt-4 transition-colors duration-400 border border-[#FF0000] hover:bg-transparent hover:text-[#FF0000]">
             Cancel
         </button>
-        <button id="button-save-security" type="button" class="bg-[#FF7300] text-white text-sm font-base px-4 py-2 rounded-sm mt-4">
-          Save Changes
+        <button id="button-save-security" type="button" class="bg-[#FF7300] text-white text-sm font-base px-4 py-2 rounded-sm mt-4 transition-colors duration-400 border border-[#FF7300] hover:bg-transparent hover:text-[#FF7300]">
+            Save Changes
         </button>
-      </div>      
+    </div>      
 </div>

@@ -159,6 +159,16 @@ export const elements = {
   unfavorite: document.querySelectorAll("#unfavorite"),
   createTemplate: document.querySelector("#createTemplate"),
   analytics: document.querySelector("#analytics"),
+  imageContainer: document.querySelectorAll('#image-container'),
+  imageUpload: document.getElementById('image-upload'),
+  themeOptions: document.querySelectorAll(".theme-option"),
+  fontSelect: document.querySelector('select[name="Font theme"]')
+};
+
+//Seleccionar theme (diseño)
+const configs = {
+  theme: localStorage.getItem('selectedTheme') || "",
+  font: localStorage.getItem('selectedFont') || "",
 };
 
 // Event Listeners
@@ -177,7 +187,7 @@ const addEventListeners = () => {
   });
 
   // Profile options
-  document.querySelector("#profile")?.addEventListener("click", () => {
+  document.querySelector(".profile")?.addEventListener("click", () => {
     utils.toggleDisplay(document.querySelector("#more-options-profile"), "flex");
   });
 
@@ -857,7 +867,74 @@ const addEventListeners = () => {
       }
     })
   });
+
+  // Apply profile picture and store it in localstorage
+  if (localStorage.getItem("imgProfile") != null) {
+    elements.imageContainer.forEach(item =>{
+      item.style.backgroundImage = `url(${localStorage.getItem("imgProfile")})`;
+      item.style.backgroundSize = 'cover';
+      item.style.backgroundPosition = 'center';
+      item.style.opacity = '0.7';
+    })
+  }
+
+  elements.imageUpload?.addEventListener('change', (event) => {
+    const target = event.target;
+    const file = target.files?.[0];
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target && e.target.result) {
+          localStorage.setItem("imgProfile", `${e.target.result}`);
+          elements.imageContainer.forEach(item =>{
+            item.style.backgroundImage = `url(${e.target.result})`;
+            item.style.backgroundSize = 'cover'; // Ajusta la imagen al tamaño del div
+            item.style.backgroundPosition = 'center'; // Centra la imagen
+            item.style.opacity = '0.7';
+            });
+          }
+        };
+      reader.readAsDataURL(file); // Convierte la imagen a una URL que se puede usar como fondo
+    }
+  });
 };
+
+document?.addEventListener('DOMContentLoaded', () => {
+
+  if (configs.theme) {
+    applyTheme(configs.theme);
+  }
+
+  elements.themeOptions.forEach(option => {
+    option?.addEventListener('click', () => {
+      elements.themeOptions.forEach(item => item.classList.remove('border-4', 'border-blue-500', 'shadow-lg'));
+      configs.theme = option.getAttribute("data-theme");
+      localStorage.setItem('selectedTheme', configs.theme);
+      option.classList.add('border-4', 'border-blue-500', 'shadow-lg');
+    });
+  });
+
+// Función para aplicar el tema almacenado
+  function applyTheme(theme) {
+    const selectedOption = document.querySelector(`[data-theme="${theme}"]`);
+    if (selectedOption) {
+      selectedOption.classList.add('border-4', 'border-blue-500', 'shadow-lg');
+    }
+  }
+});
+
+//Apply stored font
+document?.addEventListener('DOMContentLoaded', () => {
+  const savedFont = configs.font;
+  if (savedFont) {
+    elements.fontSelect.value = savedFont;
+  } 
+});
+elements.fontSelect?.addEventListener('change', (event) => {
+  const selectedFont = event.target.value;
+  localStorage.setItem('selectedFont', selectedFont); 
+});
 
 // Initialize
 const init = () => {
@@ -957,24 +1034,10 @@ document.querySelector('#edit-icon-username')?.addEventListener("click", async (
   })
 });
 
-//Seleccionar theme (diseño)
-document?.addEventListener('DOMContentLoaded', () => {
-  const themeOptions = document.querySelectorAll('.theme-option');
-
-  themeOptions.forEach(option => {
-      option?.addEventListener('click', () => {
-          themeOptions.forEach(item => item.classList.remove('border-4', 'border-blue-500', 'shadow-lg'));
-
-          option.classList.add('border-4', 'border-blue-500', 'shadow-lg');
-      });
-  });
-});
-
 //Chequear el email
 document.querySelector('#edit-icon-email')?.addEventListener("click", async () => {
   const emailInput = document.querySelector('#profile-email');
   const editIcon = document.querySelector('#edit-icon-email');
-  // const confirmationDiv = document.createElement("div")
 
   const contentEditEmail = document.querySelector('#div-edit-email');
   const optionsButtons = document.querySelector('#options-buttons-profile');
@@ -999,25 +1062,63 @@ document.querySelector('#edit-icon-email')?.addEventListener("click", async () =
   saveChanges.addEventListener("click", async () => {
     const userId = globals.getCookie("ID-USER");
     const currentEmails = document.querySelectorAll(".containerEditEmail");
+    const email1 = currentEmails[0].querySelector("input").value;
+    const email2 = currentEmails[1].querySelector("input").value;
 
-    if(currentEmails[0].querySelector("input").value != currentEmails[1].querySelector("input").value){
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    currentEmails.forEach(container => {
+      const input = container.querySelector("input");
+      input.classList.remove("border-red-500");
+      input.style.borderColor = "";
+    });
+
+    if(email1 !== email2){
       console.log("Los correos no son iguales");
+
+      currentEmails.forEach(container => {
+        const input = container.querySelector("input");
+        input.classList.add("border-red-500"); 
+        input.classList.add("border");
+      });
+
+      const errorMessage = document.createElement("p");
+      errorMessage.className = "error-message  w-full text-red-500 text-sm mt-2";
+      errorMessage.textContent = "The emails are not the same";
+      contentEditEmail.insertBefore(errorMessage, currentEmails[0]);
+
       utils.handleError("The emails are not the same");
       return;
     }
 
     const validationEmail = await req.updateProfile({
       id: userId,
-      email: currentEmails[0].querySelector("input").value
+      email: email1
     });
 
     if(!validationEmail.state){
       utils.handleError(validationEmail);
       return;
     }
-
     window.location.reload();
-  })
+  });
+
+  // Manejar cancelación de cambios
+  const cancelButton = document.querySelector("#button-cancel-changes");
+  cancelButton?.addEventListener("click", () => {
+    console.log("Cancelar cambios en el email");
+
+    const currentEmails = document.querySelectorAll(".containerEditEmail");
+    
+    currentEmails.forEach(container => container.remove());
+
+    optionsButtons.style.display = "none";
+    emailInput.removeAttribute("readonly");
+    emailInput.style.opacity = 0.5;
+
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    editIcon.style.pointerEvents = "auto";
+    editIcon.style.opacity = 1;
+  });
 });
 
 //iniciar el modo de edición de contraseña
@@ -1025,6 +1126,7 @@ document.querySelector('#edit-icon-password')?.addEventListener('click', async (
   const editIcon = document.querySelector('#edit-icon-password');
   const passwordInput = document.querySelector('#password');
 
+  // Preparar el campo de contraseña para edición
   passwordInput.removeAttribute("readonly");
   passwordInput.style.opacity = 1;
   passwordInput.value = "";
@@ -1033,6 +1135,7 @@ document.querySelector('#edit-icon-password')?.addEventListener('click', async (
   editIcon.style.pointerEvents = 'none';
   editIcon.style.opacity = '0.5';
 
+  // Función para comparar la contraseña actual
   const comparePassword = async () => {
     const optionsButtons = document.querySelector('#options-buttons-password');
     const inputsEdits = document.querySelector('#edit-password');
@@ -1043,23 +1146,41 @@ document.querySelector('#edit-icon-password')?.addEventListener('click', async (
     
     const validation = await req.checkPassword(userId, currentPassword);
 
+    // Limpiar mensajes de error previos
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    passwordInput.classList.remove("border-red-500");
+
     if (validation.state) {
       inputsEdits.style.display = "flex";
       passwordInput.setAttribute("readonly", true);
       optionsButtons.style.display = "flex";
       inputNewPassword.focus();
     } else {
-      utils.handleError(validation);
+      passwordInput.classList.add("border-red-500");
+      passwordInput.classList.add("border");
+
+      const errorMessage = document.createElement("p");
+      errorMessage.className = "error-message w-fit text-red-500 text-sm mt-2";
+      errorMessage.textContent = "The password is incorrect.";
+      passwordInput.parentNode.insertBefore(errorMessage, passwordInput.nextSibling);
+
+      utils.handleError(validation);    
     }
   };
 
+  // Manejo del botón de guardar cambios
   const saveChangesButton = document.querySelector("#button-save-security");
   saveChangesButton?.addEventListener('click', async () => {
-  const newPassword = document.querySelector('#newPassword').value;
-  const confirmNewPassword = document.querySelector('#confirmNewPassword').value;
-  const userId = globals.getCookie('ID-USER');
+    const newPassword = document.querySelector('#newPassword').value;
+    const confirmNewPassword = document.querySelector('#confirmNewPassword').value;
+    const userId = globals.getCookie('ID-USER');
 
-    if (newPassword === confirmNewPassword){
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    document.querySelectorAll("#newPassword, #confirmNewPassword").forEach(input => {
+      input.classList.remove("border-red-500");
+    });
+
+    if (newPassword === confirmNewPassword) {
       const updatePassword = await req.updatePassword(userId, newPassword);
       
       if (updatePassword.state) {
@@ -1068,16 +1189,59 @@ document.querySelector('#edit-icon-password')?.addEventListener('click', async (
         utils.handleError("Error al actualizar la contraseña.");
       }
     } else {
-      console.log("No son iguales :(");
+      document.querySelectorAll("#newPassword, #confirmNewPassword").forEach(input => {
+        input.classList.add("border-red-500");
+        input.classList.add("border");
+      });
+
+      const errorMessage = document.createElement("p");
+      errorMessage.className = "error-message w-full text-red-500 text-sm mt-2";
+      errorMessage.textContent = "Passwords do not match";
+      document.querySelector('#confirmNewPassword').parentNode.insertBefore(errorMessage, document.querySelector('#confirmNewPassword').nextSibling);
+
       utils.handleError("Las contraseñas no coinciden.");
     }
   });
 
+  // Permitir enviar al presionar Enter
   passwordInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
-      console.log("Se presionó Enter");
       comparePassword();
     }
+  });
+
+  // Cancel changes
+  const cancelButton = document.querySelector("#button-cancel-security");
+    
+  cancelButton?.addEventListener("click", () => {
+    console.log("le di click");
+      
+    const editIcon = document.querySelector("#edit-icon-password");
+    const passwordInput = document.querySelector("#password");
+    const inputsEdits = document.querySelector('#edit-password');
+    const optionsButtons = document.querySelector('#options-buttons-password');
+    const newPasswordInput = document.querySelector('#newPassword');
+    const confirmNewPasswordInput = document.querySelector('#confirmNewPassword');
+
+    passwordInput.setAttribute("readonly", true);
+    passwordInput.style.opacity = 0.5;
+    passwordInput.value = "";
+
+    inputsEdits.style.display = "none";
+
+    optionsButtons.style.display = "none";
+
+    editIcon.style.pointerEvents = "auto";
+    editIcon.style.opacity = 1;
+
+    newPasswordInput.value = "";
+    confirmNewPasswordInput.value = "";
+
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    document.querySelectorAll("#newPassword, #confirmNewPassword, #password").forEach(input => {
+      input.classList.remove("border-red-500");
+      input.classList.remove("border");
+    });
   });
 });
 
