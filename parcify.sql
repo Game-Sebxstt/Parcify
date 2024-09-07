@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 30-08-2024 a las 16:27:28
+-- Tiempo de generación: 07-09-2024 a las 06:00:56
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -111,15 +111,17 @@ CREATE TABLE `users` (
   `user_id` int(11) NOT NULL,
   `username` text NOT NULL,
   `email` text NOT NULL,
-  `password` text NOT NULL
+  `password` text NOT NULL,
+  `biography` text NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `users`
 --
 
-INSERT INTO `users` (`user_id`, `username`, `email`, `password`) VALUES
-(319711, 'Sebxstt', 'sebastiangarces152@gmail.com', '1add0d82e20fabda9f37c3f2a13dd1b8cf920dd5d8eb6b4dfdc2a9d550f77023');
+INSERT INTO `users` (`user_id`, `username`, `email`, `password`, `biography`) VALUES
+(319711, 'Sebxstt', 'sebastiangarces152@gmail.com', '1add0d82e20fabda9f37c3f2a13dd1b8cf920dd5d8eb6b4dfdc2a9d550f77023', ''),
+(379061, 'Isail', 'isail.stivenflorez@gmail.com', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'Holaa');
 
 --
 -- Índices para tablas volcadas
