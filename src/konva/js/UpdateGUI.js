@@ -283,7 +283,7 @@ function toggleEditPanel(isVisible) {
     }
 }
 
-domElements.exportCanvas.addEventListener("click", () => {
+domElements.exportCanvas?.addEventListener("click", () => {
     if(konva.tr.nodes().length > 0 && konva.tr.nodes()[0] instanceof Konva.Group){
         var dataURL = konva.tr.nodes()[0].toDataURL({ pixelRatio: 3})
         GlobalFunctions.downloadURI(dataURL, 'stage.png');
@@ -351,12 +351,12 @@ function saveFile(e){
 }
 
 let undoButton = document.querySelector('#undo');
-undoButton.addEventListener('click', () => {
+undoButton?.addEventListener('click', () => {
     konva.undo();
 });
 
 let redoButton = document.querySelector('#redo');
-redoButton.addEventListener('click', () => {
+redoButton?.addEventListener('click', () => {
     konva.redo();
 });
 

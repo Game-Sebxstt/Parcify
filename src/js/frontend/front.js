@@ -168,7 +168,8 @@ export const elements = {
   imageContainer: document.querySelectorAll('#image-container'),
   imageUpload: document.getElementById('image-upload'),
   themeOptions: document.querySelectorAll(".theme-option"),
-  fontSelect: document.querySelector('select[name="Font theme"]')
+  fontSelect: document.querySelector('select[name="Font theme"]'),
+  shareKonva: document.querySelector("#share"),
 };
 
 //Seleccionar theme (diseño)
@@ -190,6 +191,11 @@ const addEventListeners = () => {
       key.crtlSelect();
     }
   });
+
+  elements.shareKonva?.addEventListener("click", async () => {
+    //Full screen view
+    document.fullscreenElement ? document.exitFullscreen() : document.querySelector("#konva").requestFullscreen();
+  })
 
   document.addEventListener("keyup", (press) => {
     if (!press.shiftKey) {
@@ -843,7 +849,7 @@ const addEventListeners = () => {
   //previewParceller
   reusable.showPreviewTemplate();
 
-  elements.previewTemplate.querySelector("#share").addEventListener("click", () => {
+  elements.previewTemplate?.querySelector("#share")?.addEventListener("click", () => {
     const dataId = elements.previewTemplate.getAttribute("data-id");
     const urlCopy = `${window.location.origin}/?template_id=${dataId}`;
     navigator.clipboard.writeText(urlCopy);

@@ -63,7 +63,6 @@ const {section, article } = Astro.props;
     const templates_data = templates.data.message
 
     let templates_sort = globals.sortByKey(templates_data, "date_create", 'desc')
-    console.log(templates_sort)
 
     //texto a cambiar
     let typeFilter = document.querySelector('#typeFilter') as HTMLSpanElement;

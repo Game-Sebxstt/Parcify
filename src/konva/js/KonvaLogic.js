@@ -33,40 +33,44 @@ var indexHistory = 0;
 
 // BarTool Variables
 var BarTool = document.querySelector('#BarTool');
-BarTool.style.display = "flex";
-var widthBarTool = BarTool.offsetWidth;
-var heightBarTool = BarTool.offsetHeight;
-BarTool.style.display = "none"
-
 var BarToolExtra = document.querySelector('#BarToolExtra'); 
-var dimensionBarToolExtra = {
-    color: {
-        x: 0,
-        y: 0,
-        width: BarToolExtra.offsetWidth,
-        height: BarToolExtra.offsetHeight,
-    },
-    align: {
-        x: 0,
-        y: 0,
-        width: BarToolExtra.offsetWidth,
-        height: BarToolExtra.offsetHeight,
-    },
-    colorText: {
-        x: 0,
-        y: 0,
-        width: BarToolExtra.offsetWidth,
-        height: BarToolExtra.offsetHeight,
-    },
-    border: {
-        x: 0,
-        y: 0,
-        width: BarToolExtra.offsetWidth,
-        height: BarToolExtra.offsetHeight,
-    }
-};
+var widthBarTool;
+var heightBarTool;
+var dimensionBarToolExtra;
 
-console.log(dimensionBarToolExtra)
+if(BarTool && BarToolExtra){
+    BarTool.style.display = "flex";
+    widthBarTool = BarTool.offsetWidth;
+    heightBarTool = BarTool.offsetHeight;
+    BarTool.style.display = "none"
+    
+    dimensionBarToolExtra = {
+        color: {
+            x: 0,
+            y: 0,
+            width: BarToolExtra.offsetWidth,
+            height: BarToolExtra.offsetHeight,
+        },
+        align: {
+            x: 0,
+            y: 0,
+            width: BarToolExtra.offsetWidth,
+            height: BarToolExtra.offsetHeight,
+        },
+        colorText: {
+            x: 0,
+            y: 0,
+            width: BarToolExtra.offsetWidth,
+            height: BarToolExtra.offsetHeight,
+        },
+        border: {
+            x: 0,
+            y: 0,
+            width: BarToolExtra.offsetWidth,
+            height: BarToolExtra.offsetHeight,
+        }
+    };
+}
 
 let konva = document.querySelector("#konva");
 let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
@@ -338,9 +342,6 @@ async function getStage(id_stage) {
     const validation = await req.getProject(id_stage);
 
     if(!validation.state || !validation){
-        let errorMensaje = document.getElementById('danger');
-        errorMensaje.style.display = "flex"
-        errorMensaje.querySelector("#txt").textContent = data_register.data;
         return null;
     }
 
