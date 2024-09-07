@@ -2,7 +2,9 @@ import * as req from "../backend/requests";
 import * as globals from './utilities/globals'
 import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
+import * as key from "./utilities/keyEvents"
 import * as reusable from './utilities/reusable'
+import * as enviroments from '../../enviroments.ts'
 import Toastify from 'toastify-js'
 
 // Utility Functions
@@ -157,6 +159,10 @@ export const elements = {
   previewTemplate: document.getElementById("previewTemplate"),
   favorite: document.querySelectorAll("#favorite"),
   unfavorite: document.querySelectorAll("#unfavorite"),
+  favoriteTemplate:document.querySelector("#favoriteTemplate"),
+  unfavoriteTemplate:document.querySelectorAll("#unfavoriteTemplate"),
+  showMoreFavorites:document.querySelector("#showMoreFavorites"),
+  moreFavorites:document.querySelector("#moreFavorites"),
   createTemplate: document.querySelector("#createTemplate"),
   analytics: document.querySelector("#analytics"),
   imageContainer: document.querySelectorAll('#image-container'),
@@ -173,6 +179,26 @@ const configs = {
 
 // Event Listeners
 const addEventListeners = () => {
+
+  // Key events for selecting multiple projects
+  document.addEventListener("keydown", (press) => {
+    if (press.shiftKey) {
+      key.recourses.isSelection = true;
+      key.shiftSelect();
+    }else if(press.ctrlKey || press.metaKey){
+      key.recourses.isSelection = true;
+      key.crtlSelect();
+    }
+  });
+
+  document.addEventListener("keyup", (press) => {
+    if (!press.shiftKey) {
+      key.recourses.isSelection = false;
+    }else if(!press.ctrlKey || !press.metaKey){
+      key.recourses.isSelection = false;
+    }
+  })
+
   // Filter dropdown
   document.querySelectorAll("#filter").forEach((element, index) => {
     element?.addEventListener("click", () => {
@@ -309,8 +335,32 @@ const addEventListeners = () => {
     globals.endSession();
   });
 
-  // Context menu for projects
-  reusable.showContextMenu()
+  // Events listener projects
+  reusable.eventsListenerProjects();
+
+  // open more favorites
+  elements.showMoreFavorites?.addEventListener("click", ()=>{
+    window.getComputedStyle(elements.moreFavorites).display == "none" ? elements.moreFavorites.style.display = "flex" : elements.moreFavorites.style.display = "none"
+  });
+
+  // send template to Favorite
+  elements.favoriteTemplate?.addEventListener("click", async ()=>{
+    const userId = globals.getCookie("ID-USER")
+    const templateId = elements.previewTemplate.getAttribute("data-id")
+    const template = (await req.getTemplate(templateId)).data.message;
+
+    const data = {
+      id_project:templateId,
+      type:"template",
+    }
+
+    console.log(template.template_id);
+    const petition = await req.favorite(userId, data)
+    if (!petition.state) {
+      utils.handleError(petition);
+      return;
+    }
+  });
 
   //Metric for projects
   document.querySelectorAll("#metric-project").forEach((item) => {
@@ -371,21 +421,7 @@ const addEventListeners = () => {
       createGraphicOfTimeWorked();
 
     });
-  });
-
-  // Search projects
-  document.querySelectorAll("#searchbar").forEach((item) => {
-    item?.addEventListener("input", (e) => {
-      const searchTerm = item.value.toLowerCase();
-      const typeElement = item.getAttribute("data-article");
-      const elementsToFilter = document.querySelectorAll(`.${typeElement}`) || document.querySelectorAll(`#${typeElement}`);
-
-      elementsToFilter.forEach((element) => {
-        const name = element.getAttribute("data-name")?.toLowerCase();
-        utils.toggleHidden(element, !name.includes(searchTerm));
-      });
-    });
-  });
+  }); 
 
   // Filter options
   document.querySelectorAll("#filtro").forEach((item, index) => {
@@ -652,7 +688,6 @@ const addEventListeners = () => {
     input.setSelectionRange(input.value.length, input.value.length);
   
     const saveChanges = async () => {
-      console.log("Save changes");
       const validation = await req.renameProject(projectId, input.value);
   
       if (!validation.state) {
@@ -708,9 +743,6 @@ const addEventListeners = () => {
     input.addEventListener("keydown", handleKeydown);
     input.addEventListener("blur", handleBlur);
   });
-
-  // Redirect to project
-  reusable.redirectProject();
 
   // User authentication
   elements.formRegister?.addEventListener("submit", async (e) => {
@@ -874,7 +906,15 @@ const addEventListeners = () => {
       item.style.backgroundImage = `url(${localStorage.getItem("imgProfile")})`;
       item.style.backgroundSize = 'cover';
       item.style.backgroundPosition = 'center';
+      item.style.border = `2px solid ${enviroments.getTheme()}`;
       item.style.opacity = '0.7';
+    })
+  }else{
+    elements.imageContainer.forEach(item =>{
+      item.style.backgroundImage = `url(https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png)`;
+      item.style.backgroundSize = 'cover';
+      item.style.backgroundPosition = 'center';
+      item.style.border = `2px solid ${enviroments.getTheme()}`;
     })
   }
 
@@ -889,13 +929,13 @@ const addEventListeners = () => {
           localStorage.setItem("imgProfile", `${e.target.result}`);
           elements.imageContainer.forEach(item =>{
             item.style.backgroundImage = `url(${e.target.result})`;
-            item.style.backgroundSize = 'cover'; // Ajusta la imagen al tamaño del div
-            item.style.backgroundPosition = 'center'; // Centra la imagen
-            item.style.opacity = '0.7';
+            item.style.backgroundSize = 'cover';
+            item.style.backgroundPosition = 'center'; 
+            item.style.border = `2px solid ${enviroments.getTheme()}`;
             });
           }
         };
-      reader.readAsDataURL(file); // Convierte la imagen a una URL que se puede usar como fondo
+      reader.readAsDataURL(file);
     }
   });
 };
@@ -911,6 +951,7 @@ document?.addEventListener('DOMContentLoaded', () => {
       elements.themeOptions.forEach(item => item.classList.remove('border-4', 'border-blue-500', 'shadow-lg'));
       configs.theme = option.getAttribute("data-theme");
       localStorage.setItem('selectedTheme', configs.theme);
+      enviroments.setTheme(configs.theme);
       option.classList.add('border-4', 'border-blue-500', 'shadow-lg');
     });
   });

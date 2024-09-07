@@ -87,8 +87,7 @@ export function renderProject(props, parent){
     document.querySelector("#previewTemplate").style.display = "none";
 
     // Event listeners
-    reusable.showContextMenu(front.utils);
-    reusable.redirectProject();
+    reusable.eventsListenerProjects();
     front.utils.handleError("Project rendered successfully");
 
     return divContent;
