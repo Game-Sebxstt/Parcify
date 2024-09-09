@@ -1037,136 +1037,124 @@ openButton?.addEventListener("click", () => {
   document.documentElement.style.overflow = "hidden";
 });
 
-//Edit Username
-document.querySelector('#edit-icon-username')?.addEventListener("click", async () => {
-  const editIcon = document.querySelector("#edit-icon-username");
+// Edit username
+document.querySelector('#edit-icon-username')?.addEventListener("click", () => {
   const usernameInput = document.querySelector("#profile-username");
+  const editIcon = document.querySelector("#edit-icon-username");
   const optionsButtons = document.querySelector("#options-buttons-profile");
 
   usernameInput.removeAttribute("readonly");
   usernameInput.style.opacity = 1;
-  usernameInput.value = "";
   usernameInput.focus();
 
   optionsButtons.style.display = "flex";
   editIcon.style.pointerEvents = "none";
   editIcon.style.opacity = '0.5';
 
-  document.querySelector("#options-buttons-profile").addEventListener("click", async () => {
-    const userId = globals.getCookie("ID-USER");
-    const usernameInput = document.querySelector("#profile-username");
-    const newUsername = usernameInput.value;
-  
-    if(!newUsername.trim()){
-      utils.handleError("Please enter a username valid")
-    }
-
-    const validation = await req.updateProfile({
-      id: userId,
-      username: newUsername
-    });
-
-    if(!validation.state){
-      utils.handleError(validation);
-      return;
-    }
-
-    usernameInput.setAttribute("readonly", "");
-    usernameInput.style.opacity = 0.5;
-    optionsButtons.style.display = "auto";
-    editIcon.style.opacity = '1';
-
-    window.location.reload();
-
-  })
+  // Track modification
+  usernameInput.dataset.modified = "true"; 
 });
 
-//Chequear el email
-document.querySelector('#edit-icon-email')?.addEventListener("click", async () => {
+// Edit email
+document.querySelector('#edit-icon-email')?.addEventListener("click", () => {
   const emailInput = document.querySelector('#profile-email');
   const editIcon = document.querySelector('#edit-icon-email');
-
   const contentEditEmail = document.querySelector('#div-edit-email');
   const optionsButtons = document.querySelector('#options-buttons-profile');
 
-  if(document.querySelectorAll(".containerEditEmail").length > 0){
-    return;
-  }
-  
-  for(let i = 0; i < 2; i++){
-    const containerEmailInput = document.createElement("div");
-    containerEmailInput.className = "w-full flex items-center containerEditEmail";
-  
-    contentEditEmail.appendChild(containerEmailInput);
+  if(document.querySelectorAll(".containerEditEmail").length === 0){
+    for(let i = 0; i < 2; i++){
+      const containerEmailInput = document.createElement("div");
+      containerEmailInput.className = "w-full flex items-center containerEditEmail";
+      contentEditEmail.appendChild(containerEmailInput);
 
-    const inputEmail = templates.getCloneInputEmail(containerEmailInput)
-    inputEmail.focus();
+      const inputEmail = templates.getCloneInputEmail(containerEmailInput);
+      inputEmail.focus();
+    }
+    optionsButtons.style.display = "flex";
   }
 
-  optionsButtons.style.display = "flex";
+  // Track modification
+  emailInput.dataset.modified = "true"; 
+});
 
-  const saveChanges = document.querySelector('#button-save-changes');
-  saveChanges.addEventListener("click", async () => {
-    const userId = globals.getCookie("ID-USER");
-    const currentEmails = document.querySelectorAll(".containerEditEmail");
-    const email1 = currentEmails[0].querySelector("input").value;
-    const email2 = currentEmails[1].querySelector("input").value;
+// Edit biography
+document.querySelector("#textarea-biography")?.addEventListener("input", () => {
+  const optionButtons = document.querySelector('#options-buttons-profile');
+  optionButtons.style.display = "flex";
 
-    document.querySelectorAll(".error-message").forEach(el => el.remove());
-    currentEmails.forEach(container => {
-      const input = container.querySelector("input");
-      input.classList.remove("border-red-500");
-      input.style.borderColor = "";
-    });
+  // Track modification
+  const textareaBiography = document.querySelector('#textarea-biography');
+  textareaBiography.dataset.modified = "true";
+});
 
-    if(email1 !== email2){
-      console.log("Los correos no son iguales");
+// Save Changes for Modified Inputs
+document.querySelector('#button-save-changes')?.addEventListener("click", async () => {
+  const userId = globals.getCookie("ID-USER");
+  
+  // Prepare data object for modified fields only
+  let data = { id: userId };
 
-      currentEmails.forEach(container => {
-        const input = container.querySelector("input");
-        input.classList.add("border-red-500"); 
-        input.classList.add("border");
-      });
+  // Get values from inputs and check if modified
+  const usernameInput = document.querySelector("#profile-username");
+  const emailInputs = document.querySelectorAll(".containerEditEmail input");
+  const biographyTextarea = document.querySelector("#textarea-biography");
 
-      const errorMessage = document.createElement("p");
-      errorMessage.className = "error-message  w-full text-red-500 text-sm mt-2";
-      errorMessage.textContent = "The emails are not the same";
-      contentEditEmail.insertBefore(errorMessage, currentEmails[0]);
+  if (usernameInput.dataset.modified === "true" && usernameInput.value.trim()) {
+    data.username = usernameInput.value.trim();
+  }
 
+  if (emailInputs.length > 0 && emailInputs[0].value.trim()) {
+    const newEmail1 = emailInputs[0]?.value;
+    const newEmail2 = emailInputs[1]?.value;
+
+    if(newEmail1 !== newEmail2){
       utils.handleError("The emails are not the same");
       return;
     }
 
-    const validationEmail = await req.updateProfile({
-      id: userId,
-      email: email1
+    data.email = newEmail1.trim();
+  }
+
+  if (biographyTextarea.dataset.modified === "true" && biographyTextarea.value.trim()) {
+    data.biography = biographyTextarea.value.trim();
+  }
+
+  // Send modified data to the backend
+  const validation = await req.updateProfile(data);
+
+  if(!validation.state){
+    utils.handleError(validation);
+    return;
+  }
+
+  // Reset fields and UI
+  if (usernameInput.dataset.modified === "true") {
+    usernameInput.setAttribute("readonly", "");
+    usernameInput.style.opacity = 0.5;
+    delete usernameInput.dataset.modified;
+  }
+
+  if (emailInputs.length > 0) {
+    emailInputs.forEach(input => {
+      input.setAttribute("readonly", "");
+      input.style.opacity = 0.5;
     });
+  }
 
-    if(!validationEmail.state){
-      utils.handleError(validationEmail);
-      return;
-    }
-    window.location.reload();
-  });
+  if (biographyTextarea.dataset.modified === "true") {
+    biographyTextarea.setAttribute("readonly", "");
+    biographyTextarea.style.opacity = 0.5;
+    delete biographyTextarea.dataset.modified;
+  }
 
-  // Manejar cancelación de cambios
-  const cancelButton = document.querySelector("#button-cancel-changes");
-  cancelButton?.addEventListener("click", () => {
-    console.log("Cancelar cambios en el email");
+  // Hide save button
+  document.querySelector('#options-buttons-profile').style.display = 'none';
 
-    const currentEmails = document.querySelectorAll(".containerEditEmail");
-    
-    currentEmails.forEach(container => container.remove());
-
-    optionsButtons.style.display = "none";
-    emailInput.removeAttribute("readonly");
-    emailInput.style.opacity = 0.5;
-
-    document.querySelectorAll(".error-message").forEach(el => el.remove());
-    editIcon.style.pointerEvents = "auto";
-    editIcon.style.opacity = 1;
-  });
+  // Reload page to reflect changes
+  window.location.reload();
 });
+
 
 //iniciar el modo de edición de contraseña
 document.querySelector('#edit-icon-password')?.addEventListener('click', async () => {
@@ -1289,47 +1277,5 @@ document.querySelector('#edit-icon-password')?.addEventListener('click', async (
       input.classList.remove("border-red-500");
       input.classList.remove("border");
     });
-  });
-});
-
-document.querySelector("#textarea-biography")?.addEventListener("click", () => {
-
-  const textareaBiography = document.querySelector('#textarea-biography');
-  const optionButtons = document.querySelector('#options-buttons-profile');
-  const saveChanges = document.querySelector('#button-save-changes');
-  const cancelChanges = document.querySelector('#button-cancel-changes');
-
-  textareaBiography?.addEventListener("input", () =>{
-    optionButtons.style.display = "flex";
-  })
-
-  const updateBiography = async () => {
-    const userId = globals.getCookie("ID-USER");
-    const biography = textareaBiography.value;
-
-    if (biography.trim() === "") {
-      console.log("Esa mondá no puede estar en blanco");
-      
-    }
-
-    const validation = await req.updateProfile({
-      id: userId,
-      biography: biography
-    });
-
-    if(!validation.state){
-      utils.handleError(validation);
-      return;
-    }
-
-    window.location.reload(); 
-  }
-
-  saveChanges.addEventListener("click",updateBiography);
-
-  cancelChanges.addEventListener("click", () => {
-    textareaBiography.value = "";
-    optionButtons.style.display = "none";
-    window.location.reload();
   });
 });
