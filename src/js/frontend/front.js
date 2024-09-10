@@ -1053,6 +1053,18 @@ document.querySelector('#edit-icon-username')?.addEventListener("click", () => {
 
   // Track modification
   usernameInput.dataset.modified = "true"; 
+
+  // Manejar cancelación de cambios
+  const cancelButton = document.querySelector("#button-cancel-changes");
+  cancelButton?.addEventListener("click", () => {
+    usernameInput.setAttribute("readonly", "");
+    usernameInput.style.opacity = 0.5;
+    delete usernameInput.dataset.modified;
+
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    editIcon.style.pointerEvents = "auto";
+    editIcon.style.opacity = 1;
+  });
 });
 
 // Edit email
@@ -1076,6 +1088,21 @@ document.querySelector('#edit-icon-email')?.addEventListener("click", () => {
 
   // Track modification
   emailInput.dataset.modified = "true"; 
+
+  // Manejar cancelación de cambios
+  const cancelButton = document.querySelector("#button-cancel-changes");
+  cancelButton?.addEventListener("click", () => {
+    const currentEmails = document.querySelectorAll(".containerEditEmail");
+    currentEmails.forEach(container => container.remove());
+
+    optionsButtons.style.display = "none";
+    emailInput.removeAttribute("readonly");
+    emailInput.style.opacity = 0.5;
+
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    editIcon.style.pointerEvents = "auto";
+    editIcon.style.opacity = 1;
+  });
 });
 
 // Edit biography
