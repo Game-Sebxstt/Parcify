@@ -574,16 +574,6 @@ const addEventListeners = () => {
       const projectId = item.getAttribute("data-id");
       const validation = await req.deleteProject(projectId);
       
-      const projectContent = item.parentElement.parentElement.parentElement;
-      const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
-      const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
-
-      h3.style.display = "none";
-      input.style.display = "flex";
-
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-
       if (!validation.state || !validation) {
         utils.handleError(validation);
         return;
@@ -906,39 +896,61 @@ const addEventListeners = () => {
     })
   });
 
-  // Apply profile picture and store it in localstorage
-  if (localStorage.getItem("imgProfile") != null) {
-    elements.imageContainer.forEach(item =>{
-      item.style.backgroundImage = `url(${localStorage.getItem("imgProfile")})`;
-      item.style.backgroundSize = 'cover';
-      item.style.backgroundPosition = 'center';
-      item.style.border = `2px solid ${enviroments.getTheme()}`;
-      item.style.opacity = '0.7';
-    })
-  }else{
-    elements.imageContainer.forEach(item =>{
-      item.style.backgroundImage = `url(https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png)`;
-      item.style.backgroundSize = 'cover';
-      item.style.backgroundPosition = 'center';
-      item.style.border = `2px solid ${enviroments.getTheme()}`;
-    })
+  // Apply profile picture and store in database
+  async function updateProfileImage() {
+    const userId = globals.getCookie("ID-USER");
+
+    const validation = await req.getProfileImage(userId);
+
+    if (validation.state) {
+      elements.imageContainer.forEach(item => {
+        item.style.backgroundImage = `url(${validation.profileImage})`;
+        item.style.backgroundSize = 'cover';
+        item.style.backgroundPosition = 'center';
+        item.style.border = `2px solid ${enviroments.getTheme()}`;
+        item.style.opacity = '0.7';
+      });
+    } else {
+      elements.imageContainer.forEach(item => {
+        item.style.backgroundImage = `url(https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png)`;
+        item.style.backgroundSize = 'cover';
+        item.style.backgroundPosition = 'center';
+        item.style.border = `2px solid ${enviroments.getTheme()}`;
+      });
+    }
   }
 
-  elements.imageUpload?.addEventListener('change', (event) => {
+ document?.addEventListener('DOMContentLoaded', () => {
+    updateProfileImage();
+  });
+
+  elements.imageUpload?.addEventListener('change', async (event) => {
     const target = event.target;
     const file = target.files?.[0];
 
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         if (e.target && e.target.result) {
-          localStorage.setItem("imgProfile", `${e.target.result}`);
+          const imageBase64 = e.target.result;
+          
+          const data = {
+            userId: globals.getCookie("ID-USER"),
+            profileImage: imageBase64,
+          };
+
+          const validation = await req.updateImageProfile(data);
           elements.imageContainer.forEach(item =>{
             item.style.backgroundImage = `url(${e.target.result})`;
             item.style.backgroundSize = 'cover';
             item.style.backgroundPosition = 'center'; 
             item.style.border = `2px solid ${enviroments.getTheme()}`;
             });
+            if(!validation.state){
+              console.log("Error updating image profile ")
+              return;
+            }
+
           }
         };
       reader.readAsDataURL(file);
@@ -1052,7 +1064,7 @@ document.querySelector('#edit-icon-username')?.addEventListener("click", async (
   editIcon.style.pointerEvents = "none";
   editIcon.style.opacity = '0.5';
 
-  document.querySelector("#options-buttons-profile").addEventListener("click", async () => {
+  document.querySelector("#button-save-changes").addEventListener("click", async () => {
     const userId = globals.getCookie("ID-USER");
     const usernameInput = document.querySelector("#profile-username");
     const newUsername = usernameInput.value;
@@ -1308,7 +1320,6 @@ document.querySelector("#textarea-biography")?.addEventListener("click", () => {
     const biography = textareaBiography.value;
 
     if (biography.trim() === "") {
-      console.log("Esa mondá no puede estar en blanco");
       
     }
 

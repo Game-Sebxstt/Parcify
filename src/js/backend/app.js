@@ -386,6 +386,52 @@ app.post("/user/updateUsername", async (req,res) =>{
     return res.status(404).send({status: "Not Found", message: "User does not exist"});
 })
 
+//Update profile image
+app.post("/user/updateImageProfile", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+    const {userId, profileImage} = req.body;
+    const connection = await getConnection();
+
+    const userExists = await connection.query('Select * FROM users WHERE user_id = ?', [userId]);
+    
+    if (userExists.length > 0){
+        await connection.query('UPDATE users SET profile_image = ? WHERE user_id = ?', [profileImage, userId]);
+        console.log("Se actualizó esta cosa");
+        return res.status(200).send({status: "Success", message: "Profile image updated successfully"});  
+    }
+    console.log("No se encontró al usuario");
+    return res.status(404).send({status: "Not Found", message: "User does not exist"});
+})
+
+//Check profile image
+app.post("/user/getProfileImage", async (req, res) => {
+    if (!req.body) {
+      return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+  
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).send({ state: false, message: "User ID is required" });
+    }
+  
+    const connection = await getConnection();
+    
+    // Consulta para obtener la imagen de perfil
+    connection.query("SELECT profile_image FROM users WHERE user_id = ?", [userId], (error, results) => {
+      if (error) {
+        return res.status(500).send({ state: false, message: "Internal Server Error" });
+      }
+  
+      if (results.length > 0) {
+        return res.status(200).send({ state: true, profileImage: results[0].profile_image });
+      } else {
+        return res.status(404).send({ state: false, message: "User does not exist" });
+      }
+    });
+  });
+   
 //Verify 
 app.post('/user/checkPassword', async (req, res) => {
     if (!req.body) {
