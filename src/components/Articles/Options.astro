@@ -1,9 +1,47 @@
 ---
 ---
 
-<div id="options-parcel" class="w-fit h-fit hidden fixed z-50">
-    <ul id="more-options-filter" class="bg-[#2b2929] rounded-md shadow-lg shadow-[#181818] w-fit flex flex-col justify-center item-start text-white animate-deployment">
-      <li id="duplicate-parcel" class="hover:bg-[#1E90FF] transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-t-md flex gap-2" data-filter="test">
+<div id="options-parcel" class="w-full max-w-[15rem] h-fit hidden fixed z-50">
+    <ul id="more-options-filter" class="bg-[#2b2929] p-1.5 shadow-lg shadow-[#181818] w-full flex flex-col justify-center item-start text-white animate-deployment">
+      <li id="redirect" class="hover:bg-[#1E90FF] w-full transition-all duration-150 ease-in cursor-default px-2 py-1 flex gap-2" data-filter="test">
+        <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="white"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="h-5"
+        >
+        <path d="M13 4h3a2 2 0 0 1 2 2v14" />
+        <path d="M2 20h3" />
+        <path d="M13 20h9" />
+        <path d="M10 12v.01" />
+        <path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z" />
+      </svg>
+
+        <span>
+          Abrir
+        </span>
+      </li>
+
+      <li id="redirect-external" class="hover:bg-[#1E90FF] w-full transition-all duration-150 ease-in cursor-default px-2 py-1 flex gap-2" data-filter="test">
+        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-external-link h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+          <path d="M11 13l9 -9" />
+          <path d="M15 4h5v5" />
+        </svg>
+
+        <span>
+          Abrir en otra pestaña
+        </span>
+      </li>
+
+      <span class="separator-options w-full h-[1px] bg-[#383838] my-2"></span>
+
+      <li id="duplicate-parcel" class="hover:bg-[#1E90FF] w-full transition-all duration-150 ease-in cursor-default px-2 py-1 flex gap-2" data-filter="test">
         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-copy h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
           <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
           <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
@@ -14,7 +52,8 @@
           Duplicar
         </span>
       </li>
-      <li id="delete-parcel" class="hover:bg-[#1E90FF] transition-all duration-150 ease-in cursor-pointer px-2 py-1 flex gap-2" data-filter="test">
+
+      <li id="delete-parcel" class="hover:bg-[#1E90FF] w-full transition-all duration-150 ease-in cursor-default px-2 py-1 flex gap-2" data-filter="test">
         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-trash h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
           <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
           <path d="M4 7l16 0" />
@@ -28,7 +67,30 @@
           Eliminar
         </span>
       </li>
-      <li class="hover:bg-[#1E90FF] transition-all duration-150 ease-in cursor-pointer px-2 py-1 flex gap-2" data-filter="test">
+
+      <li id="rename-parcel" class="hover:bg-[#1E90FF] w-full transition-all duration-150 ease-in cursor-default px-2 py-1 flex gap-2" data-filter="test">
+        <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="white"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="h-5"
+      >
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+        <path d="m15 5 4 4" />
+      </svg>
+
+        <span>
+          Cambiar nombre
+        </span>
+      </li>
+
+      <span class="separator-options w-full h-[1px] bg-[#383838] my-2"></span>
+
+      <li class="hover:bg-[#1E90FF] w-full transition-all duration-150 ease-in cursor-default px-2 py-1 flex gap-2" data-filter="test">
         <article id="unfavorite" class="hidden items-center gap-1">
             <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-star-off">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -45,17 +107,6 @@
             </svg>
             <span>Añadir a favoritos</span>
         </article>
-      </li>
-      <li id="rename-parcel" class="hover:bg-[#1E90FF] transition-all duration-150 ease-in cursor-pointer px-2 py-1 rounded-b-md flex gap-2" data-filter="test">
-        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-edit" xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
-          <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
-          <path d="M16 5l3 3" />
-        </svg>  
-        <span>
-          Cambiar nombre
-        </span>
       </li>
     </ul>
   </div>

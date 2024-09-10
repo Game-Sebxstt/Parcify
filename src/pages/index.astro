@@ -8,6 +8,7 @@ import Content from '../components/Sections/Content.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Layout from '../layouts/Layout.astro';
+import * as globals from '../js/frontend/utilities/globals'
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -34,6 +35,7 @@ try{
     Astro.cookies.set("logged", "false");
 	return Astro.redirect("/SignIn")
 }
+
 ---
 
 <Layout title="Parcify">
@@ -58,7 +60,7 @@ try{
 					<ArticlePlus/>
 					{
 						data.projects.map((item: any) => (
-							<Article id="project" name={item.name} project_id={item.project_id} preview={item.preview} last_modified={item.last_modified} />
+							<Article id="project" id_element={globals.generateID()} name={item.name} project_id={item.project_id} preview={item.preview} last_modified={item.last_modified} />
 						))
 					}
 				</div>

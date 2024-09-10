@@ -2,7 +2,6 @@ import * as req from "../backend/requests";
 import * as globals from './utilities/globals'
 import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
-import * as key from "./utilities/keyEvents"
 import * as reusable from './utilities/reusable'
 import * as enviroments from '../../enviroments.ts'
 import Toastify from 'toastify-js'
@@ -61,7 +60,6 @@ export const utils = {
     sorted.forEach(item => item.element.parentElement.appendChild(item.element));
   },
   handleError: (validation) => {
-    console.error(validation);
     Toastify({
       text: validation.data ?? validation,
       gravity: "bottom",
@@ -119,8 +117,7 @@ export const utils = {
     parent.appendChild(input);
     return input;
   },
-  showPreviewTemplate: (props) => {
-    console.log(props)
+  showPreviewTemplate: async (props) => {
     let tittlePrew  = document.querySelector("#tittlePreview")
     let authorPrew  = document.querySelector("#authorPreview")
     let infoPrew = document.getElementById("infoPreview")
@@ -133,7 +130,38 @@ export const utils = {
 
     elements.previewTemplate.setAttribute("data-id", props.dataId);
 
+    let favorites = await req.getFavorites(globals.getCookie("ID-USER"));
+    if (favorites.state) {
+      favorites = JSON.parse(favorites.data.message[0].favorites)
+      const isFavorite = favorites.find(favorite => favorite.id == props.dataId);
+      elements.favoriteTemplate.style.fill = isFavorite ? "#f4d462" : "none"
+    }
+
+    let templates = await req.getTemplate(props.dataId);
+    if(templates.state){
+      let template_likes = JSON.parse(templates.data.message.likes);
+      const isLiked = template_likes.find(template => template.user_id == globals.getCookie("ID-USER"));
+      elements.heartTemplate.style.fill = isLiked ? "#f46262" : "none"
+    }
+
     window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
+  },
+  isSelected: (element) => {
+      if (!recourses.selectedElements.includes(element)) {
+          const selectionIdentifier = element.querySelector("#selectionIdentifier");
+          selectionIdentifier.style.display = "flex";
+          recourses.selectedElements.push(element);
+      }
+  },
+  isDeselected: (element) => {
+      const selectionIdentifier = element.querySelector("#selectionIdentifier");
+      selectionIdentifier.style.display = "none";
+      recourses.selectedElements = recourses.selectedElements.filter(selected => selected !== element);
+  },
+  clear: () => {
+      document.querySelectorAll(".project").forEach(item => { utils.isDeselected(item) });
+      recourses.selectedElements = [];
+      recourses.lastIndex = null;
   }
 };
 
@@ -160,8 +188,8 @@ export const elements = {
   favorite: document.querySelectorAll("#favorite"),
   unfavorite: document.querySelectorAll("#unfavorite"),
   favoriteTemplate:document.querySelector("#favoriteTemplate"),
-  unfavoriteTemplate:document.querySelectorAll("#unfavoriteTemplate"),
-  showMoreFavorites:document.querySelector("#showMoreFavorites"),
+  shareTemplate:document.querySelector("#shareTemplate"),
+  heartTemplate:document.querySelector("#heartTemplate"),
   moreFavorites:document.querySelector("#moreFavorites"),
   createTemplate: document.querySelector("#createTemplate"),
   analytics: document.querySelector("#analytics"),
@@ -180,18 +208,32 @@ const configs = {
   font: localStorage.getItem('selectedFont') || "",
 };
 
+// Recursos reutilizables
+export let recourses = {
+  selectedElements: [],
+  lastIndex: null,
+  isSelectionCtrl: false,
+  isSelectionShift: false,
+}
+
 // Event Listeners
 const addEventListeners = () => {
-
-  // Key events for selecting multiple projects
   document.addEventListener("keydown", (press) => {
-    if (press.shiftKey) {
-      key.recourses.isSelection = true;
-      key.shiftSelect();
-    }else if(press.ctrlKey || press.metaKey){
-      key.recourses.isSelection = true;
-      key.crtlSelect();
-    }
+      if (press.shiftKey) {
+          recourses.isSelectionShift = true;
+          document.body.style.userSelect = "none"
+      } else if (press.ctrlKey || press.metaKey) {
+          recourses.isSelectionCtrl = true;
+      }
+  });
+  
+  document.addEventListener("keyup", (press) => {
+      if (press.key === "Shift") {
+          recourses.isSelectionShift = false;
+          document.body.style.userSelect = "auto"
+      } else if (press.key === "Control" || press.key === "Meta") {
+          recourses.isSelectionCtrl = false;
+      }
   });
 
   elements.presentKonva?.addEventListener("click", async () => {
@@ -216,8 +258,6 @@ const addEventListeners = () => {
     element?.addEventListener("click", () => {
       const moreOptionsFilter = element.parentNode.querySelector("#more-options-filter");
       const arrowDownFilter = element.querySelector("#arrow-down-filter");
-
-      console.log(moreOptionsFilter, arrowDownFilter)
 
       utils.toggleDisplay(moreOptionsFilter, "flex");
       utils.setTransform(arrowDownFilter, window.getComputedStyle(moreOptionsFilter).display === "none" ? "0deg" : "180deg");
@@ -347,34 +387,81 @@ const addEventListeners = () => {
     globals.endSession();
   });
 
-  // Events listener projects
+  // Events listener projects and favorites
   reusable.eventsListenerProjects();
-
-  // open more favorites
-  elements.showMoreFavorites?.addEventListener("click", ()=>{
-    window.getComputedStyle(elements.moreFavorites).display == "none" ? elements.moreFavorites.style.display = "flex" : elements.moreFavorites.style.display = "none"
-  });
+  reusable.eventsListenerFavorites();
 
   // send template to Favorite
   elements.favoriteTemplate?.addEventListener("click", async ()=>{
     const userId = globals.getCookie("ID-USER")
     const templateId = elements.previewTemplate.getAttribute("data-id")
-    const template = (await req.getTemplate(templateId)).data.message;
 
     const data = {
-      id_project:templateId,
-      type:"template",
+      id_project: templateId,
+      type: "template",
     }
 
-    console.log(template.template_id);
-    const petition = await req.favorite(userId, data)
-    if (!petition.state) {
-      utils.handleError(petition);
-      return;
+    if(window.getComputedStyle(elements.favoriteTemplate).fill != "none"){
+      elements.favoriteTemplate.style.fill = "none"
+      const petition = await req.unfavorite(userId, templateId)
+
+      if (!petition.state) {
+        utils.handleError(petition);
+        return petition.data
+      }
+    }else{
+      elements.favoriteTemplate.style.fill = "#f4d462"
+      const petition = await req.favorite(userId, data)
+
+      if (!petition.state) {
+        utils.handleError(petition);
+        return;
+      }
+    }
+
+    const renderResponse = await templates.renderFavorites()
+
+    if(!renderResponse){
+      utils.handleError(renderResponse)
+      return
     }
   });
 
-  //Metric for projects
+  // Share template
+  elements.shareTemplate?.addEventListener("click", () => {
+    elements.shareTemplate.style.fill = "white"
+    const dataId = elements.previewTemplate.getAttribute("data-id");
+    const urlCopy = `${window.location.origin}/?id_project=${dataId}`;
+    navigator.clipboard.writeText(urlCopy);
+
+    utils.handleError("Link copied to clipboard");
+  })
+
+  // Like template
+  elements.heartTemplate?.addEventListener("click", async () => {
+    const userId = globals.getCookie("ID-USER")
+    const templateId = elements.previewTemplate.getAttribute("data-id")
+
+    if(window.getComputedStyle(elements.heartTemplate).fill != "none"){
+      elements.heartTemplate.style.fill = "none"
+      const petition = await req.dislikeTemplate(templateId, userId)
+
+      if (!petition.state) {
+        utils.handleError(petition);
+        return petition.data
+      }
+    }else{
+      elements.heartTemplate.style.fill = "#f46262"
+      const petition = await req.likeTemplate(templateId, userId)
+
+      if (!petition.state) {
+        utils.handleError(petition);
+        return;
+      }
+    }
+  })
+
+  // Metric for projects
   document.querySelectorAll("#metric-project").forEach((item) => {
     item.addEventListener("click", async () => {
       elements.analytics.style.display = window.getComputedStyle(elements.analytics).display === "none" ? "flex" : "none";
@@ -574,30 +661,17 @@ const addEventListeners = () => {
     });
   });
 
-  // Delete project
-  document.querySelectorAll("#delete-parcel").forEach((item) => {
-    item.addEventListener("click", async () => {
-      const projectId = item.getAttribute("data-id");
-      const validation = await req.deleteProject(projectId);
-      
-      const projectContent = item.parentElement.parentElement.parentElement;
-      const h3 = projectContent.querySelector('#name-of-parcel'); //Selecciono el elemento con la etiqueta de name-of-parcel
-      const input = projectContent.querySelector('#input-of-parcel');//Selecciono el elemento input con la etiqueta input-of-parcel
+  // Open project
+  document.querySelector("#redirect")?.addEventListener("click", () => {
+    const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+    reusable.redirectProjectAction(projectId);
+  })
 
-      h3.style.display = "none";
-      input.style.display = "flex";
-
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-
-      if (!validation.state || !validation) {
-        utils.handleError(validation);
-        return;
-      }
-
-      templates.deleteProject(projectId);
-    });
-  });
+  // Open project external
+  document.querySelector("#redirect-external")?.addEventListener("click", () => {
+    const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+    reusable.redirectProjectAction(projectId, true);
+  })
   
   // Create project
   elements.createTemplate?.addEventListener("click",  async () => {
@@ -631,131 +705,118 @@ const addEventListeners = () => {
   // Duplicate project
   document.querySelectorAll("#duplicate-parcel").forEach((item) => {
     item.addEventListener("click", async () => {
-      const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
-      const validation = await req.duplicateProject(projectId);
+      const elements_select = recourses.selectedElements;
+      let id_selects = [];
 
-      if (!validation.state || !validation) {
-        utils.handleError(validation);
-        return;
+      if (elements_select.length > 1) {
+        elements_select.forEach((element) => {
+          id_selects.push(element.querySelector("#element-project").getAttribute("data-id"));
+        });
+
+        const validation = await req.duplicateListProjects(id_selects);
+
+        if (!validation.state || !validation) {
+          utils.handleError(validation);
+          return;
+        }
+
+        validation.data.message.forEach(async (project) => {
+          const props = {
+              name: project.name,
+              last_modified: new Date(),
+              project_id: project.project_id,
+              preview: project.preview,
+              stage: project.stage,
+              collaborators: project.collaborators,
+          }
+
+          if(!document.querySelector("#content-grid")){
+            utils.handleError("No se encontró el contenedor de los proyectos");
+            return
+          }
+
+          templates.renderProject(props, document.querySelector("#content-grid"));
+        })
+      }else{
+        const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+        const validation = await req.duplicateProject(projectId);
+
+        if (!validation.state || !validation) {
+          utils.handleError(validation);
+          return;
+        }
+
+        const props = {
+            name: validation.data.message.name,
+            last_modified: new Date(),
+            project_id: validation.data.message.project_id,
+            preview: validation.data.message.preview,
+            stage: validation.data.message.stage,
+            collaborators: validation.data.message.collaborators,
+        }
+
+        if(!document.querySelector("#content-grid")){
+          utils.handleError("No se encontró el contenedor de los proyectos");
+          return
+        }
+
+        templates.renderProject(props, document.querySelector("#content-grid"));
       }
-
-      const props = {
-          name: validation.data.message.name,
-          last_modified: new Date(),
-          project_id: validation.data.message.project_id,
-          preview: validation.data.message.preview,
-          stage: validation.data.message.stage,
-          collaborators: validation.data.message.collaborators,
-      }
-
-      if(!document.querySelector("#content-grid")){
-        window.location.href = "/"
-        return
-      }
-
-      templates.renderProject(props, document.querySelector("#content-grid"));
-      });
+    });
   });
 
   // Delete project
   document.querySelectorAll("#delete-parcel").forEach((item) => {
     item.addEventListener("click", async () => {
-      const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
-      const validation = await req.deleteProject(projectId);
+      const elements_select = recourses.selectedElements;
+      let id_selects = [];
+
+      console.log(elements_select)
+      if (elements_select.length > 1) {
+        elements_select.forEach((element) => {
+          id_selects.push(element.querySelector("#element-project").getAttribute("data-id"));
+        });
+        
+        const validation = await req.deleteListProjects(id_selects);
+
+        if (!validation.state || !validation) {
+          utils.handleError(validation);
+          return;
+        }
+
+        id_selects.forEach(async (id) => {
+          templates.deleteProject(id);
+          await req.unfavorite(globals.getCookie("ID-USER"), id);
+        })
+
+        const renderResponse = await templates.renderFavorites();
+
+        if (!renderResponse) {
+          utils.handleError(renderResponse);
+          return;
+        }
+      }else{
+        const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
+        const validation = await req.deleteProject(projectId);
+        
+        if (!validation.state || !validation) {
+          utils.handleError(validation);
+          return;
+        }
+  
+        templates.deleteProject(projectId);
+        await req.unfavorite(globals.getCookie("ID-USER"), projectId);
       
-      if (!validation.state || !validation) {
-        utils.handleError(validation);
-        return;
-      }
-
-      templates.deleteProject(projectId);
-      await req.unfavorite(globals.getCookie("ID-USER"), projectId);
-    
-      const renderResponse = await templates.renderFavorites()
-
-      if(!renderResponse){
-        utils.handleError(renderResponse)
-        return
+        const renderResponse = await templates.renderFavorites()
+  
+        if(!renderResponse){
+          utils.handleError(renderResponse)
+          return
+        }
       }
     });
   });
     
-  // Rename project
-  document.querySelector("#rename-parcel")?.addEventListener("click", async () => {
-    const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
-    const projectContent = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
-  
-    if (!projectContent) {
-      utils.handleError(`Could not find project with id ${projectId}`);
-      return;
-    }
-  
-    const h3 = projectContent.querySelector('#name-of-parcel');
-    const input = projectContent.querySelector('#input-of-parcel');
-  
-    h3.style.display = "none";
-    input.style.display = "flex";
-  
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  
-    const saveChanges = async () => {
-      const validation = await req.renameProject(projectId, input.value);
-  
-      if (!validation.state) {
-        utils.handleError(validation);
-  
-        h3.style.display = "flex";
-        input.style.display = "none";
-        input.value = h3.textContent;
-  
-        return;
-      }
-  
-      h3.textContent = input.value;
-      h3.style.display = "flex";
-      input.style.display = "none";
-  
-      templates.renameProject(projectId, input.value);
-  
-      const renderResponse = await templates.renderFavorites();
-  
-      if (!renderResponse) {
-        utils.handleError(renderResponse);
-        return;
-      }
-
-      return
-    };
-  
-    const cancelChanges = () => {
-      h3.style.display = "flex";
-      input.style.display = "none";
-      input.value = h3.textContent;
-    };
-  
-    const handleKeydown = (e) => {
-      if (e.key === "Enter") {
-        saveChanges();
-        input.removeEventListener("blur", handleBlur);
-        input.removeEventListener("keydown", handleKeydown);
-      }
-  
-      if (e.key === "Escape") {
-        cancelChanges();
-        input.removeEventListener("blur", handleBlur);
-        input.removeEventListener("keydown", handleKeydown);
-      }
-    };
-  
-    const handleBlur = () => {
-      saveChanges();
-    };
-  
-    input.addEventListener("keydown", handleKeydown);
-    input.addEventListener("blur", handleBlur);
-  });
-
   // User authentication
   elements.formRegister?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -854,14 +915,6 @@ const addEventListeners = () => {
 
   //previewParceller
   reusable.showPreviewTemplate();
-
-  elements.previewTemplate?.querySelector("#share")?.addEventListener("click", () => {
-    const dataId = elements.previewTemplate.getAttribute("data-id");
-    const urlCopy = `${window.location.origin}/?template_id=${dataId}`;
-    navigator.clipboard.writeText(urlCopy);
-
-    utils.handleError("Link copied to clipboard");
-  })
 
   //favorites
   elements.favorite.forEach(item =>{
@@ -1044,125 +1097,62 @@ openButton?.addEventListener("click", () => {
   document.documentElement.style.overflow = "hidden";
 });
 
-//Edit Username
-document.querySelector('#edit-icon-username')?.addEventListener("click", async () => {
-  const editIcon = document.querySelector("#edit-icon-username");
+// Edit username
+document.querySelector('#edit-icon-username')?.addEventListener("click", () => {
   const usernameInput = document.querySelector("#profile-username");
+  const editIcon = document.querySelector("#edit-icon-username");
   const optionsButtons = document.querySelector("#options-buttons-profile");
 
   usernameInput.removeAttribute("readonly");
   usernameInput.style.opacity = 1;
-  usernameInput.value = "";
   usernameInput.focus();
 
   optionsButtons.style.display = "flex";
   editIcon.style.pointerEvents = "none";
   editIcon.style.opacity = '0.5';
 
-  document.querySelector("#options-buttons-profile").addEventListener("click", async () => {
-    const userId = globals.getCookie("ID-USER");
-    const usernameInput = document.querySelector("#profile-username");
-    const newUsername = usernameInput.value;
-  
-    if(!newUsername.trim()){
-      utils.handleError("Please enter a username valid")
-    }
-
-    const validation = await req.updateProfile({
-      id: userId,
-      username: newUsername
-    });
-
-    if(!validation.state){
-      utils.handleError(validation);
-      return;
-    }
-
-    usernameInput.setAttribute("readonly", "");
-    usernameInput.style.opacity = 0.5;
-    optionsButtons.style.display = "auto";
-    editIcon.style.opacity = '1';
-
-    window.location.reload();
-
-  })
-});
-
-//Chequear el email
-document.querySelector('#edit-icon-email')?.addEventListener("click", async () => {
-  const emailInput = document.querySelector('#profile-email');
-  const editIcon = document.querySelector('#edit-icon-email');
-
-  const contentEditEmail = document.querySelector('#div-edit-email');
-  const optionsButtons = document.querySelector('#options-buttons-profile');
-
-  if(document.querySelectorAll(".containerEditEmail").length > 0){
-    return;
-  }
-  
-  for(let i = 0; i < 2; i++){
-    const containerEmailInput = document.createElement("div");
-    containerEmailInput.className = "w-full flex items-center containerEditEmail";
-  
-    contentEditEmail.appendChild(containerEmailInput);
-
-    const inputEmail = templates.getCloneInputEmail(containerEmailInput)
-    inputEmail.focus();
-  }
-
-  optionsButtons.style.display = "flex";
-
-  const saveChanges = document.querySelector('#button-save-changes');
-  saveChanges.addEventListener("click", async () => {
-    const userId = globals.getCookie("ID-USER");
-    const currentEmails = document.querySelectorAll(".containerEditEmail");
-    const email1 = currentEmails[0].querySelector("input").value;
-    const email2 = currentEmails[1].querySelector("input").value;
-
-    document.querySelectorAll(".error-message").forEach(el => el.remove());
-    currentEmails.forEach(container => {
-      const input = container.querySelector("input");
-      input.classList.remove("border-red-500");
-      input.style.borderColor = "";
-    });
-
-    if(email1 !== email2){
-      console.log("Los correos no son iguales");
-
-      currentEmails.forEach(container => {
-        const input = container.querySelector("input");
-        input.classList.add("border-red-500"); 
-        input.classList.add("border");
-      });
-
-      const errorMessage = document.createElement("p");
-      errorMessage.className = "error-message  w-full text-red-500 text-sm mt-2";
-      errorMessage.textContent = "The emails are not the same";
-      contentEditEmail.insertBefore(errorMessage, currentEmails[0]);
-
-      utils.handleError("The emails are not the same");
-      return;
-    }
-
-    const validationEmail = await req.updateProfile({
-      id: userId,
-      email: email1
-    });
-
-    if(!validationEmail.state){
-      utils.handleError(validationEmail);
-      return;
-    }
-    window.location.reload();
-  });
+  // Track modification
+  usernameInput.dataset.modified = "true"; 
 
   // Manejar cancelación de cambios
   const cancelButton = document.querySelector("#button-cancel-changes");
   cancelButton?.addEventListener("click", () => {
-    console.log("Cancelar cambios en el email");
+    usernameInput.setAttribute("readonly", "");
+    usernameInput.style.opacity = 0.5;
+    delete usernameInput.dataset.modified;
 
+    document.querySelectorAll(".error-message").forEach(el => el.remove());
+    editIcon.style.pointerEvents = "auto";
+    editIcon.style.opacity = 1;
+  });
+});
+
+// Edit email
+document.querySelector('#edit-icon-email')?.addEventListener("click", () => {
+  const emailInput = document.querySelector('#profile-email');
+  const editIcon = document.querySelector('#edit-icon-email');
+  const contentEditEmail = document.querySelector('#div-edit-email');
+  const optionsButtons = document.querySelector('#options-buttons-profile');
+
+  if(document.querySelectorAll(".containerEditEmail").length === 0){
+    for(let i = 0; i < 2; i++){
+      const containerEmailInput = document.createElement("div");
+      containerEmailInput.className = "w-full flex items-center containerEditEmail";
+      contentEditEmail.appendChild(containerEmailInput);
+
+      const inputEmail = templates.getCloneInputEmail(containerEmailInput);
+      inputEmail.focus();
+    }
+    optionsButtons.style.display = "flex";
+  }
+
+  // Track modification
+  emailInput.dataset.modified = "true"; 
+
+  // Manejar cancelación de cambios
+  const cancelButton = document.querySelector("#button-cancel-changes");
+  cancelButton?.addEventListener("click", () => {
     const currentEmails = document.querySelectorAll(".containerEditEmail");
-    
     currentEmails.forEach(container => container.remove());
 
     optionsButtons.style.display = "none";
@@ -1174,6 +1164,84 @@ document.querySelector('#edit-icon-email')?.addEventListener("click", async () =
     editIcon.style.opacity = 1;
   });
 });
+
+// Edit biography
+document.querySelector("#textarea-biography")?.addEventListener("input", () => {
+  const optionButtons = document.querySelector('#options-buttons-profile');
+  optionButtons.style.display = "flex";
+
+  // Track modification
+  const textareaBiography = document.querySelector('#textarea-biography');
+  textareaBiography.dataset.modified = "true";
+});
+
+// Save Changes for Modified Inputs
+document.querySelector('#button-save-changes')?.addEventListener("click", async () => {
+  const userId = globals.getCookie("ID-USER");
+  
+  // Prepare data object for modified fields only
+  let data = { id: userId };
+
+  // Get values from inputs and check if modified
+  const usernameInput = document.querySelector("#profile-username");
+  const emailInputs = document.querySelectorAll(".containerEditEmail input");
+  const biographyTextarea = document.querySelector("#textarea-biography");
+
+  if (usernameInput.dataset.modified === "true" && usernameInput.value.trim()) {
+    data.username = usernameInput.value.trim();
+  }
+
+  if (emailInputs.length > 0 && emailInputs[0].value.trim()) {
+    const newEmail1 = emailInputs[0]?.value;
+    const newEmail2 = emailInputs[1]?.value;
+
+    if(newEmail1 !== newEmail2){
+      utils.handleError("The emails are not the same");
+      return;
+    }
+
+    data.email = newEmail1.trim();
+  }
+
+  if (biographyTextarea.dataset.modified === "true" && biographyTextarea.value.trim()) {
+    data.biography = biographyTextarea.value.trim();
+  }
+
+  // Send modified data to the backend
+  const validation = await req.updateProfile(data);
+
+  if(!validation.state){
+    utils.handleError(validation);
+    return;
+  }
+
+  // Reset fields and UI
+  if (usernameInput.dataset.modified === "true") {
+    usernameInput.setAttribute("readonly", "");
+    usernameInput.style.opacity = 0.5;
+    delete usernameInput.dataset.modified;
+  }
+
+  if (emailInputs.length > 0) {
+    emailInputs.forEach(input => {
+      input.setAttribute("readonly", "");
+      input.style.opacity = 0.5;
+    });
+  }
+
+  if (biographyTextarea.dataset.modified === "true") {
+    biographyTextarea.setAttribute("readonly", "");
+    biographyTextarea.style.opacity = 0.5;
+    delete biographyTextarea.dataset.modified;
+  }
+
+  // Hide save button
+  document.querySelector('#options-buttons-profile').style.display = 'none';
+
+  // Reload page to reflect changes
+  window.location.reload();
+});
+
 
 //iniciar el modo de edición de contraseña
 document.querySelector('#edit-icon-password')?.addEventListener('click', async () => {
@@ -1268,8 +1336,6 @@ document.querySelector('#edit-icon-password')?.addEventListener('click', async (
   const cancelButton = document.querySelector("#button-cancel-security");
     
   cancelButton?.addEventListener("click", () => {
-    console.log("le di click");
-      
     const editIcon = document.querySelector("#edit-icon-password");
     const passwordInput = document.querySelector("#password");
     const inputsEdits = document.querySelector('#edit-password');
@@ -1315,8 +1381,8 @@ document.querySelector("#textarea-biography")?.addEventListener("click", () => {
     const biography = textareaBiography.value;
 
     if (biography.trim() === "") {
-      console.log("Esa mondá no puede estar en blanco");
-      
+      utils.handleError("Please enter a biography");
+      return;      
     }
 
     const validation = await req.updateProfile({

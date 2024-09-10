@@ -20,7 +20,7 @@ export function getCloneInputEmail(parent){
     return inputEmail.cloneNode(true);
 }
 
-export function renderProject(props, parent){
+export function renderProject(props, parent, depuring = true){
     let {
         name,
         last_modified,
@@ -29,41 +29,51 @@ export function renderProject(props, parent){
     } = props;
 
     if(!preview){
-        preview = "../../../public/placeholder/image_preview.svg";
+        preview = "../../../placeholder/image_preview.svg";
     }
 
     const divContent = document.createElement("div");
-    divContent.className = "w-full h-fit relative";
+    divContent.className = "w-full h-fit relative project";
     divContent.setAttribute("data-name", props.name);
     divContent.setAttribute("data-modified", props.last_modified);
 
     const elementProject = document.createElement("div");
     elementProject.id = "element-project";
-    elementProject.className = "bg-transparent border-2 border-transparent hover:border-[#1E90FF]/70 hover:bg-[#1E90FF]/30 rounded-md shadow-md shadow-black mb-2 absolute cursor-pointer w-full h-72 z-10";
+    elementProject.className = "bg-transparent border-2 border-transparent hover:border-[#1E90FF]/70 hover:bg-[#1E90FF]/30 mb-2 absolute cursor-pointer w-full h-72 z-10";
     elementProject.setAttribute("data-id", project_id);
+    elementProject.setAttribute("data-id-element", globals.generateID());
+
+    const selectionIdentifier = document.createElement("div");
+    selectionIdentifier.id = "selectionIdentifier";
+    selectionIdentifier.className = "hidden border-2 border-[#1E90FF]/70 mb-2 absolute top-0 cursor-pointer w-full h-72 z-9";
 
     const divImage = document.createElement("div");
-    divImage.className = "bg-[#f5f5f5] rounded-md shadow-md shadow-black mb-2 relative cursor-pointer w-full h-72";
+    divImage.className = "bg-[#f5f5f5] relative cursor-pointer w-full h-72";
 
     const imgPreview = document.createElement("img");
     imgPreview.className = "w-full h-full"
     imgPreview.src = preview;
 
     const divInfo = document.createElement("div");
-    divInfo.className = "flex justify-between w-full items-center";
+    divInfo.className = "flex justify-between w-full items-center p-2 bg-[#1E1E1E] rounded-b-md";
 
     const divInfoInter = document.createElement("div");
-    divInfoInter.className = "flex flex-col w-full";
+    divInfoInter.className = "flex flex-col w-full gap-y-1";
+
+    const divInfoTop = document.createElement("div");
+    divInfoTop.className = "w-full flex gap-x-2";
+
+    const new_project = document.createElement("span");
+    new_project.className = "bg-[#1E90FF] p-1 rounded-md text-sm";
+    new_project.innerHTML = "Nuevo";
 
     const h3Name = document.createElement("h3");
-    h3Name.id = "name-of-parcel";
-    h3Name.className = "text-white text-xl font-bold max-xl:text-lg truncate w-full";
+    h3Name.className = "name-of-parcel text-white text-xl font-bold max-xl:text-lg truncate w-full";
     h3Name.textContent = name;
 
     const inputName = document.createElement("input");
     inputName.type = "text";
-    inputName.id = "input-of-parcel";
-    inputName.className = "bg-transparent hidden text-white text-xl font-bold max-xl:text-lg truncate w-full";
+    inputName.className = "input-of-parcel bg-transparent hidden text-white outline-none pb-1 border-b-2 border-[#383838] hover:border-[#1E90FF] ease duration-150 text-xl font-bold max-xl:text-lg truncate w-full";
     inputName.value = name;
 
     const h4LastModified = document.createElement("h4");
@@ -73,12 +83,19 @@ export function renderProject(props, parent){
     divContent.appendChild(elementProject);
     divContent.appendChild(divImage);
     divContent.appendChild(divInfo);
+    divContent.appendChild(selectionIdentifier);
 
     divImage.appendChild(imgPreview);
 
     divInfo.appendChild(divInfoInter);
-    divInfoInter.appendChild(h3Name);
-    divInfoInter.appendChild(inputName);
+    divInfoInter.appendChild(divInfoTop);
+    
+    if(globals.isNewProject(last_modified)){
+        divInfoTop.appendChild(new_project);
+    }
+
+    divInfoTop.appendChild(h3Name);
+    divInfoTop.appendChild(inputName);
     divInfoInter.appendChild(h4LastModified);
 
     parent.appendChild(divContent);
@@ -88,12 +105,14 @@ export function renderProject(props, parent){
 
     // Event listeners
     reusable.eventsListenerProjects();
-    front.utils.handleError("Project rendered successfully");
+    if(depuring){
+        front.utils.handleError("Project rendered successfully");
+    }
 
     return divContent;
 }
 
-export function renderTemplate(props, parent){
+export function renderTemplate(props, parent, depuring = true){
     let {
         template_id,
         name,
@@ -103,10 +122,8 @@ export function renderTemplate(props, parent){
         likes,
     } = props;
 
-    console.log(props)
-
     if(!preview){
-        preview = "../../../public/placeholder/image_preview.svg";
+        preview = "../../../placeholder/image_preview.svg";
     }
 
     const divContent = document.createElement("div");
@@ -119,21 +136,21 @@ export function renderTemplate(props, parent){
     divContent.setAttribute("data-description", description);
 
     const divTemplate = document.createElement("div");
-    divTemplate.className = "w-full h-72 relative mb-2"
+    divTemplate.className = "w-full h-72 relative"
 
     const divImage = document.createElement("div");
-    divImage.className = "w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0"
+    divImage.className = "w-full h-full absolute top-0 left-0"
 
-    if(preview === "../../../public/placeholder/image_preview.svg"){
-        divImage.className = "bg-[#E6E6E6] w-full h-full rounded-md shadow-md shadow-black mb-2 absolute top-0 left-0"
+    if(preview === "../../../placeholder/image_preview.svg"){
+        divImage.className = "bg-[#E6E6E6] w-full h-full absolute top-0 left-0"
     }
 
     const imgPreview = document.createElement("img");
-    imgPreview.className = "w-full h-full rounded-md"
+    imgPreview.className = "w-full h-full"
     imgPreview.src = preview;
 
     const divSVG = document.createElement("div");
-    divSVG.className = "w-full h-full flex justify-center items-center rounded-md shadow-md shadow-black mb-2 border-2 border-transparent cursor-pointer transition-all duration-[500] ease-in hover:border-[#1E90FF] hover:bg-[#1E90FF]/70 [&>svg]:hover:opacity-100 absolute top-0 left-0"
+    divSVG.className = "w-full h-full flex justify-center items-center border-2 border-transparent cursor-pointer transition-all duration-[500] ease-in hover:border-[#1E90FF] hover:bg-[#1E90FF]/70 [&>svg]:hover:opacity-100 absolute top-0 left-0"
 
     divSVG.innerHTML = `
         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-plus w-12 opacity-0 transition-all duration-[500] ease-in" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
@@ -144,9 +161,7 @@ export function renderTemplate(props, parent){
     `
 
     const divInfo = document.createElement("div");
-    divInfo.className = "flex justify-start gap-5 items-center relative"
-
-    const divLog = document.createElement("div");
+    divInfo.className = "flex justify-start gap-5 items-center relative p-2 bg-[#1E1E1E] rounded-b-md"
 
     const imgLog = document.createElement("img");
     imgLog.className = "h-12 max-xl:h-10"
@@ -183,19 +198,101 @@ export function renderTemplate(props, parent){
 
     divImage.appendChild(imgPreview);
 
-    divInfo.appendChild(divLog);
+    divInfo.appendChild(imgLog);
     divInfo.appendChild(divInfoInter);
 
-    divLog.appendChild(imgLog);
     divInfoInter.appendChild(divInfoTemplate);
     divInfoInter.appendChild(contentLikes);
     
     parent.appendChild(divContent);
 
     reusable.showPreviewTemplate();
-    front.utils.handleError("Project rendered successfully");
+
+    if(depuring){
+        front.utils.handleError("Project rendered successfully");
+    }
 
     return divContent;
+}
+
+export async function renderMoreFavorites(){
+    try {
+        let favorites = await req.getFavorites(globals.getCookie("ID-USER"))
+  
+        if (!favorites.state) {
+            front.utils.handleError(favorites)
+            return
+        }
+
+        favorites = JSON.parse(favorites.data.message[0].favorites);
+
+        const content_more_favorites = document.querySelector("#content-more-favorites");
+
+        let templates = await req.getAllTemplates();
+        if(!templates.state){
+            front.utils.handleError(templates);
+        }
+
+        let projects = await req.getAllProjects(globals.getCookie("ID-USER"));
+        if(!projects.state){
+            front.utils.handleError(projects);
+        }
+        
+        templates = templates.data.message;
+        projects = projects.data.message;
+
+        content_more_favorites.innerHTML = "";
+
+        if (favorites.length === 0) {
+            content_more_favorites.innerHTML = `<p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>`;
+        }
+        
+        if (favorites.length === 0) {
+            front.utils.handleError("Favorites rendered successfully without any favorites");
+            return content_more_favorites;
+        }
+
+        favorites.forEach( async (favorite) => {
+            let props;
+
+            if(favorite.type == "template"){
+                templates.forEach((template) => {
+                    if(template.template_id == favorite.id){
+                        props = {
+                            template_id: template.template_id,
+                            name: template.name,
+                            author: template.autor,
+                            preview: template.preview,
+                            description: template.description,
+                            likes: template.likes
+                        }
+
+                        renderTemplate(props, content_more_favorites, false);
+                        return;
+                    }
+                })
+            }else{
+                projects.forEach((project) => {
+                    if(project.project_id == favorite.id){
+                        props = {
+                            project_id: project.project_id,
+                            name: project.name,
+                            last_modified: project.last_modified,
+                            preview: project.preview
+                        }
+
+                        renderProject(props, content_more_favorites, false);
+                        return;
+                    }
+                })
+            }
+        })
+
+        front.utils.handleError("More Favorites rendered successfully");
+        return content_more_favorites;
+    }catch (err) {
+        return err;
+    }
 }
 
 export async function renderFavorites() {
@@ -203,7 +300,6 @@ export async function renderFavorites() {
         let favorites = await req.getFavorites(globals.getCookie("ID-USER"))
   
         if (!favorites.state) {
-            console.log(favorites)
             front.utils.handleError(favorites)
             return
         }
@@ -246,7 +342,7 @@ export async function renderFavorites() {
         const favorites_slice = favorites.slice(0, 4);
 
         if (favorites.length === 0) {
-            front.utils.handleError("Favorites rendered successfully");
+            front.utils.handleError("Favorites rendered successfully without any favorites");
             return content_favorites;
         }
 
@@ -262,7 +358,7 @@ export async function renderFavorites() {
             }else{
                 projects.forEach( (project) => {
                     if(project.project_id == favorite.id){
-                        name = project.name;
+                        name = project.name
                     }
                 })
             }
@@ -285,35 +381,41 @@ export async function renderFavorites() {
 
             content_favorites.appendChild(divFavorite);
         });
-
+        
         if(length_favorites > 4){
             const pShowMoreFavorites = document.createElement('p');
             pShowMoreFavorites.id = "showMoreFavorites";
             pShowMoreFavorites.className = "hover:underline cursor-pointer font-normal text-sky-400";
             pShowMoreFavorites.textContent = `Ver más...`;
-
             content_favorites.parentNode.appendChild(pShowMoreFavorites);
         }
-
+        
+        reusable.eventsListenerFavorites();
         front.utils.handleError("Favorites rendered successfully");
         return content_favorites;
-
     } catch (error) {
         return error;
     }
 }
 
 export function deleteProject(projectId) {
-    const project = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
-    project.remove();
+    const projects = document.querySelectorAll(`#element-project[data-id="${projectId}"]`);
+    
+    projects.forEach(project => {
+        project.parentNode.remove();
+    });
+    
     front.utils.handleError("Project deleted successfully");
 }
 
 export function renameProject(projectId, newName){
-    const project = document.querySelector(`#element-project[data-id="${projectId}"]`).parentNode;
-    const name = project.querySelector("#name-of-parcel");
-    const input = project.querySelector("#input-of-parcel");
+    const projects = document.querySelectorAll(`#element-project[data-id="${projectId}"]`);
 
-    name.textContent = newName;
-    input.value = newName;
+    projects.forEach(project => {
+        const name = project.parentNode.querySelector(".name-of-parcel");
+        const input = project.parentNode.querySelector(".input-of-parcel");
+    
+        name.textContent = newName;
+        input.value = newName;
+    })
 }

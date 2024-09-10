@@ -1,6 +1,7 @@
 ---
 import Filter from '../components/Articles/Filter.astro';
 import ProjectMetric from '../components/Articles/ProjectMetric.astro';
+import Article from '../components/Articles/Article.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
 import Analytics from '../components/Popups/Analytics.astro';
 import Content from '../components/Sections/Content.astro';
@@ -65,7 +66,7 @@ try{
 					<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
 						{
 							data.projects.map((item: any) => (
-								<ProjectMetric id="project" name={item.name} project_id={item.project_id} preview={item.preview} stage={item.stage} collaborators={item.collaborators} last_modified={item.last_modified} />
+								<Article id="project" id_project='metric-project' name={item.name} project_id={item.project_id} preview={item.preview} last_modified={item.last_modified} />
 							))
 						}
 					</div>

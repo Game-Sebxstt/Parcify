@@ -19,7 +19,7 @@ if(data.projects[0] && data.projects[0].last_modified){
 <div id="popup-invite" class="w-screen h-screen fixed z-50 hidden justify-center items-center max-sm:px-3">
     <div id="bg-close-invite" class="absolute left-0 bg-close w-full h-full backdrop-blur bg-black/50 cursor-pointer"></div>
 
-    <div id="projectContent" class="flex flex-col h-fit w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#353535] rounded-lg z-10  animate-deployment">
+    <div id="projectContent" class="flex flex-col h-fit w-[30rem] max-sm:w-full max-sm:rounded-none p-2 bg-[#2c2c2c] rounded-lg z-10  animate-deployment">
         <header class="w-full flex justify-between items-center p-2 border-b-[1px] border-blue-500">
             <h3 class="text-xl text-white font-bold max-md:text-base">
                 Share the parcellers with your friends
@@ -45,7 +45,7 @@ if(data.projects[0] && data.projects[0].last_modified){
                                 item.preview ? (
                                     <img src={item.preview} class="w-full h-full">
                                 ) : (
-                                    <img src="../../../public/placeholder/image_preview.svg" class="w-full h-full">
+                                    <img src="../../../placeholder/image_preview.svg" class="w-full h-full">
                                 )
                             }
                         </div>

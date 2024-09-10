@@ -53,10 +53,12 @@ try{
 		<meta name="generator" content={Astro.generator} />
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@latest/dist/css/splide.min.css">
 		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
 		<script src="../js/frontend/front.js"></script>
 		<script src="../js/frontend/utilities/splide.js"></script>
 		<script src="../js/frontend/utilities/chart.js"></script>
-		<script src="../js/frontend/utilities/keyEvents.js"></script>
 		<script src="../js/frontend/utilities/initial.js"></script>
 		<title>{title}</title>
 	</head>
@@ -85,7 +87,7 @@ try{
 	}
 
 	html {
-		font-family: 'Roboto', sans-serif;
+		font-family: "Manrope", sans-serif;
 		color-scheme: dark light;
 		scroll-behavior: smooth;
 	}

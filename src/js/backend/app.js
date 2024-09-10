@@ -152,6 +152,26 @@ app.post("/project/delete", async (req, res) => {
     return res.status(200).send({ status: "Good Request", message: "El proyecto se elimino correctamente." })
 })
 
+app.post("/project/deleteList", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const { list_projects } = req.body;
+
+    const connection = await getConnection();
+
+    list_projects.forEach(async (element) => {
+        const delete_project = await connection.query("DELETE FROM projects WHERE project_id = ?", [element]);
+
+        if(!delete_project){
+            return res.status(400).send({ status: "Bad Request", message: "No se pudo eliminar el proyecto." })
+        }
+    });
+
+    return res.status(200).send({ status: "Good Request", message: "Los proyectos se eliminaron correctamente."})
+});
+
 app.post("/project/duplicate", async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
@@ -177,6 +197,102 @@ app.post("/project/duplicate", async (req, res) => {
     return res.status(200).send({ status: "Good Request", message: {project_id: project_id, stage: data[0].stage, preview: data[0].preview, collaborators: data[0].collaborators, name: data[0].name} })
 })
 
+app.post("/project/duplicateList", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { list_projects } = req.body;
+
+    const connection = await getConnection();
+    let returnData = [];
+
+    try {
+        await Promise.all(list_projects.map(async (element) => {
+            const data = await connection.query("SELECT * FROM projects WHERE project_id = ?", [element]);
+
+            if (!data.length > 0) {
+                throw new Error(`El Proyecto ${element} no existe.`);
+            }
+
+            const project_id = await generateIdProject(connection);
+            const date_now = new Date();
+
+            returnData.push({
+                project_id: project_id,
+                stage: data[0].stage,
+                preview: data[0].preview,
+                collaborators: data[0].collaborators,
+                name: data[0].name
+            });
+
+            const duplicate = await connection.query(
+                "INSERT INTO projects (project_id, user_id, name, stage, preview, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [project_id, data[0].user_id, data[0].name, data[0].stage, data[0].preview, data[0].collaborators, date_now]
+            );
+
+            if (!duplicate) {
+                throw new Error(`No se pudo duplicar el proyecto con ID ${element}.`);
+            }
+        }));
+
+        return res.status(200).send({ status: "Good Request", message: returnData });
+    } catch (error) {
+        return res.status(400).send({ status: "Bad Request", message: error.message });
+    }
+});
+
+app.post("/template/like", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+    const { template_id, id_user } = req.body;
+    const connection = await getConnection();
+
+    const template = await connection.query("SELECT * FROM templates WHERE template_id = ?", [template_id]);
+    if (!template.length > 0) {
+        return res.status(400).send({ status: "Bad Request", message: "La plantilla no existe." });
+    }
+
+    let likes_template = JSON.parse(template[0].likes)
+    likes_template.push({
+        user_id: id_user,
+        date: new Date()
+    })
+
+    const saved_template = await connection.query("UPDATE templates SET likes = ? WHERE template_id = ?",[JSON.stringify(likes_template), template_id]);
+
+    if (!saved_template) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el like." });
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "Like guardado correctamente." });
+})
+
+app.post("/template/dislike", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+    const { template_id, id_user } = req.body;
+    const connection = await getConnection();
+
+    const template = await connection.query("SELECT * FROM templates WHERE template_id = ?", [template_id]);
+    if (!template.length > 0) {
+        return res.status(400).send({ status: "Bad Request", message: "La plantilla no existe." });
+    }
+
+    let likes_template = JSON.parse(template[0].likes)
+    likes_template = likes_template.filter(like => like.user_id !== id_user);
+
+    const saved_template = await connection.query("UPDATE templates SET likes = ? WHERE template_id = ?",[JSON.stringify(likes_template), template_id]);
+
+    if (!saved_template) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el dislike." });
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "Dislike guardado correctamente." });
+})
+
 //Cambio de nombre
 app.post("/project/rename", async (req,res) => {
     if (!req.body) {
@@ -187,7 +303,7 @@ app.post("/project/rename", async (req,res) => {
     const connection = await getConnection();
     const [data] = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
 
-    if (data.length === 0) {
+    if (data && data.length === 0) {
         return res.status(400).send({ status: "Bad Request", message: "El Proyecto no existe." });
     }
 
@@ -349,7 +465,6 @@ app.post("/user/updateProfile", async (req, res) => {
     }
 
     let {id, username, email, biography} = req.body;
-    console.log(id, username, email, biography);
     const connection = await getConnection();
 
     const userExists = await connection.query('SELECT * FROM users WHERE user_id = ?', [id]);
@@ -488,8 +603,9 @@ app.get("/user/data", async (req, res) =>{
     const connection = await getConnection();
     const data = await connection.query("SELECT * FROM users WHERE user_id = ?", [id_user]);
     const projects = await connection.query("SELECT * FROM projects WHERE user_id = ?", [id_user]);
+    const templates = await connection.query("SELECT * FROM templates");
 
-    if(!data.length > 0 && !projects.length > 0){
+    if(!data.length > 0 && !projects.length > 0 && !templates.length > 0){
         return res.status(400).send({ status: "Bad Request", message: "El Usuario no existe." })
     }
 
@@ -498,6 +614,7 @@ app.get("/user/data", async (req, res) =>{
     const info_user = {
         users: data[0],
         projects: projects,
+        templates: templates
     }
 
     res.status(200).send({ status: "Good Request", message: info_user })

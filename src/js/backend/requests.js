@@ -45,6 +45,23 @@ export async function loginUser(email, password) {
     return {state: true, data: responseData};
 }
 
+export async function getDataUser(user_id){
+    const response = await fetch(`http://localhost:4000/user/data?id_user=${user_id}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
 export async function createProject(id, name, template_id){
     const data = {
         id: Number(id),
@@ -222,10 +239,47 @@ export async function deleteProject(id_project){
     return {state: true, data: responseData};
 }
 
+//Delete list project with method post
+export async function deleteListProjects(list_projects){
+    const response = await fetch(`http://localhost:4000/project/deleteList`, {
+        method: "POST",
+        body: JSON.stringify({list_projects: list_projects}),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
 export async function duplicateProject(id_project){
     const response = await fetch(`http://localhost:4000/project/duplicate`, {
         method: "POST",
         body: JSON.stringify({id_project: id_project}),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+export async function duplicateListProjects(list_projects){
+    const response = await fetch(`http://localhost:4000/project/duplicateList`, {
+        method: "POST",
+        body: JSON.stringify({list_projects: list_projects}),
         headers: {
             "Content-Type": "application/json",
         }
@@ -457,6 +511,52 @@ export async function updateBiography(user, newBio){
 
 export async function updateProfile(data){
     const response = await fetch(`http://localhost:4000/user/updateProfile`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function likeTemplate(template_id, id_user){
+    const data = {
+        id_user: id_user,
+        template_id: template_id
+    }
+
+    const response = await fetch(`http://localhost:4000/template/like`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function dislikeTemplate(template_id, id_user){
+    const data = {
+        id_user: id_user,
+        template_id: template_id
+    }
+
+    const response = await fetch(`http://localhost:4000/template/dislike`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {

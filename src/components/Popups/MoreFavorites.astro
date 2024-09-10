@@ -1,70 +1,22 @@
 ---
-import Template from "../Articles/Template.astro";
 import TemplateView from "../Articles/TemplateView.astro";
 import Article from "../Articles/Article.astro";
-import { getAllTemplates, getFavorites } from "../../js/backend/requests";
+import { getDataUser } from "../../js/backend/requests";
+import * as globals from '../../js/frontend/utilities/globals'
 
-// Obtener el ID del usuario
 const id = Astro.cookies.get("ID-USER")?.value;
-let getDataUser:any = await fetch(`http://localhost:4000/user/data?id_user=${id}`);
-let dataUser = await getDataUser.json();
 
-let getTemplates:any = await getAllTemplates();
-let getFavorite:any = await getFavorites(id)
+const data_response = await getDataUser(id);
+let elementsUser;
 
-let isDataFavorite = getFavorite.state ? true : false;
-
-let arrayFavorites:any;
-let arrayProjects:any = [];
-let arrayTemplates:any = [];
-
-let filteredProjects;
-let filteredTemplates;
-
-if (isDataFavorite) {
-    // Cargar proyectos y plantillas en arrays
-    dataUser.message.projects.forEach((element:any) => {
-        arrayProjects.push({
-            id:element.project_id,
-            name:element.name,
-            edited:element.last_modified,
-            preview:element.preview,
-            collaborators:element.collaborators,
-            stage:element.stage,
-        });
-    });
-
-    getTemplates.data.message.forEach((element:any) => {
-        arrayTemplates.push({
-            id:element.template_id,
-            name:element.name,
-            author:element.autor,
-            likes:element.likes,
-            url_image:element.preview,
-            description:element.description,
-        });
-    });
-
-    getFavorite.data.message.forEach((element:any) => {
-        arrayFavorites = JSON.parse(element.favorites)
-    });
-
-    // Filtrar proyectos y plantillas según los favoritos
-    filteredProjects = arrayProjects.filter((project:any) => 
-        arrayFavorites.some((fav:any) => fav.id === project.id && fav.type === "project")
-    );
-
-    filteredTemplates = arrayTemplates.filter((template:any) => 
-        arrayFavorites.some((fav:any) => fav.id === template.id && fav.type === "template")
-    );
+if(data_response.state){
+    elementsUser = [...data_response.data.message.templates, ...data_response.data.message.projects]
 }
 
 ---
 
-<section id="moreFavorites" class="fixed w-full h-full z-50 hidden justify-center items-center bg-black/80">
-    <!-- caja principal -->
-    <section class="max-w-[72rem] h-[40rem] max-h-[60rem] bg-[#1E1E1E] rounded-md p-3 flex flex-col gap-2 animate-deployment">
-        <!-- encabezado -->
+<section id="moreFavorites" class="fixed w-full h-full z-40 hidden justify-center items-center bg-black/80">
+    <section class="max-w-[72rem] h-[95%] bg-[#2c2c2c] rounded-md p-3 flex flex-col gap-2 animate-deployment">
         <header class="flex items-center justify-between">
             <div class="flex items-center gap-1">
                 <img src="/Logo-no-background-no-text.png" class="h-10"/>
@@ -78,43 +30,35 @@ if (isDataFavorite) {
         </header>
         <hr class="border-blue-500">
 
-        <!-- contenido -->
-        <main class="h-full p-2 grid grid-cols-2 gap-5 overflow-auto">
-            <!-- Renderizar Proyectos Favoritos -->
+        <main id="content-more-favorites" class="h-full p-2 grid grid-cols-2 gap-5 overflow-auto">
             {
-                filteredProjects && filteredProjects.length > 0 ? (
-                    filteredProjects.map((project:any) => (
-                        <Article
-                        id="projectFavorite"
-                        last_modified={project.edited}
-                        name={project.name}
-                        preview={project.preview}
-                        project_id={project.id}
-                        collaborators={project.collaborators}
-                        stage={project.stage}
-                        ></Article>
-                    ))
-                ):(
-                    <span></span>
-                )
-            } 
-
-            <!-- Renderizar Plantillas Favoritas -->
-            {
-                filteredTemplates && filteredTemplates.length > 0 ? (
-                    filteredTemplates.map((template:any) => (
-                        <TemplateView
-                            id=""
-                            first_text={template.name}
-                            second_text={template.author}
-                            url_image={template.url_image}
-                            template_id={template.id}
-                            description={template.description}
-                            likes={template.likes}
-                        ></TemplateView>
+                data_response.state && elementsUser ? (
+                    elementsUser.map((element) => (
+                        element.template_id ? (
+                            <TemplateView 
+                                id="templateFavorites" 
+                                first_text={element.name} 
+                                second_text={element.autor} 
+                                url_image={element.preview}
+                                template_id={element.template_id}
+                                description={element.description}
+                                likes={element.likes}
+                            />
+                        ) : (
+                            <Article 
+                                id="project"
+                                id_element={globals.generateID()}
+                                name={element.name} 
+                                last_modified={element.last_modified}
+                                project_id={element.project_id}
+                                preview={element.preview}
+                            />
+                        )
                     ))
                 ) : (
-                    <span></span>
+                    <span>
+                        Dont have any favorite
+                    </span>
                 )
             }
         </main>
