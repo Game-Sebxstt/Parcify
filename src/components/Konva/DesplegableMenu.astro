@@ -1,0 +1,91 @@
+---
+---
+<section id="desplegableMenuKonva" class="absolute top-[10%] left-3 z-10 bg-[#383838] border border-zinc-400 w-full max-w-[15rem] h-fit p-2 rounded hidden flex-col animate-deployment">
+    <!-- back to index -->
+    <article class="py-2 px-2 border-b hover:bg-blue-500 cursor-pointer">
+        <button id="back-index" class="">Back to home</button>
+    </article>
+
+    <!-- options for canva-->
+    <nav class="flex flex-col gap-1 py-3 border-b">
+        <span class="relative cursor-pointer group flex items-center justify-between py-1 px-2 hover:bg-blue-500">
+            <p>File</p>
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 18l6 -6l-6 -6v12" /></svg>
+            <article class="absolute group-hover:flex hidden flex-col bg-[#383838] border border-zinc-400 h-fit w-[15rem] left-[100%] top-1 p-2 rounded">
+                <nav class="flex flex-col gap-1 py-1 border-b">
+                    <span class="cursor-pointer flex items-center justify-between gap-4 py-1 px-2 hover:bg-blue-500">
+                        <p>New Project</p>
+                    </span>
+                    <span class="cursor-pointer flex items-center justify-between gap-4 py-1 px-2 hover:bg-blue-500">
+                        <p>New Template</p>
+                    </span>
+                </nav>
+                <nav class="flex flex-col gap-1 py-2 border-b">
+                    <span class="cursor-pointer flex items-center justify-between gap-4 py-1 px-2 hover:bg-blue-500">
+                        <p>Import...</p>
+                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="#757276"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-file-arrow-left"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M15 15h-6" /><path d="M11.5 17.5l-2.5 -2.5l2.5 -2.5" /></svg>
+                    </span>
+                </nav>
+                <nav class="flex flex-col gap-1 pt-1">
+                    <span class="cursor-pointer flex items-center justify-between gap-4 py-1 px-2 hover:bg-blue-500">
+                        <p>Export as...</p>
+                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="#757276"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-download"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+                    </span>
+                </nav>
+            </article>
+        </span>
+        <span class="relative cursor-pointer group flex items-center justify-between py-1 px-2 hover:bg-blue-500">
+            <p>Edit</p>
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 18l6 -6l-6 -6v12" /></svg>
+            <article class="absolute group-hover:flex hidden flex-col bg-[#383838] border border-zinc-400 h-fit w-[15rem] left-[100%] top-1 p-2 rounded">
+                <nav class="flex flex-col gap-1 py-1">
+                    <span id="undo" class="cursor-pointer flex items-center justify-between gap-4 py-1 px-2 hover:bg-blue-500">
+                        <p>Undo</p>
+                        <p class="flex items-center text-gray-500">Ctrl + z</p>
+                    </span>
+                    <span id="redo" class="cursor-pointer flex items-center justify-between gap-4 py-1 px-2 hover:bg-blue-500">
+                        <p>Redo</p>
+                        <p class="flex items-center text-gray-500">Ctrl + y</p>
+                    </span>
+                    <span id="selectAll" class="cursor-pointer flex items-center justify-between gap-4 py-1 px-2 hover:bg-blue-500">
+                        <p>Select All</p>
+                        <p class="flex items-center text-gray-500">Ctrl + a</p>
+                    </span>
+                </nav>
+            </article>
+        </span>
+    </nav>
+
+    <!-- additaments -->
+    <nav class="flex flex-col gap-1 py-3 border-b">
+        <span class="relative cursor-pointer group flex items-center justify-between py-1 px-2 hover:bg-blue-500">
+            <p>Plugins</p>
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 18l6 -6l-6 -6v12" /></svg>
+            
+            <article class="absolute group-hover:flex hidden justify-center items-center gap-1 bg-[#383838] border border-zinc-400 h-fit w-[15rem] left-[100%] top-1 p-2 rounded">
+                <img src="../../../public/cat-work.gif" alt="">
+            </article>
+        </span>
+        <span class="relative cursor-pointer group flex items-center justify-between py-1 px-2 hover:bg-blue-500">
+            <p>Widgets</p>
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 18l6 -6l-6 -6v12" /></svg>
+            
+            <article class="absolute group-hover:flex hidden justify-center items-center gap-1 bg-[#383838] border border-zinc-400 h-fit w-[15rem] left-[100%] top-1 p-2 rounded">
+                <img src="../../../public/cat-work.gif" alt="">
+            </article>
+        </span>
+        <span class="relative cursor-pointer group flex items-center justify-between py-1 px-2 hover:bg-blue-500">
+            <p>Preferences</p>
+            <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 18l6 -6l-6 -6v12" /></svg>
+            <article class="absolute group-hover:flex hidden justify-center items-center gap-1 bg-[#383838] border border-zinc-400 h-fit w-[15rem] left-[100%] top-1 p-2 rounded">
+                <img src="../../../public/cat-work.gif" alt="">
+            </article>
+        </span>
+    </nav>
+
+    <!-- extras -->
+    <nav class="flex flex-col gap-1 py-1">
+        <span class="hover:bg-blue-500 py-1 px-2 cursor-pointer">Help & Guide</span>
+    </nav>
+
+</section>

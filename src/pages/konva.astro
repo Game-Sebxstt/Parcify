@@ -8,6 +8,7 @@ import SectionImages from "../components/Sections/Options/section_images.astro";
 import SectionPlugins from "../components/Sections/Options/section_plugins.astro";
 import SectionShapes from "../components/Sections/Options/section_shapes.astro";
 import SectionTemplates from "../components/Sections/Options/section_templates.astro";
+import DesplegableMenu from "../components/Konva/DesplegableMenu.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
 
 const logged = Astro.cookies.get("logged")?.value;
@@ -21,9 +22,9 @@ if(logged != 'true' && !id){
 
 <LayoutKonva title="Parcify - Konva">
     <div class="w-full h-screen flex flex-col">
-        <div id="header-konva" class="w-full h-fit py-2.5 z-10 bg-[#383838] flex justify-between px-3 border-b-2 border-[#1E90FF]">
-            <div class="w-fit h-full flex items-center gap-3">
-                <span id="back-index" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
+        <div id="header-konva" class="w-full h-fit py-2.5 z-20 bg-[#383838] flex justify-between px-3 border-b-2 border-[#1E90FF]">
+            <div class="w-fit h-full flex items-center gap-3 ">
+                <span id="openMenuDesplegableKonva" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
                     <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-grid h-8 max-[980px]:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
@@ -33,7 +34,7 @@ if(logged != 'true' && !id){
                     </svg> 
                 </span>
 
-                <div class="flex flex-col w-fit h-fit">
+                <div class="flex flex-col w-fit h-fit relative">
                     <h3 class="w-fit h-fit text-md text-white font-semibold">
                         Parcelador Presentations
                     </h3>
@@ -55,6 +56,7 @@ if(logged != 'true' && !id){
                         <path d="M15 14l4 -4l-4 -4" /><path d="M19 10h-11a4 4 0 1 0 0 8h1" />
                     </svg>
                 </span> -->
+                <DesplegableMenu></DesplegableMenu>
             </div>
                 
             <div class="w-fit h-full flex items-center gap-3">
@@ -72,7 +74,7 @@ if(logged != 'true' && !id){
                 </span>
 
                 <span class="w-[2px] h-1/2 bg-[#696969]"></span>
-             
+
                 <div class="flex">
                     <ProfileInvite color="bg-green-500" letter="S"/>
                     <ProfileInvite color="bg-purple-500 -ml-2" letter="D"/>
@@ -94,7 +96,7 @@ if(logged != 'true' && !id){
                     Share
                 </span>
 
-                <span class="w-fit h-fit py-1 px-3 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in text-white text-sm flex justify-center items-center gap-2">
+                <span id="present" class="w-fit h-fit py-1 px-3 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in text-white text-sm flex justify-center items-center gap-2">
                     <svg class="icon icon-tabler icons-tabler-outline icon-tabler-presentation h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M3 4l18 0" />
