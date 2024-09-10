@@ -20,12 +20,15 @@ let numFavorites;
 if (isData){
     isVoid = preferences.message[0].favorites != "[]" ? true : false; 
     numFavorites = JSON.parse(preferences.message[0].favorites)
+
     const elementParsed = JSON.parse(preferences.message[0].favorites)
-    const projectUser = dataUser.message.projects;
+    const projects = dataUser.message.projects;
+    const templates = dataUser.message.templates;
+    const elementsUser = [...projects, ...templates];
 
     elementParsed.forEach((item:any) => {
-        projectUser.forEach((elementUser:any) => {
-            if (elementUser.project_id === item.id) {
+        elementsUser.forEach((elementUser:any) => {
+            if (elementUser.project_id === item.id || elementUser.template_id === item.id) {
                 elementUser["type"] = item.type;
                 dataFilter.push(elementUser);
             }

@@ -12,9 +12,7 @@ const {tittle, author, description, location} = Astro.props;
 
 ---
 <section id="previewTemplate" data-id="0" data-location={location} class="fixed w-full h-full z-50 hidden justify-center items-center bg-black/80">
-    <!-- caja principal -->
-    <section class="w-[50rem] h-[26rem] bg-[#1E1E1E] rounded-md p-3 flex flex-col gap-2 animate-deployment">
-        <!-- encabezado -->
+    <section class="w-[50rem] h-[26rem] bg-[#2c2c2c] rounded-md p-3 flex flex-col gap-2 animate-deployment">
         <header class="flex items-center justify-between">
             <div class="flex items-center gap-1">
                 <img src="/Logo-no-background-no-text.png" class="h-10"/>
@@ -26,15 +24,14 @@ const {tittle, author, description, location} = Astro.props;
                 </svg>
             </button>
         </header>
+
         <hr class="border-blue-500">
-        <!-- contenido -->
+        
         <main class="h-full flex justify-between gap-2">
-            <!-- previsualizacion de la plantilla -->
             <section class="h-full/2 w-[55%] bg-gray-200 relative">
                 <img id="infoPreview" class="absolute w-full h-full" src="https://image.isu.pub/200525205800-f2414d10a0f4960b2a8d0db27a9b4af3/jpg/page_1_thumb_large.jpg"></img>
             </section>
 
-            <!-- data de la plantilla -->
             <section class="flex flex-col gap-2 justify-between w-[50%]">
                 <article class="flex flex-col justify-start gap-2 flex-1">
                     <div class="flex flex-col gap-1">
@@ -44,12 +41,11 @@ const {tittle, author, description, location} = Astro.props;
                     </div>
                 </article>
 
-                <!-- barra de opciones -->
                 <article class="flex items-center justify-between pl-2">
                     <nav class="flex items-center gap-4">
-                        <svg id="heart" class="cursor-pointer" xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="#f46262"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" /></svg>
-                        <svg id="favoriteTemplate" class="cursor-pointer" xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="#f4d462"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" /></svg>
-                        <svg id="share" class="cursor-pointer" xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="#ffffff"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M13 4v4c-6.575 1.028 -9.02 6.788 -10 12c-.037 .206 5.384 -5.962 10 -6v4l8 -7l-8 -7z" /></svg>
+                        <svg id="heartTemplate" class="cursor-pointer ease duration-150 transition-all h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="#f46262"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" /></svg>
+                        <svg id="favoriteTemplate" class="cursor-pointer ease duration-150 transition-all h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="#f4d462"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" /></svg>
+                        <svg id="shareTemplate" class="cursor-pointer ease duration-150 transition-all h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="#ffffff"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M13 4v4c-6.575 1.028 -9.02 6.788 -10 12c-.037 .206 5.384 -5.962 10 -6v4l8 -7l-8 -7z" /></svg>
                     </nav>
                     <button id="createTemplate" class="bg-blue-500 py-2 px-4 rounded">Create</button>
                 </article>

@@ -17,7 +17,10 @@ import MesageError from "../components/Popups/Alerts/Error.astro";
 		<meta name="viewport" content="width=device-width" />
 		<link rel="icon" type="image/svg+xml" href="/Logo.jpg" />
 		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-		<meta name="generator" content={Astro.generator} />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+        <meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 	</head>
 	<body>
@@ -39,7 +42,7 @@ import MesageError from "../components/Popups/Alerts/Error.astro";
     }
     
     html {
-        font-family: 'Roboto', sans-serif;
+		font-family: "Manrope", sans-serif;
         color-scheme: dark light;
         scroll-behavior: smooth;
     }

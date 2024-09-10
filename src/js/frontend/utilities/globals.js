@@ -170,4 +170,14 @@ export async function isFavorite(project_id) {
     }
   
     return dataFilter.some((favorite) => favorite.project_id === project_id);
-  }
+}
+
+export function isNewProject(last_modified){
+    const threeHoursAgo = new Date().getTime() - (2 * 60 * 60 * 1000); 
+    const lastModifiedTime = new Date(last_modified).getTime(); 
+    return lastModifiedTime >= threeHoursAgo;
+}
+
+export function generateID(){
+    return Math.random().toString(36).substr(2, 9);
+}

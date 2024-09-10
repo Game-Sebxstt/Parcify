@@ -5,13 +5,8 @@ import Content from '../components/Sections/Content.astro';
 import Header from '../components/Sections/Header.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import FilterTemplates from '../components/Articles/FilterTemplates.astro';
-import Filter from '../components/Articles/Filter.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
-import TemplateView from '../components/Articles/TemplateView.astro';
-import Content from '../components/Sections/Content.astro';
-import Slide from '../components/Sections/SlideDesktop.astro';
-import SlideMobile from '../components/Sections/SlideMobile.astro';
-import Layout from '../layouts/Layout.astro';
+import TemplateView from '../components/Articles/TemplateView.astro'
 
 import { getAllTemplates } from '../js/backend/requests';
 
@@ -21,7 +16,7 @@ let templates;
 let templateVoid = {
 	name: "Plantilla Vacia",
 	template_id: 0,
-	preview: "../../../public/placeholder/image_preview.svg",
+	preview: "../../../placeholder/image_preview.svg",
 	description: "Plantilla Vacia.",
 	autor: "Parcify",
 	likes: null
