@@ -197,7 +197,9 @@ export const elements = {
   imageUpload: document.getElementById('image-upload'),
   themeOptions: document.querySelectorAll(".theme-option"),
   fontSelect: document.querySelector('select[name="Font theme"]'),
-  shareKonva: document.querySelector("#share"),
+  presentKonva: document.querySelector("#present"),
+  openDesplegableMenuKonva: document.querySelector("#openMenuDesplegableKonva"),
+  desplegableMenuKonva:document.querySelector("#desplegableMenuKonva"),
 };
 
 //Seleccionar theme (diseño)
@@ -234,9 +236,21 @@ const addEventListeners = () => {
       }
   });
 
-  elements.shareKonva?.addEventListener("click", async () => {
+  elements.presentKonva?.addEventListener("click", async () => {
     //Full screen view
     document.fullscreenElement ? document.exitFullscreen() : document.querySelector("#konva").requestFullscreen();
+  })
+
+  elements.openDesplegableMenuKonva?.addEventListener("click", ()=>{
+    window.getComputedStyle(elements.desplegableMenuKonva).display == "none" ? elements.desplegableMenuKonva.style.display = "flex" : elements.desplegableMenuKonva.style.display = "none";
+  });
+
+  document.addEventListener("keyup", (press) => {
+    if (!press.shiftKey) {
+      key.recourses.isSelection = false;
+    }else if(!press.ctrlKey || !press.metaKey){
+      key.recourses.isSelection = false;
+    }
   })
 
   // Filter dropdown
@@ -989,6 +1003,7 @@ const addEventListeners = () => {
       reader.readAsDataURL(file);
     }
   });
+
 };
 
 document?.addEventListener('DOMContentLoaded', () => {
