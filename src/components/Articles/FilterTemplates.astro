@@ -54,15 +54,6 @@ const {section, article } = Astro.props;
 </div>
 
 <script >
-    import * as req from '../../js/backend/requests'
-    import * as globals from '../../js/frontend/utilities/globals'
-
-    const templates = await req.getAllTemplates();
-    const templates_data = templates.data.message
-
-    let templates_sort = globals.sortByKey(templates_data, "date_create", 'desc')
-    
-
     //texto a cambiar
     let typeFilter = document.querySelector('#typeFilter') as HTMLSpanElement;
 

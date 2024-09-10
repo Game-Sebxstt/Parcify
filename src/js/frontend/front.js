@@ -245,14 +245,6 @@ const addEventListeners = () => {
     window.getComputedStyle(elements.desplegableMenuKonva).display == "none" ? elements.desplegableMenuKonva.style.display = "flex" : elements.desplegableMenuKonva.style.display = "none";
   });
 
-  document.addEventListener("keyup", (press) => {
-    if (!press.shiftKey) {
-      key.recourses.isSelection = false;
-    }else if(!press.ctrlKey || !press.metaKey){
-      key.recourses.isSelection = false;
-    }
-  })
-
   // Filter dropdown
   document.querySelectorAll("#filter").forEach((element, index) => {
     element?.addEventListener("click", () => {
