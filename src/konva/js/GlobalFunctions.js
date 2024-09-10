@@ -6,7 +6,6 @@ export function downloadURI(uri, name) {
     var link = document.createElement('a');
     link.download = name;
     link.href = uri;
-    console.log(uri);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,7 +177,6 @@ export function setUpdateToolBar(state){
 }
 
 export function showBarTool(nodes) {
-    console.log("init")
     const barTool = document.querySelector("#BarTool");
     const stage = konva.stage;
     let target = States.StatesCursor.select;
