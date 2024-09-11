@@ -70,7 +70,9 @@ async function actionContextMenu(e, item){
     optionsParcel.style.left = optionsParcelRect.x + optionsParcelRect.width > window.innerWidth ? `${optionsParcelRect.x - optionsParcelRect.width}px` : `${optionsParcelRect.x}px`;
     optionsParcel.style.top = optionsParcelRect.y + optionsParcelRect.height > window.innerHeight ? `${optionsParcelRect.y - optionsParcelRect.height}px` : `${optionsParcelRect.y}px`;
 
-    document.addEventListener("click", () => {
+    document.addEventListener("click", (e) => {
+      if(e.target.id === "more-options-filter") return;
+
       optionsParcel.style.display = "none";
       front.utils.changeStateWheelWindow(false);
     });
@@ -224,20 +226,11 @@ function renameProjets(){
         input.value = h3.textContent;
       };
     
-      const handleKeydown = async (e) => {
-        if (e.key === "Enter") {
-          saveChanges();
-        } else if (e.key === "Escape") {
-          cancelChanges();
-        }
-      };
-    
       const handleBlur = async () => {
         saveChanges();
       };
     
       input.addEventListener("blur", handleBlur);
-      input.addEventListener("keydown", handleKeydown);
   });
 }
 
@@ -245,7 +238,7 @@ function renameProjets(){
 // Options favorites
 
 function showMoreFavorites(){
-  document.querySelector("#showMoreFavorites")?.addEventListener("click", ()=>{
+  document.querySelector("#showMoreFavorites")?.addEventListener("click", async () => {
     window.getComputedStyle(document.querySelector("#moreFavorites")).display == "none" ? document.querySelector("#moreFavorites").style.display = "flex" : document.querySelector("#moreFavorites").style.display = "none"
   });
 }

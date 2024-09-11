@@ -1,18 +1,29 @@
 ---
 import TemplateView from "../Articles/TemplateView.astro";
 import Article from "../Articles/Article.astro";
-import { getDataUser } from "../../js/backend/requests";
+import { getDataUser, getFavorites } from "../../js/backend/requests";
 import * as globals from '../../js/frontend/utilities/globals'
 
 const id = Astro.cookies.get("ID-USER")?.value;
 
 const data_response = await getDataUser(id);
-let elementsUser;
+let elementsUser: any;
+let elementsFiltered: any = [];
 
 if(data_response.state){
     elementsUser = [...data_response.data.message.templates, ...data_response.data.message.projects]
-}
+    const favorites = JSON.parse((await getFavorites(id)).data.message[0].favorites);
+    
+    favorites.forEach((favorite: any) => {
+        elementsUser.forEach((element: any) => {
+            if(element.template_id == favorite.id || element.project_id == favorite.id){
+                elementsFiltered.push(element);
+            }
+        })
+    });
 
+    elementsUser = elementsFiltered;
+}
 ---
 
 <section id="moreFavorites" class="fixed w-full h-full z-40 hidden justify-center items-center bg-black/80">
@@ -33,7 +44,7 @@ if(data_response.state){
         <main id="content-more-favorites" class="h-full p-2 grid grid-cols-2 gap-5 overflow-auto">
             {
                 data_response.state && elementsUser ? (
-                    elementsUser.map((element) => (
+                    elementsUser.map((element: any) => (
                         element.template_id ? (
                             <TemplateView 
                                 id="templateFavorites" 

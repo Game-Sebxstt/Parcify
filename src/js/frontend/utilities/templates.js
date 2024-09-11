@@ -217,78 +217,43 @@ export function renderTemplate(props, parent, depuring = true){
 
 export async function renderMoreFavorites(){
     try {
-        let favorites = await req.getFavorites(globals.getCookie("ID-USER"))
-  
-        if (!favorites.state) {
-            front.utils.handleError(favorites)
-            return
+        const data_response = await req.getDataUser(globals.getCookie("ID-USER"));
+        let elementsUser;
+        let elementsFiltered = [];
+
+        if(data_response.state){
+            elementsUser = [...data_response.data.message.templates, ...data_response.data.message.projects];
+            const favorites = JSON.parse((await req.getFavorites(globals.getCookie("ID-USER"))).data.message[0].favorites);
+
+            favorites.forEach((favorite) => {
+                elementsUser.forEach((element) => {
+                    if(element.project_id === favorite.id || element.template_id === favorite.id){
+                        elementsFiltered.push(element);
+                    }
+                })
+            });
+
+            elementsUser = elementsFiltered;
         }
 
-        favorites = JSON.parse(favorites.data.message[0].favorites);
+        if(elementsUser.length > 0){
+            const content_more_favorites = document.querySelector("#content-more-favorites");
+            content_more_favorites.innerHTML = "";
 
-        const content_more_favorites = document.querySelector("#content-more-favorites");
+            elementsUser.forEach((element) => {
+                if(element.project_id){
+                    renderProject(element, content_more_favorites, false);
+                }else{
+                    renderTemplate(element, content_more_favorites, false);
+                }
+            });
 
-        let templates = await req.getAllTemplates();
-        if(!templates.state){
-            front.utils.handleError(templates);
-        }
-
-        let projects = await req.getAllProjects(globals.getCookie("ID-USER"));
-        if(!projects.state){
-            front.utils.handleError(projects);
-        }
-        
-        templates = templates.data.message;
-        projects = projects.data.message;
-
-        content_more_favorites.innerHTML = "";
-
-        if (favorites.length === 0) {
-            content_more_favorites.innerHTML = `<p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>`;
-        }
-        
-        if (favorites.length === 0) {
-            front.utils.handleError("Favorites rendered successfully without any favorites");
+            reusable.eventsListenerFavorites();
+            front.utils.handleError("More Favorites rendered successfully");
             return content_more_favorites;
         }
 
-        favorites.forEach( async (favorite) => {
-            let props;
-
-            if(favorite.type == "template"){
-                templates.forEach((template) => {
-                    if(template.template_id == favorite.id){
-                        props = {
-                            template_id: template.template_id,
-                            name: template.name,
-                            author: template.autor,
-                            preview: template.preview,
-                            description: template.description,
-                            likes: template.likes
-                        }
-
-                        renderTemplate(props, content_more_favorites, false);
-                        return;
-                    }
-                })
-            }else{
-                projects.forEach((project) => {
-                    if(project.project_id == favorite.id){
-                        props = {
-                            project_id: project.project_id,
-                            name: project.name,
-                            last_modified: project.last_modified,
-                            preview: project.preview
-                        }
-
-                        renderProject(props, content_more_favorites, false);
-                        return;
-                    }
-                })
-            }
-        })
-
-        front.utils.handleError("More Favorites rendered successfully");
+        front.utils.handleError("More Favorites rendered successfully without any favorites");
         return content_more_favorites;
     }catch (err) {
         return err;
@@ -388,6 +353,13 @@ export async function renderFavorites() {
             pShowMoreFavorites.className = "hover:underline cursor-pointer font-normal text-sky-400";
             pShowMoreFavorites.textContent = `Ver más...`;
             content_favorites.parentNode.appendChild(pShowMoreFavorites);
+        }
+
+        const responseRenderMoreFavorites = await renderMoreFavorites();
+
+        if(responseRenderMoreFavorites){
+            front.utils.handleError("Favorites rendered successfully");
+            return content_favorites;
         }
         
         reusable.eventsListenerFavorites();
