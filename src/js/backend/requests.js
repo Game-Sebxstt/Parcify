@@ -527,6 +527,42 @@ export async function updateProfile(data){
     return {state: true, data: responseData};
 }
 
+export async function updateImageProfile(data){
+    const response = await fetch(`http://localhost:4000/user/updateImageProfile`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers:{
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if(!response.ok){
+        return {state: false, data: responseData.message};
+    }
+    
+    return {state: true, data: responseData};
+}
+
+export async function getProfileImage(userId) {
+  const response = await fetch(`http://localhost:4000/user/getProfileImage`, {
+    method: "POST",
+    body: JSON.stringify({userId}),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    return { state: false, data: responseData.message };
+  }
+
+  return { state: true, profileImage: responseData.profileImage };
+}
+
 export async function likeTemplate(template_id, id_user){
     const data = {
         id_user: id_user,
