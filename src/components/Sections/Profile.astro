@@ -101,6 +101,7 @@ let emailFormatt = globals.formatEmail(email);
                     readonly
                     value={emailFormatt}
                     placeholder="Enter your email"
+                    required
                 />
                 <div class="flex items-center ml-2">
                     <!-- Contenedor del icono y el texto -->
@@ -141,10 +142,10 @@ let emailFormatt = globals.formatEmail(email);
 
     <!-- Buttons to save changes or cancel -->
     <div id="options-buttons-profile" class="flex gap-4 justify-end mb-4" style="display: none;">
-        <button id="button-cancel-changes" type="button" class="bg-[#1E1E1E] text-white text-sm font-base px-4 py-2 rounded-sm mt-4 transition-colors duration-400 border border-[#FF0000] hover:bg-transparent hover:text-[#FF0000]">
+        <button id="button-cancel-changes" type="button" class="bg-[#ff0000e0] text-white text-sm font-base px-4 py-2 rounded-sm mt-4 transition-colors duration-400 hover:bg-[#FF0000]/80 active:bg-[#FF0000]/60">
             Cancel
         </button>
-        <button id="button-save-changes" type="button" class=" bg-[#FF7300] text-white text-sm font-base px-4 py-2 rounded-sm mt-4 transition-colors duration-400 border border-[#FF7300] hover:bg-transparent hover:text-[#FF7300]">
+        <button id="button-save-changes" type="button" class="bg-[#1E90FF] text-white text-sm font-base px-4 py-2 rounded-sm mt-4 transition-colors duration-400 hover:bg-[#1E90FF]/80 active:bg-[#1E90FF]/60">
             Save Changes
         </button>
   </div>
