@@ -10,6 +10,7 @@ import SectionShapes from "../components/Sections/Options/section_shapes.astro";
 import SectionTemplates from "../components/Sections/Options/section_templates.astro";
 import DesplegableMenu from "../components/Konva/DesplegableMenu.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
+import Chat from "../components/Konva/Chat.astro";
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -71,6 +72,8 @@ if(logged != 'true' && !id){
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                         <path d="M12 7a5 5 0 1 1 -4.995 5.217l-.005 -.217l.005 -.217a5 5 0 0 1 4.995 -4.783z" />
                     </svg>
+
+                    <Chat/>
                 </span>
 
                 <span class="w-[2px] h-1/2 bg-[#696969]"></span>
@@ -215,267 +218,12 @@ if(logged != 'true' && !id){
             <div id="content-konva" class="w-full h-full bg-lime-400">
                 <div id="konva" class="bg-white w-full h-full"></div>
             </div>
-            
-            <div id="right-slide" class="absolute -right-[25rem] w-[25rem] h-full bg-[#383838] flex flex-col transition-all ease-in duration-300">
-                <section id="content-edit" class="w-full h-full flex flex-col">
-                    <div class="w-full h-fit py-5 px-5 border-b-2 border-[#FC7F53]">
-                        <h3 class="text-white font-bold">
-                            Layout
-                        </h3>
 
-                        <div class="w-full h-fit grid grid-cols-2 gap-y-2 gap-x-12 grid-rows-1 px-3 mt-2">
-                            <div class="flex items-center justify-start">
-                                <span class="text-white font-bold text-xs w-full">
-                                    offset X
-                                </span>
-    
-                                <input type="number" name="input_layout_x" id="input_layout_x" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none" max="10000">
-                            </div>
-
-                            <div class="flex items-center justify-start">
-                                <span class="text-white font-bold text-xs w-full">
-                                    offset Y
-                                </span>
-    
-                                <input type="number" name="input_layout_y" id="input_layout_y" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
-                            </div>
-
-                            <div class="flex items-center justify-start">
-                                <span class="text-white font-bold text-xs w-full">
-                                    Width
-                                </span>
-    
-                                <input type="number" name="input_width" id="input_width" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
-                            </div>
-
-                            <div class="flex items-center justify-start">
-                                <span class="text-white font-bold text-xs w-full">
-                                    Height
-                                </span>
-    
-                                <input type="number" name="input_height" id="input_height" class="w-full h-full rounded-sm bg-[#585858] py-1.5 px-2 text-white text-xs font-bold outline-none">
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <div class="w-full h-fit grid grid-cols-2 py-5 justify-start gap-y-5 items-start border-b-2 border-[#FC7F53]">
-                        <div class="-full h-fit px-5 flex gap-x-3 justify-start items-center">
-                            <h3 class="text-white font-bold">
-                                Rotation
-                            </h3>
-    
-                            <input type="number" name="input_rotate" id="input_rotate" class="w-16 h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
-                        </div>
-
-                        <div class="-full h-fit px-5 flex gap-x-6 justify-start items-center">
-                            <h3 class="text-white font-bold">
-                                Radius
-                            </h3>
-    
-                            <input type="number" name="input_radius" id="input_radius" class="w-16 h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
-                        </div>
-
-                        <div class="-full h-fit px-5 flex gap-x-6 justify-start items-center">
-                            <h3 class="text-white font-bold">
-                                Corner
-                            </h3>
-    
-                            <input type="number" name="input_corner" id="input_corner" class="w-16 h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
-                        </div>
-                    </div>
-
-                    <div class="w-full h-fit px-5 flex flex-col py-5 gap-3 justify-center items-start border-b-2 border-[#FC7F53]">
-                        <h3 class="text-white font-bold">
-                            Colors
-                        </h3>
-
-                        <div class="flex flex-col gap-4 w-full">
-                            <div class="w-full h-fit flex items-center justify-start gap-x-5">
-                                <input type="color" value="#43da86" id="color_style" />
-
-                                <input type="text" name="input_color" id="input_color" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="1DA5F2">
-
-                                <span class="flex gap-4">
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-                                        <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
-                                    </svg>
-
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M5 12l14 0" />
-                                    </svg>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="w-full h-fit px-5 flex flex-col py-5 gap-3 justify-center items-start border-b-2 border-[#FC7F53]">
-                        <h3 class="text-white font-bold">
-                            Borders
-                        </h3>
-
-                        <div class="flex flex-col gap-4 w-full">
-                            <div class="w-full h-fit flex items-center justify-start gap-x-5">
-                                <input type="color" value="#43da86" id="color_style_border" />
-
-                                <input type="text" name="input_color_border" id="input_color_border" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value="1DA5F2">
-
-                                <input type="number" name="input_stroke_border" id="input_stroke_border" class="w-[5rem] h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=0>
-
-                                <span class="flex gap-4">
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-                                        <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
-                                    </svg>
-
-                                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-minus h-6" xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M5 12l14 0" />
-                                    </svg>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="editor-richt-text" class="w-full h-fit my-3 px-2">
-                        <div class="w-full mb-4 border rounded-lg bg-[#303030] border-[#FC7F53]">
-                            <div class="flex items-center justify-center px-3 py-2 w-full">
-                                <div class="flex flex-wrap w-full items-center justify-center">
-                                    <div class="flex items-center w-full justify-around ">
-                                        <button id="align_vertical" data-align-vertical="middle" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-center w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                <path d="M12 4l0 5" />
-                                                <path d="M12 15l0 5" />
-                                                <path d="M6 9m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                                            </svg>
-                                        </button>
-                                        <button id="align_vertical" data-align-vertical="top" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-top w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                <path d="M4 4l16 0" />
-                                                <path d="M9 8m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                                            </svg>
-                                        </button>
-                                        <button id="align_vertical" data-align-vertical="bottom" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-layout-align-bottom w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                <path d="M4 20l16 0" />
-                                                <path d="M9 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                                            </svg>
-                                        </button>
-                                        <button id="align" data-align="left" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-align-left w-5 h-5">
-                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                <path d="M4 6l16 0" />
-                                                <path d="M4 12l10 0" />
-                                                <path d="M4 18l14 0" />
-                                            </svg>
-                                        </button>
-                                        <button id="align" data-align="center" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg class="icon icon-tabler icons-tabler-outline icon-tabler-align-center w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                <path d="M4 6l16 0" />
-                                                <path d="M8 12l8 0" />
-                                                <path d="M6 18l12 0" />
-                                            </svg>
-                                        </button>
-                                        <button id="align" data-align="right" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-align-right w-5 h-5">
-                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                <path d="M4 6l16 0" />
-                                                <path d="M10 12l10 0" />
-                                                <path d="M6 18l14 0" />
-                                            </svg>
-                                        </button>
-                                        <button id="align" data-align="justify" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-align-justified w-5 h-5">
-                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                <path d="M4 6l16 0" />
-                                                <path d="M4 12l16 0" />
-                                                <path d="M4 18l12 0" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="w-full mb-4 border rounded-lg bg-[#303030] border-[#FC7F53]">
-                            <div class="flex items-center justify-between px-3 py-2 border-b border-gray-600">
-                                <div class="flex flex-wrap items-center sm:divide-x sm:rtl:divide-x-reverse divide-gray-600">
-                                    <div class="flex items-center space-x-1 rtl:space-x-reverse sm:pe-4">
-                                        <button id="bold_style" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M8 5h4.5a3.5 3.5 0 1 1 0 7H8m0-7v7m0-7H6m2 7h6.5a3.5 3.5 0 1 1 0 7H8m0-7v7m0 0H6"/>
-                                            </svg>
-                                        </button>
-                                        <button id="italic_style" type="button" class="p-2 rounded cursor-pointer text-gray-400 hover:text-white hover:bg-[#505050]">
-                                            <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m8.874 19 6.143-14M6 19h6.33m-.66-14H18"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                    <div class="relative flex items-center gap-2 rtl:space-x-reverse sm:ps-4">
-                                        <div class="py-1 flex justify-center items-center gap-0 text-gray-400">
-                                            <select id="font_family" class="border text-sm outline-none rounded-md block w-full p-2.5 bg-[#505050] border-gray-600 placeholder-gray-400 text-white">
-                                                <option value="Arial">Arial</option>
-                                                <option value="Helvetica">Helvetica</option>
-                                                <option value="Verdana">Verdana</option>
-                                                <option value="Georgia">Georgia</option>
-                                                <option value="Times New Roman">Times New Roman</option>
-                                                <option value="Courier New">Courier New</option>
-                                                <option value="Impact">Impact</option>
-                                                <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
-                                                <option value="Trebuchet MS">Trebuchet MS</option>
-                                                <option value="Arial Black">Arial Black</option>
-                                            </select>
-                                        </div>
-                                        <div class="py-1 flex justify-center items-center gap-2 text-gray-400">
-                                            <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M3 6.2V5h11v1.2M8 5v14m-3 0h6m2-6.8V11h8v1.2M17 11v8m-1.5 0h3"/>
-                                            </svg>
-
-                                            <input type="number" name="font_size" id="font_size" class="w-12 h-full rounded-sm bg-[#585858] py-2 px-2 text-white text-xs font-bold outline-none" value=12>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="p-2 rounded-b-lg bg-[#303030] rounded-lg border border-[#FC7F53]">
-                            <textarea id="editor_text" rows="8" class="block w-full max-h-40 outline-none rounded-md px-0 text-sm border-0 bg-[#303030] focus:ring-0 text-white placeholder-gray-400" placeholder="Escribe algo..." required ></textarea>
-                        </div>
-                    </div>
-
-                </section>
-
-                <section id="content-edit-nothing" class="w-full h-full hidden flex-col">
-                    <div class="w-full h-fit py-5 px-5 items-center justify-center">
-                        <h3 class="text-white font-bold text-center">
-                            Please selected a element
-                        </h3>
-                    </div>
-                </section>
-
-                <span id="close-right-slide" class="w-fit h-fit rounded-l-md cursor-pointer bg-[#505050] border-2 border-l-[#505050] border-t-[#505050] border-b-[#505050] border-r-transparent absolute right-[25rem] top-5">
-                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-chevrons-left h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M11 7l-5 5l5 5" />
-                        <path d="M17 7l-5 5l5 5" />
-                    </svg>
-                </span>
-            </div>
-
-                <Presentations title="profle" owner="hola"
-                created = "Sebxstt"
-                lastModified = "Editado hace 6 minutos."
-                description = "Este proyecto es un parcelador basico."
-                />
+            <Presentations title="profle" owner="hola"
+            created = "Sebxstt"
+            lastModified = "Editado hace 6 minutos."
+            description = "Este proyecto es un parcelador basico."
+            />
         </div>
     </div>
 </LayoutKonva>

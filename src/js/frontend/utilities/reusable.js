@@ -44,7 +44,8 @@ async function actionContextMenu(e, item){
       optionsParcel.querySelector("#redirect").style.display = "none";
       optionsParcel.querySelector("#redirect-external").style.display = "none";
       optionsParcel.querySelector("#rename-parcel").style.display = "none";
-      optionsParcel.querySelector("#favorite").parentNode.style.display = "none";
+      optionsParcel.querySelector("#favorite").style.display = "none";
+      optionsParcel.querySelector("#unfavorite").style.display = "none";
       optionsParcel.querySelectorAll(".separator-options").forEach(item => {
         item.style.display = "none";
       })
@@ -60,7 +61,8 @@ async function actionContextMenu(e, item){
       optionsParcel.querySelector("#redirect").style.display = "flex";
       optionsParcel.querySelector("#redirect-external").style.display = "flex";
       optionsParcel.querySelector("#rename-parcel").style.display = "flex";
-      optionsParcel.querySelector("#favorite").parentNode.style.display = "flex";
+      optionsParcel.querySelector("#favorite").style.display = "flex";
+      optionsParcel.querySelector("#unfavorite").style.display = "flex";
       optionsParcel.querySelectorAll(".separator-options").forEach(span => {
         span.style.display = "flex";
       })

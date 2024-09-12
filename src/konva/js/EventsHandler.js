@@ -146,6 +146,6 @@ document.addEventListener('keydown', function (e) {
     }
 });
 
-window.addEventListener('wheel', function(e) {
-    e.preventDefault();
-}, { passive: false });
+// window.addEventListener('wheel', function(e) {
+//     e.preventDefault();
+// }, { passive: false });

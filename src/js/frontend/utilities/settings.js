@@ -167,8 +167,8 @@ document.querySelector('#textarea-biography')?.addEventListener("click", () =>{
     // Track modification
   const textareaBiography = document.querySelector('#textarea-biography');
     document.querySelector("#textarea-biography")?.addEventListener("input", () => {
-      const optionButtons = document.querySelector('#options-buttons-profile');
-      optionButtons.style.display = "flex";
+      const optionsButtons = document.querySelector('#options-buttons-profile');
+      optionsButtons.style.display = "flex";
       textareaBiography.dataset.modified = "true";
     })
 });
@@ -297,7 +297,7 @@ document.querySelector('#button-cancel-changes')?.addEventListener("click", () =
     textareaBiography.value = BiographyValue;
     delete textareaBiography.dataset.modified;
     document.querySelectorAll(".error-message").forEach(el => el.remove());
-    optionButtons.style.display = "none";
+    optionsButtons.style.display = "none";
   }
 })
 

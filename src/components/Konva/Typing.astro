@@ -1,0 +1,29 @@
+---
+import ProfileInvite from "../Articles/ProfileInvite.astro";
+---
+
+<div class="w-full h-fit p-1.5 flex flex-col gap-y-2 mb-2">
+    <header class="w-full h-fit flex flex-row gap-x-2 justify-start items-center">
+        <ProfileInvite color="bg-green-500" letter="A"/>
+
+        <div class="flex relative w-1/2">
+            <span class="font-bold">
+                Sebxstt
+            </span>
+
+            <span class="absolute translate-y-full w-full text-sm mt-1">
+                Esta escribiendo...
+            </span>
+        </div>
+    </header>
+</div>
+
+<style>
+    #date{
+        top: calc(100% - 5px)
+    }
+
+    #resend{
+        left: calc(-16px)
+    }
+</style>
