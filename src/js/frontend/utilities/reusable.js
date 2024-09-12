@@ -241,9 +241,7 @@ function renameProjets(){
   });
 }
 
-
 // Options favorites
-
 function showMoreFavorites(){
   document.querySelector("#showMoreFavorites")?.addEventListener("click", ()=>{
     window.getComputedStyle(document.querySelector("#moreFavorites")).display == "none" ? document.querySelector("#moreFavorites").style.display = "flex" : document.querySelector("#moreFavorites").style.display = "none"
@@ -251,7 +249,6 @@ function showMoreFavorites(){
 }
 
 // Functions Export
-
 export function changeTheme(theme){
     //Update gui with theme selected
 }
@@ -300,7 +297,6 @@ export function redirectProjectAction(projectId, external = false){
 }
 
 // Events Listeners
-
 export function eventsListenerProjects(){
     showContextMenu(); // Show context menu
     redirectProject(); // Redirect to project
