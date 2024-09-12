@@ -31,15 +31,18 @@ const domElements = {
     fileFolder: document.querySelector("#file-folder"),
     dropzoneFile: document.querySelector("#dropzone-file"),
     listImageFolder: document.querySelector("#list-image-folder"),
-    contentsImageFolder: document.querySelectorAll("#content-image-folder")
+    contentsImageFolder: document.querySelectorAll("#content-image-folder"),
+    export: document.querySelector("#exportForm"),
+    openExport: document.querySelector("#openExport"),
+    exportContent: document.querySelector("#exportContent")
 };
 
 const elementsFocus = [
-    domElements.editorText, domElements.inputColor, 
-    domElements.inputColorBorder, domElements.inputCorner, 
-    domElements.inputHeight, domElements.inputWidth, 
-    domElements.inputLayoutX, domElements.inputLayoutY, 
-    domElements.inputRadius, domElements.inputRotate, 
+    domElements.editorText, domElements.inputColor,
+    domElements.inputColorBorder, domElements.inputCorner,
+    domElements.inputHeight, domElements.inputWidth,
+    domElements.inputLayoutX, domElements.inputLayoutY,
+    domElements.inputRadius, domElements.inputRotate,
     domElements.inputStrokeBorder
 ];
 
@@ -283,18 +286,21 @@ function toggleEditPanel(isVisible) {
     }
 }
 
-domElements.exportCanvas?.addEventListener("click", () => {
-    if(konva.tr.nodes().length > 0 && konva.tr.nodes()[0] instanceof Konva.Group){
-        var dataURL = konva.tr.nodes()[0].toDataURL({ pixelRatio: 3})
-        GlobalFunctions.downloadURI(dataURL, 'stage.png');
+domElements.export?.addEventListener("submit", (e)=> {
+    e.preventDefault();
+    const extension = e.target.elements['extension'];
+    if (konva.tr.nodes().length > 0 && konva.tr.nodes()[0] instanceof Konva.Group) {
+        var dataURL = konva.tr.nodes()[0].toDataURL({ pixelRatio: 3 });
+        GlobalFunctions.downloadURI(dataURL, `stage.${extension.value}`);
         return;
     }
 
     var dataURL = konva.stage.toDataURL({ pixelRatio: 3 });
-    GlobalFunctions.downloadURI(dataURL, 'stage.png');
+    GlobalFunctions.downloadURI(dataURL, `stage.${extension.value}`);
 });
 
-if(domElements.contentsImageFolder.length > 1){
+
+if (domElements.contentsImageFolder.length > 1) {
     document.querySelector("#content-drop").style.display = "none";
     domElements.listImageFolder.style.display = "grid"
 }
@@ -302,10 +308,10 @@ if(domElements.contentsImageFolder.length > 1){
 domElements.fileFolder?.addEventListener("change", saveFile)
 domElements.dropzoneFile?.addEventListener("change", saveFile)
 
-function saveFile(e){
+function saveFile(e) {
     let files = e.target.files;
 
-    if(files){
+    if (files) {
         Object.values(files).forEach(item => {
             const reader = new FileReader();
 
@@ -328,11 +334,11 @@ function saveFile(e){
                 domElements.contentsImageFolder?.forEach(item => {
                     item.addEventListener("click", () => {
                         let folder = item.getAttribute("data-image-src");
-                
+
                         Object.keys(States.StatesShapes).forEach(key => {
                             States.StatesShapes[key] = false;
                         });
-                
+
                         States.StatesShapes.image = true;
                         States.StatesCursor.addShape = true;
                         States.StatesValues.image = folder;
@@ -343,12 +349,16 @@ function saveFile(e){
             reader.readAsDataURL(item);
         });
 
-        if(domElements.contentsImageFolder.length > 0){
+        if (domElements.contentsImageFolder.length > 0) {
             document.querySelector("#content-drop").style.display = "none";
             domElements.listImageFolder.style.display = "grid"
         }
     }
 }
+
+domElements.openExport?.addEventListener("click", ()=>{
+    window.getComputedStyle(domElements.exportContent).display == "none" ? domElements.exportContent.style.display = "flex" : domElements.exportContent.style.display = "none";
+});
 
 let undoButton = document.querySelector('#undo');
 undoButton?.addEventListener('click', () => {

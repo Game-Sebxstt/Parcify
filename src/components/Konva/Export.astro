@@ -1,7 +1,7 @@
 ---
 ---
-<section class="fixed h-full w-full bg-black/10 p-2 z-30 hidden items-center justify-center backdrop-blur-sm ">
-    <section class="w-full max-w-[50%] h- bg-[#1E1E1E] rounded-md p-3 flex flex-col gap-2 animate-deployment border border-zinc-400">
+<section id="exportContent" class="fixed h-full w-full bg-black/10 p-2 z-30 hidden items-center justify-center backdrop-blur-sm ">
+    <section class="min-w-[25rem] max-w-fit min-h-[50%] max-h-fit bg-[#2b2929] p-2 shadow-lg shadow-[#181818] text-white animate-deployment flex flex-col gap-1">
         <!-- encabezado -->
         <header class="flex items-center justify-between">
             <div class="flex items-center gap-1">
@@ -13,7 +13,31 @@
                 </svg>
             </button>
         </header>
-
-
+        <hr class="border-[#383838]">
+        <form id="exportForm" class="flex flex-col justify-between flex-1">
+            <div class="flex flex-col gap-2 p-3 pt-4">
+                <h1>Type File</h1>
+                <label class="flex items-center gap-2 cursor-pointer ml-2">
+                    <input type="radio" name="extension" value="png">
+                    <p>PNG</p>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer ml-2">
+                    <input type="radio" name="extension" value="jpg">
+                    <p>JPG</p>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer ml-2">
+                    <input type="radio" name="extension" value="jpeg">
+                    <p>JPEG</p>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer ml-2">
+                    <input type="radio" name="extension" value="webp">
+                    <p>WEBP</p>
+                </label>
+            </div>
+            <div class="flex items-center justify-end p-1">
+                <button class="bg-blue-500 py-2 px-4 rounded-sm">Export</button>
+            </div>
+        </form>
     </section>
 </section>
+
