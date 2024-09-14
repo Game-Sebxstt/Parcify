@@ -79,7 +79,7 @@ konva.layer.on('dragend', function (e) {
     konva.saveHistory(konva.stage.toJSON());
 });
 
-konva.tr.on('transform', function (e) {
+konva.tr?.on('transform', function (e) {
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
 
     var lineGuideStops = GlobalFunctions.getLineGuideStops(e.target);
@@ -140,12 +140,12 @@ konva.tr.on('transform', function (e) {
     e.target.absolutePosition(absPos);
 });
 
-konva.tr.on("transformend", function (e) {
+konva.tr?.on("transformend", function (e) {
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
     konva.saveHistory(konva.stage.toJSON());
 });
 
-konva.tr.on("transform", (e) => {
+konva.tr?.on("transform", (e) => {
     if (!e.target) {
         return;
     }
@@ -161,7 +161,7 @@ konva.tr.on("transform", (e) => {
 
     if(e.target instanceof Konva.Rect){
         if (e.target.parent instanceof Konva.Group) {
-            konva.tr.nodes(e.target.parent.getChildren());
+            konva.tr?.nodes(e.target.parent.getChildren());
         }
     }
 
@@ -182,7 +182,7 @@ konva.tr.on("transform", (e) => {
     }
 });
 
-konva.tr.on("transformend", (e) => {
+konva.tr?.on("transformend", (e) => {
     if (!e.target) {
         return;
     }
@@ -236,7 +236,7 @@ konva.stage.on('mousemove', () => {
         return;
     }
 
-    konva.tr.setAttr("visible", false);
+    konva.tr?.setAttr("visible", false);
 
     konva.getElements().forEach(element => {
         if(element.attrs.name == "preview"){
@@ -276,9 +276,9 @@ konva.stage.on('mousedown touchstart', (e) => {
         Y2: konva.stage.getRelativePointerPosition().y
     })
 
-    konva.selectionRectangle.width(0);
-    konva.selectionRectangle.height(0);
-    konva.selectionRectangle.moveUp();
+    konva.selectionRectangle?.width(0);
+    konva.selectionRectangle?.height(0);
+    konva.selectionRectangle?.moveUp();
     konva.setSelecting(true);
 });
 
@@ -297,7 +297,7 @@ konva.stage.on('mousemove touchmove', (e) => {
 
     const { X1, Y1, X2, Y2 } = konva.getPositions();
 
-    konva.selectionRectangle.setAttrs({
+    konva.selectionRectangle?.setAttrs({
         visible: true,
         x: Math.min(X1, X2),
         y: Math.min(Y1, Y2),
@@ -309,7 +309,7 @@ konva.stage.on('mousemove touchmove', (e) => {
 konva.stage.on('mouseup touchend', (e) => {
     document.querySelector("#BarTool").style.pointerEvents = 'auto';
     konva.setSelecting(false);
-    if (!konva.selectionRectangle.visible()) {
+    if (!konva.selectionRectangle?.visible()) {
         return;
     }
     e.evt.preventDefault();
@@ -319,7 +319,7 @@ konva.stage.on('mouseup touchend', (e) => {
     var selected = shapes.filter((shape) =>
         Konva.Util.haveIntersection(box, shape.getClientRect())
     );
-    konva.tr.nodes(selected);
+    konva.tr?.nodes(selected);
 });
 
 konva.stage.on('click tap', function (e) {
@@ -372,8 +372,8 @@ konva.stage.on('click tap', function (e) {
             });
 
             States.StatesCursor.addShape = false;
-            konva.tr.setAttr("visible", true);
-            konva.tr.nodes([shape])
+            konva.tr?.setAttr("visible", true);
+            konva.tr?.nodes([shape])
             konva.saveHistory(konva.stage.toJSON());
 
             konva.updateElementsEvent();
@@ -416,19 +416,19 @@ konva.stage.on('click tap', function (e) {
         States.StatesValues.image = undefined;
     }
 
-    if (konva.selectionRectangle.visible()) {
+    if (konva.selectionRectangle?.visible()) {
         return;
     }
 
     if (e.target instanceof Konva.Stage == true) {
-        konva.tr.nodes([])
+        konva.tr?.nodes([])
         return;
     }
 
     const parent = e.target.getParent();
     if (parent && parent instanceof Konva.Group) {
-        konva.tr.moveToTop();
-        konva.tr.nodes(parent.getChildren());
+        konva.tr?.moveToTop();
+        konva.tr?.nodes(parent.getChildren());
         GlobalFunctions.showBarTool()
         return;
     }
@@ -442,21 +442,21 @@ konva.stage.on('click tap', function (e) {
     }
 
     const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
-    const isSelected = konva.tr.nodes().indexOf(e.target) >= 0;
+    const isSelected = konva.tr?.nodes().indexOf(e.target) >= 0;
 
     if (!metaPressed && !isSelected) {
-        konva.tr.moveToTop();
-        konva.tr.nodes([e.target]);
+        konva.tr?.moveToTop();
+        konva.tr?.nodes([e.target]);
         GlobalFunctions.showBarTool()
     } else if (metaPressed && isSelected) {
-        konva.tr.moveUp();
-        const nodes = konva.tr.nodes().slice();
+        konva.tr?.moveUp();
+        const nodes = konva.tr?.nodes().slice();
         nodes.splice(nodes.indexOf(e.target), 1);
-        konva.tr.nodes(nodes);
+        konva.tr?.nodes(nodes);
     } else if (metaPressed && !isSelected) {
-        konva.tr.moveUp();
-        const nodes = konva.tr.nodes().concat([e.target]);
-        konva.tr.nodes(nodes);
+        konva.tr?.moveUp();
+        const nodes = konva.tr?.nodes().concat([e.target]);
+        konva.tr?.nodes(nodes);
         GlobalFunctions.showBarTool(nodes)
     }
 

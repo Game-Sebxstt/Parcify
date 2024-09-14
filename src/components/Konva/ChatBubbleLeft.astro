@@ -3,23 +3,25 @@ import ProfileInvite from "../Articles/ProfileInvite.astro";
 
 interface Props{
     message?: string
+    id: string,
+    type: string,
 }
 
-const { message } = Astro.props;
+const { message, id, type } = Astro.props;
 ---
 
-<div class="w-full h-fit p-1.5 flex flex-col gap-y-2 mb-2">
+<div id={id} data-type={type} class="w-full h-fit p-1.5 flex flex-col gap-y-2 mb-2">
     <header class="w-full h-fit flex gap-x-2 justify-start items-center">
         <ProfileInvite color="bg-green-500" letter="A"/>
 
-        <span class="font-bold">
+        <span id="user" class="font-bold">
             Sebxstt
         </span>
     </header>
 
     <article class="w-full h-fit relative">
-        <div class="w-full max-w-[85%] h-fit bg-slate-600 p-1 relative">
-            <p class="text-white text-sm w-full h-full p-1 pb-6">
+        <div class="w-full max-w-[85%] h-fit bg-[#313131] p-1 relative rounded-md">
+            <p id="message" class="text-white text-sm w-full h-full p-1 pb-6 break-words">
                 {message}
             </p>
 
@@ -27,7 +29,7 @@ const { message } = Astro.props;
                 12:00 P.M
             </span>
 
-            <button id="resend" class="w-fit h-fit absolute top-1/2 -translate-y-1/2 translate-x-full">
+            <button id="resend" class="w-fit h-fit absolute top-1/2 -translate-y-1/2 translate-x-full outline-none">
                 <svg class="icon icon-tabler icons-tabler-outline icon-tabler-corner-down-right-double h-8 w-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                     <path d="M4 5v6a3 3 0 0 0 3 3h7" />

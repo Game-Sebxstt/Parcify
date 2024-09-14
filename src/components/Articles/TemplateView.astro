@@ -12,10 +12,10 @@ interface Props{
 }
 
 const {id, first_text, second_text, url_image, template_id, description, likes} = Astro.props;
-let formatLikes = JSON.parse(likes);
+let formatLikes
 
-if(formatLikes){
-  formatLikes = formatNumber(formatLikes.length);
+if(likes){
+  formatLikes = formatNumber(JSON.parse(likes).length);
 }
 
 ---

@@ -2,15 +2,14 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import CryptoJS from 'crypto-js';
-import { createServer } from 'node:http';
-// import { Server } from 'socket.io';
-import nodemailer from 'nodemailer';
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
 import bodyParser from 'body-parser';
 import { getConnection } from "./database.js";
 
 const app = express();
 const server = createServer(app);
-
+const wss = new WebSocketServer({ server });
 const port = process.env.PORT || 4000;
 
 // Configuración inicial
@@ -41,8 +40,51 @@ app.use((req, res, next) => {
     next();
 });
 
+const clients = new Map();
+
+// wss.on('connection', function connection(ws) {
+//     ws.on('message', function incoming(message) {
+//         const data = JSON.parse(message);
+//         if (data.type === 'clientId') {
+//             clients.set(data.id, ws);
+//             console.log('Identificador de cliente recibido:', data.id);
+//         }
+//     });
+
+//     ws.send('¡Conexión establecida con el servidor!');
+
+//     ws.on('close', function() {
+//         clients.forEach((client, clientId) => {
+//             if (client === ws) {
+//                 clients.delete(clientId);
+//                 console.log('Instancia de cliente eliminada:', clientId);
+//             }
+//         });
+//     });
+// })
+
 server.listen(app.get("port"));
-console.log("Escuchando el puerto " + app.get("port"));
+console.log(`Servidor en el puerto ${app.get("port")}`);
+
+app.post("/invitation/send", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { id_project, invitation } = req.body;
+
+    console.log("Invitación enviada:", invitation);
+    console.log("ID del proyecto:", id_project);
+
+    const connection = await getConnection();
+    const update_invitation = await connection.query("UPDATE projects SET invitation = ? WHERE project_id = ?", [invitation, id_project]);
+
+    if (!update_invitation) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo enviar la invitación." });
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "Invitación enviada correctamente." });
+})
 
 app.post('/register/auth', async (req, res) => {
     if (!req.body) {
@@ -188,7 +230,7 @@ app.post("/project/duplicate", async (req, res) => {
 
     const project_id = await generateIdProject(connection);
     const date_now = new Date();
-    const duplicate = await connection.query("INSERT INTO projects (project_id, user_id, name, stage, preview, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?, ?)",[project_id, data[0].user_id, data[0].name, data[0].stage, data[0].preview, data[0].collaborators, date_now]);
+    const duplicate = await connection.query("INSERT INTO projects (project_id, user_id, name, stage, chat_message, preview, collaborators, last_modified) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",[project_id, data[0].user_id, data[0].name, data[0].stage, data[0].chat_message, data[0].preview, data[0].collaborators, date_now]);
 
     if(!duplicate){
         return res.status(400).send({ status: "Bad Request", message: "No se pudo duplicar el proyecto." })
@@ -639,6 +681,33 @@ app.post("/user/checkEmail", async (req, res)  => {
     return res.status(404).send({ status: "Not Found", message: "User does not exist" });
 });
 
+//Chat
+app.post("/chat/send", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+    }
+
+    const { data, id_project } = req.body;
+
+    const connection = await getConnection();
+    const [project] = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
+
+    if (!project) {
+        return res.status(404).send({ status: "Not Found", message: "Project not found" });
+    }
+
+    const chat = project.chat_message ? JSON.parse(project.chat_message) : [];
+    chat.push(data);
+
+    const updateChat = await connection.query("UPDATE projects SET chat_message = ? WHERE project_id = ?", [JSON.stringify(chat), id_project]);
+
+    if (!updateChat) {
+        return res.status(400).send({ status: "Bad Request", message: "Error al enviar el mensaje." });
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "Mensaje enviado correctamente." });
+})
+
 app.get("/user/data", async (req, res) =>{
     if (!req.body) {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
@@ -685,12 +754,12 @@ app.get("/user/projects", async (req, res) => {
 });
 
 //Obtener los colaboradores de un proyecto
-app.get("/project/collaborators/:project_id", async (req, res) => {
-    const project_id = req.params.project_id;
+app.get("/project/collaborators", async (req, res) => {
+    const project_id = req.query.id_project;
 
     try {
         const connection = await getConnection();
-        const collaboratorsProject = await connection.query("SELECT collaborators FROM projects WHERE project_id = ?", [project_id]);
+        const collaboratorsProject = await connection.query("SELECT * FROM projects WHERE project_id = ?", [project_id]);
 
         if (!collaboratorsProject.length) {
             return res.status(404).send({ status: "Not Found", message: "Proyecto no encontrado." });

@@ -43,7 +43,6 @@ function formatLabels(startDate, endDate, dataLabels) {
 
 export function createGraphic(element, typeGraphic, startDate, endDate, data, dataLabels, backGroundColor, borderColor, borderWidth) {
   const ctx = element.getContext('2d');
-  
   const labels = formatLabels(startDate, endDate, dataLabels);
 
   const dataGraphic = {

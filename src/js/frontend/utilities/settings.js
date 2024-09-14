@@ -18,29 +18,19 @@ const configs = {
 // ------------------------- Show settings content -------------------------------
 // Options buttons
 const profileOption = document.querySelector('#profile-option')
-const appareanceOption = document.querySelector('#appareance-option')
 const securityOption = document.querySelector('#security-option')
 
 //Content buttons
 const profileContent = document.querySelector('#profile-content')
-const appareanceContent = document.querySelector('#appareance-content')
 const securityContent = document.querySelector('#security-content')
 
 profileOption?.addEventListener("click", () => {
     profileContent.style.display = "flex";
-    appareanceContent.style.display = "none";
-    securityContent.style.display = "none";
-});
-
-appareanceOption?.addEventListener("click", () => {
-  profileContent.style.display = "none";
-    appareanceContent.style.display = "flex";
     securityContent.style.display = "none";
 });
 
 securityOption?.addEventListener("click", () => {
   profileContent.style.display = "none";
-    appareanceContent.style.display = "none";
     securityContent.style.display = "flex";  
 });
 
@@ -446,17 +436,3 @@ document?.addEventListener('DOMContentLoaded', () => {
       }
     }
 });
-
-//Apply stored font
-document?.addEventListener('DOMContentLoaded', () => {
-    const savedFont = configs.font;
-    if (savedFont) {
-     elements.fontSelect.value = savedFont;
-    } 
-});
-
-elements.fontSelect?.addEventListener('change', (event) => {
-    const selectedFont = event.target.value;
-    localStorage.setItem('selectedFont', selectedFont); 
-});
-  

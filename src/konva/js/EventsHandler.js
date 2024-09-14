@@ -26,12 +26,12 @@ document.addEventListener('keydown', function (e) {
 
     if (e.ctrlKey && e.key.toLowerCase() === 'z') {
         e.preventDefault()
-        GlobalFunctions.undo();
+        konva.undo();
     }
 
     if (e.ctrlKey && e.key.toLowerCase() === 'y') {
         e.preventDefault()
-        GlobalFunctions.redo();
+        konva.redo();
     }
 
     if(e.ctrlKey && e.key.toLowerCase() === 'j'){
@@ -137,12 +137,8 @@ document.addEventListener('keydown', function (e) {
     }
 
     if(e.ctrlKey && e.key.toLowerCase() === 'a'){
-        if(!konva.getSelectAll()){
-            return;
-        }
-        
         e.preventDefault();
-        konva.tr.nodes([...konva.getElements()]);
+        konva.selectAll();
     }
 });
 

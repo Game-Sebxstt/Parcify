@@ -8,8 +8,8 @@ import Typing from "./Typing.astro";
 import Response from "./Response.astro";
 ---
 
-<div id="content-all-chat" class="w-[25rem] h-fit bg-red-500/50 absolute top-full right-0 mt-10 flex flex-col cursor-default">
-    <button id="drag-chat" class="w-full h-7 flex justify-center items-center bg-green-500">
+<div id="content-all-chat" class="w-[25rem] h-fit bg-[#1E1E1E] border-[1px] border-[rgba(255,255,255,.2)] rounded-md absolute top-full right-0 mt-10 flex flex-col cursor-default overflow-hidden">
+    <button id="drag-chat" class="w-full h-fit flex justify-center items-center bg-[#313131] outline-none">
         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-grip-horizontal h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
             <path d="M5 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
@@ -21,42 +21,38 @@ import Response from "./Response.astro";
         </svg>
     </button>
 
-    <header class="w-full h-10 flex relative justify-between gap-x-5 bg-purple-500 px-1.5">
-        <div class="w-fit h-full flex items-center justify-center bg-yellow-500">
+    <header class="w-full h-fit flex relative justify-between gap-x-5 bg-[#313131] px-4 py-2">
+        <div class="w-fit h-full flex items-center justify-center">
             <ProfileInvite color="bg-green-500" letter="A"/>
             <ProfileInvite color="bg-red-500 -ml-2" letter="B"/>
             <ProfileInvite color="bg-yellow-500 -ml-2" letter="C"/>
             <ProfileInvite color="bg-blue-500 -ml-2" letter="2+"/>
         </div>
 
-        <div class="w-full h-full flex items-center justify-center bg-blue-500">
+        <div class="w-full h-full flex items-center justify-center">
             <h1 class="text-white text-lg font-bold text-right w-full">Chat Collaborators</h1>
         </div>
     </header>
 
     <article class="w-full h-[30rem] relative flex flex-col">
-        <div id="chat-container" class="w-full h-full mb-2 overflow-y-auto overflow-x-hidden relative">
-            <div class="w-full h-full p-2 flex flex-col">
-                <ChatBubbleRightResponse message="Hola,todos la entrega es el dia Sabado a las 8."/>
-                <ChatBubbleLeft message="Hola,todos la entrega es el dia Sabado a las 8."/>
-                <ChatBubbleRight message="Hola,todos la entrega es el dia Sabado a las 8."/>
-                <ChatBubbleLeftResponse message="Hola,todos la entrega es el dia Sabado a las 8."/>
+        <div id="chat-container" class="w-full h-full mb-2 overflow-y-auto overflow-x-hidden relative bg-[#1E1E1E]">
+            <div id="render-container-chat" class="w-full h-full p-2 flex flex-col">
                 <Typing/>
             </div>
 
             <button id="scroll-chat" class="w-fit h-fit fixed hidden left-0 top-0 z-90">
-                <svg class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-arrow-down h-10 w-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="white">
+                <svg class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-arrow-down h-10 w-10 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="white">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                     <path d="M12 2c-.218 0 -.432 .002 -.642 .005l-.616 .017l-.299 .013l-.579 .034l-.553 .046c-4.785 .464 -6.732 2.411 -7.196 7.196l-.046 .553l-.034 .579c-.005 .098 -.01 .198 -.013 .299l-.017 .616l-.004 .318l-.001 .324c0 .218 .002 .432 .005 .642l.017 .616l.013 .299l.034 .579l.046 .553c.464 4.785 2.411 6.732 7.196 7.196l.553 .046l.579 .034c.098 .005 .198 .01 .299 .013l.616 .017l.642 .005l.642 -.005l.616 -.017l.299 -.013l.579 -.034l.553 -.046c4.785 -.464 6.732 -2.411 7.196 -7.196l.046 -.553l.034 -.579c.005 -.098 .01 -.198 .013 -.299l.017 -.616l.005 -.642l-.005 -.642l-.017 -.616l-.013 -.299l-.034 -.579l-.046 -.553c-.464 -4.785 -2.411 -6.732 -7.196 -7.196l-.553 -.046l-.579 -.034a28.058 28.058 0 0 0 -.299 -.013l-.616 -.017l-.318 -.004l-.324 -.001zm0 5a1 1 0 0 1 .993 .883l.007 .117v5.585l2.293 -2.292a1 1 0 0 1 1.32 -.083l.094 .083a1 1 0 0 1 .083 1.32l-.083 .094l-4 4a1.008 1.008 0 0 1 -.112 .097l-.11 .071l-.114 .054l-.105 .035l-.149 .03l-.117 .006l-.075 -.003l-.126 -.017l-.111 -.03l-.111 -.044l-.098 -.052l-.092 -.064l-.094 -.083l-4 -4a1 1 0 0 1 1.32 -1.497l.094 .083l2.293 2.292v-5.585a1 1 0 0 1 1 -1z" fill="currentColor" stroke-width="0" />
                 </svg>
             </button>
         </div>
 
-        <div id="chat-message-container" class="w-full h-fit bg-blue-500 p-2 relative">
-            <div class="w-full h-fit bg-red-500 flex flex-col gap-y-1 p-2">
+        <div id="chat-message-container" class="w-full h-fit bg-[#313131] p-2 relative">
+            <div class="w-full h-fit flex flex-col gap-y-1 p-2">
                 <Response message="Lorem ipsum dolor sit amet consectetur adipisicing elit. Omnis necessitatibus nesciunt quibusdam"/>
-                <div class="flex w-full h-full relative">
-                    <button id="chat-message-send" class="w-fit h-fit absolute top-1/2 right-2 -translate-y-1/2 bg-black p-1.5 px-3 rounded-lg flex justify-center items-center">
+                <form id="chat-message-form" data-type="right" data-id-response="0" class="flex w-full h-full relative">
+                    <button type="submit" class="w-fit h-fit absolute top-1/2 right-2 -translate-y-1/2 bg-black p-1.5 px-3 rounded-lg flex justify-center items-center">
                         <svg class="icon icon-tabler icons-tabler-outline icon-tabler-brand-telegram h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4" />
@@ -70,115 +66,26 @@ import Response from "./Response.astro";
                         </svg>
                     </button> -->
 
-                    <input type="text" id="chat-message-input" class="w-full h-full bg-transparent rounded-lg pl-1 pr-14 py-5 outline-none placeholder:text-white" placeholder="Escribe tu mensaje...">
-                </div>
+                    <input type="text" id="chat-message-input" class="w-full h-full bg-[1E1E1E] rounded-lg pl-4 pr-14 py-5 outline-none placeholder:text-white" placeholder="Escribe tu mensaje...">
+                </form>
             </div>
         </div>
     </article>
 </div>
 
-<script>
-    const content_all_chat = document.querySelector("#content-all-chat") as HTMLDivElement;
-    const content_all_chat_rect = content_all_chat.getBoundingClientRect();
+<div id="templates-chat" class="hidden">
+    <ChatBubbleLeft id="chat-bubble" type="left"/>
+    <ChatBubbleLeftResponse id="chat-bubble" type="left-response"/>
+    <ChatBubbleRight id="chat-bubble" type="right"/>
+    <ChatBubbleRightResponse id="chat-bubble" type="right-response"/>
+</div>
 
-    const chat_container = document.querySelector("#chat-container") as HTMLDivElement;
-    const chat_container_rect = chat_container.getBoundingClientRect();
+<style>
+    #chat-message-form button:hover, #chat-message-form button:focus{
+        background-color: white;
 
-    const scroll_chat = document.querySelector("#scroll-chat") as HTMLButtonElement;
-    const scroll_chat_rect = scroll_chat.getBoundingClientRect();
-
-    const drag_chat = document.querySelector("#drag-chat") as HTMLButtonElement;
-    const drag_chat_rect = drag_chat.getBoundingClientRect();
-
-    const header_konva = document.querySelector("#header-konva") as HTMLDivElement;
-    const header_konva_rect = header_konva.getBoundingClientRect();
-
-    scroll_chat.style.left = `${content_all_chat_rect.left + chat_container_rect.height / 2 + scroll_chat_rect.width}px`;
-    scroll_chat.style.top = `${content_all_chat_rect.top + chat_container_rect.height}px`;
-
-    let isFocus = false;
-
-    scroll_chat?.addEventListener("click", () => {
-        chat_container.scrollTo({
-            top: chat_container.scrollHeight,
-            behavior: "smooth"
-        });
-    });
-
-    content_all_chat?.addEventListener("focus", () => {
-        isFocus = true;
-    })
-
-    content_all_chat?.addEventListener("blur", () => {
-        isFocus = false;
-    })
-
-        chat_container.addEventListener("scroll", () => {
-        if(chat_container.scrollHeight - chat_container.scrollTop === chat_container.clientHeight){
-            scroll_chat.style.display = "none";
-        }else{
-            scroll_chat.style.display = "flex";
-        }
-    });
-
-    document.addEventListener("DOMContentLoaded", () => {
-        chat_container.scrollTo({
-            top: chat_container.scrollHeight,
-            behavior: "smooth"
-        });
-    })
-
-    let isDragging = false;
-    let minY: number | undefined = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
-    let minX: number = 0;
-    let maxY: number = window.innerHeight;
-    let maxX: number = window.innerWidth;
-
-    let position = {
-        x: 0,
-        y: 0
-    }
-
-    drag_chat.addEventListener("mousedown", (e) => {
-        content_all_chat.style.position = "fixed"
-        isDragging = true;
-        updatePosChat(e);
-    })
-
-    document.addEventListener("mouseup", (e) => {
-        if(isDragging){
-            isDragging = false;
-        }
-    })
-
-    document.addEventListener("mousemove", updatePosChat)
-
-    function updatePosChat(e: MouseEvent) {
-        if(isDragging){
-            position = {
-                x: e.clientX - drag_chat_rect.width / 2,
-                y: e.clientY - drag_chat_rect.height * 1.5
-            }
-
-            if(minY && position.y < minY){
-                position.y = minY;
-            }
-
-            if(position.y > maxY - content_all_chat_rect.height){
-                position.y = maxY - content_all_chat_rect.height;
-            }
-
-            if(position.x < minX){
-                position.x = minX;
-            }
-
-            if(position.x > maxX - content_all_chat_rect.width){
-                position.x = maxX - content_all_chat_rect.width;
-            }
-
-            content_all_chat.style.top = `${position.y}px`;
-            content_all_chat.style.left = `${position.x}px`;
+        svg{
+            stroke: black;
         }
     }
-
-</script>
+</style>

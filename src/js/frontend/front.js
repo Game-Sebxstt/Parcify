@@ -6,6 +6,13 @@ import * as reusable from './utilities/reusable'
 import * as enviroments from '../../enviroments.ts'
 import Toastify from 'toastify-js'
 
+const socket = new WebSocket('ws://localhost:4000')
+
+socket.onopen = async function(event) {
+    socket.send(JSON.stringify({ type: 'clientId', id: globals.getCookie("ID-USER") }));
+    console.log('Conexión establecida con el servidor WebSocket');
+};
+
 // Utility Functions
 export const utils = {
   toggleDisplay: (element, displayStyle) => {

@@ -134,8 +134,8 @@ export async function saveCollaborators(project_id, collaborators) {
     return {state: true, data: responseData};
 }
 
-export async function getCollaborators(project_id) {
-    const response = await fetch(`http://localhost:4000/project/collaborators/${project_id}`, {
+export async function getCollaborators(id_project) {
+    const response = await fetch(`http://localhost:4000/project/collaborators?id_project=${id_project}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -204,6 +204,10 @@ export async function getAllProjects(user_id) {
 }
 
 export async function getProject(id_project){
+    if(!id_project){
+        return {state: false, data: "El id del proyecto no es valido"};
+    }
+
     const response = await fetch(`http://localhost:4000/user/project?id_project=${id_project}`, {
         method: "GET",
         headers: {
@@ -606,5 +610,41 @@ export async function dislikeTemplate(template_id, id_user){
         return {state: false, data: responseData.message};
     }
     
+    return {state: true, data: responseData};
+}
+
+export async function sendMessageChat(data, id_project){
+    const response = await fetch(`http://localhost:4000/chat/send`, {
+        method: "POST",
+        body: JSON.stringify({data: data, id_project: id_project}),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+export async function sendInvitationProject(id_project, invitation){
+    const response = await fetch(`http://localhost:4000/invitation/send`, {
+        method: "POST",
+        body: JSON.stringify({invitation: invitation, id_project: id_project}),
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
     return {state: true, data: responseData};
 }

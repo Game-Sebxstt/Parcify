@@ -12,15 +12,19 @@ let elementsFiltered: any = [];
 
 if(data_response.state){
     elementsUser = [...data_response.data.message.templates, ...data_response.data.message.projects]
-    const favorites = JSON.parse((await getFavorites(id)).data.message[0].favorites);
-    
-    favorites.forEach((favorite: any) => {
-        elementsUser.forEach((element: any) => {
-            if(element.template_id == favorite.id || element.project_id == favorite.id){
-                elementsFiltered.push(element);
-            }
-        })
-    });
+    let favorites: any = await getFavorites(id);
+
+    if(favorites.state){
+        favorites = JSON.parse(favorites.data.message[0].templates)
+
+        favorites.forEach((favorite: any) => {
+            elementsUser.forEach((element: any) => {
+                if(element.template_id == favorite.id || element.project_id == favorite.id){
+                    elementsFiltered.push(element);
+                }
+            })
+        });
+    }
 
     elementsUser = elementsFiltered;
 }

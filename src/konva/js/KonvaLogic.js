@@ -413,19 +413,20 @@ export function undo() {
         layer.destroy();
         
         const stageJSON = lastState;
-        const layerJSON = stageJSON.children[1];
+        const layerJSON = stageJSON.children[2];
         layer = Konva.Layer.create(layerJSON);
+        const layerUtilitiesJSON = stageJSON.children[1];
+        layerUtilities = Konva.Layer.create(layerUtilitiesJSON);
         stage.add(layer);
+        stage.add(layerUtilities);
         
         elements = layer.getChildren().filter(item => (item.attrs.id != "selection") && item.attrs.id != "transformer");
         tr = layer.getChildren().find(item => item.attrs.id == "transformer");
         selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection");
         
-        tr.setAttr("visible", true)
+        tr?.setAttr("visible", true)
         layer.draw();
         updateElementsEvent();
-        snapDragElements();
-        snapTransformElements();
     }
 }
 
@@ -437,7 +438,7 @@ export function redo() {
         layer.destroy();        
 
         const stageJSON = nextState;
-        const layerJSON = stageJSON.children[1];
+        const layerJSON = stageJSON.children[2];
         layer = Konva.Layer.create(layerJSON);
         stage.add(layer);
 
@@ -445,12 +446,18 @@ export function redo() {
         tr = layer.getChildren().find(item => item.attrs.id == "transformer");
         selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection");
 
-        tr.setAttr("visible", true)
+        tr?.setAttr("visible", true)
         layer.draw();
         updateElementsEvent();
-        snapDragElements();
-        snapTransformElements();
     }
+}
+
+export function selectAll(){
+    if(!getSelectAll()){
+        return;
+    }
+    
+    tr?.nodes([...getElements()]);
 }
 
 export function updateElementsEvent(){

@@ -403,8 +403,8 @@ export function showBarTool(nodes) {
         barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
         barTool.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
     
-        document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
-        document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
+        // document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
+        // document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
     
         if(!isUpdateToolBar) return;
 

@@ -47,11 +47,11 @@ export function endSession() {
     const sessionTimeWorked = Math.round((endTime - startTime) / 1000 / 60) < 1 ? 0 : Math.round((endTime - startTime) / 1000 / 60);
 
     const user_id = getCookie("ID-USER");
-    const projectId = sessionStartTime.project_id;
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('id');
 
     req.getCollaborators(projectId).then((data) => {
         if (!data.state) {
-            utils.handleError(data);
             return;
         }
 
@@ -112,6 +112,17 @@ export function formatEmail(email) {
     const formattedEmail = `${user.slice(0, visibleChars)}${hiddenPart}@${domain}`;
 
     return formattedEmail;
+}
+
+export function formatLocalTimeString(time){
+    const timeParts = time.split(':');
+    let hours = parseInt(timeParts[0], 10);
+    const minutes = timeParts[1];
+    const period = hours >= 12 ? 'P.M' : 'A.M';
+
+    hours = hours % 12 || 12;
+
+    return `${hours}:${minutes} ${period}`;
 }
 
 export function lastModified(fechas) {
@@ -180,4 +191,22 @@ export function isNewProject(last_modified){
 
 export function generateID(){
     return Math.random().toString(36).substr(2, 9);
+}
+
+export function generateString(length) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+
+    return result;
+}
+
+export function generateLinkInvitation(id_project){
+    const invitation = generateString(30);
+    const url = `localhost:4321/konva/?id=${id_project}&invitation=${invitation}`;
+
+    return { url, invitation };
 }

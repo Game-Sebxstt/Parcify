@@ -61,17 +61,6 @@ const {username, email, biography} = Astro.props;
                             <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">Profile</h1>
                       </div>
 
-                      <div id="appareance-option" class="flex py-3 px-2 w-full my-2 gap-4 cursor-pointer hover:bg-slate-600 text-white text-xl max-sm:w-fit">
-                            <span class="max-sm:px-2">
-                                <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="white"  
-                                stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-sparkles">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z" />
-                                </svg>
-                            </span>
-                            <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">Appareance</h1>
-                      </div>
-
                       <div id="security-option" class="flex py-3 px-2 w-full my-2 gap-4 cursor-pointer hover:bg-slate-600 text-white text-xl max-sm:w-fit">
                             <span class="max-sm:px-2">
                                 <svg class="icon icon-tabler icons-tabler-filled icon-tabler-shield-lock" xmlns="http://www.w3.org/2000/svg" 
@@ -90,9 +79,6 @@ const {username, email, biography} = Astro.props;
               <div class="px-8 w-full h-full bg-black/50 pb-8 pt-8 flex overflow-y-auto flex-col max-sm:w-full rounded-xl gap-5 max-sm:px-5">
                 <div id="profile-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5">
                     <Profile username = {username}, email = {email} biography={biography}></Profile>
-                </div>
-                <div id="appareance-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5" style="display: none" >
-                    <Appareance></Appareance>
                 </div>
                 <div id="security-content" class="w-full h-full flex flex-col max-sm:w-full rounded-xl gap-5" style="display:none">
                     <Security></Security>

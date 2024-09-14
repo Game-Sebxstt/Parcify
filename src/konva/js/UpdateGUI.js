@@ -2,6 +2,9 @@ import * as States from "./StatesLogic";
 import _ from 'lodash';
 import * as konva from "./KonvaLogic";
 import Konva from "konva"
+import * as globals from '../../js/frontend/utilities/globals'
+import * as req from '../../js/backend/requests'
+import * as front from '../../js/frontend/front'
 import * as GlobalFunctions from "./GlobalFunctions";
 
 // Selección de elementos del DOM
@@ -27,6 +30,8 @@ const domElements = {
     inputStrokeBorder: document.querySelector("#input_stroke_border"),
     undoElement: document.querySelector("#undo"),
     redoElement: document.querySelector("#redo"),
+    selectAllElement: document.querySelector("#selectAll"),
+    shareProject: document.querySelector("#share-project"),
     exportCanvas: document.querySelector("#export"),
     fileFolder: document.querySelector("#file-folder"),
     dropzoneFile: document.querySelector("#dropzone-file"),
@@ -106,200 +111,6 @@ function updateElement() {
     konva.saveHistory(konva.stage.toJSON());
 }
 
-function changeLayout(attrs) {
-    domElements.colorStyle.value = rgbaToHex(attrs.fill || "black");
-    domElements.colorStyleBorder.value = attrs.stroke || "black";
-
-    if (attrs.text) {
-        domElements.editorText.value = attrs.text;
-    }
-
-    updateAlignButtons(attrs.align, domElements.aligns, "data-align");
-    updateAlignButtons(attrs.verticalAlign, domElements.alignsVertical, "data-align-vertical");
-
-    const scaleX = attrs.scaleX ?? 1;
-    const scaleY = attrs.scaleY ?? 1;
-    domElements.inputLayoutX.value = (attrs.x !== undefined ? attrs.x.toFixed(0) : 0);
-    domElements.inputLayoutY.value = (attrs.y !== undefined ? attrs.y.toFixed(0) : 0);
-
-    if (attrs.width) {
-        domElements.inputWidth.value = ((attrs.width || 1) * scaleX).toFixed(0);
-        domElements.inputHeight.value = ((attrs.height || 1) * scaleY).toFixed(0);
-    }
-
-    if (attrs.rotation) {
-        domElements.inputRotate.value = attrs.rotation.toFixed(0) || 1;
-    }
-
-    if (attrs.radius) {
-        domElements.inputRadius.value = attrs.radius;
-    }
-
-    domElements.inputColor.value = domElements.colorStyle.value || "";
-    domElements.inputColorBorder.value = domElements.colorStyleBorder.value || "";
-    domElements.inputStrokeBorder.value = attrs.strokeWidth || 0;
-    domElements.inputCorner.value = attrs.cornerRadius || 0;
-}
-
-function updateAlignButtons(attr, elements, dataAttribute) {
-    elements.forEach(item => {
-        if (item.getAttribute(dataAttribute) === attr) {
-            item.style.backgroundColor = "#505050";
-        } else {
-            item.style.backgroundColor = "transparent";
-        }
-    });
-}
-
-// Manejadores de Eventos
-domElements.fontFamily.addEventListener("change", () => {
-    let node = konva.tr.nodes()[0];
-    if (!node) return;
-
-    let value = domElements.fontFamily.value;
-    node.setAttr("fontFamily", value);
-    States.StatesCursor.select.setAttr("fontFamily", value);
-});
-
-domElements.fontSize?.addEventListener("input", (e) => {
-    let node = konva.tr.nodes()[0];
-    if (!node) return;
-
-    let value = Number(e.target.value);
-    if (value < 0 || value > 90) return;
-
-    node.setAttr("fontSize", value);
-    States.StatesCursor.select.setAttr("fontSize", value);
-});
-
-domElements.italicStyle?.addEventListener("click", () => toggleFontStyle("italic", domElements.italicStyle, domElements.boldStyle));
-domElements.boldStyle?.addEventListener("click", () => toggleFontStyle("bold", domElements.boldStyle, domElements.italicStyle));
-
-domElements.alignsVertical.forEach(item => {
-    item?.addEventListener("click", () => alignText(item, "data-align-vertical"));
-});
-
-domElements.aligns.forEach(item => {
-    item?.addEventListener("click", () => alignText(item, "data-align"));
-});
-
-domElements.editorText?.addEventListener("input", (e) => {
-    let node = konva.tr.nodes()[0];
-    if (!node || node instanceof Konva.Text == false) return;
-
-    let value = e.target.value;
-    States.StatesCursor.select.setAttr("text", value);
-    node.setAttr("text", value);
-});
-
-elementsFocus.forEach(item => {
-    item.addEventListener("focus", () => {
-        konva.setSelectAll(false);
-    });
-    item.addEventListener("blur", () => {
-        konva.setSelectAll(true);
-    });
-});
-
-domElements.undoElement?.addEventListener("click", undo);
-domElements.redoElement?.addEventListener("click", redo);
-
-domElements.inputLayoutX.addEventListener("input", updateElement);
-domElements.inputLayoutY.addEventListener("input", updateElement);
-domElements.inputWidth.addEventListener("input", updateElement);
-domElements.inputHeight.addEventListener("input", updateElement);
-domElements.inputRotate.addEventListener("input", updateElement);
-domElements.inputRadius.addEventListener("input", updateElement);
-domElements.inputCorner.addEventListener("input", updateElement);
-domElements.colorStyleBorder.addEventListener("input", updateElement);
-domElements.inputStrokeBorder.addEventListener("input", updateElement);
-domElements.colorStyle.addEventListener("change", updateElement);
-domElements.inputColor.addEventListener("input", () => updateColor(domElements.inputColor.value));
-
-function toggleFontStyle(style, styleElement, oppositeStyleElement) {
-    let node = konva.tr.nodes()[0];
-    if (!node) return;
-
-    if (node.getAttr("fontStyle") !== style) {
-        oppositeStyleElement.style.backgroundColor = "transparent";
-        styleElement.style.backgroundColor = "#505050";
-        node.setAttr("fontStyle", style);
-        States.StatesCursor.select.setAttr("fontStyle", style);
-        return;
-    }
-
-    oppositeStyleElement.style.backgroundColor = "transparent";
-    styleElement.style.backgroundColor = "transparent";
-    node.setAttr("fontStyle", "normal");
-    States.StatesCursor.select.setAttr("fontStyle", "normal");
-}
-
-function alignText(item, attribute) {
-    let node = konva.tr.nodes()[0];
-    if (!node) return;
-
-    let attr = item.getAttribute(attribute);
-    node.setAttr(attribute.slice(5), attr);
-    States.StatesCursor.select.setAttr(attribute.slice(5), attr);
-
-    item.style.backgroundColor = "#505050";
-    [...item.parentNode.children].forEach(element => {
-        if (item !== element) {
-            element.style.backgroundColor = "transparent";
-        }
-    });
-}
-
-function updateColor(value) {
-    if (States.StatesCursor.select && value.length === 7) {
-        let select = States.StatesCursor.select;
-        select.setAttrs({ fill: value });
-        konva.layer.batchDraw();
-    }
-}
-
-// Intervalo de actualización de layout
-let previousAttrs = null;
-
-setInterval(() => {
-    if (States.StatesCursor.select || konva.tr.nodes().length > 0) {
-        toggleEditPanel(true);
-        let select = States.StatesCursor.select;
-        if (!select || !select.attrs) return;
-
-        const currentAttrs = { ...select.attrs };
-        if (!_.isEqual(previousAttrs, currentAttrs)) {
-            changeLayout(currentAttrs);
-            previousAttrs = currentAttrs;
-        }
-    } else {
-        toggleEditPanel(false);
-    }
-}, 100);
-
-function toggleEditPanel(isVisible) {
-    const editPanel = document.querySelector("#content-edit");
-    const noEditPanel = document.querySelector("#content-edit-nothing");
-    if (editPanel && noEditPanel) {
-        editPanel.style.display = isVisible ? "flex" : "none";
-        noEditPanel.style.display = isVisible ? "none" : "flex";
-    }
-}
-
-domElements.export?.addEventListener("submit", (e)=> {
-    e.preventDefault();
-    const extension = e.target.elements['extension'];
-    if (konva.tr.nodes().length > 0 && konva.tr.nodes()[0] instanceof Konva.Group) {
-        var dataURL = konva.tr.nodes()[0].toDataURL({ pixelRatio: 3 });
-        GlobalFunctions.downloadURI(dataURL, `stage.${extension.value}`);
-        return;
-    }
-
-    var dataURL = konva.stage.toDataURL({ pixelRatio: 3 });
-    GlobalFunctions.downloadURI(dataURL, `stage.${extension.value}`);
-});
-
-
 if (domElements.contentsImageFolder.length > 1) {
     document.querySelector("#content-drop").style.display = "none";
     domElements.listImageFolder.style.display = "grid"
@@ -307,6 +118,18 @@ if (domElements.contentsImageFolder.length > 1) {
 
 domElements.fileFolder?.addEventListener("change", saveFile)
 domElements.dropzoneFile?.addEventListener("change", saveFile)
+
+domElements.undoElement?.addEventListener("click", () => {
+    konva.undo();
+})
+
+domElements.redoElement?.addEventListener("click", () => {
+    konva.redo();
+})
+
+domElements.selectAllElement?.addEventListener("click", () => {
+    konva.selectAll();
+})
 
 function saveFile(e) {
     let files = e.target.files;
@@ -359,6 +182,13 @@ function saveFile(e) {
 domElements.openExport?.addEventListener("click", ()=>{
     window.getComputedStyle(domElements.exportContent).display == "none" ? domElements.exportContent.style.display = "flex" : domElements.exportContent.style.display = "none";
 });
+
+domElements.shareProject?.addEventListener("click", async () => {
+    const {url, invitation} = globals.generateLinkInvitation(konva.id_stage);
+    navigator.clipboard.writeText(url);
+    req.sendInvitationProject(konva.id_stage, invitation);
+    front.utils.handleError("Link copied to clipboard");
+  })
 
 let undoButton = document.querySelector('#undo');
 undoButton?.addEventListener('click', () => {
