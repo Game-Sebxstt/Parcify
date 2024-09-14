@@ -34,10 +34,10 @@ const {username, email, biography} = Astro.props;
                         <div id="image-container" class="flex text-center align-middle items-center rounded-full w-12 h-12  max-sm:w-10">
                         </div>
                     </div>
-                    <div class="w-full flex justify-between align-middle">
-                        <span>
+                    <div class="w-full flex justify-between overflow-hidden text-ellipsis whitespace-nowrap">
+                        <span class="w-full">
                             <h1 class="text-white text-xl max-xl:text-base max-sm:hidden">{username}</h1>
-                            <p class="text-[#a7a5a5] text-xs max-xl:text-base max-sm:hidden">lorem ipsum dolor sit amet</p>
+                            <p class="text-[#a7a5a5] text-xs max-xl:text-base max-sm:hidden truncate w-full">{biography}</p>
                         </span>
                        <span>
                   </div>

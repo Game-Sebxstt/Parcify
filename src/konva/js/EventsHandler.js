@@ -4,6 +4,38 @@ import * as req from '../../js/backend/requests'
 import * as GlobalFunctions from "./GlobalFunctions";
 import * as globals from '../../js/frontend/utilities/globals'
 
+// utilizables
+const elements = {
+    export: document.querySelector("#exportForm"),
+    openExport: document.querySelector("#openExport"),
+    closeExport: document.querySelector("#close-export"),
+    exportContent: document.querySelector("#exportContent"),
+    typeScale: document.querySelectorAll("#typeScale"),
+    typeExtension: document.querySelector("#typeExtension"),
+    scaleRange: document.querySelector("#scaleRange"),
+    preview:document.querySelector("#previewContenetor"),
+}
+
+const utils = {
+    show: (element) => {
+        const display = window.getComputedStyle(element).display;
+        element.style.display = display == "none" ? "flex" : "none";
+    },
+    hidden:(element) => {
+        const display = window.getComputedStyle(element).display;
+        element.style.display = display == "flex" ? "none" : "flex";
+    },
+    updatePreview: (element) => {
+        const previewStyle = element.style;
+        previewStyle.backgroundImage = `url(${konva.stage.toDataURL()})`;
+        previewStyle.backgroundPosition = "center"
+        previewStyle.backgroundSize = "cover"
+    },
+};
+
+utils.updatePreview(elements.preview);
+
+// Key Events
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
@@ -140,6 +172,41 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
         konva.selectAll();
     }
+});
+
+// Export Events
+elements.openExport?.addEventListener("click", ()=>{
+    utils.show(elements.exportContent);
+});
+
+elements.closeExport?.addEventListener("click", ()=>{
+    utils.hidden(elements.exportContent);
+});
+
+elements.scaleRange.addEventListener("input", () => {
+    elements.typeScale.forEach(element => {
+        element.textContent = `${elements.scaleRange.value}x`
+    })
+})
+
+elements.export?.addEventListener("submit", (e)=> {
+    e.preventDefault();
+    const extension = e.target.elements['extension'];
+    if (konva.tr.nodes().length > 0 && konva.tr.nodes()[0] instanceof Konva.Group) {
+        var dataURL = konva.tr.nodes()[0].toDataURL({ pixelRatio: 3 });
+        GlobalFunctions.downloadURI(dataURL, `stage.${extension.value}`);
+        return;
+    }
+
+    var dataURL = konva.stage.toDataURL({ pixelRatio: 3 });
+    GlobalFunctions.downloadURI(dataURL, `stage.${extension.value}`);
+});
+
+elements.export?.elements['extension'].forEach(radio => {
+    radio.addEventListener('change', () => {
+        const selectedExtension = document.querySelector('input[name="extension"]:checked').value;
+        elements.typeExtension.textContent = selectedExtension.toUpperCase();
+    });
 });
 
 // window.addEventListener('wheel', function(e) {

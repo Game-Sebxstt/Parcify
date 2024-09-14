@@ -10,14 +10,10 @@ if(logged == 'true'){
 ---
 
 <LayoutForm title="Parcify - Sign In">
-  <div class="w-screen h-fit flex justify-center items-center max-xl:px-4 py-3">
-    <div
-      class="bg-gray-800 shadow-lg shadow-[#181818] w-full h-fit px-3 py-3 max-w-screen-xl rounded-3xl flex justify-between"
-    >
+  <div class="w-full h-full flex justify-center items-center max-xl:px-4 py-2">
+    <div class="bg-gray-800 shadow-lg shadow-[#1e1e1e] w-full h-fit px-3 py-3 max-w-screen-xl rounded-3xl flex justify-between" >
       <div class="w-[55%] max-[820px]:w-full h-full [980px]:px-10 flex justify-center items-center">
-        <div
-          class="w-full max-w-[80%] flex flex-col justify-center items-start gap-8"
-        >
+        <div class="w-full max-w-[80%] flex flex-col justify-center items-start gap-8" >
           <div class="flex justify-start items-center mt-5">
             <img src="/Logo-no-background-no-text.png" class="h-12" alt="" />
             <span class="text-white font-bold text-lg"> PARCIFY </span>
@@ -34,9 +30,19 @@ if(logged == 'true'){
           </div>
 
           <form action="/SignIn" id="form_signUp" class="w-full flex flex-col gap-3">
-            <div
-              class="relative w-full h-full flex justify-start items-center mb-5"
-            >
+            <!-- username -->
+            <div class="relative w-full h-full flex justify-start items-center mb-5" >
+              <svg class="icon icon-tabler icons-tabler-outline icon-tabler-mail h-6 absolute left-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path stroke="none" d="M0 0h24v24H0z" fill="none"></path> <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" ></path> <path d="M3 7l9 6l9 -6"></path></svg>
+              <input
+                class="w-full py-3 pl-10 text-black placeholder:text-gray font-semibold text-base outline-none bg-[#FFFF] rounded-[4px]"
+                type="text"
+                name="name_register"
+                id="name_register"
+                placeholder="Nombre"
+                required/>
+            </div>
+            <!-- email -->
+            <div class="relative w-full h-full flex justify-start items-center mb-5">
               <svg
                 class="icon icon-tabler icons-tabler-outline icon-tabler-mail h-6 absolute left-2 text-gray-500"
                 xmlns="http://www.w3.org/2000/svg"
@@ -55,121 +61,40 @@ if(logged == 'true'){
               </svg>
               <input
                 class="w-full py-3 pl-10 text-black placeholder:text-gray font-semibold text-base outline-none bg-[#FFFF] rounded-[4px]"
-                type="text"
-                name="name_register"
-                id="name_register"
-                placeholder="Nombre"
+                type="email"
+                name="email_register"
+                id="email_register"
+                placeholder="Email"
                 required
               />
             </div>
-
-            <div
-            class="relative w-full h-full flex justify-start items-center mb-5"
-          >
-            <svg
-              class="icon icon-tabler icons-tabler-outline icon-tabler-mail h-6 absolute left-2 text-gray-500"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-              <path
-                d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z"
-              ></path>
-              <path d="M3 7l9 6l9 -6"></path>
-            </svg>
-            <input
-              class="w-full py-3 pl-10 text-black placeholder:text-gray font-semibold text-base outline-none bg-[#FFFF] rounded-[4px]"
-              type="email"
-              name="email_register"
-              id="email_register"
-              placeholder="Email"
-              required
-            />
-          </div>
-
+            <!-- password -->
             <div class="relative w-full h-full flex justify-start items-center">
-              <svg
-                class="icon icon-tabler icons-tabler-outline icon-tabler-lock h-6 absolute left-2 text-gray-500"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                <path
-                  d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"
-                ></path>
-                <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"></path>
-                <path d="M8 11v-4a4 4 0 1 1 8 0v4"></path>
-              </svg>
+              <svg class="icon icon-tabler icons-tabler-outline icon-tabler-lock h-6 absolute left-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path stroke="none" d="M0 0h24v24H0z" fill="none"></path> <path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" ></path> <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"></path> <path d="M8 11v-4a4 4 0 1 1 8 0v4"></path> </svg>
               <!-- EYE CLOSED SVG -->
-              <svg  
-                xmlns="http://www.w3.org/2000/svg"   
-                viewBox="0 0 24 24"  
-                fill="none"
-                stroke="currentColor"  
-                stroke-width="2"  
-                stroke-linecap="round"  
-                stroke-linejoin="round"  
-                class="icon icon-tabler icons-tabler-outline icon-tabler-eye_off h-6 absolute right-2 text-black"
-                id="eye_toggle_off"
-                >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" />
-                <path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" />
-                <path d="M3 3l18 18" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"   fill="none" stroke="currentColor"   stroke-width="2"   stroke-linecap="round"   stroke-linejoin="round"   class="icon icon-tabler icons-tabler-outline icon-tabler-eye_off h-6 absolute right-2 text-black" id="eye_toggle_off" > <path stroke="none" d="M0 0h24v24H0z" fill="none"/> <path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" /> <path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" /> <path d="M3 3l18 18" /> </svg>
               <!-- EYE SVG -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6 absolute right-2 text-black"
-                id="eye_toggle"
-              >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"></path>
-                <path   
-                  d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"
-                ></path>
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-eye h-6 absolute right-2 text-black" id="eye_toggle" > <path stroke="none" d="M0 0h24v24H0z" fill="none"></path> <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"></path> <path    d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" ></path></svg>
               <input
                 class="w-full py-3 pl-10 text-black placeholder:text-gray font-semibold text-base outline-none bg-[#FFFF] rounded-[4px]"
                 type="password"
                 name="password_register"
                 id="password_register"
                 placeholder="Password"
-                required
-              />
+                required/>
             </div>
-
-            <div
-              class="w-full flex justify-end items-center text-blue-500/90 font-semibold my-2 gap-2 max-sm:text-sm"
-            >
+            <!-- tems & conditions -->
+            <div class="w-full flex justify-end items-center text-blue-500/90 font-semibold my-2 gap-2 max-sm:text-sm" >
               <input type="checkbox" name="check_terms_login" id="check_terms_login" required>
               <span class="cursor-pointer">I accept terms and conditions</span>
             </div>
-
+            <!-- Register button -->
             <div class="w-full flex justify-center items-center">
-              <button
-                type="submit"
-                class="bg-[#1E90FF] w-full py-3 text-sm text-white font-semibold rounded-[4px] hover:bg-[#1E90FF]/80 active:bg-[#1E90FF]/60">
+              <button type="submit" class="bg-[#1E90FF] w-full py-3 text-sm text-white font-semibold rounded-[4px] hover:bg-[#1E90FF]/80 active:bg-[#1E90FF]/60">
                 Register
               </button>
             </div>
-
+            <!-- others sesions -->
             <div class="w-full flex justify-center items-center my-2">
               <span class="flex uppercase text-white font-semibold text-sm">
                 Or continue with
@@ -177,89 +102,16 @@ if(logged == 'true'){
             </div>
 
             <div class="flex gap-10 max-[490px]:gap-5 mb-3">
-              <button
-                class="flex gap-2 justify-center items-center max-[490px]:text-sm text-white/70 font-bold w-full h-fit border-[1px] border-[#a5a5a5] py-2.5 rounded-xl transition-all duration-200 ease-in hover:bg-[#a5a5a5]"
-              >
+              <button class="flex gap-2 justify-center items-center max-[490px]:text-sm text-white/70 font-bold w-full h-fit border-[1px] border-[#a5a5a5] py-2.5 rounded-xl transition-all duration-200 ease-in hover:bg-[#a5a5a5]" >
                 <span>
-                  <svg
-                    class="h-7 max-[490px]:h-5"
-                    enable-background="new 0 0 24 24"
-                    id="Layer_1"
-                    version="1.1"
-                    viewBox="0 0 24 24"
-                    xml:space="preserve"
-                    xmlns="http://www.w3.org/2000/svg"
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
-                    ><g
-                      ><path
-                        d="M12,5c1.6167603,0,3.1012573,0.5535278,4.2863159,1.4740601l3.637146-3.4699707   C17.8087769,1.1399536,15.0406494,0,12,0C7.392395,0,3.3966675,2.5999146,1.3858032,6.4098511l4.0444336,3.1929321   C6.4099731,6.9193726,8.977478,5,12,5z"
-                        fill="#F44336"></path><path
-                        d="M23.8960571,13.5018311C23.9585571,13.0101929,24,12.508667,24,12   c0-0.8578491-0.093689-1.6931763-0.2647705-2.5H12v5h6.4862061c-0.5247192,1.3637695-1.4589844,2.5177612-2.6481934,3.319458   l4.0594482,3.204834C22.0493774,19.135437,23.5219727,16.4903564,23.8960571,13.5018311z"
-                        fill="#2196F3"></path><path
-                        d="M5,12c0-0.8434448,0.1568604-1.6483765,0.4302368-2.3972168L1.3858032,6.4098511   C0.5043335,8.0800171,0,9.9801636,0,12c0,1.9972534,0.4950562,3.8763428,1.3582153,5.532959l4.0495605-3.1970215   C5.1484375,13.6044312,5,12.8204346,5,12z"
-                        fill="#FFC107"></path><path
-                        d="M12,19c-3.0455322,0-5.6295776-1.9484863-6.5922241-4.6640625L1.3582153,17.532959   C3.3592529,21.3734741,7.369812,24,12,24c3.027771,0,5.7887573-1.1248169,7.8974609-2.975708l-4.0594482-3.204834   C14.7412109,18.5588989,13.4284058,19,12,19z"
-                        fill="#00B060"></path><path
-                        d="M12,23.75c-3.5316772,0-6.7072754-1.4571533-8.9524536-3.7786865C5.2453613,22.4378052,8.4364624,24,12,24   c3.5305786,0,6.6952515-1.5313721,8.8881226-3.9592285C18.6495972,22.324646,15.4981079,23.75,12,23.75z"
-                        opacity="0.1"></path><polygon
-                        opacity="0.1"
-                        points="12,14.25 12,14.5 18.4862061,14.5 18.587492,14.25  "
-                      ></polygon><path
-                        d="M23.9944458,12.1470337C23.9952393,12.0977783,24,12.0493774,24,12   c0-0.0139771-0.0021973-0.0274658-0.0022583-0.0414429C23.9970703,12.0215454,23.9938965,12.0838013,23.9944458,12.1470337z"
-                        fill="#a5a5a5"></path><path
-                        d="M12,9.5v0.25h11.7855721c-0.0157471-0.0825195-0.0329475-0.1680908-0.0503426-0.25H12z"
-                        fill="#FFFFFF"
-                        opacity="0.2"></path><linearGradient
-                        gradientUnits="userSpaceOnUse"
-                        id="SVGID_1_"
-                        x1="0"
-                        x2="24"
-                        y1="12"
-                        y2="12"
-                        ><stop
-                          offset="0"
-                          style="stop-color:#FFFFFF;stop-opacity:0.2"
-                        ></stop><stop
-                          offset="1"
-                          style="stop-color:#FFFFFF;stop-opacity:0"
-                        ></stop></linearGradient
-                      ><path
-                        d="M23.7352295,9.5H12v5h6.4862061C17.4775391,17.121582,14.9771729,19,12,19   c-3.8659668,0-7-3.1340332-7-7c0-3.8660278,3.1340332-7,7-7c1.4018555,0,2.6939087,0.4306641,3.7885132,1.140686   c0.1675415,0.1088867,0.3403931,0.2111206,0.4978027,0.333374l3.637146-3.4699707L19.8414307,2.940979   C17.7369385,1.1170654,15.00354,0,12,0C5.3725586,0,0,5.3725586,0,12c0,6.6273804,5.3725586,12,12,12   c6.1176758,0,11.1554565-4.5812378,11.8960571-10.4981689C23.9585571,13.0101929,24,12.508667,24,12   C24,11.1421509,23.906311,10.3068237,23.7352295,9.5z"
-                        fill="url(#SVGID_1_)"></path><path
-                        d="M15.7885132,5.890686C14.6939087,5.1806641,13.4018555,4.75,12,4.75c-3.8659668,0-7,3.1339722-7,7   c0,0.0421753,0.0005674,0.0751343,0.0012999,0.1171875C5.0687437,8.0595093,8.1762085,5,12,5   c1.4018555,0,2.6939087,0.4306641,3.7885132,1.140686c0.1675415,0.1088867,0.3403931,0.2111206,0.4978027,0.333374   l3.637146-3.4699707l-3.637146,3.2199707C16.1289062,6.1018066,15.9560547,5.9995728,15.7885132,5.890686z"
-                        opacity="0.1"></path><path
-                        d="M12,0.25c2.9750366,0,5.6829224,1.0983887,7.7792969,2.8916016l0.144165-0.1375122   l-0.110014-0.0958166C17.7089558,1.0843592,15.00354,0,12,0C5.3725586,0,0,5.3725586,0,12   c0,0.0421753,0.0058594,0.0828857,0.0062866,0.125C0.0740356,5.5558472,5.4147339,0.25,12,0.25z"
-                        fill="#FFFFFF"
-                        opacity="0.2"></path></g
-                    ><g></g><g></g><g></g><g></g><g></g><g></g><g></g><g></g><g
-                    ></g><g></g><g></g><g></g><g></g><g></g><g></g></svg
-                  >
+                  <svg class="h-7 max-[490px]:h-5" enable-background="new 0 0 24 24" id="Layer_1" version="1.1" viewBox="0 0 24 24" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><g><path d="M12,5c1.6167603,0,3.1012573,0.5535278,4.2863159,1.4740601l3.637146-3.4699707   C17.8087769,1.1399536,15.0406494,0,12,0C7.392395,0,3.3966675,2.5999146,1.3858032,6.4098511l4.0444336,3.1929321   C6.4099731,6.9193726,8.977478,5,12,5z" fill="#F44336"></path><path d="M23.8960571,13.5018311C23.9585571,13.0101929,24,12.508667,24,12   c0-0.8578491-0.093689-1.6931763-0.2647705-2.5H12v5h6.4862061c-0.5247192,1.3637695-1.4589844,2.5177612-2.6481934,3.319458   l4.0594482,3.204834C22.0493774,19.135437,23.5219727,16.4903564,23.8960571,13.5018311z" fill="#2196F3"></path><path d="M5,12c0-0.8434448,0.1568604-1.6483765,0.4302368-2.3972168L1.3858032,6.4098511   C0.5043335,8.0800171,0,9.9801636,0,12c0,1.9972534,0.4950562,3.8763428,1.3582153,5.532959l4.0495605-3.1970215   C5.1484375,13.6044312,5,12.8204346,5,12z" fill="#FFC107"></path><path d="M12,19c-3.0455322,0-5.6295776-1.9484863-6.5922241-4.6640625L1.3582153,17.532959   C3.3592529,21.3734741,7.369812,24,12,24c3.027771,0,5.7887573-1.1248169,7.8974609-2.975708l-4.0594482-3.204834   C14.7412109,18.5588989,13.4284058,19,12,19z" fill="#00B060"></path><path d="M12,23.75c-3.5316772,0-6.7072754-1.4571533-8.9524536-3.7786865C5.2453613,22.4378052,8.4364624,24,12,24   c3.5305786,0,6.6952515-1.5313721,8.8881226-3.9592285C18.6495972,22.324646,15.4981079,23.75,12,23.75z" opacity="0.1"></path><polygon opacity="0.1" points="12,14.25 12,14.5 18.4862061,14.5 18.587492,14.25  "></polygon><path d="M23.9944458,12.1470337C23.9952393,12.0977783,24,12.0493774,24,12   c0-0.0139771-0.0021973-0.0274658-0.0022583-0.0414429C23.9970703,12.0215454,23.9938965,12.0838013,23.9944458,12.1470337z" fill="#a5a5a5"></path><path d="M12,9.5v0.25h11.7855721c-0.0157471-0.0825195-0.0329475-0.1680908-0.0503426-0.25H12z" fill="#FFFFFF" opacity="0.2"></path><linearGradient gradientUnits="userSpaceOnUse" id="SVGID_1_" x1="0" x2="24" y1="12" y2="12" ><stop offset="0" style="stop-color:#FFFFFF;stop-opacity:0.2" ></stop><stop offset="1" style="stop-color:#FFFFFF;stop-opacity:0" ></stop></linearGradient ><path d="M23.7352295,9.5H12v5h6.4862061C17.4775391,17.121582,14.9771729,19,12,19   c-3.8659668,0-7-3.1340332-7-7c0-3.8660278,3.1340332-7,7-7c1.4018555,0,2.6939087,0.4306641,3.7885132,1.140686   c0.1675415,0.1088867,0.3403931,0.2111206,0.4978027,0.333374l3.637146-3.4699707L19.8414307,2.940979   C17.7369385,1.1170654,15.00354,0,12,0C5.3725586,0,0,5.3725586,0,12c0,6.6273804,5.3725586,12,12,12   c6.1176758,0,11.1554565-4.5812378,11.8960571-10.4981689C23.9585571,13.0101929,24,12.508667,24,12   C24,11.1421509,23.906311,10.3068237,23.7352295,9.5z" fill="url(#SVGID_1_)"></path><path d="M15.7885132,5.890686C14.6939087,5.1806641,13.4018555,4.75,12,4.75c-3.8659668,0-7,3.1339722-7,7   c0,0.0421753,0.0005674,0.0751343,0.0012999,0.1171875C5.0687437,8.0595093,8.1762085,5,12,5   c1.4018555,0,2.6939087,0.4306641,3.7885132,1.140686c0.1675415,0.1088867,0.3403931,0.2111206,0.4978027,0.333374   l3.637146-3.4699707l-3.637146,3.2199707C16.1289062,6.1018066,15.9560547,5.9995728,15.7885132,5.890686z" opacity="0.1"></path><path d="M12,0.25c2.9750366,0,5.6829224,1.0983887,7.7792969,2.8916016l0.144165-0.1375122   l-0.110014-0.0958166C17.7089558,1.0843592,15.00354,0,12,0C5.3725586,0,0,5.3725586,0,12   c0,0.0421753,0.0058594,0.0828857,0.0062866,0.125C0.0740356,5.5558472,5.4147339,0.25,12,0.25z" fill="#FFFFFF" opacity="0.2"></path></g ><g></g><g></g><g></g><g></g><g></g><g></g><g></g><g></g><g ></g><g></g><g></g><g></g><g></g><g></g><g></g></svg >
                 </span>
                 Google
               </button>
 
-              <button
-                class="flex gap-2 justify-center items-center max-[490px]:text-sm text-white/70 font-bold w-full h-fit border-[1px] border-[#a5a5a5] py-2.5 rounded-xl transition-all duration-200 ease-in hover:bg-[#a5a5a5]"
-              >
+              <button class="flex gap-2 justify-center items-center max-[490px]:text-sm text-white/70 font-bold w-full h-fit border-[1px] border-[#a5a5a5] py-2.5 rounded-xl transition-all duration-200 ease-in hover:bg-[#a5a5a5]" >
                 <span>
-                  <svg
-                    class="h-7 max-[490px]:h-5"
-                    height="100%"
-                    style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;"
-                    version="1.1"
-                    viewBox="0 0 512 512"
-                    width="100%"
-                    xml:space="preserve"
-                    xmlns="http://www.w3.org/2000/svg"
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
-                    ><g
-                      ><path
-                        d="M512,256c0,-141.385 -114.615,-256 -256,-256c-141.385,0 -256,114.615 -256,256c0,127.777 93.616,233.685 216,252.89l0,-178.89l-65,0l0,-74l65,0l0,-56.4c0,-64.16 38.219,-99.6 96.695,-99.6c28.009,0 57.305,5 57.305,5l0,63l-32.281,0c-31.801,0 -41.719,19.733 -41.719,39.978l0,48.022l71,0l-11.35,74l-59.65,0l0,178.89c122.385,-19.205 216,-125.113 216,-252.89Z"
-                        style="fill:#1877f2;fill-rule:nonzero;"></path><path
-                        d="M355.65,330l11.35,-74l-71,0l0,-48.022c0,-20.245 9.917,-39.978 41.719,-39.978l32.281,0l0,-63c0,0 -29.297,-5 -57.305,-5c-58.476,0 -96.695,35.44 -96.695,99.6l0,56.4l-65,0l0,74l65,0l0,178.89c13.033,2.045 26.392,3.11 40,3.11c13.608,0 26.966,-1.065 40,-3.11l0,-178.89l59.65,0Z"
-                        style="fill:#fff;fill-rule:nonzero;"></path></g
-                    ></svg
-                  >
+                  <svg class="h-7 max-[490px]:h-5" height="100%" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;" version="1.1" viewBox="0 0 512 512" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><g ><path d="M512,256c0,-141.385 -114.615,-256 -256,-256c-141.385,0 -256,114.615 -256,256c0,127.777 93.616,233.685 216,252.89l0,-178.89l-65,0l0,-74l65,0l0,-56.4c0,-64.16 38.219,-99.6 96.695,-99.6c28.009,0 57.305,5 57.305,5l0,63l-32.281,0c-31.801,0 -41.719,19.733 -41.719,39.978l0,48.022l71,0l-11.35,74l-59.65,0l0,178.89c122.385,-19.205 216,-125.113 216,-252.89Z" style="fill:#1877f2;fill-rule:nonzero;"></path><path d="M355.65,330l11.35,-74l-71,0l0,-48.022c0,-20.245 9.917,-39.978 41.719,-39.978l32.281,0l0,-63c0,0 -29.297,-5 -57.305,-5c-58.476,0 -96.695,35.44 -96.695,99.6l0,56.4l-65,0l0,74l65,0l0,178.89c13.033,2.045 26.392,3.11 40,3.11c13.608,0 26.966,-1.065 40,-3.11l0,-178.89l59.65,0Z" style="fill:#fff;fill-rule:nonzero;"></path></g ></svg>
                 </span>
                 Facebook
               </button>

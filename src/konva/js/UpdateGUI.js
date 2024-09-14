@@ -39,7 +39,6 @@ const domElements = {
     contentsImageFolder: document.querySelectorAll("#content-image-folder"),
     export: document.querySelector("#exportForm"),
     openExport: document.querySelector("#openExport"),
-    exportContent: document.querySelector("#exportContent")
 };
 
 const elementsFocus = [
@@ -178,10 +177,6 @@ function saveFile(e) {
         }
     }
 }
-
-domElements.openExport?.addEventListener("click", ()=>{
-    window.getComputedStyle(domElements.exportContent).display == "none" ? domElements.exportContent.style.display = "flex" : domElements.exportContent.style.display = "none";
-});
 
 domElements.shareProject?.addEventListener("click", async () => {
     const {url, invitation} = globals.generateLinkInvitation(konva.id_stage);
