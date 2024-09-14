@@ -3,7 +3,6 @@ import * as globals from './utilities/globals'
 import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
 import * as reusable from './utilities/reusable'
-import * as enviroments from '../../environments.ts'
 import Toastify from 'toastify-js'
 
 // Utility Functions

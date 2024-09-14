@@ -1,15 +1,15 @@
-export const isDev = true
-export const isDevDB = true
+export const isDev = true // Estado del proyecto, si es true es desarrollo, si es false es producción
+export const isDevDB = true // Estado de la base de datos, si es true es desarrollo, si es false es producción
 
-export const URL_BASIC_PROD = 'https://parcify-api.vercel.app';
-export const URL_BASIC_DEV = 'http://localhost:4000';
-export const DEFAULT_API_URL = (isDev ? URL_BASIC_DEV : URL_BASIC_PROD);
+export const URL_BASIC_PROD = 'https://parcify-api.vercel.app'; // URL de la api para produccion
+export const URL_BASIC_DEV = 'http://localhost:4000'; // URL de la api para produccion
+export const DEFAULT_API_URL = (isDev ? URL_BASIC_DEV : URL_BASIC_PROD); // URL de la api segun el estado del proyecto
 
-export const URL_SOCKET_PROD = 'wss://parcify-api.vercel.app';
-export const URL_SOCKET_DEV = 'ws://localhost:4000';
-export const DEFAULT_SOCKET_URL = isDev ? URL_SOCKET_DEV : URL_SOCKET_PROD;
+export const URL_SOCKET_PROD = 'wss://parcify-api.vercel.app'; // URL del socket para produccion
+export const URL_SOCKET_DEV = 'ws://localhost:4000'; // URL del socket para desarrollo
+export const DEFAULT_SOCKET_URL = isDev ? URL_SOCKET_DEV : URL_SOCKET_PROD; // URL del socket segun el estado del proyecto
 
-export const DATABASE_OBJECT_DEV = {
+export const DATABASE_OBJECT_DEV = { // Objeto de la base de datos para desarrollo
     connectionLimit: 10,
     host: "localhost",
     database: "parcify",
@@ -17,7 +17,7 @@ export const DATABASE_OBJECT_DEV = {
     password: "",
 }
 
-export const DATABASE_OBJECT_PROD = {
+export const DATABASE_OBJECT_PROD = { // Objeto de la base de datos para producción
     connectionLimit: 10,
     host: "bzic2wrqo4ogzg5qu30t-mysql.services.clever-cloud.com",
     database: "bzic2wrqo4ogzg5qu30t",
@@ -25,4 +25,4 @@ export const DATABASE_OBJECT_PROD = {
     password: "8ZfG5u1B0orFV0fhyNow",
 }
 
-export const DATABASE_OBJECT = isDevDB ? DATABASE_OBJECT_DEV : DATABASE_OBJECT_PROD;
+export const DATABASE_OBJECT = isDevDB ? DATABASE_OBJECT_DEV : DATABASE_OBJECT_PROD; // Objeto de la base de datos segun el estado de la base de datos
