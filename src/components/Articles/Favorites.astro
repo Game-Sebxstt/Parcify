@@ -19,9 +19,9 @@ let numFavorites;
 
 if (isData){
     isVoid = preferences.message[0].favorites != "[]" ? true : false; 
-    numFavorites = JSON.parse(preferences.message[0].favorites)
+    numFavorites = JSON.parse(preferences.message[0].favorites || "[]");
 
-    const elementParsed = JSON.parse(preferences.message[0].favorites)
+    const elementParsed = JSON.parse(preferences.message[0].favorites || "[]");
     const projects = dataUser.message.projects;
     const templates = dataUser.message.templates;
     const elementsUser = [...projects, ...templates];

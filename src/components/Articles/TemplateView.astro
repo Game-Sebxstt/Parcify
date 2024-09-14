@@ -15,7 +15,7 @@ const {id, first_text, second_text, url_image, template_id, description, likes} 
 let formatLikes
 
 if(likes){
-  formatLikes = formatNumber(JSON.parse(likes).length);
+  formatLikes = formatNumber(JSON.parse(likes).length || 0);
 }
 
 ---

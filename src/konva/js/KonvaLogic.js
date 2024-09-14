@@ -1,6 +1,7 @@
 import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as req from '../../js/backend/requests';
+import * as globalFunctions from './GlobalFunctions'
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import { PickerCustom } from "../ts/utilities/PickerCustom";
 
@@ -73,8 +74,13 @@ if(BarTool && BarToolExtra){
 }
 
 let konva = document.querySelector("#konva");
-let widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
-let heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
+let widthKonva;
+let heightKonva;
+
+if(konva){
+    widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
+    heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
+}
 
 export function setKonva(konvaChange) {
     konva = konvaChange;
@@ -265,6 +271,7 @@ if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers
 layer.zIndex(1);
 layerUtilities.zIndex(1);
 layerBackground.zIndex(0);
+globalFunctions.updateDimensionStage();
 
 export let bg = layerBackground.getChildren().find(item => item.attrs.id == "bg") ||  new Konva.Rect({
     x: 0,

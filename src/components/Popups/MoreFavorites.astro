@@ -15,7 +15,7 @@ if(data_response.state){
     let favorites: any = await getFavorites(id);
 
     if(favorites.state){
-        favorites = JSON.parse(favorites.data.message[0].templates)
+        favorites = JSON.parse(favorites.data.message[0].templates || "[]");
 
         favorites.forEach((favorite: any) => {
             elementsUser.forEach((element: any) => {

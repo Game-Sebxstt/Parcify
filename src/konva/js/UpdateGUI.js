@@ -6,6 +6,7 @@ import * as globals from '../../js/frontend/utilities/globals'
 import * as req from '../../js/backend/requests'
 import * as front from '../../js/frontend/front'
 import * as GlobalFunctions from "./GlobalFunctions";
+import { elements } from "chart.js";
 
 // Selección de elementos del DOM
 const domElements = {
@@ -32,6 +33,10 @@ const domElements = {
     redoElement: document.querySelector("#redo"),
     selectAllElement: document.querySelector("#selectAll"),
     shareProject: document.querySelector("#share-project"),
+    popupInvite: document.querySelector("#popup-invite"),
+    presentKonva: document.querySelector("#present"),
+    copyLinkInvite: document.querySelector("#copy-link-invite"),
+    usersInvited: document.getElementById("users-invited"),
     exportCanvas: document.querySelector("#export"),
     fileFolder: document.querySelector("#file-folder"),
     dropzoneFile: document.querySelector("#dropzone-file"),
@@ -178,12 +183,27 @@ function saveFile(e) {
     }
 }
 
+domElements.presentKonva?.addEventListener("click", async () => {
+    if (document.fullscreenElement) {
+        await document.exitFullscreen();
+    } else {
+        await document.querySelector("#konva").requestFullscreen();
+    }
+    
+    GlobalFunctions.updateDimensionStage();
+  });
+
 domElements.shareProject?.addEventListener("click", async () => {
-    const {url, invitation} = globals.generateLinkInvitation(konva.id_stage);
+    domElements.popupInvite.style.display = "flex";
+})
+
+domElements.copyLinkInvite?.addEventListener("click", async () => {
+    const id_stage = domElements.usersInvited.getAttribute("data-id");
+    const {url, invitation} = globals.generateLinkInvitation(id_stage);
+    const role = document.querySelector("#text-select").getAttribute("data-role");
     navigator.clipboard.writeText(url);
-    req.sendInvitationProject(konva.id_stage, invitation);
-    front.utils.handleError("Link copied to clipboard");
-  })
+    req.sendInvitationProject(id_stage, {invitation: invitation, role: role});
+})
 
 let undoButton = document.querySelector('#undo');
 undoButton?.addEventListener('click', () => {

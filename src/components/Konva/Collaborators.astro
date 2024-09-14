@@ -1,0 +1,27 @@
+---
+import ProfileInvite from "../Articles/ProfileInvite.astro";
+
+interface Props{
+    collaborators: any;
+}
+
+const {collaborators} = Astro.props;
+
+---
+
+<div class="flex">
+    {
+        collaborators && collaborators.length > 0 ? (
+            collaborators.map((collaborator: any) => {
+                return (
+                <ProfileInvite 
+                    color={`bg-${collaborator.color.tailwind} -ml-2`}
+                    letter={collaborator.name[0]}
+                />
+                )
+            })
+        ) : (
+            <ProfileInvite color="bg-blue-500" letter="P"/>
+        )
+    }
+</div>

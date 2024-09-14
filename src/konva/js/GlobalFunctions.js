@@ -13,6 +13,20 @@ export function downloadURI(uri, name) {
     return true;
 }
 
+export function updateDimensionStage() {
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+
+    if (document.fullscreenElement && document.fullscreenElement.id === "konva") {
+        width = window.screen.width;
+        height = window.screen.height;
+    }
+
+    konva.stage.width(width);
+    konva.stage.height(height);
+    konva.layer.batchDraw();
+}
+
 export function getLineGuideStops(skipShape) {
     var vertical = [0, konva.stage.width() / 2, konva.stage.width()];
     var horizontal = [0, konva.stage.height() / 2, konva.stage.height()];

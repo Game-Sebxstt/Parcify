@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import bodyParser from 'body-parser';
 import { getConnection } from "./database.js";
+import * as socket_logic from './socket-logic.js'
 
 const app = express();
 const server = createServer(app);
@@ -42,26 +43,24 @@ app.use((req, res, next) => {
 
 const clients = new Map();
 
-// wss.on('connection', function connection(ws) {
-//     ws.on('message', function incoming(message) {
-//         const data = JSON.parse(message);
-//         if (data.type === 'clientId') {
-//             clients.set(data.id, ws);
-//             console.log('Identificador de cliente recibido:', data.id);
-//         }
-//     });
+wss.on('connection', function connection(ws) {
+    ws.on('message', function incoming(message) {
+        const data = JSON.parse(message);
+        socket_logic.initSocket(data, ws, clients);
+    });
 
-//     ws.send('¡Conexión establecida con el servidor!');
+    ws.send('¡Conexión establecida con el servidor!');
 
-//     ws.on('close', function() {
-//         clients.forEach((client, clientId) => {
-//             if (client === ws) {
-//                 clients.delete(clientId);
-//                 console.log('Instancia de cliente eliminada:', clientId);
-//             }
-//         });
-//     });
-// })
+    ws.on('close', function () {
+        clients.forEach((client, clientId) => {
+            if (client === ws) {
+                clients.delete(clientId);
+                console.log('Instancia de cliente eliminada:', clientId);
+            }
+        });
+    });
+});
+
 
 server.listen(app.get("port"));
 console.log(`Servidor en el puerto ${app.get("port")}`);
@@ -71,13 +70,15 @@ app.post("/invitation/send", async (req, res) => {
         return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
     }
 
-    const { id_project, invitation } = req.body;
+    const { id_project, invitation, role } = req.body;
 
-    console.log("Invitación enviada:", invitation);
-    console.log("ID del proyecto:", id_project);
+    const invitationObject = {
+        invitation: invitation,
+        role: role
+    }
 
     const connection = await getConnection();
-    const update_invitation = await connection.query("UPDATE projects SET invitation = ? WHERE project_id = ?", [invitation, id_project]);
+    const update_invitation = await connection.query("UPDATE projects SET invitation = ? WHERE project_id = ?", [JSON.stringify(invitationObject), id_project]);
 
     if (!update_invitation) {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo enviar la invitación." });
@@ -100,7 +101,7 @@ app.post('/register/auth', async (req, res) => {
     }
 
     let id = await generateIdUser(connection);
-    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password) VALUES (?, ?, ?, ?)", [id, username, email, encrypt(password)]);
+    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password, biography, profile_image) VALUES (?, ?, ?, ?, ?, ?)", [id, username, email, encrypt(password), "", ""]);
 
     if (!send_data) {
         return res.status(400).json({ message: "Error in the database" })
@@ -163,12 +164,16 @@ app.post("/project/create", async (req, res) => {
             time_worked: [],
             pages_created: 0,
             elements_used: 0,
-            plugins_used: 0
+            plugins_used: 0,
+            color: {
+                tailwind: "blue-500",
+                hex: "#3B82F6",
+            }
         },
     ];
     const project_id = await generateIdProject(connection);
     const date_now = new Date();
-    const data = await connection.query("INSERT INTO projects (project_id, user_id, name, preview, stage, collaborators, last_modified, create_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",[project_id, id, name, template[0].preview, template[0].stage, JSON.stringify(collaborators), date_now, date_now]);
+    const data = await connection.query("INSERT INTO projects (project_id, user_id, name, preview, stage, collaborators, last_modified, create_date, chat_message, invitation) VALUES (? ,?, ?, ?, ?, ?, ?, ?, ?, ?)",[project_id, id, name, template[0].preview, template[0].stage, JSON.stringify(collaborators), date_now, date_now, "", ""]);
 
     if (!data) {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo crear el proyecto" })

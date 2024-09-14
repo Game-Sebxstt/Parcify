@@ -1,4 +1,5 @@
 import * as globals from '../utilities/globals';
+import * as websocket from '../../backend/websocket';
 import * as front from '../front';
 import * as req from '../../backend/requests'
 import * as KonvaLogic from '../../../konva/js/KonvaLogic'
@@ -25,6 +26,10 @@ let minX = 0;
 let maxY = window.innerHeight;
 let maxX = window.innerWidth;
 let position = { x: 0, y: 0 };
+
+// Temporizador para detectar cuando se está escribiendo
+let typingTimeout;
+const TYPING_DELAY = 1500;
 
 // Obtener rectángulos de los elementos iniciales
 let content_all_chat_rect = getElementRect(content_all_chat);
@@ -142,10 +147,19 @@ async function handleSendMessage(e) {
             response: await findChat(id_response)
         }
 
-        createMessage(type, data.message, data.time, data.name, data.id, data.response);
+        createMessage(data);
         scrollToBottom();
         chat_message_input.value = "";
         chat_message_form.setAttribute("data-id", "right");
+        websocket.sendStopTypingCollaborators(globals.getCookie("ID-USER"));
+
+        let project = await req.getProject(KonvaLogic.id_stage);
+        
+        if(project){
+            project = project.data.message;
+            const collaborators = JSON.parse(project.collaborators || "[]");
+            websocket.sendMessageCollaborators(data, collaborators);
+        }
 
         await req.sendMessageChat(data, KonvaLogic.id_stage)
 
@@ -155,12 +169,44 @@ async function handleSendMessage(e) {
     }
 }
 
-// Detectar cuando se este escribiendo
-function isTyping(e) {
-    console.log("Escribiendo...", e.target.value);
+export function createMessageExternal(data){
+    createMessage(data);
+    scrollToBottom();
 }
 
-// Ocultar el contenedor de reenviar mensaje
+export function createTypingExternal(data){
+    const typing_chat_list = document.querySelectorAll("#typing-chat");
+    const typing_chat = Array.from(typing_chat_list).find(item => item.getAttribute("data-id-user") == data);
+    if(!typing_chat) return;
+
+    const parent_typing_chat = typing_chat?.parentNode;
+    const typing_chat_clone = typing_chat.cloneNode(true);
+    typing_chat_clone.style.display = "flex";
+    parent_typing_chat.appendChild(typing_chat_clone);
+    typing_chat.remove();
+    scrollToBottom();
+}
+
+export function removeTypingExternal(data){
+    const typing_chat_list = document.querySelectorAll("#typing-chat");
+    const typing_chat = Array.from(typing_chat_list).find(item => item.getAttribute("data-id-user") == data);
+    if(!typing_chat) return;
+
+    typing_chat.style.display = "none";
+}
+
+// Detectar cuando se está escribiendo
+function isTyping(e) {
+    websocket.sendTypingCollaborators(globals.getCookie("ID-USER"));
+    
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(notIsTyping, TYPING_DELAY);
+}
+
+function notIsTyping() {
+    websocket.sendStopTypingCollaborators(globals.getCookie("ID-USER"));
+}
+
 function hideResendContainer() {
     document.querySelector("#resend-container-input").style.display = "none";
     chat_message_form.setAttribute("data-type", "right");
@@ -168,7 +214,13 @@ function hideResendContainer() {
 }
 
 // Crear un mensaje y agregarlo al chat
-function createMessage(type, message, time, user, id, response) {
+function createMessage(data) {
+    let type = data.id_user == globals.getCookie("ID-USER") ? "right" : "left";
+    
+    if(data.response != undefined){
+        type = type + "-response";
+    }
+
     let chat_bubble = findChatBubble(type);
 
     if (!chat_bubble) {
@@ -178,14 +230,14 @@ function createMessage(type, message, time, user, id, response) {
 
     const node_chat_bubble = chat_bubble.cloneNode(true);
     node_chat_bubble.style.display = "flex";
-    node_chat_bubble.setAttribute("data-id", id);
+    node_chat_bubble.setAttribute("data-id", data.id);
     
-    if(response != undefined){
-        node_chat_bubble.querySelector("#response-message").setAttribute("data-id-response", response.id);
+    if(data.response != undefined){
+        node_chat_bubble.querySelector("#response-message").setAttribute("data-id-response", data.response.id);
     }
 
-    user = type.includes("right") ? "Tu" : user;
-    updateMessageDetails(node_chat_bubble, time, user, message, response);
+    let user = type.includes("right") ? "Tu" : data.name;
+    updateMessageDetails(node_chat_bubble, data.time, user, data.message, data.response);
 
     render_container_chat.appendChild(node_chat_bubble);
     attachResendListener(node_chat_bubble);
@@ -205,7 +257,7 @@ function updateMessageDetails(node_chat_bubble, time, user, message, response) {
 
     if(response){
         const info_message = node_chat_bubble.querySelector("#info-message");
-        info_message.querySelector("#user-response").textContent = response.type.includes("right") ? "Tu" : response.name;
+        info_message.querySelector("#user-response").textContent = response.id_user == globals.getCookie("ID-USER") ? "Tu" : response.name;
         info_message.querySelector("#message-response").textContent = response.message;
     }
 }
@@ -278,7 +330,7 @@ function updateResponseInput(chat){
     const resend_container_input = document.querySelector("#resend-container-input");
     resend_container_input.style.display = "flex";
 
-    resend_container_input.querySelector("#user").textContent = chat.type.includes("right") ? "Tu" : chat.name;
+    resend_container_input.querySelector("#user").textContent = chat.id_user == globals.getCookie("ID-USER") ? "Tu" : chat.name;
     resend_container_input.querySelector("#message").textContent = chat.message;
 }
 
@@ -291,10 +343,10 @@ async function loadChat(){
     }
 
     const chat = JSON.parse(project_response.data.message.chat_message || "[]");
-    console.log(chat)
+    console.log(chat);
 
     chat.forEach(message => {
-        createMessage(message.type, message.message, message.time, message.name, message.id, message.response);
+        createMessage(message);
     })
 }
 

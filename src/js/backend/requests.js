@@ -631,10 +631,10 @@ export async function sendMessageChat(data, id_project){
     return {state: true, data: responseData};
 }
 
-export async function sendInvitationProject(id_project, invitation){
+export async function sendInvitationProject(id_project, props){
     const response = await fetch(`http://localhost:4000/invitation/send`, {
         method: "POST",
-        body: JSON.stringify({invitation: invitation, id_project: id_project}),
+        body: JSON.stringify({invitation: props.invitation, role: props.role, id_project: id_project}),
         headers: {
             "Content-Type": "application/json",
         }

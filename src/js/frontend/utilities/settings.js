@@ -1,7 +1,7 @@
 import * as globals from '../utilities/globals'
 import * as req from "../../backend/requests";
 import * as templates from '../utilities/templates'    
-import * as enviroments from '../../../enviroments.ts'
+import * as enviroments from '../../../environments.ts'
 import * as front from '../front';
 import Toastify from 'toastify-js'
 

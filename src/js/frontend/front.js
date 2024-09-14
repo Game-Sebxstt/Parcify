@@ -3,15 +3,8 @@ import * as globals from './utilities/globals'
 import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
 import * as reusable from './utilities/reusable'
-import * as enviroments from '../../enviroments.ts'
+import * as enviroments from '../../environments.ts'
 import Toastify from 'toastify-js'
-
-const socket = new WebSocket('ws://localhost:4000')
-
-socket.onopen = async function(event) {
-    socket.send(JSON.stringify({ type: 'clientId', id: globals.getCookie("ID-USER") }));
-    console.log('Conexión establecida con el servidor WebSocket');
-};
 
 // Utility Functions
 export const utils = {
@@ -29,6 +22,7 @@ export const utils = {
       } else {
         e.checked = true;
         utils.setBorder(elements.projectBox, i, true);
+        elements.copyLink.setAttribute("data-id", elementChecked.getAttribute("id"));
       }
     });
   },
@@ -180,7 +174,6 @@ export const elements = {
   usersInvited: document.getElementById("users-invited"),
   projectContent: document.getElementById("projectContent"),
   menuBtnList: document.querySelectorAll("#menu-btn"),
-  popupInvite: document.querySelector("#popup-invite"),
   menuBtnList: document.querySelectorAll("#menu-btn"),
   formLogin: document.getElementById("form_login"),
   formRegister: document.getElementById("form_signUp"),
@@ -204,8 +197,8 @@ export const elements = {
   imageUpload: document.getElementById('image-upload'),
   themeOptions: document.querySelectorAll(".theme-option"),
   fontSelect: document.querySelector('select[name="Font theme"]'),//
-  presentKonva: document.querySelector("#present"),
   openDesplegableMenuKonva: document.querySelector("#openMenuDesplegableKonva"),
+  moreOptionsFilter: document.querySelector("#more-options-filter"),
   desplegableMenuKonva:document.querySelector("#desplegableMenuKonva"),
 };
 
@@ -243,11 +236,6 @@ const addEventListeners = () => {
       }
   });
 
-  elements.presentKonva?.addEventListener("click", async () => {
-    //Full screen view
-    document.fullscreenElement ? document.exitFullscreen() : document.querySelector("#konva").requestFullscreen();
-  })
-
   elements.openDesplegableMenuKonva?.addEventListener("click", ()=>{
     window.getComputedStyle(elements.desplegableMenuKonva).display == "none" ? elements.desplegableMenuKonva.style.display = "flex" : elements.desplegableMenuKonva.style.display = "none";
   });
@@ -262,6 +250,17 @@ const addEventListeners = () => {
       utils.setTransform(arrowDownFilter, window.getComputedStyle(moreOptionsFilter).display === "none" ? "0deg" : "180deg");
     });
   });
+
+  elements.moreOptionsFilter?.childNodes.forEach((element) => {
+    element.addEventListener("click", () => {
+      const text = element.textContent;
+      const role = element.getAttribute("data-role");
+      const filter = element.parentNode.parentNode.querySelector("#text-select");
+      filter.setAttribute("data-role", role);
+      filter.textContent = text;
+      utils.toggleDisplay(element.parentNode, "none");
+    });
+  })
 
   // Profile options
   document.querySelector(".profile")?.addEventListener("click", () => {
@@ -321,6 +320,7 @@ const addEventListeners = () => {
         elements.copyLink.addEventListener("click", () => {
           if (window.getComputedStyle(elements.usersInvited).display === "none") {
             elements.usersInvited.style.display = "flex";
+            elements.usersInvited.setAttribute("data-id", e.getAttribute("id"));
             elements.projectContent.style.display = "none";
           }
         });
@@ -328,13 +328,6 @@ const addEventListeners = () => {
         elements.copyLink.disabled = true;
         elements.copyLink.style.opacity = "0.5";
       }
-    });
-  });
-
-  // Invite button
-  document.querySelectorAll("#invite-btn").forEach((element) => {
-    element.addEventListener("click", () => {
-      elements.popupInvite.style.display = "flex";
     });
   });
 

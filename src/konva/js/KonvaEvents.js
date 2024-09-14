@@ -517,4 +517,4 @@ konva.stage.on("mousedown", (e) => {
     }
 });
 
-// window.addEventListener('resize', konva.fitStageIntoParentContainer);
+window.addEventListener('resize', GlobalFunctions.updateDimensionStage);

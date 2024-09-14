@@ -7,7 +7,6 @@ const { title } = Astro.props;
 import '@fontsource/roboto';
 import MesageError from "../components/Popups/Alerts/Error.astro";
 import CreateParceller from '../components/Popups/CreateParceller.astro';
-import Invite from '../components/Popups/Invite.astro';
 import Header from '../components/Sections/Header.astro';
 import Settings from '../components/Sections/Settings.astro';
 import PreviewTemplate from '../components/Popups/PreviewTemplate.astro';
@@ -62,6 +61,7 @@ try{
 		<script src="../js/frontend/utilities/splide.js"></script>
 		<script src="../js/frontend/utilities/chart.js"></script>
 		<script src="../js/frontend/utilities/initial.js"></script>
+        <script src="../js/backend/websocket.js"></script>
 		<title>{title}</title>
 	</head>
 	<body>
@@ -69,7 +69,6 @@ try{
 		<MesageError id="danger"></MesageError>
 		<CreateParceller id_content='content-create-parcel'/>
 		<Options/>
-		<Invite data={data}/>
 		<Settings username={data.users.username} email={data.users.email} biography={data.users.biography}></Settings>
 		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
 		<MoreFavorites></MoreFavorites>

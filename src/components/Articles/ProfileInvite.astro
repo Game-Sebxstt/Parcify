@@ -7,6 +7,6 @@ interface Props{
 const {letter, color} = Astro.props;
 ---
 
-<div class=`w-8 h-8 rounded-full flex justify-center items-center text-center text-white font-lighter text-base cursor-pointer text-xs ${Astro.props.color}`>
+<div id="profile-invite" class=`w-8 h-8 rounded-full flex justify-center items-center text-center text-white font-lighter text-base cursor-pointer text-xs ${Astro.props.color}`>
     {letter}
 </div>

@@ -1,11 +1,17 @@
 ---
-import ProfileInvite from "../Articles/ProfileInvite.astro";
 import ChatBubbleLeft from "./ChatBubbleLeft.astro";
 import ChatBubbleLeftResponse from "./ChatBubbleLeftResponse.astro";
 import ChatBubbleRight from "./ChatBubbleRight.astro";
 import ChatBubbleRightResponse from "./ChatBubbleRightResponse.astro";
 import Typing from "./Typing.astro";
 import Response from "./Response.astro";
+import Collaborators from "./Collaborators.astro";
+
+interface Props{
+    collaborators: any
+}
+
+const {collaborators} = Astro.props;
 ---
 
 <div id="content-all-chat" class="w-[25rem] h-fit bg-[#1E1E1E] border-[1px] border-[rgba(255,255,255,.2)] rounded-md absolute top-full right-0 mt-10 flex flex-col cursor-default overflow-hidden">
@@ -23,10 +29,7 @@ import Response from "./Response.astro";
 
     <header class="w-full h-fit flex relative justify-between gap-x-5 bg-[#313131] px-4 py-2">
         <div class="w-fit h-full flex items-center justify-center">
-            <ProfileInvite color="bg-green-500" letter="A"/>
-            <ProfileInvite color="bg-red-500 -ml-2" letter="B"/>
-            <ProfileInvite color="bg-yellow-500 -ml-2" letter="C"/>
-            <ProfileInvite color="bg-blue-500 -ml-2" letter="2+"/>
+            <Collaborators collaborators={collaborators}/>
         </div>
 
         <div class="w-full h-full flex items-center justify-center">
@@ -37,7 +40,17 @@ import Response from "./Response.astro";
     <article class="w-full h-[30rem] relative flex flex-col">
         <div id="chat-container" class="w-full h-full mb-2 overflow-y-auto overflow-x-hidden relative bg-[#1E1E1E]">
             <div id="render-container-chat" class="w-full h-full p-2 flex flex-col">
-                <Typing/>
+                {
+                    collaborators && collaborators.length > 0 ? (
+                        collaborators.map((collaborator: any) => {
+                            return (
+                                <Typing collaborator={collaborator}/>
+                            )
+                        })
+                    ) : (
+                        <span></span>
+                    )
+                }
             </div>
 
             <button id="scroll-chat" class="w-fit h-fit fixed hidden left-0 top-0 z-90">
