@@ -17,7 +17,7 @@ export const DATABASE_OBJECT_DEV = { // Objeto de la base de datos para desarrol
     password: "",
 }
 
-export const DATABASE_OBJECT_PROD = { // Objeto de la base de datos para producción
+export const DATABASE_OBJECT_PROD = { // Objeto de la base de datos para producción (Prueba)
     connectionLimit: 10,
     host: "bzic2wrqo4ogzg5qu30t-mysql.services.clever-cloud.com",
     database: "bzic2wrqo4ogzg5qu30t",
