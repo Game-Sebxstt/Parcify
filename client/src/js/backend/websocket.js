@@ -21,7 +21,7 @@ function createWebSocket() {
 
         if (data.type === 'enterCollaborator') {
             if(data.user_id == globals.getCookie("ID-USER")) return;
-            GlobalFunctions.createCursorCollaborator(data.collaborator.color.hex, data.collaborator.user_id);
+            GlobalFunctions.createCursorCollaborator(data.collaborator);
         }
 
         if (data.type === 'exitCollaborator'){

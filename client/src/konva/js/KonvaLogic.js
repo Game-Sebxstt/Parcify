@@ -83,9 +83,16 @@ let konva = document.querySelector("#konva");
 let widthKonva;
 let heightKonva;
 
+//Elements
+let cursorCollaborators = []
+
 if(konva){
     widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
     heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
+}
+
+export function setCursorCollaborators(cursorCollaborator){
+    cursorCollaborators.push(cursorCollaborator);
 }
 
 export function setKonva(konvaChange) {
@@ -139,6 +146,10 @@ export function setDimensionBarToolExtra(dimensionBarToolExtraChange, key){
     if(!key) return;
 
     dimensionBarToolExtra[key] = dimensionBarToolExtraChange;
+}
+
+export function getCursorCollaborators(){
+    return cursorCollaborators;
 }
 
 export function getKonva(){

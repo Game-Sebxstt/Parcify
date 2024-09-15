@@ -66,7 +66,7 @@ function eventsListener(collaborators){
 
     collaborators.forEach(collaborator => {
         if(collaborator.user_id == globals.getCookie("ID-USER")) return;
-        GlobalFunctions.createCursorCollaborator(collaborator.color.hex, collaborator.user_id);
+        GlobalFunctions.createCursorCollaborator(collaborator);
     })
 }
 

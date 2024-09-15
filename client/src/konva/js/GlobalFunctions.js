@@ -1,6 +1,7 @@
 import * as konva from "./KonvaLogic";
 import * as globals from '../../js/frontend/utilities/globals';
 import * as websocket from '../../js/backend/websocket'
+import * as CustomCursor from '../ts/shapes/CustomCursor'
 import Konva from "konva";
 import * as States from "./StatesLogic";
 
@@ -180,46 +181,44 @@ export function randomId(){
     return Math.random().toString(36).substr(2, 9);
 }
 
-export function createCursorCollaborator(fill, id_user){
+export function createCursorCollaborator(collaborator){
+    console.log("Create cursor", collaborator)
     const cursorById = konva.layer.find(item => item.id() === "mouseCursor");
-    if(cursorById.find(item => item.getAttr("id_user") == id_user)) return;
+    if(cursorById.find(item => item.getAttr("id_user") == collaborator.user_id)) return;
 
-    const cursor = new Konva.Circle({
+    const options = {
         x: 0,
         y: 0,
         radius: 5,
-        fill: fill,
+        fill: collaborator.color.hex,
         stroke: 'white',
         strokeWidth: 1,
         draggable: false,
         id: "mouseCursor",
-        id_user: id_user,
+        id_user: collaborator.user_id,
         visible: false,
-    })
-
-    konva.layer.add(cursor);
-    konva.layer.draw();
+        name_user: collaborator.name,
+    }
+    
+    const customCursor = new CustomCursor.CustomCursor(options, konva.layer, konva.stage)
+    konva.setCursorCollaborators(customCursor);
 }
 
 export function removeCursorCollaborator(id_user){
-    const cursor = konva.layer.find(item => item.id() === "mouseCursor");
-    const cursorById = cursor.find(item => item.getAttr("id_user") == id_user);
-
-    if(cursorById){
-        cursorById.destroy();
-        konva.layer.draw();
-    }
+    konva.getCursorCollaborators().forEach((cursor) => {
+        if(cursor.id_user == id_user){
+            cursor.removeCursor();
+        }
+    });
 }
 
 export function updateCursorCollaborator({x, y}, id_user){
-    const cursor = konva.layer.find(item => item.id() === "mouseCursor");
-    const cursorById = cursor.find(item => item.getAttr("id_user") == id_user);
-
-    if(cursorById){
-        cursorById.position({x, y});
-        cursorById.visible(true);
-        konva.layer.batchDraw();
-    }
+    konva.getCursorCollaborators().forEach((cursor) => {
+        if(cursor.id_user == id_user){
+            console.log("Update cursor", cursor)
+            cursor.updateCursor({x, y});
+        }
+    });
 }
 
 export function detectedMouseMove(){
