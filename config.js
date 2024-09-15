@@ -1,5 +1,5 @@
-export const isDev = false // Estado del proyecto, si es true es desarrollo, si es false es producción
-export const isDevDB = false // Estado de la base de datos, si es true es desarrollo, si es false es producción
+export const isDev = true // Estado del proyecto, si es true es desarrollo, si es false es producción
+export const isDevDB = true // Estado de la base de datos, si es true es desarrollo, si es false es producción
 
 export const URL_BASIC_PROD = 'https://parcify-api.vercel.app'; // URL de la api para produccion
 export const URL_BASIC_DEV = 'http://localhost:4000'; // URL de la api para produccion

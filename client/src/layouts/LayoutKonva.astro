@@ -6,7 +6,6 @@ interface Props {
 const { title } = Astro.props;
 
 import '@fontsource/roboto';
-import MesageError from "../components/Popups/Alerts/Error.astro";
 import Invite from '../components/Popups/Invite.astro';
 import Export from '../components/Konva/Export.astro';
 import * as environments from '../../../config'
@@ -54,7 +53,6 @@ try{
 		<title>{title}</title>
 	</head>
 	<body>
-		<MesageError id="danger"></MesageError>
 		<Export></Export>
 		<Invite data={data}/>
 		<slot />
