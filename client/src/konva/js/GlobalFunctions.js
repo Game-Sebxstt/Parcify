@@ -1,4 +1,6 @@
 import * as konva from "./KonvaLogic";
+import * as globals from '../../js/frontend/utilities/globals';
+import * as websocket from '../../js/backend/websocket'
 import Konva from "konva";
 import * as States from "./StatesLogic";
 
@@ -176,6 +178,67 @@ export function drawGuides(guides) {
 
 export function randomId(){
     return Math.random().toString(36).substr(2, 9);
+}
+
+export function createCursorCollaborator(fill, id_user){
+    const cursorById = konva.layer.find(item => item.id() === "mouseCursor");
+    if(cursorById.find(item => item.getAttr("id_user") == id_user)) return;
+
+    const cursor = new Konva.Circle({
+        x: 0,
+        y: 0,
+        radius: 5,
+        fill: fill,
+        stroke: 'white',
+        strokeWidth: 1,
+        draggable: false,
+        id: "mouseCursor",
+        id_user: id_user,
+        visible: false,
+    })
+
+    konva.layer.add(cursor);
+    konva.layer.draw();
+}
+
+export function removeCursorCollaborator(id_user){
+    const cursor = konva.layer.find(item => item.id() === "mouseCursor");
+    const cursorById = cursor.find(item => item.getAttr("id_user") == id_user);
+
+    if(cursorById){
+        cursorById.destroy();
+        konva.layer.draw();
+    }
+}
+
+export function updateCursorCollaborator({x, y}, id_user){
+    const cursor = konva.layer.find(item => item.id() === "mouseCursor");
+    const cursorById = cursor.find(item => item.getAttr("id_user") == id_user);
+
+    if(cursorById){
+        cursorById.position({x, y});
+        cursorById.visible(true);
+        konva.layer.batchDraw();
+    }
+}
+
+export function detectedMouseMove(){
+    konva.stage.on("mousemove", (e) => {
+        const pos = konva.stage.getRelativePointerPosition();
+        const x = pos.x;
+        const y = pos.y;
+        websocket.updateMouseCursor({x, y}, globals.getCookie("ID-USER"));
+    })
+}
+
+export function getCursorCollaborator(id_user){
+    const elementsById = konva.layer.find(item => item.id() === "mouseCursor");
+
+    if(!elementsById){
+        return null;
+    }
+
+    return elementsById.find(item => item.getAttr("id_user") == id_user);
 }
 
 let isUpdateToolBar = false;

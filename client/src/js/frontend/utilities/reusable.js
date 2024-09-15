@@ -21,14 +21,6 @@ async function actionContextMenu(e, item){
     return;
     }
 
-    if(isFavoriteElement){
-      document.querySelector("#favorite").style.display = "none";
-      document.querySelector("#unfavorite").style.display = "flex";
-    }else{
-      document.querySelector("#favorite").style.display = "flex";
-      document.querySelector("#unfavorite").style.display = "none";
-    }
-
     optionsParcel.setAttribute("data-id", dataId);
     optionsParcel.setAttribute("data-type", dataType);
     optionsParcel.setAttribute("data-id-element", dataIdElement)
@@ -44,8 +36,15 @@ async function actionContextMenu(e, item){
       optionsParcel.querySelector("#redirect").style.display = "none";
       optionsParcel.querySelector("#redirect-external").style.display = "none";
       optionsParcel.querySelector("#rename-parcel").style.display = "none";
-      optionsParcel.querySelector("#favorite").style.display = "none";
-      optionsParcel.querySelector("#unfavorite").style.display = "none";
+
+      if(isFavoriteElement){
+        document.querySelector("#favorite").style.display = "none";
+        document.querySelector("#unfavorite").style.display = "flex";
+      }else{
+        document.querySelector("#favorite").style.display = "flex";
+        document.querySelector("#unfavorite").style.display = "none";
+      }
+
       optionsParcel.querySelectorAll(".separator-options").forEach(item => {
         item.style.display = "none";
       })
@@ -61,8 +60,15 @@ async function actionContextMenu(e, item){
       optionsParcel.querySelector("#redirect").style.display = "flex";
       optionsParcel.querySelector("#redirect-external").style.display = "flex";
       optionsParcel.querySelector("#rename-parcel").style.display = "flex";
-      optionsParcel.querySelector("#favorite").style.display = "flex";
-      optionsParcel.querySelector("#unfavorite").style.display = "flex";
+
+      if(isFavoriteElement){
+        document.querySelector("#favorite").style.display = "none";
+        document.querySelector("#unfavorite").style.display = "flex";
+      }else{
+        document.querySelector("#favorite").style.display = "flex";
+        document.querySelector("#unfavorite").style.display = "none";
+      }
+
       optionsParcel.querySelectorAll(".separator-options").forEach(span => {
         span.style.display = "flex";
       })

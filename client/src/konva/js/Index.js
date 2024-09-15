@@ -1,5 +1,6 @@
 import * as req from "../../js/backend/requests";
 import * as globals from '../../js/frontend/utilities/globals';
+import * as GlobalFunctions from './GlobalFunctions'
 import * as front from '../../js/frontend/front';
 import * as environment_utils from '../../js/globals/environment-utils'
 import * as environments from '../../environments'
@@ -25,6 +26,14 @@ async function initialCollaboration(){
         const collaborators = JSON.parse(data_project.collaborators || "[]");
         const data_invitation_project = JSON.parse(data_project.invitation || "[]");
         eventsListener(collaborators);
+
+        const collaboratorOwner = collaborators.find(c => c.role === 'owner');
+
+        if(collaboratorOwner.user_id == globals.getCookie("ID-USER")){
+            front.utils.handleError("You are the owner of the project");
+            websocket.enterCollaborator(collaboratorOwner);
+            return
+        }
     
         if(data_invitation_project.invitation !== invitation){
             front.utils.handleError("Invalid invitation");
@@ -33,6 +42,8 @@ async function initialCollaboration(){
 
         if(collaborators.find(c => c.user_id == globals.getCookie("ID-USER"))){
             front.utils.handleError("You are already a collaborator");
+            const collaborator = collaborators.find(c => c.user_id == globals.getCookie("ID-USER"));
+            websocket.enterCollaborator(collaborator);
             return
         }
 
@@ -41,6 +52,7 @@ async function initialCollaboration(){
             if (isFindColor) return;
 
             if(!collaborators.find(c => c.color == color)){
+                websocket.enterCollaborator(collaborators.find(c => c.user_id == globals.getCookie("ID-USER")));
                 sendCollaboration(id, data_invitation_project, color);
                 isFindColor = true;
                 return;
@@ -50,11 +62,12 @@ async function initialCollaboration(){
 }
 
 function eventsListener(collaborators){
-    document.addEventListener('mousemove', (e) => {
-        const x = e.clientX;
-        const y = e.clientY;
-        websocket.updateMouseCursor({x, y}, collaborators);
-    });
+    GlobalFunctions.detectedMouseMove();
+
+    collaborators.forEach(collaborator => {
+        if(collaborator.user_id == globals.getCookie("ID-USER")) return;
+        GlobalFunctions.createCursorCollaborator(collaborator.color.hex, collaborator.user_id);
+    })
 }
 
 async function sendCollaboration(id, data_invitation_project, color){

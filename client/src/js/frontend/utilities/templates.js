@@ -304,7 +304,7 @@ export async function renderFavorites() {
         }
 
         const length_favorites = favorites.length;
-        const favorites_slice = favorites.slice(0, 4);
+        const favorites_slice = favorites.slice(0, 8);
 
         if (favorites.length === 0) {
             front.utils.handleError("Favorites rendered successfully without any favorites");
@@ -314,13 +314,13 @@ export async function renderFavorites() {
         favorites_slice.forEach( async (favorite) => {
             let name;
 
-            if(favorite.type == "template"){
+            if(favorite.type == "template" && templates && templates.length > 0){
                 templates.forEach( (template) => {
                     if(template.template_id == favorite.id){
                         name = template.name;
                     }
                 })
-            }else{
+            }else if(favorite.type == "project" && projects && projects.length > 0){
                 projects.forEach( (project) => {
                     if(project.project_id == favorite.id){
                         name = project.name
@@ -347,7 +347,7 @@ export async function renderFavorites() {
             content_favorites.appendChild(divFavorite);
         });
         
-        if(length_favorites > 4){
+        if(length_favorites > 8){
             const pShowMoreFavorites = document.createElement('p');
             pShowMoreFavorites.id = "showMoreFavorites";
             pShowMoreFavorites.className = "hover:underline cursor-pointer font-normal text-sky-400";

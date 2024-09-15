@@ -1,4 +1,6 @@
 import * as globals from '../frontend/utilities/globals';
+import * as GlobalFunctions from '../../konva/js/GlobalFunctions';
+import * as Render from '../../konva/js/Render';
 import * as chat from '../frontend/utilities/chat';
 import * as environments from '../../../../config';
 
@@ -9,7 +11,6 @@ function createWebSocket() {
     socket = new WebSocket(environments.DEFAULT_SOCKET_URL);
 
     socket.onopen = function(event) {
-        console.log('WebSocket connection opened');
         if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'clientId', id: globals.getCookie("ID-USER") }));
         }
@@ -18,16 +19,18 @@ function createWebSocket() {
     socket.onmessage = function(event) {
         const data = JSON.parse(event.data);
 
+        if (data.type === 'enterCollaborator') {
+            if(data.user_id == globals.getCookie("ID-USER")) return;
+            GlobalFunctions.createCursorCollaborator(data.collaborator.color.hex, data.collaborator.user_id);
+        }
+
+        if (data.type === 'exitCollaborator'){
+            GlobalFunctions.removeCursorCollaborator(data.user_id);
+        }
+
         if (data.type === 'mouseCursor') {
-            document.querySelectorAll("#mouseCursor").forEach(cursor => {
-                if (cursor.getAttribute("data-id-user") == data.user_id && data.user_id != globals.getCookie("ID-USER")) {
-                    const collaborator = data.collaborators.find(c => c.user_id == data.user_id);
-                    cursor.style.display = "flex";
-                    cursor.style.backgroundColor = collaborator.color.hex;
-                    cursor.style.top = `${data.position.y}px`;
-                    cursor.style.left = `${data.position.x}px`;
-                }
-            });
+            if(data.user_id == globals.getCookie("ID-USER")) return;
+            GlobalFunctions.updateCursorCollaborator(data.position, data.user_id);
         }
 
         if (data.type === 'message') {
@@ -71,6 +74,11 @@ function sendIfOpen(message) {
     } else {
         console.warn('WebSocket is not open. Message not sent:', message);
     }
+}
+
+export function enterCollaborator(collaborator){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'enterCollaborator', collaborator, user_id: userId }));
 }
 
 export function updateMouseCursor(position, collaborators) {

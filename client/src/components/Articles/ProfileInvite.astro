@@ -2,11 +2,12 @@
 interface Props{
     letter: string;
     color: string;
+    id_user?: string;
 }
 
-const {letter, color} = Astro.props;
+const {letter, color, id_user} = Astro.props;
 ---
 
-<div id="profile-invite" class=`w-8 h-8 rounded-full flex justify-center items-center text-center text-white font-lighter text-base cursor-pointer text-xs ${Astro.props.color}`>
+<div id="profile-invite" data-id-user={id_user} class=`w-8 h-8 rounded-full flex justify-center items-center text-center text-white font-lighter text-base cursor-pointer text-xs ${color}`>
     {letter}
 </div>

@@ -45,15 +45,8 @@ wss.on('connection', function connection(ws) {
         socket_logic.initSocket(data, ws, clients);
     });
 
-    ws.send('¡Conexión establecida con el servidor!');
-
     ws.on('close', function () {
-        clients.forEach((client, clientId) => {
-            if (client === ws) {
-                clients.delete(clientId);
-                console.log('Instancia de cliente eliminada:', clientId);
-            }
-        });
+        socket_logic.finishSocket(ws, clients);
     });
 });
 

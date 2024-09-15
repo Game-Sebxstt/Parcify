@@ -4,9 +4,8 @@ import DesplegableMenu from "../components/Konva/DesplegableMenu.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
 import Chat from "../components/Konva/Chat.astro";
 import Collaborators from "../components/Konva/Collaborators.astro";
-import * as req from '../js/backend/requests';
-import Typing from "../components/Konva/Typing.astro";
 import BarToolLeft from "../components/Konva/BarToolLeft.astro";
+import * as req from '../js/backend/requests';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id_user = Astro.cookies.get("ID-USER")?.value;
@@ -47,40 +46,15 @@ if(project.state){
                         By Sebxstt
                     </h4>
                 </div>
-            
-                <!--<span id="undo" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-back-up h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M9 14l-4 -4l4 -4" /><path d="M5 10h11a4 4 0 1 1 0 8h-1" />
-                    </svg>
-                </span>
 
-                <span id="redo" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-forward-up h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M15 14l4 -4l-4 -4" /><path d="M19 10h-11a4 4 0 1 0 0 8h1" />
-                    </svg>
-                </span> -->
                 <DesplegableMenu/>
             </div>
                 
             <div class="w-fit h-full flex items-center gap-3">
-                <span class="relative cursor-pointer">
-                    <Chat collaborators={collaborators}/>
-                </span>
-
+                <Chat collaborators={collaborators}/>
                 <Collaborators collaborators={collaborators}/>
 
                 <span class="w-[2px] h-1/2 bg-[#696969]"></span>
-
-                <!-- <span id="export" class="w-fit h-fit p-1 bg-[#595959] rounded-sm cursor-pointer hover:bg-[#595959]/50 transition-all duration-100 ease-in">
-                    <svg class="icon icon-tabler icons-tabler-outline icon-tabler-download h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="white"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" />
-                        <path d="M7 11l5 5l5 -5" />
-                        <path d="M12 4l0 12" />
-                    </svg>
-                </span> -->
 
                 <span id="share-project" class="w-fit h-fit py-1.5 px-3 bg-blue-500 rounded-sm cursor-pointer hover:bg-blue-500/50 transition-all duration-100 ease-in text-white text-sm">
                     Share
@@ -101,7 +75,7 @@ if(project.state){
         </div>
 
         <div class="relative w-full h-full flex">
-            <div id="content-konva" class="w-full h-full bg-lime-400">
+            <div id="content-konva" class="w-full h-full">
                 <div id="konva" class="bg-white w-full h-full"></div>
             </div>
             
@@ -127,99 +101,3 @@ if(project.state){
 <script src="../konva/js/UpdateGUI.js"></script>
 <script src="../konva/js/EventsHandler.js"></script>
 <script src="../konva/js/KonvaEvents.js"></script>
-
-<style>
-    #content-konva{
-        width: 100%;
-        height: 100%;
-        background-color: #313131;
-        background-image: radial-gradient(rgba(255, 255, 255, 0.171) 2px, transparent 0);
-        background-size: 30px 30px;
-        background-position: -5px -5px
-    }
-    
-    #section_options{
-        height: calc(100% - 3.5rem);
-    }
-
-    input[type="color"] {
-        margin-left: 0.5rem;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        appearance: none;
-        width: 34px;
-        height: 36px;
-        background-color: transparent;
-        border: none;
-        cursor: pointer;
-    }
-
-    input[type="color"]::-webkit-color-swatch {
-        border-radius: 3px;
-        border: none;
-    }
-
-    input[type="color"]::-moz-color-swatch {
-        border-radius: 3px;
-        border: none;
-    }
-
-    .container-input {
-        text-align: center;
-        background: #282828;
-        border-top: 5px solid #c39f77;
-        padding: 50px 0;
-        border-radius: 6px;
-        width: 50%;
-        margin: 0 auto;
-        margin-bottom: 20px;
-    }
-
-    .inputfile {
-        width: 0.1px;
-        height: 0.1px;
-        opacity: 0;
-        overflow: hidden;
-        position: absolute;
-        z-index: -1;
-    }
-
-    .inputfile + label {
-        max-width: 80%;
-        font-size: 1.25rem;
-        font-weight: 700;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        cursor: pointer;
-        display: inline-block;
-        overflow: hidden;
-        padding: 0.625rem 1.25rem;
-    }
-
-    .inputfile + label svg {
-        width: 1em;
-        height: 1em;
-        vertical-align: middle;
-        fill: white;
-        margin-top: -0.25em;
-        margin-right: 0.25em;
-    }
-
-    .iborrainputfile {
-        font-size:16px; 
-        font-weight:normal;
-        font-family: 'Lato';
-    }
-
-        
-    .inputfile-1 + label {
-        color: #fff;
-        background-color: #c39f77;
-    }
-
-    .inputfile-1:focus + label,
-    .inputfile-1.has-focus + label,
-    .inputfile-1 + label:hover {
-        background-color: #9f8465;
-    }
-</style>

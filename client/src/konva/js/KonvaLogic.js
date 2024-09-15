@@ -2,6 +2,7 @@ import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as req from '../../js/backend/requests';
 import * as globalFunctions from './GlobalFunctions'
+import * as chat from '../../js/frontend/utilities/chat';
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import { PickerCustom } from "../ts/utilities/PickerCustom";
 
@@ -10,6 +11,11 @@ const urlParams = new URLSearchParams(queryString);
 export const id_stage = urlParams.get("id");
 
 const new_stage_db = await getStage(id_stage);
+
+if(id_stage){
+    await chat.loadChat(id_stage);
+    chat.scrollToBottom();
+}
 
 // Constants
 const SCALEBY_DEFAULT = 1.2;

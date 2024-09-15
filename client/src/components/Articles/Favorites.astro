@@ -50,7 +50,7 @@ const svgIcons = {
             {!isData || !isVoid ? (
                     <p class="text-white/30 font-normal">You don't have any favorites, add one!!</p>
                 ) : (
-                    dataFilter.slice(0, 4).map((favorite: any) => {
+                    dataFilter.slice(0, 8).map((favorite: any) => {
                         return (
                             <div id="useFavorite" class="gap-3 p-2 rounded flex items-center cursor-pointer active:bg-stone-950">
                                 <i id="typeDescription" class="group" set:html={favorite.type === "project" ? svgIcons.project : svgIcons.template}></i>
@@ -61,7 +61,7 @@ const svgIcons = {
                 )}
         </div>
         <div>
-            {numFavorites && numFavorites.length > 4 && (
+            {numFavorites && numFavorites.length > 8 && (
                 <p id="showMoreFavorites" class="hover:underline cursor-pointer font-normal text-sky-400">Ver más...</p>
             )}
         </div>
