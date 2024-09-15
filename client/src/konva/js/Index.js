@@ -2,7 +2,7 @@ import * as req from "../../js/backend/requests";
 import * as globals from '../../js/frontend/utilities/globals';
 import * as front from '../../js/frontend/front';
 import * as environment_utils from '../../js/globals/environment-utils'
-import * as environments from '../../../../config'
+import * as environments from '../../environments'
 import * as websocket from '../../js/backend/websocket'
 
 async function initialCollaboration(){
