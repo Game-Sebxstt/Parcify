@@ -53,7 +53,6 @@ async function initialCollaboration(){
             if (isFindColor) return;
 
             if(!collaborators.find(c => c.color == color)){
-                websocket.enterCollaborator(collaborators.find(c => c.user_id == globals.getCookie("ID-USER")));
                 sendCollaboration(id, data_invitation_project, color);
                 isFindColor = true;
                 return;
@@ -93,6 +92,7 @@ async function sendCollaboration(id, data_invitation_project, color){
             front.utils.handleError(response);
         } else {
             front.utils.handleError("Collaboration started");
+            websocket.enterCollaborator(updatedCollaborators);
         }
     });
 }

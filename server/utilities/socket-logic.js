@@ -4,6 +4,18 @@ export function initSocket(data, ws, clients) {
         console.log('Identificador de cliente recibido:', data.data);
     }
     
+    if (data.type === 'createElementKonva') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'createElementKonva',
+                elementKonva: data.elementKonva,
+                user_id: senderId
+            }));
+        });
+    }
+
     if(data.type === "selectElementKonva"){
         const senderId = data.user_id;
     
@@ -16,13 +28,25 @@ export function initSocket(data, ws, clients) {
         });
     }
 
-    if(data.type === "moveElementKonva"){
+    if(data.type === "deselectElementKonva"){
         const senderId = data.user_id;
     
         clients.forEach((client) => {
             client.ws.send(JSON.stringify({
-                type: 'moveElementKonva',
+                type: 'deselectElementKonva',
+                user_id: senderId
+            }));
+        });
+    }
+
+    if(data.type === "changeElementKonva"){
+        const senderId = data.user_id;
+    
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'changeElementKonva',
                 elementKonva: data.elementKonva,
+                posRelativePointer: data.posRelativePointer,
                 user_id: senderId
             }));
         });

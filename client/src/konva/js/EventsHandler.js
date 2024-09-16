@@ -46,6 +46,10 @@ document.addEventListener('keydown', function (e) {
             if(layer.attrs.id == "layerUtilities"){
                 layer.destroy();
             }
+
+            if(layer.attrs.id == "layerCollaborators"){
+                layer.destroy();
+            }
         });
 
         const stageJSON = (stageClone).toJSON();

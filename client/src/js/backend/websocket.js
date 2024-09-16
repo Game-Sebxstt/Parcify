@@ -21,6 +21,13 @@ function createWebSocket() {
     socket.onmessage = async function(event) {
         const data = JSON.parse(event.data);
 
+        if (data.type === 'createElementKonva') {
+            if(data.user_id != globals.getCookie("ID-USER")){
+                const elementKonva = JSON.parse(data.elementKonva);
+                GlobalFunctions.createElementKonva(elementKonva);
+            }
+        }
+
         if (data.type === 'selectElementKonva') {
             if(data.user_id != globals.getCookie("ID-USER")){
                 const elementKonva = JSON.parse(data.elementKonva);
@@ -30,12 +37,18 @@ function createWebSocket() {
             }
         }
 
-        if (data.type === 'moveElementKonva') {
+        if(data.type === 'deselectElementKonva'){
+            if(data.user_id != globals.getCookie("ID-USER")){
+                GlobalFunctions.removeBorderElement()
+            }
+        }
+
+        if (data.type === 'changeElementKonva') {
             if(data.user_id != globals.getCookie("ID-USER")){
                 const elementKonva = JSON.parse(data.elementKonva);
                 const layerKonva = konva.stage.children.find(item => item.id() === "layer");
                 const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
-                GlobalFunctions.changeElement(elementKonvaOfLayer, elementKonva);
+                GlobalFunctions.changeElement(elementKonvaOfLayer, elementKonva, data.user_id, data.posRelativePointer);
             }
         }
 
@@ -130,14 +143,24 @@ function sendIfOpen(message) {
     }
 }
 
-export function moveElementKonva(elementKonva){
+export function createElementKonva(elementKonva){
     const userId = globals.getCookie("ID-USER");
-    sendIfOpen(JSON.stringify({ type: 'moveElementKonva', elementKonva, user_id: userId }));
+    sendIfOpen(JSON.stringify({ type: 'createElementKonva', elementKonva, user_id: userId }));
+}
+
+export function changeElementKonva(elementKonva, posRelativePointer){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'changeElementKonva', elementKonva, posRelativePointer, user_id: userId }));
 }
 
 export function selectElementKonva(elementKonva){
     const userId = globals.getCookie("ID-USER");
     sendIfOpen(JSON.stringify({ type: 'selectElementKonva', elementKonva, user_id: userId }));
+}
+
+export function deselectElementKonva(){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'deselectElementKonva', user_id: userId }));
 }
 
 export function enterCollaborator(collaborator){

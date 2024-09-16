@@ -211,29 +211,6 @@ konva.stage.on('dragmove', (e) => {
 
 konva.getElements().forEach((element) => {
     element.on("dragmove", (e) => {
-        websocket.moveElementKonva(e.target)
-        if(element instanceof Konva.Group){
-            const groupNode = element
-
-            if(groupNode.attrs.name == "ShapeText"){
-                groupNode.getChildren().forEach(item => {
-                    if (item instanceof Konva.Text) {
-                        item.setAttrs({
-                            x: groupNode.getChildren().find(item => item instanceof Konva.Rect).x(),
-                            y: groupNode.getChildren().find(item => item instanceof Konva.Rect).y(),
-                            width: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).width() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleX(), konva.getMinWidth()), 
-                            height: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).height() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
-                            scaleX: 1,
-                            scaleY: 1,
-                        });
-                    }
-                });
-            }
-        }
-    })
-
-    element.on("transform", (e) => {
-        websocket.moveElementKonva(e.target)
     })
 })
 
@@ -369,22 +346,8 @@ konva.stage.on('click tap', function (e) {
         };
 
         let shape = addShape(shapeProperties);
-
-        if(shape){
-            konva.getElements().push(shape);
-            konva.layer.add(shape);
-
-            Object.keys(States.StatesShapes).forEach(key => {
-                States.StatesShapes[key] = false;
-            });
-
-            States.StatesCursor.addShape = false;
-            konva.tr?.setAttr("visible", true);
-            konva.tr?.nodes([shape])
-            konva.saveHistory(konva.stage.toJSON());
-
-            konva.updateElementsEvent();
-        }
+        GlobalFunctions.createElement(shape);
+        websocket.createElementKonva(shape)
     }
 
     if(States.StatesShapes.image){
@@ -429,6 +392,7 @@ konva.stage.on('click tap', function (e) {
 
     if (e.target instanceof Konva.Stage == true) {
         konva.tr?.nodes([])
+        websocket.deselectElementKonva()
         return;
     }
 

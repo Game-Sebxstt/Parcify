@@ -3,6 +3,7 @@ import * as States from "./StatesLogic";
 import * as req from '../../js/backend/requests';
 import * as globalFunctions from './GlobalFunctions'
 import * as chat from '../../js/frontend/utilities/chat';
+import * as websocket from '../../js/backend/websocket'
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import { PickerCustom } from "../ts/utilities/PickerCustom";
 
@@ -85,6 +86,9 @@ let heightKonva;
 
 //Elements
 let cursorCollaborators = []
+let elementSelectedCollaborators = [];
+
+let isInitiated = true;
 
 if(konva){
     widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
@@ -93,6 +97,10 @@ if(konva){
 
 export function setCursorCollaborators(cursorCollaborator){
     cursorCollaborators.push(cursorCollaborator);
+}
+
+export function setElementSelectedCollaborators(elementSelectedCollaborator){
+    elementSelectedCollaborators.push(elementSelectedCollaborator);
 }
 
 export function setKonva(konvaChange) {
@@ -149,7 +157,15 @@ export function setDimensionBarToolExtra(dimensionBarToolExtraChange, key){
 }
 
 export function getCursorCollaborators(){
+    if(!cursorCollaborators && isInitiated) return
+
     return cursorCollaborators;
+}
+
+export function getElementSelectedCollaborators(){
+    if(!elementSelectedCollaborators && isInitiated) return
+
+    return elementSelectedCollaborators;
 }
 
 export function getKonva(){
@@ -235,6 +251,11 @@ stagePickCustom.add(layerBasePickCustom);
 layerPickCustom.zIndex(1);
 layerBasePickCustom.zIndex(2);
 
+export var layerCollaborators = new Konva.Layer({
+    id: "layerCollaborators"
+});
+stage.add(layerCollaborators);
+
 export var layerUtilities = stage.getLayers().find(item => item.attrs.id == "layerUtilities") || new Konva.Layer({
     id: "layerUtilities"
 });
@@ -287,6 +308,7 @@ if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers
 
 layer.zIndex(1);
 layerUtilities.zIndex(1);
+layerCollaborators.zIndex(3); 
 layerBackground.zIndex(0);
 globalFunctions.updateDimensionStage();
 
@@ -485,12 +507,48 @@ export function selectAll(){
 }
 
 export function updateElementsEvent(){
-    elements.forEach(item => {
-        item.on("transformend", () => {
+    elements.forEach(element => {
+        element.on("transformend", () => {
             saveHistory(stage.toJSON());
+        })
+
+        element.on("dragmove", (e) => {
+            websocket.changeElementKonva(e.target, stage.getRelativePointerPosition())
+            if(element instanceof Konva.Group){
+                const groupNode = element
+    
+                if(groupNode.attrs.name == "ShapeText"){
+                    groupNode.getChildren().forEach(item => {
+                        if (item instanceof Konva.Text) {
+                            item.setAttrs({
+                                x: groupNode.getChildren().find(item => item instanceof Konva.Rect).x(),
+                                y: groupNode.getChildren().find(item => item instanceof Konva.Rect).y(),
+                                width: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).width() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleX(), konva.getMinWidth()), 
+                                height: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).height() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
+                                scaleX: 1,
+                                scaleY: 1,
+                            });
+                        }
+                    });
+                }
+            }
+        })
+
+        element.on("dragend", (e) => {
+            websocket.deselectElementKonva()
+        })
+    
+        element.on("transform", (e) => {
+            websocket.changeElementKonva(e.target)
+        })
+    
+        element.on("transformend", (e) => {
+            websocket.changeElementKonva(e.target)
         })
     });
 }
+
+updateElementsEvent();
 
 export function dbClickElement(e) {
     let element = e.target;

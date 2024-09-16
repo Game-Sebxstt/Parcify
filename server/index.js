@@ -447,7 +447,7 @@ app.post("/project/collaborators", async (req, res) => {
         existingCollaborators.push(collaborators);
     }
 
-    console.log("Colaboradores actualizados:", collaboratorUpdate);
+    // console.log("Colaboradores actualizados:", collaboratorUpdate);
 
     const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);
 

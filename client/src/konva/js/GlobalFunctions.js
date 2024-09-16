@@ -4,6 +4,7 @@ import * as websocket from '../../js/backend/websocket'
 import * as CustomCursor from '../ts/shapes/CustomCursor'
 import Konva from "konva";
 import * as States from "./StatesLogic";
+import Export from "../../components/Konva/Export.astro";
 
 export function downloadURI(uri, name) {
     var link = document.createElement('a');
@@ -181,6 +182,55 @@ export function randomId(){
     return Math.random().toString(36).substr(2, 9);
 }
 
+export function createElement(elementKonva, trActive = true){
+    if(elementKonva){
+        konva.getElements().push(elementKonva);
+        konva.layer.add(elementKonva);
+
+        Object.keys(States.StatesShapes).forEach(key => {
+            States.StatesShapes[key] = false;
+        });
+
+        States.StatesCursor.addShape = false;
+        
+        if(trActive){
+            konva.tr?.setAttr("visible", true);
+            konva.tr?.nodes([elementKonva]);
+        }
+
+        konva.updateElementsEvent();
+    }
+}
+
+export function createElementKonva(elementKonva){
+    console.log(elementKonva);
+    const className = elementKonva.className;
+    const options = elementKonva.attrs;
+
+    if(className == "Rect"){
+        const rect = new Konva.Rect(options);
+        createElement(rect, false);
+    }
+
+    if(className == "Circle"){
+        const circle = new Konva.Circle(options);
+        console.log(circle);
+        createElement(circle, false);
+    }
+
+    if(className == "RegularPolygon"){
+        const regularPolygon = new Konva.RegularPolygon(options);
+        createElement(regularPolygon, false);
+    }
+
+    if(className == "Text"){
+        const text = new Konva.Text(options);
+        createElement(text, false);
+    }
+
+
+}
+
 export function createCursorCollaborator(collaborator){
     const cursorById = konva.layer.find(item => item.id() === "mouseCursor");
     if(cursorById.find(item => item.getAttr("id_user") == collaborator.user_id)) return;
@@ -200,7 +250,7 @@ export function createCursorCollaborator(collaborator){
         font_size: 20,
     }
     
-    const customCursor = new CustomCursor.CustomCursor(options, konva.layer, konva.stage)
+    const customCursor = new CustomCursor.CustomCursor(options, konva.layerCollaborators, konva.stage)
     konva.setCursorCollaborators(customCursor);
 }
 
@@ -213,7 +263,7 @@ export function removeCursorCollaborator(id_user){
 }
 
 export function updateCursorCollaborator({x, y}, id_user){
-    if(konva.getCursorCollaborators) return
+    if(!konva.getCursorCollaborators) return;
 
     konva.getCursorCollaborators().forEach((cursor) => {
         if(cursor.id_user == id_user){
@@ -242,15 +292,37 @@ export function getCursorCollaborator(id_user){
 }
 
 export function setBorderElement(element) {
+    removeBorderElement();
+    konva.setElementSelectedCollaborators(element);
+    const beforeStroke = element.stroke();
+    const beforeStrokeWidth = element.strokeWidth();
     element.setAttrs({
         stroke: "rgb(0, 161, 255)",
         strokeWidth: 3,
+        beforeStroke,
+        beforeStrokeWidth,
     });
 }
 
-export function changeElement(element, elementKonva) {    
+export function removeBorderElement() {
+    const elementSelectedList = konva.getElementSelectedCollaborators();
+
+    if (!elementSelectedList) return;
+    
+    elementSelectedList.forEach((element) => {
+        element.setAttrs({
+            stroke: element.getAttr("beforeStroke"),
+            strokeWidth: element.getAttr("beforeStrokeWidth"),
+        });
+
+        konva.layer.draw();
+    });
+}
+
+export function changeElement(element, elementKonva, user_id, posRelativePointer) {    
     const attrs_replace = elementKonva.attrs;
     element.setAttrs(attrs_replace);
+    updateCursorCollaborator(posRelativePointer, user_id);
     setBorderElement(element);
     konva.layer.draw();
 }
@@ -705,5 +777,6 @@ export function actionToolBar(change, type, action){
         ...extra
     })
     
+    // websocket.changeElementKonva(node, konva.stage.getRelativePointerPosition());
     konva.layer.draw();
 }

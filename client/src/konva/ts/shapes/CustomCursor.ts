@@ -71,7 +71,6 @@ export class CustomCursor {
 
     private updateScaleCursor() {
         if(!this.options.radius || !this.options.strokeWidth || !this.cursor || !this.name) return;
-        console.log(this.cursor)
 
         this.cursor.radius(this.options.radius);
         this.cursor.strokeWidth(this.options.strokeWidth);
@@ -100,7 +99,7 @@ export class CustomCursor {
                 y: this.options.y - this.name.height() - this.cursor.radius() * 2,
             });
 
-            this.cursor.visible(true);
+            this.cursor?.visible(true);
             this.name?.visible(true);
             this.updateScaleCursor();
             this.layer.draw();
