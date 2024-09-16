@@ -1,36 +1,39 @@
 ---
 ---
-<section class="fixed h-full w-full z-10 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
-    <article class="twStp h-fit max-h-[60%] w-fit max-w-[40%] bg-[#2b2929] p-3 shadow-lg shadow-[#181818] text-white animate-deployment overflow-auto rounded flex flex-col gap-1">
+<section id="authCodeContainer" class="fixed h-full w-full z-10 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+    <article class="twStp h-[70%] max-h-[100%] w-fit max-w-[40%] bg-[#2b2929] p-3 shadow-lg shadow-[#181818] text-white animate-deployment rounded flex flex-col gap-1">
 
-        <header class="flex items-center gap-2 justify-between">
-            <h1>Two Step Verification</h1>
+        <header class="flex items-center gap-2 justify-center p-2">
+            <h1 class="text-xl font-bold">Verificate Your Account</h1>
         </header>
 
         <hr class="border-[#383838]">
 
-        <main class="">
-            <div>
-                <h3>Insert the Code</h3>
+        <main class=" h-full w-full flex flex-col gap-3 ">
+            <div class="flex flex-col gap-2 p-2 ">
+                <h3 class="font-semibold text-lg">Insert the Code</h3>
                 <p>You are one step away from starting to unleash your creativity</p>
                 <p>Please enter the <b>4-digit</b> code we sent to your email</p>    
             </div>
-            <form>
-                <div>
-                    <input type="number" name="" id="">
-                    <input type="number" name="" id="">
-                    <input type="number" name="" id="">
-                    <input type="number" name="" id="">
+            <form id="authCodeVerificate" class="flex flex-col gap-2 p-2 h-full justify-between">
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-center p-2 gap-4">
+                        <input id="inputCode" class="h-14 w-14 rounded-md text-center outline-2 outline-none focus:outline-sky-400 transition-all" maxlength="1" type="number" >
+                        <input id="inputCode" class="h-14 w-14 rounded-md text-center outline-2 outline-none focus:outline-sky-400 transition-all" maxlength="1" type="number" >
+                        <input id="inputCode" class="h-14 w-14 rounded-md text-center outline-2 outline-none focus:outline-sky-400 transition-all" maxlength="1" type="number" >
+                        <input id="inputCode" class="h-14 w-14 rounded-md text-center outline-2 outline-none focus:outline-sky-400 transition-all" maxlength="1" type="number" >
+                    </div>
+                    <div id="errorCodeAuth" class=" hidden items-center justify-center">
+                        <p class="text-xs text-red-400 text-center">Error, This code is Wrong, please verify your mail and insert the code</p>
+                    </div>
+                    <div class="flex flex-col items-center justify-center p-2 gap-4">
+                        <button id="resendCodeAuth" type="button" class="text-blue-400 font-semibold">Re-send code</button>
+                        <p id="resendAuthSuccess" class="hidden text-xs text-green-400 text-center">The code has been sent successfully :)</p>
+                    </div>
                 </div>
-                <div>
-                    <p>indicador de que tan bien esta el codigo</p>
-                </div>
-                <div>
-                    <button>Re-send code</button>
-                </div>
-                <div>
-                    <button type="button">Cancel</button>
-                    <button type="submit">Yes, it's me</button>
+                <div class="flex items-center justify-end gap-3">
+                    <button id="close-authCode" class="px-3 py-1.5 cursor-pointer border border-red-500 hover:bg-red-500 transition-all rounded" type="button">Cancel</button>
+                    <button class="px-3 py-1.5 cursor-pointer bg-blue-600 rounded" type="submit">Confirm</button>
                 </div>
             </form>
         </main>
@@ -43,3 +46,49 @@
         }
     }
 </style>
+<script>
+    const moveToNext = (actual:HTMLInputElement, next:HTMLInputElement | null):void => {
+        if (actual.value.length === 1 && next) {
+            next.focus();
+        }
+    };
+    
+    const moveToPrevious = (actual: HTMLInputElement, prev: HTMLInputElement | null): void => {
+        if (actual.value.length === 0 && prev) {
+            prev.focus();
+            prev.value = '';
+        }
+    };
+
+    const paste = (clipboard:ClipboardEvent):void => {
+        const data = clipboard?.clipboardData?.getData("text") || "";
+        if (/^\d{4}$/.test(data)) {
+            const inputs = document.querySelectorAll<HTMLInputElement>("#inputCode");
+            inputs.forEach((input, index) => {
+                input.value = data[index] || "";
+            });
+            inputs[inputs.length -1].focus
+            clipboard.preventDefault();
+        }
+    };
+
+    const init = ():void => {
+        const inputs = document.querySelectorAll<HTMLInputElement>("#inputCode");
+        inputs.forEach((inputActual, index) => {
+            const next = inputs[index + 1] || null;
+            const prev = inputs[index - 1] || null;
+            inputActual.addEventListener("input", () => {
+                inputActual.value = inputActual.value.replace(/[^0-9]/g, '').slice(0, 1);
+                moveToNext(inputActual, next);
+            });
+            inputActual.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Backspace' && inputActual.value.length === 0) {
+                    moveToPrevious(inputActual, prev);
+                }
+            });
+        });
+        document.addEventListener("paste", paste)
+    };
+    init();
+
+</script>

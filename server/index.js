@@ -7,6 +7,7 @@ import { WebSocketServer } from 'ws';
 import bodyParser from 'body-parser';
 import { getConnection } from "./utilities/database.js";
 import * as socket_logic from './utilities/socket-logic.js'
+import * as mail from "./utilities/mail.js"
 
 const app = express();
 const server = createServer(app);
@@ -96,19 +97,24 @@ app.post('/register/auth', async (req, res) => {
     }
 
     const { username, email, password } = req.body;
+    const codeVerification = generateCodeAuth();
+
     const connection = await getConnection();
 
     const emailExist = await connection.query("SELECT email FROM users WHERE email = ?", [email]);
+    
     if (emailExist.length > 0) {
         return res.status(400).json({ message: "El Correo Electronico ya existe." })
     }
 
     let id = await generateIdUser(connection);
-    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password, biography, profile_image) VALUES (?, ?, ?, ?, ?, ?)", [id, username, email, encrypt(password), "", ""]);
+    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password, active, auth_code, biography, profile_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [id, username, email, encrypt(password), false, codeVerification, "", ""]);
 
     if (!send_data) {
         return res.status(400).json({ message: "Error in the database" })
     }
+
+    mail.sendCodeVerification(email, codeVerification);
 
     res.status(200).send({ status: "Good request", message: "User register successfull" })
 });
@@ -127,6 +133,88 @@ app.post('/login/auth', async (req, res) => {
     }
 
     res.status(200).send({ status: "Good Request", message: id[0].user_id })
+});
+
+app.post("/auth/codeVerification", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty"});
+    }
+
+    const { email, code } = req.body;
+    const connection = await getConnection();
+
+    const data_user = await connection.query("SELECT * FROM users WHERE email = ? AND auth_code = ?", [email, code])
+
+    if (!(data_user.length > 0)) {
+        return res.status(400).send({ status: "Bad Request", message: "Code not found."});
+    }
+
+    const dataUpdated = await connection.query("UPDATE users SET active = true, auth_code = NULL WHERE email = ?", [email]);
+
+    if (!dataUpdated) {
+        return res.status(400).send({ status: "Bad Request", message: "Error in database."});
+    }
+
+    res.status(200).send({ status: "Good request", message: "User Active successfull" })
+
+});
+
+app.post("/register/cancel", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty"});
+    }
+    const { email } = req.body;
+    const connection = await getConnection();
+
+    const deleteUser = await connection.query("DELETE FROM users WHERE email = ? AND active = false", [email]);
+    if (deleteUser.affectedRows === 0) {
+        return res.status(400).send({ status: "Bad Request", message: "User not found or user does'nt exist."});
+    }
+
+    return res.status(200).send({ status: "Good Request", message: "User deleted succefull"});
+
+});
+
+app.post("/auth/resendAuthCode", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty"});
+    }
+    const { email } = req.body;
+    const codeVerification = generateCodeAuth();
+    const connection = await getConnection();
+    const userExist = await connection.query("SELECT * FROM users WHERE email = ? AND active = false", [email]);
+
+    if (!(userExist.length > 0)) {
+        return res.status(400).send({ status: "Bad Request", message: "User does'nt exist."});
+    }
+
+    const updateCode = await connection.query("UPDATE users SET auth_code = ? WHERE email = ?", [codeVerification, email]);
+
+    if (updateCode.affectedRows === 0) {
+        return res.status(400).send({ status: "Bad Request", message: "Error in database."});
+    }
+
+    mail.sendCodeVerification(email, codeVerification)
+    
+    return res.status(200).send({ status: "Good Request", message: "New code generated succefull"});
+
+});
+
+app.post("/auth/device", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty"});
+    }
+
+    const { id_user, device, country, date, type } = req.body;
+    const device_id = generateDeviceCode();
+    const connection = await getConnection();
+
+    let devices = [];
+
+    
+    
+
+    return res.status(200).send({ status: "Good Request", message: "New code generated succefull"});
 });
 
 app.post("/project/create", async (req, res) => {
@@ -957,4 +1045,12 @@ function encrypt(value){
 function compareEncrypt(compare, value){
     const compareHash = encrypt(compare);
     return compareHash === value;
+}
+
+function generateCodeAuth(){
+    return Math.floor(1000 + Math.random() * 9000);
+}
+
+function generateDeviceCode() {
+    return Math.floor(10000 + Math.random() * 90000);
 }
