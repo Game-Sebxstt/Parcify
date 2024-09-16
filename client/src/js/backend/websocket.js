@@ -33,7 +33,7 @@ function createWebSocket() {
                 const elementKonva = JSON.parse(data.elementKonva);
                 const layerKonva = konva.stage.children.find(item => item.id() === "layer");
                 const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
-                GlobalFunctions.setBorderElement(elementKonvaOfLayer)
+                GlobalFunctions.setBorderElement(elementKonvaOfLayer, data.collaborator)
             }
         }
 
@@ -45,10 +45,9 @@ function createWebSocket() {
 
         if (data.type === 'changeElementKonva') {
             if(data.user_id != globals.getCookie("ID-USER")){
-                const elementKonva = JSON.parse(data.elementKonva);
                 const layerKonva = konva.stage.children.find(item => item.id() === "layer");
-                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
-                GlobalFunctions.changeElement(elementKonvaOfLayer, elementKonva, data.user_id, data.posRelativePointer);
+                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === data.updatedAttrs.id_unique);
+                GlobalFunctions.changeElement(elementKonvaOfLayer, data.updatedAttrs, data.user_id, data.posRelativePointer, data.collaborator);
             }
         }
 
@@ -148,9 +147,9 @@ export function createElementKonva(elementKonva){
     sendIfOpen(JSON.stringify({ type: 'createElementKonva', elementKonva, user_id: userId }));
 }
 
-export function changeElementKonva(elementKonva, posRelativePointer){
+export function changeElementKonva(updatedAttrs, posRelativePointer){
     const userId = globals.getCookie("ID-USER");
-    sendIfOpen(JSON.stringify({ type: 'changeElementKonva', elementKonva, posRelativePointer, user_id: userId }));
+    sendIfOpen(JSON.stringify({ type: 'changeElementKonva', updatedAttrs, posRelativePointer, user_id: userId }));
 }
 
 export function selectElementKonva(elementKonva){

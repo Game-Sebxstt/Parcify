@@ -1,6 +1,8 @@
 import * as req from "../../js/backend/requests";
 import * as globals from '../../js/frontend/utilities/globals';
+import * as templates from '../../js/frontend/utilities/templates';
 import * as GlobalFunctions from './GlobalFunctions'
+import * as Render from './Render'
 import * as front from '../../js/frontend/front';
 import * as environment_utils from '../../js/globals/environment-utils'
 import * as environments from '../../environments'
@@ -23,10 +25,14 @@ async function initialCollaboration(){
     
         data_project = project.data.message;
 
+        globals.startSession(id);
         const collaborators = JSON.parse(data_project.collaborators || "[]");
         const data_invitation_project = JSON.parse(data_project.invitation || "[]");
         eventsListener(collaborators);
+        resetCollaborators(collaborators);
         console.log(collaborators);
+
+        Render.utils.list_collaborators = document.querySelectorAll("#list-collaborators");
 
         const collaboratorOwner = collaborators.find(c => c.role === 'owner');
 
@@ -53,7 +59,7 @@ async function initialCollaboration(){
             if (isFindColor) return;
 
             if(!collaborators.find(c => c.color == color)){
-                sendCollaboration(id, data_invitation_project, color);
+                sendCollaboration(id, data_invitation_project, color, collaborators);
                 isFindColor = true;
                 return;
             }
@@ -70,7 +76,7 @@ function eventsListener(collaborators){
     })
 }
 
-async function sendCollaboration(id, data_invitation_project, color){
+async function sendCollaboration(id, data_invitation_project, color, collaborators){
     const updatedCollaborators = {
         user_id: Number(globals.getCookie("ID-USER")),
         project_id: id,
@@ -92,9 +98,36 @@ async function sendCollaboration(id, data_invitation_project, color){
             front.utils.handleError(response);
         } else {
             front.utils.handleError("Collaboration started");
+            collaborators.push(updatedCollaborators);
+            resetCollaborators(collaborators);
             websocket.enterCollaborator(updatedCollaborators);
         }
     });
 }
+
+function resetCollaborators(collaborators){
+    Render.utils.list_collaborators.forEach(collaborators => {
+        collaborators.querySelectorAll("#profile-invite").forEach(collaborator => {
+            collaborator.remove();
+        })
+    })
+
+    collaborators.forEach(collaborator => {
+        Render.utils.list_collaborators.forEach(collaborators => {
+            const profile_invite = templates.createProfileInvite(collaborator);
+
+            if(collaborator.state){
+                profile_invite.style.display = "flex";
+            }
+            
+            collaborators.appendChild(profile_invite);
+        });
+    })
+}
+
+window.addEventListener('beforeunload', function(e) {
+    e.preventDefault();
+    globals.endSession(false);
+});
 
 await initialCollaboration();

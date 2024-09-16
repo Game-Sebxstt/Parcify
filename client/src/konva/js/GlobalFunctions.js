@@ -6,6 +6,10 @@ import Konva from "konva";
 import * as States from "./StatesLogic";
 import Export from "../../components/Konva/Export.astro";
 
+let needsUpdate = false;
+let isUpdateToolBar = false;
+let nodeSelect = null;
+
 export function downloadURI(uri, name) {
     var link = document.createElement('a');
     link.download = name;
@@ -291,13 +295,13 @@ export function getCursorCollaborator(id_user){
     return elementsById.find(item => item.getAttr("id_user") == id_user);
 }
 
-export function setBorderElement(element) {
+export function setBorderElement(element, collaborator) {
     removeBorderElement();
     konva.setElementSelectedCollaborators(element);
     const beforeStroke = element.stroke();
     const beforeStrokeWidth = element.strokeWidth();
     element.setAttrs({
-        stroke: "rgb(0, 161, 255)",
+        stroke: collaborator ? collaborator.color.hex : "rgb(0, 161, 255)",
         strokeWidth: 3,
         beforeStroke,
         beforeStrokeWidth,
@@ -319,16 +323,24 @@ export function removeBorderElement() {
     });
 }
 
-export function changeElement(element, elementKonva, user_id, posRelativePointer) {    
-    const attrs_replace = elementKonva.attrs;
-    element.setAttrs(attrs_replace);
-    updateCursorCollaborator(posRelativePointer, user_id);
-    setBorderElement(element);
-    konva.layer.draw();
+function updateElement() {
+    if (needsUpdate) {
+        konva.layer.batchDraw();
+        needsUpdate = false;
+    }
+    if (needsUpdate) {
+        requestAnimationFrame(updateElement);
+    }
 }
 
-let isUpdateToolBar = false;
-let nodeSelect = null;
+requestAnimationFrame(updateElement);
+
+export function changeElement(element, updatedAttrs, user_id, posRelativePointer, collaborator) {
+    element.setAttrs(updatedAttrs);
+    updateCursorCollaborator(posRelativePointer, user_id);
+    setBorderElement(element, collaborator);
+    needsUpdate = true;
+}
 
 export function getNodeSelectToolBar(){
     return nodeSelect;
@@ -710,7 +722,6 @@ function resetCustomColor(inputColor, newDataTypeItem) {
     });
 }
 
-
 export function isGroupText(node){
     let returnNode = false
     if(node.parent instanceof Konva.Group){
@@ -743,7 +754,7 @@ export function actionToolBar(change, type, action){
             type = "dash";
             extra = {
                 stroke: node.stroke() || "white",
-                strokeWidth: node.strokeWidth() || 2,
+                strokeWidth: 2,
                 border: "dash",
             }
         }
@@ -754,7 +765,7 @@ export function actionToolBar(change, type, action){
             extra = {
                 dash: null,
                 stroke: node.stroke() || "white",
-                strokeWidth: node.strokeWidth() || 2,
+                strokeWidth: 2,
                 border: "normal",
             }
         }
@@ -772,11 +783,15 @@ export function actionToolBar(change, type, action){
 
     }
 
-    node.setAttrs({
+    const newAttrs = {
         [type]: change,
+        id_unique: node.getAttr("id_unique"),
         ...extra
-    })
+    }
+
+    node.setAttrs(newAttrs)
+    console.log(newAttrs);
     
-    // websocket.changeElementKonva(node, konva.stage.getRelativePointerPosition());
+    websocket.changeElementKonva(newAttrs, konva.stage.getRelativePointerPosition());
     konva.layer.draw();
 }

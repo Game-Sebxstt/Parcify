@@ -41,22 +41,13 @@ function formatLabels(startDate, endDate, dataLabels) {
 }
 
 
-export function createGraphic(element, typeGraphic, startDate, endDate, data, dataLabels, backGroundColor, borderColor, borderWidth) {
+export function createGraphic(element, typeGraphic, startDate, endDate, dataSet, dataLabels) {
   const ctx = element.getContext('2d');
   const labels = formatLabels(startDate, endDate, dataLabels);
 
   const dataGraphic = {
     labels: labels,
-    datasets: [
-      {
-        label: 'Sebxstt',
-        data: data,
-        backgroundColor: backGroundColor,
-        borderColor: borderColor,
-        borderWidth: borderWidth,
-        fill: false,
-      }
-    ]
+    datasets: dataSet
   };
 
   const config = {

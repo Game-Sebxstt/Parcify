@@ -1,4 +1,5 @@
 import * as globals from '../utilities/globals';
+import * as templates from '../utilities/templates';
 import * as websocket from '../../backend/websocket';
 import * as front from '../front';
 import * as req from '../../backend/requests'
@@ -17,21 +18,18 @@ const close_button = document.querySelector("#close-button");
 const header_konva = document.querySelector("#header-konva");
 const cancel_resend = document.querySelector("#cancel-resend");
 
-let isFocus = false;
 let isResend = false;
-let isDragging = false;
 
 // Temporizador para detectar cuando se está escribiendo
 let typingTimeout;
 const TYPING_DELAY = 1500;
 
 // Obtener rectángulos de los elementos iniciales
+content_all_chat.style.display = "flex";
 let content_all_chat_rect = getElementRect(content_all_chat);
 let chat_container_rect = getElementRect(chat_container);
-scroll_chat.style.display = "flex";
 let scroll_chat_rect = getElementRect(scroll_chat);
-scroll_chat.style.display = "none";
-let header_konva_rect = getElementRect(header_konva);
+content_all_chat.style.display = "none";
 
 // Inicializar posición de scroll_chat
 setScrollChatPosition();
@@ -53,6 +51,7 @@ function initializeEvents() {
         }
 
         content_all_chat.style.display = "flex";
+        setScrollChatPosition();
         chat_message_input.focus();
         scrollToBottom();
     })
@@ -61,9 +60,6 @@ function initializeEvents() {
         event.stopPropagation();
         content_all_chat.style.display = "none";
     })
-    
-    content_all_chat?.addEventListener("focus", () => isFocus = true);
-    content_all_chat?.addEventListener("blur", () => isFocus = false);
     
     chat_container.addEventListener("scroll", throttle(handleScrollVisibility, 200));
     
@@ -206,7 +202,7 @@ function hideResendContainer() {
 }
 
 // Crear un mensaje y agregarlo al chat
-function createMessage(data) {
+async function createMessage(data) {
     let type = data.id_user == globals.getCookie("ID-USER") ? "right" : "left";
     
     if(data.response != undefined){
@@ -223,7 +219,17 @@ function createMessage(data) {
     const node_chat_bubble = chat_bubble.cloneNode(true);
     node_chat_bubble.style.display = "flex";
     node_chat_bubble.setAttribute("data-id", data.id);
-    
+
+    const profile_invite = node_chat_bubble.querySelector("#profile-invite");
+    const collaborators = JSON.parse((await req.getProject(KonvaLogic.id_stage)).data.message.collaborators || "[]");
+
+    const collaborator_chat_bubble = collaborators.find(item => item.user_id == data.id_user);
+    if(profile_invite){
+        profile_invite.innerText = collaborator_chat_bubble.name[0].toUpperCase();
+        profile_invite.style.backgroundColor = collaborator_chat_bubble.color.hex || "black"
+        profile_invite.setAttribute("data-id-user", collaborator_chat_bubble.user_id);
+    }
+
     if(data.response != undefined){
         node_chat_bubble.querySelector("#response-message").setAttribute("data-id-response", data.response.id);
     }

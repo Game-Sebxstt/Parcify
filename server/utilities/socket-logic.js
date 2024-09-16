@@ -8,6 +8,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'createElementKonva',
                 elementKonva: data.elementKonva,
@@ -20,9 +21,11 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
     
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'selectElementKonva',
                 elementKonva: data.elementKonva,
+                collaborator: client.data.collaborator,
                 user_id: senderId
             }));
         });
@@ -32,6 +35,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
     
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'deselectElementKonva',
                 user_id: senderId
@@ -43,10 +47,12 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
     
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'changeElementKonva',
-                elementKonva: data.elementKonva,
+                updatedAttrs: data.updatedAttrs,
                 posRelativePointer: data.posRelativePointer,
+                collaborator: client.data.collaborator,
                 user_id: senderId
             }));
         });
@@ -75,6 +81,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'mouseCursor',
                 position: data.position,
@@ -88,6 +95,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'message',
                 data: data.data,
@@ -101,6 +109,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+        if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'typing',
                 data: data.data,
@@ -113,6 +122,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'stopTyping',
                 data: data.data,

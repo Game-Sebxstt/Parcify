@@ -1,6 +1,6 @@
 import * as globals from '../../js/frontend/utilities/globals'
 
-const utils = {
+export let utils = {
     list_collaborators: document.querySelectorAll("#list-collaborators"),
 }
 

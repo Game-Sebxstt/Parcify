@@ -506,25 +506,57 @@ export function selectAll(){
     tr?.nodes([...getElements()]);
 }
 
-export function updateElementsEvent(){
+export function updateElementsEvent() {
+    function throttle(func, limit) {
+        let lastFunc;
+        let lastRan;
+        return function() {
+            const context = this;
+            const args = arguments;
+            if (!lastRan) {
+                func.apply(context, args);
+                lastRan = Date.now();
+            } else {
+                clearTimeout(lastFunc);
+                lastFunc = setTimeout(function() {
+                    if ((Date.now() - lastRan) >= limit) {
+                        func.apply(context, args);
+                        lastRan = Date.now();
+                    }
+                }, limit - (Date.now() - lastRan));
+            }
+        };
+    }
+
+    const throttleLimit = 50;
+
     elements.forEach(element => {
         element.on("transformend", () => {
             saveHistory(stage.toJSON());
-        })
+        });
 
-        element.on("dragmove", (e) => {
-            websocket.changeElementKonva(e.target, stage.getRelativePointerPosition())
-            if(element instanceof Konva.Group){
-                const groupNode = element
-    
-                if(groupNode.attrs.name == "ShapeText"){
+        element.on("dragmove", throttle((e) => {
+            const updatedAttrs = {
+                x: e.target.x(),
+                y: e.target.y(),
+                rotation: e.target.rotation(),
+                id_unique: e.target.attrs.id_unique,
+            };
+
+            websocket.changeElementKonva(updatedAttrs, stage.getRelativePointerPosition());
+
+            if (element instanceof Konva.Group) {
+                const groupNode = element;
+
+                if (groupNode.attrs.name == "ShapeText") {
+                    const rectNode = groupNode.getChildren().find(item => item instanceof Konva.Rect);
                     groupNode.getChildren().forEach(item => {
                         if (item instanceof Konva.Text) {
                             item.setAttrs({
-                                x: groupNode.getChildren().find(item => item instanceof Konva.Rect).x(),
-                                y: groupNode.getChildren().find(item => item instanceof Konva.Rect).y(),
-                                width: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).width() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleX(), konva.getMinWidth()), 
-                                height: Math.max(5, groupNode.getChildren().find(item => item instanceof Konva.Rect).height() * groupNode.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
+                                x: rectNode.x(),
+                                y: rectNode.y(),
+                                width: Math.max(5, rectNode.width() * rectNode.scaleX(), konva.getMinWidth()),
+                                height: Math.max(5, rectNode.height() * rectNode.scaleY()),
                                 scaleX: 1,
                                 scaleY: 1,
                             });
@@ -532,19 +564,26 @@ export function updateElementsEvent(){
                     });
                 }
             }
-        })
+        }, throttleLimit));
 
-        element.on("dragend", (e) => {
-            websocket.deselectElementKonva()
-        })
-    
-        element.on("transform", (e) => {
-            websocket.changeElementKonva(e.target)
-        })
-    
-        element.on("transformend", (e) => {
-            websocket.changeElementKonva(e.target)
-        })
+        element.on("dragend", throttle((e) => {
+            websocket.deselectElementKonva();
+        }, throttleLimit));
+
+        element.on("transform", throttle((e) => {
+            const updatedAttrs = {
+                x: e.target.x(),
+                y: e.target.y(),
+                scaleX: e.target.scaleX(),
+                scaleY: e.target.scaleY(),
+                width: e.target.width(),
+                height: e.target.height(),
+                rotation: e.target.rotation(),
+                id_unique: e.target.attrs.id_unique,
+            };
+
+            websocket.changeElementKonva(updatedAttrs, stage.getRelativePointerPosition());
+        }, throttleLimit));
     });
 }
 

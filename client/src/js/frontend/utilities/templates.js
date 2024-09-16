@@ -391,3 +391,12 @@ export function renameProject(projectId, newName){
         input.value = newName;
     })
 }
+
+export function createProfileInvite(collaborator){
+    const div = document.createElement("div");
+    div.id = "profile-invite";
+    div.setAttribute("data-id-user", collaborator.user_id);
+    div.innerText = collaborator.name[0].toUpperCase();
+    div.className = `w-8 h-8 rounded-full hidden justify-center items-center text-center text-white font-lighter text-base cursor-pointer text-xs bg-${collaborator.color.tailwind || "black"}`
+    return div;
+}

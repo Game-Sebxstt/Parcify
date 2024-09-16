@@ -209,11 +209,6 @@ konva.stage.on('dragmove', (e) => {
     }
 });
 
-konva.getElements().forEach((element) => {
-    element.on("dragmove", (e) => {
-    })
-})
-
 konva.stage.on('mousemove', () => {
     if(!States.StatesCursor.addShape || States.StatesShapes.image){
         return;
