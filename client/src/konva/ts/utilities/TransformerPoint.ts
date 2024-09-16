@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import * as GlobalFunctions from "../../js/GlobalFunctions";
 import * as konva from "../../js/KonvaLogic";
+import * as websocket from '../../../js/backend/websocket'
 import { CustomArrow } from '../shapes/CustomArrow';
 
 interface ConnectorOptions {

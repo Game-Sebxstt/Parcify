@@ -2,6 +2,7 @@ import * as States from "./StatesLogic";
 import Konva from "konva";
 import * as konva from "./KonvaLogic";
 import * as GlobalFunctions from "./GlobalFunctions";
+import * as websocket from '../../js/backend/websocket'
 import { addShape } from "../ts/CreationShapes";
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 
@@ -210,6 +211,7 @@ konva.stage.on('dragmove', (e) => {
 
 konva.getElements().forEach((element) => {
     element.on("dragmove", (e) => {
+        websocket.moveElementKonva(e.target)
         if(element instanceof Konva.Group){
             const groupNode = element
 
@@ -228,6 +230,10 @@ konva.getElements().forEach((element) => {
                 });
             }
         }
+    })
+
+    element.on("transform", (e) => {
+        websocket.moveElementKonva(e.target)
     })
 })
 
@@ -347,6 +353,7 @@ konva.stage.on('click tap', function (e) {
     
                 transformer.attachTo(e.target);
                 konva.layer.draw();
+                websocket.selectElementKonva(e.target)
             }
         }
     }

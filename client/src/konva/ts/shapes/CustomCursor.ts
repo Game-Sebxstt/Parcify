@@ -12,6 +12,7 @@ interface ConfigCursor {
     id: string;
     id_user: string;
     name_user: string;
+    font_size: number;
 }
 
 export class CustomCursor {
@@ -23,8 +24,7 @@ export class CustomCursor {
     private name: Konva.Text | null = null;
     private id: string;
     private id_user: string;
-    private scaleX: number = 1;
-    private scaleY: number = 1;
+    private scale: number = 1;
 
     constructor(options: ConfigCursor, layer: Konva.Layer, stage: Konva.Stage) {
         this.options = options;
@@ -38,23 +38,27 @@ export class CustomCursor {
     }
 
     private createCursor() {
-        this.cursor = new Konva.Circle(this.options || {
-            radius: 5,
-            fill: 'red',
-            stroke: 'black',
-            strokeWidth: 1,
-            draggable: true,
+        this.cursor = new Konva.Circle({
+            radius: this.options.radius,
+            fill: this.options.fill,
+            stroke: this.options.stroke,
+            strokeWidth: this.options.strokeWidth,
+            draggable: this.options.draggable,
+            x: this.options.x,
+            y: this.options.y,
+            visible: this.options.visible
         });
 
         this.name = new Konva.Text({
-            x: this.options.x + 10,
-            y: this.options.y - 10,
+            x: this.options.x,
+            y: this.options.y - this.options.font_size,
             text: this.options.name_user,
-            fontSize: 10,
+            fontSize: this.options.font_size,
             fontFamily: 'Calibri',
             fill: 'white',
-            visible: false,
-        })
+            align: 'center',
+            visible: this.options.visible,
+        });
 
         this.layer.add(this.cursor);
         this.layer.add(this.name);
@@ -62,16 +66,18 @@ export class CustomCursor {
     }
 
     private updateScale() {
-        this.scaleX = this.stage.scaleX();
-        this.scaleY = this.stage.scaleY();
+        this.scale = this.stage.scaleX() > 1 ? this.stage.scaleX() : 1;
     }
 
     private updateScaleCursor() {
-        this.cursor?.scale({
-            x: 5 / this.scaleX,
-            y: 5 / this.scaleY,
-        });
-        this.layer.draw();
+        if(!this.options.radius || !this.options.strokeWidth || !this.cursor || !this.name) return;
+        console.log(this.cursor)
+
+        this.cursor.radius(this.options.radius);
+        this.cursor.strokeWidth(this.options.strokeWidth);
+        this.name.fontSize(this.name.fontSize());
+
+        this.layer.batchDraw();
     }
 
     private eventsGlobal() {
@@ -83,19 +89,20 @@ export class CustomCursor {
 
     public updateCursor(options: ConfigCursor) {
         this.options = options;
-        
+
         if (this.cursor) {
             this.cursor.position({
                 x: this.options.x,
                 y: this.options.y,
             });
             this.name?.position({
-                x: this.options.x + 10,
-                y: this.options.y - 10,
+                x: this.options.x - this.name.width() / 2,
+                y: this.options.y - this.name.height() - this.cursor.radius() * 2,
             });
 
             this.cursor.visible(true);
             this.name?.visible(true);
+            this.updateScaleCursor();
             this.layer.draw();
         }
     }

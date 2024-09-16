@@ -182,14 +182,13 @@ export function randomId(){
 }
 
 export function createCursorCollaborator(collaborator){
-    console.log("Create cursor", collaborator)
     const cursorById = konva.layer.find(item => item.id() === "mouseCursor");
     if(cursorById.find(item => item.getAttr("id_user") == collaborator.user_id)) return;
 
     const options = {
         x: 0,
         y: 0,
-        radius: 5,
+        radius: 10,
         fill: collaborator.color.hex,
         stroke: 'white',
         strokeWidth: 1,
@@ -198,6 +197,7 @@ export function createCursorCollaborator(collaborator){
         id_user: collaborator.user_id,
         visible: false,
         name_user: collaborator.name,
+        font_size: 20,
     }
     
     const customCursor = new CustomCursor.CustomCursor(options, konva.layer, konva.stage)
@@ -213,9 +213,10 @@ export function removeCursorCollaborator(id_user){
 }
 
 export function updateCursorCollaborator({x, y}, id_user){
+    if(konva.getCursorCollaborators) return
+
     konva.getCursorCollaborators().forEach((cursor) => {
         if(cursor.id_user == id_user){
-            console.log("Update cursor", cursor)
             cursor.updateCursor({x, y});
         }
     });
@@ -238,6 +239,20 @@ export function getCursorCollaborator(id_user){
     }
 
     return elementsById.find(item => item.getAttr("id_user") == id_user);
+}
+
+export function setBorderElement(element) {
+    element.setAttrs({
+        stroke: "rgb(0, 161, 255)",
+        strokeWidth: 3,
+    });
+}
+
+export function changeElement(element, elementKonva) {    
+    const attrs_replace = elementKonva.attrs;
+    element.setAttrs(attrs_replace);
+    setBorderElement(element);
+    konva.layer.draw();
 }
 
 let isUpdateToolBar = false;

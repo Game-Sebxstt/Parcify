@@ -148,10 +148,12 @@ app.post("/project/create", async (req, res) => {
     }
 
     const dataUser = await connection.query("SELECT * FROM users WHERE user_id = ?", [id]);
-
+    const project_id = await generateIdProject(connection);
+    const date_now = new Date();
     const collaborators = [
         {
             user_id: id,
+            project_id: project_id,
             name: dataUser[0].username,
             role: "owner",
             commits: [],
@@ -164,11 +166,11 @@ app.post("/project/create", async (req, res) => {
             color: {
                 tailwind: "blue-500",
                 hex: "#3B82F6",
-            }
+            },
+            state: false
         },
     ];
-    const project_id = await generateIdProject(connection);
-    const date_now = new Date();
+
     const data = await connection.query("INSERT INTO projects (project_id, user_id, name, preview, stage, collaborators, last_modified, create_date, chat_message, invitation) VALUES (? ,?, ?, ?, ?, ?, ?, ?, ?, ?)",[project_id, id, name, template[0].preview, template[0].stage, JSON.stringify(collaborators), date_now, date_now, "", ""]);
 
     if (!data) {
@@ -419,11 +421,11 @@ app.post("/project/collaborators", async (req, res) => {
     }
 
     const existingCollaborators = JSON.parse(collaboratorsProject[0].collaborators);
-
+    let collaboratorUpdate;
     let updated = false;
 
     existingCollaborators.forEach((element, index) => {
-        if (Number(element.user_id) === Number(collaborators.user_id)) {
+        if (element.user_id == collaborators.user_id) {
             element.role = collaborators.role || element.role;
             element.commits = collaborators.commits || element.commits;
             element.last_commit = collaborators.last_commit || element.last_commit;
@@ -432,6 +434,9 @@ app.post("/project/collaborators", async (req, res) => {
             element.pages_created = collaborators.pages_created || element.pages_created;
             element.elements_used = collaborators.elements_used || element.elements_used;
             element.plugins_used = collaborators.plugins_used || element.plugins_used;
+            element.color = collaborators.color || element.color;
+            element.state = collaborators.state != undefined ? collaborators.state : element.state;
+            collaboratorUpdate = element;
             updated = true;
         }
     });
@@ -442,7 +447,7 @@ app.post("/project/collaborators", async (req, res) => {
         existingCollaborators.push(collaborators);
     }
 
-    console.log("Colaboradores actualizados:", existingCollaborators[0]);
+    console.log("Colaboradores actualizados:", collaboratorUpdate);
 
     const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);
 

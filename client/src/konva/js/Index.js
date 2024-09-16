@@ -26,6 +26,7 @@ async function initialCollaboration(){
         const collaborators = JSON.parse(data_project.collaborators || "[]");
         const data_invitation_project = JSON.parse(data_project.invitation || "[]");
         eventsListener(collaborators);
+        console.log(collaborators);
 
         const collaboratorOwner = collaborators.find(c => c.role === 'owner');
 
@@ -73,6 +74,7 @@ function eventsListener(collaborators){
 async function sendCollaboration(id, data_invitation_project, color){
     const updatedCollaborators = {
         user_id: Number(globals.getCookie("ID-USER")),
+        project_id: id,
         name: environment_utils.getDataUser().users.username,
         role: data_invitation_project.role,
         commits: [],
@@ -83,6 +85,7 @@ async function sendCollaboration(id, data_invitation_project, color){
         elements_used: 0,
         plugins_used: 0,
         color: color,
+        state: true,
     }
 
     req.saveCollaborators(id, updatedCollaborators).then((response) => {

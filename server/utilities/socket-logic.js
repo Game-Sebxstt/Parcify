@@ -1,14 +1,45 @@
 export function initSocket(data, ws, clients) {
     if (data.type === 'clientId') {
-        clients.set(data.id, ws);
-        console.log('Identificador de cliente recibido:', data.id);
+        clients.set(data.data.id, { ws: ws, data: data.data });
+        console.log('Identificador de cliente recibido:', data.data);
+    }
+    
+    if(data.type === "selectElementKonva"){
+        const senderId = data.user_id;
+    
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'selectElementKonva',
+                elementKonva: data.elementKonva,
+                user_id: senderId
+            }));
+        });
     }
 
-    if (data.type === 'enterCollaborator'){
+    if(data.type === "moveElementKonva"){
         const senderId = data.user_id;
-
+    
         clients.forEach((client) => {
-            client.send(JSON.stringify({
+            client.ws.send(JSON.stringify({
+                type: 'moveElementKonva',
+                elementKonva: data.elementKonva,
+                user_id: senderId
+            }));
+        });
+    }
+
+    if (data.type === 'enterCollaborator') {
+        const senderId = data.user_id;
+    
+        const clientData = clients.get(senderId);
+    
+        if (!clientData) return;
+    
+        clientData.data.collaborator = data.collaborator;
+        clients.set(senderId, clientData);
+    
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
                 type: 'enterCollaborator',
                 collaborator: data.collaborator,
                 user_id: senderId
@@ -20,7 +51,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            client.send(JSON.stringify({
+            client.ws.send(JSON.stringify({
                 type: 'mouseCursor',
                 position: data.position,
                 user_id: senderId,
@@ -33,7 +64,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            client.send(JSON.stringify({
+            client.ws.send(JSON.stringify({
                 type: 'message',
                 data: data.data,
                 user_id: senderId,
@@ -46,7 +77,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            client.send(JSON.stringify({
+            client.ws.send(JSON.stringify({
                 type: 'typing',
                 data: data.data,
                 user_id: senderId
@@ -58,7 +89,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            client.send(JSON.stringify({
+            client.ws.send(JSON.stringify({
                 type: 'stopTyping',
                 data: data.data,
                 user_id: senderId
@@ -68,15 +99,15 @@ export function initSocket(data, ws, clients) {
 }
 
 export function finishSocket(ws, clients) {
-    clients.forEach((client, clientId) => {
-        if (client !== ws) {
+    clients.forEach((client) => {
+        if (client.ws !== ws) {
             return;
         }
 
         clients.forEach((clientDifferent) => {
-            clientDifferent.send(JSON.stringify({
+            clientDifferent.ws.send(JSON.stringify({
                 type: 'exitCollaborator',
-                user_id: clientId
+                data: client.data,
             }));
         })
     });
