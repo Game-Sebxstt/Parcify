@@ -97,7 +97,7 @@ app.post('/register/auth', async (req, res) => {
     }
 
     let id = await generateIdUser(connection);
-    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password, biography, profile_image) VALUES (?, ?, ?, ?, ?, ?)", [id, username, email, encrypt(password), "", ""]);
+    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password, biography, profile_image, projects_collaborator) VALUES (?, ?, ?, ?, ?, ?, ?)", [id, username, email, encrypt(password), "", "", "[]"]);
 
     if (!send_data) {
         return res.status(400).json({ message: "Error in the database" })
@@ -447,11 +447,31 @@ app.post("/project/collaborators", async (req, res) => {
         existingCollaborators.push(collaborators);
     }
 
-    console.log("Colaboradores actualizados:", collaboratorUpdate);
-
     const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);
 
     if (!updateCollaborators) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar los colaboradores." });
+    }
+
+    const existingsProjectsCollaborator = await connection.query("SELECT projects_collaborator FROM users WHERE user_id = ?", [collaborators.user_id]);
+
+    if (!existingsProjectsCollaborator.length > 0) {
+        return res.status(400).send({ status: "Bad Request", message: "No se pudo encontrar el usuario." });
+    }
+
+    const projectsCollaborator = JSON.parse(existingsProjectsCollaborator[0].projects_collaborator || "[]");
+
+    const existingCollaborator = projectsCollaborator.find(collaboratorItem => collaboratorItem == project_id);
+
+    if (existingCollaborator) {
+        return res.status(200).send({ status: "Good Request", message: "Los colaboradores se guardaron correctamente." });
+    }
+
+    projectsCollaborator.push(project_id);
+
+    const updateCollaboratorUser = await connection.query("UPDATE users SET projects_collaborator = ? WHERE user_id = ?", [JSON.stringify(projectsCollaborator), collaborators.user_id]);
+
+    if (!updateCollaboratorUser) {
         return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar los colaboradores." });
     }
 
@@ -758,6 +778,24 @@ app.get("/user/projects", async (req, res) => {
 
     res.status(200).send({ status: "Good Request", message: data })
 });
+
+//Obtener proyecto por un colaborador
+app.get("/user/projectsCollaborator", async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ status: "Bad Request", message: "Body is empty" })
+    }
+
+    const id_user = req.query.id_user;
+
+    const connection = await getConnection();
+    const data = await connection.query("SELECT * FROM projects WHERE collaborators LIKE ?", [`%${id_user}%`]);
+
+    if(!data.length > 0){
+        return res.status(400).send({ status: "Bad Request", message: "El Usuario no tiene proyectos." })
+    }
+
+    res.status(200).send({ status: "Good Request", message: data })
+})
 
 //Obtener los colaboradores de un proyecto
 app.get("/project/collaborators", async (req, res) => {

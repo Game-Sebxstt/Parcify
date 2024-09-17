@@ -1,6 +1,7 @@
 import Konva from "konva";
 import * as konva from "./KonvaLogic";
 import * as req from '../../js/backend/requests'
+import * as websocket from '../../js/backend/websocket'
 import * as GlobalFunctions from "./GlobalFunctions";
 import * as globals from '../../js/frontend/utilities/globals'
 
@@ -90,6 +91,7 @@ document.addEventListener('keydown', function (e) {
 
         let element = konva.tr.nodes()[0];
         element.moveUp();
+        websocket.moveUpElementKonva(element)
         konva.saveHistory(konva.stage.toJSON())
     }
 
@@ -102,6 +104,7 @@ document.addEventListener('keydown', function (e) {
 
         let element = konva.tr.nodes()[0];
         element.moveDown();
+        websocket.moveDownElementKonva(element)
         konva.saveHistory(konva.stage.toJSON())
     }
 
@@ -128,12 +131,8 @@ document.addEventListener('keydown', function (e) {
         const copiedData = JSON.stringify(copiedNodes);
         navigator.clipboard.writeText(copiedData);
         selectedNodes.forEach(node => {
-            konva.layer.getChildren().forEach(item => {
-                if(item._id == node.attrs._id){
-                    item.destroy();
-                }
-            });
             node.destroy();
+            websocket.deleteElementKonva(node);
         });
 
 
@@ -165,6 +164,9 @@ document.addEventListener('keydown', function (e) {
                     konva.setElements([...konva.getElements(), ...newNodes])
                     konva.layer.batchDraw();
                     konva.saveHistory(konva.stage.toJSON())
+                    newNodes.forEach(nodeData => {
+                        websocket.createElementKonva(nodeData)
+                    })
                 }catch(e){
                     console.log("No se pudo pegar.")
                 }

@@ -235,6 +235,33 @@ export function createElementKonva(elementKonva){
 
 }
 
+export function deleteElementKonva(elementKonva){
+    const element = konva.getElements().find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
+
+    if(element){
+        element.remove();
+        konva.layer.draw();
+    }
+}
+
+export function moveUpElementKonva(elementKonva){
+    const element = konva.getElements().find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
+
+    if(element){
+        element.moveUp();
+        konva.layer.draw();
+    }
+}
+
+export function moveDownElementKonva(elementKonva){
+    const element = konva.getElements().find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
+
+    if(element){
+        element.moveDown();
+        konva.layer.draw();
+    }
+}
+
 export function createCursorCollaborator(collaborator){
     const cursorById = konva.layer.find(item => item.id() === "mouseCursor");
     if(cursorById.find(item => item.getAttr("id_user") == collaborator.user_id)) return;

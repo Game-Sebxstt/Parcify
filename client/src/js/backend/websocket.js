@@ -28,6 +28,27 @@ function createWebSocket() {
             }
         }
 
+        if (data.type === 'deleteElementKonva') {
+            if(data.user_id != globals.getCookie("ID-USER")){
+                const elementKonva = JSON.parse(data.elementKonva);
+                GlobalFunctions.deleteElementKonva(elementKonva);
+            }
+        }
+
+        if (data.type === 'moveUpElementKonva') {
+            if(data.user_id != globals.getCookie("ID-USER")){
+                const elementKonva = JSON.parse(data.elementKonva);
+                GlobalFunctions.moveUpElementKonva(elementKonva);
+            }
+        }
+
+        if (data.type === 'moveDownElementKonva') {
+            if(data.user_id != globals.getCookie("ID-USER")){
+                const elementKonva = JSON.parse(data.elementKonva);
+                GlobalFunctions.moveDownElementKonva(elementKonva);
+            }
+        }
+
         if (data.type === 'selectElementKonva') {
             if(data.user_id != globals.getCookie("ID-USER")){
                 const elementKonva = JSON.parse(data.elementKonva);
@@ -145,6 +166,23 @@ function sendIfOpen(message) {
 export function createElementKonva(elementKonva){
     const userId = globals.getCookie("ID-USER");
     sendIfOpen(JSON.stringify({ type: 'createElementKonva', elementKonva, user_id: userId }));
+}
+
+//Añadir nueva tabla en user con collaborators_project donde estan los id de los proyectos que esta colaborando el usuario
+
+export function deleteElementKonva(elementKonva){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'deleteElementKonva', elementKonva, user_id: userId }));
+}
+
+export function moveUpElementKonva(elementKonva){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'moveUpElementKonva', elementKonva, user_id: userId }));
+}
+
+export function moveDownElementKonva(elementKonva){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'moveDownElementKonva', elementKonva, user_id: userId }));
 }
 
 export function changeElementKonva(updatedAttrs, posRelativePointer){

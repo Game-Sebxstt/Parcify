@@ -17,6 +17,45 @@ export function initSocket(data, ws, clients) {
         });
     }
 
+    if(data.type === 'deleteElementKonva'){
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'deleteElementKonva',
+                elementKonva: data.elementKonva,
+                user_id: senderId
+            }));
+        });
+    }
+
+    if(data.type === 'moveUpElementKonva'){
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'moveUpElementKonva',
+                elementKonva: data.elementKonva,
+                user_id: senderId
+            }));
+        });
+    }
+
+    if (data.type === 'moveDownElementKonva') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'moveDownElementKonva',
+                elementKonva: data.elementKonva,
+                user_id: senderId
+            }));
+        });
+    }
+
     if(data.type === "selectElementKonva"){
         const senderId = data.user_id;
     
