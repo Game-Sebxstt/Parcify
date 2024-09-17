@@ -12,6 +12,7 @@ import PreviewTemplate from '../components/Popups/PreviewTemplate.astro';
 import MoreFavorites from '../components/Popups/MoreFavorites.astro';
 import Options from '../components/Articles/Options.astro';
 import * as environments from '../../../config'
+import TwoStepVerification from '../components/Popups/TwoStepVerification.astro';
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -70,6 +71,7 @@ try{
 		<Settings username={data.users.username} email={data.users.email} biography={data.users.biography}></Settings>
 		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
 		<MoreFavorites></MoreFavorites>
+		<TwoStepVerification></TwoStepVerification>
 		<slot />
 	</body>
 </html>

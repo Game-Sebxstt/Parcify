@@ -650,3 +650,103 @@ export async function sendInvitationProject(id_project, props){
 
     return {state: true, data: responseData};
 }
+
+// email verification
+export async function verificateCode(email, code) {
+    const data = {
+        email:email,
+        code:code,
+    }
+
+    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/codeVerification`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers:{
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+
+}
+
+// cancel emailVerification
+export async function cancelVerificateCode(email) {
+    const data = {
+        email:email,
+    }
+
+    const response = await fetch(`${environments.DEFAULT_API_URL}/register/cancel`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers:{
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+
+}
+
+// 
+export async function resendAuthCode(email) {
+    const data = {
+        email:email,
+    }
+
+    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/resendAuthCode`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers:{
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+
+}
+
+// 2FA send data
+export async function twoFastAuth(data) {
+    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/device`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers:{
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
+twoFastAuth({
+    id_user:1234,
+    device:"android_10",
+    country:"pakistan",
+    date:"91280491",
+    type:"mobile",
+});
