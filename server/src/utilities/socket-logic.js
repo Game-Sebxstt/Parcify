@@ -1,3 +1,5 @@
+import * as websocket from './websocket.js'
+
 export function initSocket(data, ws, clients) {
     if (data.type === 'clientId') {
         clients.set(data.data.id, { ws: ws, data: data.data });

@@ -7,7 +7,7 @@ export async function registerUser(name, mail, pass) {
         password: pass
     };
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/register/auth`, {
+    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/register`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -30,7 +30,7 @@ export async function loginUser(email, password) {
         password: password,
     };
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/login/auth`, {
+    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/login`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -154,7 +154,7 @@ export async function getCollaborators(id_project) {
 }
 
 export async function getAllTemplates(){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/templates`, {
+    const response = await fetch(`${environments.DEFAULT_API_URL}/template/templates`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -397,55 +397,6 @@ export async function getFavorites(id_user) {
     return {state: true, data: responseData};
 }
 
-// Obtener email
-export async function checkEmail(id_user, email) {
-
-    const data = {
-        id: id_user,
-        email: email,
-    };
-
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/checkEmail`, {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: {
-            "Content-Type": "application/json",
-        }
-    });
-
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-        return {state: false, data: responseData.message};
-    }
-    
-    return {state: true, data: responseData.message};
-}
-
-// Actualizar nombre de usuario
-export async function updateUsername(id_user, newUsername){
-    const newData = {
-        id: id_user,
-        username: newUsername,
-    };
-
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/updateUsername`, {
-        method: "POST",
-        body: JSON.stringify(newData),
-        headers: {
-            "Content-Type": "application/json",
-        }
-    });
-
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-        return {state: false, data: responseData.message};
-    }
-
-    return {state: true, data: responseData};
-}
-
 export async function checkPassword(user, password){
     const data = {
         user: user,
@@ -476,29 +427,6 @@ export async function updatePassword(user, newPassword) {
     };
     
     const response = await fetch(`${environments.DEFAULT_API_URL}/user/updatePassword`, {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: {
-            "Content-Type": "application/json",
-        }
-    });
-
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-        return {state: false, data: responseData.message};
-    }
-    
-    return {state: true, data: responseData};
-}
-
-export async function updateBiography(user, newBio){
-    const data = {
-        id: user,
-        biography: newBio,
-    };
-    
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/updateBiography`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -634,7 +562,7 @@ export async function sendMessageChat(data, id_project){
 }
 
 export async function sendInvitationProject(id_project, props){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/invitation/send`, {
+    const response = await fetch(`${environments.DEFAULT_API_URL}/user/invitation/send`, {
         method: "POST",
         body: JSON.stringify({invitation: props.invitation, role: props.role, id_project: id_project}),
         headers: {
@@ -682,7 +610,7 @@ export async function cancelVerificateCode(email) {
         email:email,
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/register/cancel`, {
+    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/register/cancel`, {
         method: "POST",
         body: JSON.stringify(data),
         headers:{

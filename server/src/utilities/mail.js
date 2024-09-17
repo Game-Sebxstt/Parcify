@@ -214,6 +214,8 @@ export const sendCodeVerification = (email, code) => {
             </html>`,
     };
 
+    console.log("Enviando correo de verificacion");
+
     emisor.sendMail(mailOptions, (error, info) => {
         if (error) {
             res.status(400).send({ state: "Bad Request", message: "No se pudo enviar el correo" });

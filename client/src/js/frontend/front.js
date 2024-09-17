@@ -487,7 +487,7 @@ const addEventListeners = () => {
       const endDate = new Date().toISOString();
 
       function createGraphicOfCommits(){
-        const commits = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).commits;
+        const commits = collaboratorsProject.find(c => c.user_id == globals.getCookie("ID-USER"))?.commits;
         const dataSet = [];
 
         collaboratorsProject.forEach(collaborator => {
@@ -501,7 +501,7 @@ const addEventListeners = () => {
           });
         })
 
-        const labels = commits.map(c => c.date);
+        const labels = commits?.map(c => c.date);
 
         chart.createGraphic(
           document.querySelector("#commits"),
@@ -514,7 +514,7 @@ const addEventListeners = () => {
       }
   
       function createGraphicOfTimeWorked() {
-        const timeWorked = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).time_worked;
+        const timeWorked = collaboratorsProject.find(c => c.user_id == globals.getCookie("ID-USER")).time_worked;
         const labels = timeWorked.map(c => c.date);
         const dataSet = []
 
