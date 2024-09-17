@@ -4,9 +4,14 @@ import * as req from '../backend/requests';
 const id_user = globals.getCookie("ID-USER");
 const data_user = await req.getDataUser(id_user);
 let collaborators = [];
+let preferences = [];
 
 export function getDataUser() {
     return data_user.data.message;
+}
+
+export function getPreferences(){
+    return preferences;
 }
 
 export function getCollaborators() {

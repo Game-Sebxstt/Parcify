@@ -80,9 +80,6 @@ try {
 
           <!-- Verificación de si los proyectos están cargados -->
           {
-            projects_render.length === 0 ? (
-              <p>Cargando proyectos...</p>
-            ) : (
               projects_render.map((item: any) => (
                 <Article
                   id="project"
@@ -93,7 +90,6 @@ try {
                   last_modified={item.last_modified}
                 />
               ))
-            )
           }
         </div>
       </article>

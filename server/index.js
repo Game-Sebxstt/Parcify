@@ -101,7 +101,7 @@ app.post('/register/auth', async (req, res) => {
     }
 
     let id = await generateIdUser(connection);
-    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password, biography, profile_image, projects_collaborator) VALUES (?, ?, ?, ?, ?, ?, ?)", [id, username, email, encrypt(password), false, codeVerification, "", "", "[]"]);
+    const send_data = await connection.query("INSERT INTO users (user_id, username, email, password, active, auth_code, biography, profile_image, projects_collaborator) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [id, username, email, encrypt(password), false, codeVerification, "", "", "[]"]);
 
     if (!send_data) {
         return res.status(400).json({ message: "Error in the database" })

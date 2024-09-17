@@ -18,7 +18,6 @@ emisor.verify((error, sucess) => {
         console.log(error);
         return;
     }
-    console.log("ya puedes enviar correos");
 });
 
 //* funciones de envio

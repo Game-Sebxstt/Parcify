@@ -861,7 +861,7 @@ const addEventListeners = () => {
     }
   });
 
-  elements.authCodeVerificate.addEventListener("submit", async (e) => {
+  elements.authCodeVerificate?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const errorCode = document.getElementById("errorCodeAuth")
     const email = document.getElementById("email_register").value;
@@ -888,7 +888,7 @@ const addEventListeners = () => {
   })
 
   // close code Authentication
-  elements.authCodeClose.addEventListener("click", async ()=>{
+  elements.authCodeClose?.addEventListener("click", async ()=>{
     const email = document.getElementById("email_register").value;
 
     const cancelAuth = await req.cancelVerificateCode(email);
@@ -902,7 +902,7 @@ const addEventListeners = () => {
     elements.authCodeContainer.style.display = display == "flex" ? "none" : "flex"
   })
 
-  elements.resendCodeAuth.addEventListener("click", async () => {
+  elements.resendCodeAuth?.addEventListener("click", async () => {
     const email = document.getElementById("email_register").value;
     const resendAuthSuccess = document.getElementById("resendAuthSuccess");
     const displayResend = window.getComputedStyle(resendAuthSuccess).display;
