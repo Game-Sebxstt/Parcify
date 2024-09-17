@@ -6,12 +6,9 @@ interface Props{
 }
 
 const {collaborators} = Astro.props;
-console.log(collaborators);
-
-
 ---
 
-<div class="flex">
+<div id="list-collaborators" class="flex">
     {
         collaborators && collaborators.length > 0 ? (
             collaborators.map((collaborator: any) => {
@@ -19,6 +16,7 @@ console.log(collaborators);
                 <ProfileInvite 
                     color={`bg-${collaborator.color ? collaborator.color.tailwind : "red-500"} -ml-2`}
                     letter={collaborator.name[0]}
+                    id_user={collaborator.user_id}
                 />
                 )
             })

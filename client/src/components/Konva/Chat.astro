@@ -14,27 +14,21 @@ interface Props{
 const {collaborators} = Astro.props;
 ---
 
-<div id="content-all-chat" class="w-[25rem] h-fit bg-[#1E1E1E] border-[1px] border-[rgba(255,255,255,.2)] rounded-md absolute top-full right-0 mt-10 flex flex-col cursor-default overflow-hidden">
-    <button id="drag-chat" class="w-full h-fit flex justify-center items-center bg-[#313131] outline-none">
-        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-grip-horizontal h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M5 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M5 15m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M12 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M12 15m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M19 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M19 15m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-        </svg>
-    </button>
-
+<div id="content-all-chat" class="w-[25rem] h-fit bg-[#1E1E1E] border-[1px] border-[rgba(255,255,255,.2)] rounded-md absolute bottom-16 right-2 mb-2 mt-10 hidden flex-col cursor-default overflow-hidden">
     <header class="w-full h-fit flex relative justify-between gap-x-5 bg-[#313131] px-4 py-2">
         <div class="w-fit h-full flex items-center justify-center">
             <Collaborators collaborators={collaborators}/>
         </div>
-
+    
         <div class="w-full h-full flex items-center justify-center">
             <h1 class="text-white text-lg font-bold text-right w-full">Chat Collaborators</h1>
         </div>
+    
+        <button id="close-button" aria-label="Close chat" role="button" type="button" class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg w-fit h-fit p-2.5 inline-flex justify-center items-center">
+            <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+            </svg>
+        </button>
     </header>
 
     <article class="w-full h-[30rem] relative flex flex-col">
@@ -53,7 +47,7 @@ const {collaborators} = Astro.props;
                 }
             </div>
 
-            <button id="scroll-chat" class="w-fit h-fit fixed hidden left-0 top-0 z-90">
+            <button id="scroll-chat" class="w-fit h-fit fixed left-0 top-0 z-90">
                 <svg class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-arrow-down h-10 w-10 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="white">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                     <path d="M12 2c-.218 0 -.432 .002 -.642 .005l-.616 .017l-.299 .013l-.579 .034l-.553 .046c-4.785 .464 -6.732 2.411 -7.196 7.196l-.046 .553l-.034 .579c-.005 .098 -.01 .198 -.013 .299l-.017 .616l-.004 .318l-.001 .324c0 .218 .002 .432 .005 .642l.017 .616l.013 .299l.034 .579l.046 .553c.464 4.785 2.411 6.732 7.196 7.196l.553 .046l.579 .034c.098 .005 .198 .01 .299 .013l.616 .017l.642 .005l.642 -.005l.616 -.017l.299 -.013l.579 -.034l.553 -.046c4.785 -.464 6.732 -2.411 7.196 -7.196l.046 -.553l.034 -.579c.005 -.098 .01 -.198 .013 -.299l.017 -.616l.005 -.642l-.005 -.642l-.017 -.616l-.013 -.299l-.034 -.579l-.046 -.553c-.464 -4.785 -2.411 -6.732 -7.196 -7.196l-.553 -.046l-.579 -.034a28.058 28.058 0 0 0 -.299 -.013l-.616 -.017l-.318 -.004l-.324 -.001zm0 5a1 1 0 0 1 .993 .883l.007 .117v5.585l2.293 -2.292a1 1 0 0 1 1.32 -.083l.094 .083a1 1 0 0 1 .083 1.32l-.083 .094l-4 4a1.008 1.008 0 0 1 -.112 .097l-.11 .071l-.114 .054l-.105 .035l-.149 .03l-.117 .006l-.075 -.003l-.126 -.017l-.111 -.03l-.111 -.044l-.098 -.052l-.092 -.064l-.094 -.083l-4 -4a1 1 0 0 1 1.32 -1.497l.094 .083l2.293 2.292v-5.585a1 1 0 0 1 1 -1z" fill="currentColor" stroke-width="0" />

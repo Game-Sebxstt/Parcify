@@ -6,7 +6,6 @@ interface Props {
 const { title } = Astro.props;
 
 import '@fontsource/roboto';
-import MesageError from "../components/Popups/Alerts/Error.astro";
 import Invite from '../components/Popups/Invite.astro';
 import Export from '../components/Konva/Export.astro';
 import * as environments from '../../../config'
@@ -54,13 +53,13 @@ try{
 		<title>{title}</title>
 	</head>
 	<body>
-		<MesageError id="danger"></MesageError>
 		<Export></Export>
 		<Invite data={data}/>
 		<slot />
 		<script src="../js/frontend/front.js"></script>
 		<script src="../js/frontend/utilities/chat.js"></script>
 		<script src="../konva/js/Index.js"></script>
+		<script src="../konva/js/Render.js"></script>
         <script src="../js/backend/websocket.js"></script>
 	</body>
 </html>

@@ -1,4 +1,5 @@
 import * as globals from '../utilities/globals';
+import * as templates from '../utilities/templates';
 import * as websocket from '../../backend/websocket';
 import * as front from '../front';
 import * as req from '../../backend/requests'
@@ -12,33 +13,23 @@ const chat_message_input = document.querySelector("#chat-message-input");
 const render_container_chat = document.querySelector("#render-container-chat");
 const chat_container = document.querySelector("#chat-container");
 const scroll_chat = document.querySelector("#scroll-chat");
-const drag_chat = document.querySelector("#drag-chat");
+const message_action = document.querySelector("#message-action");
+const close_button = document.querySelector("#close-button");
 const header_konva = document.querySelector("#header-konva");
 const cancel_resend = document.querySelector("#cancel-resend");
 
-let isFocus = false;
 let isResend = false;
-let isDragging = false;
-
-// Establecer límites de arrastre
-let minY = parseFloat(window.getComputedStyle(header_konva).height);
-let minX = 0;
-let maxY = window.innerHeight;
-let maxX = window.innerWidth;
-let position = { x: 0, y: 0 };
 
 // Temporizador para detectar cuando se está escribiendo
 let typingTimeout;
 const TYPING_DELAY = 1500;
 
 // Obtener rectángulos de los elementos iniciales
+content_all_chat.style.display = "flex";
 let content_all_chat_rect = getElementRect(content_all_chat);
 let chat_container_rect = getElementRect(chat_container);
-scroll_chat.style.display = "flex";
 let scroll_chat_rect = getElementRect(scroll_chat);
-scroll_chat.style.display = "none";
-let drag_chat_rect = getElementRect(drag_chat);
-let header_konva_rect = getElementRect(header_konva);
+content_all_chat.style.display = "none";
 
 // Inicializar posición de scroll_chat
 setScrollChatPosition();
@@ -50,18 +41,30 @@ initializeEvents();
 function initializeEvents() {
     // Evento para desplazamiento suave al fondo del chat
     scroll_chat?.addEventListener("click", scrollToBottom);
+
+    message_action?.addEventListener("click", () => {
+        const display = window.getComputedStyle(content_all_chat).display;
+
+        if (display === "flex") {
+            content_all_chat.style.display = "none";
+            return
+        }
+
+        content_all_chat.style.display = "flex";
+        setScrollChatPosition();
+        chat_message_input.focus();
+        scrollToBottom();
+    })
+
+    close_button?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        content_all_chat.style.display = "none";
+    })
     
-    content_all_chat?.addEventListener("focus", () => isFocus = true);
-    content_all_chat?.addEventListener("blur", () => isFocus = false);
-    
-    chat_container.addEventListener("scroll", handleScrollVisibility);
+    chat_container.addEventListener("scroll", throttle(handleScrollVisibility, 200));
     
     document.addEventListener("DOMContentLoaded", scrollToBottom);
     
-    drag_chat.addEventListener("mousedown", startDragging);
-    document.addEventListener("mouseup", stopDragging);
-    document.addEventListener("mousemove", updatePosChat);
-
     chat_message_form?.addEventListener("submit", handleSendMessage);
     chat_message_input?.addEventListener("input", isTyping); 
     cancel_resend?.addEventListener("click", hideResendContainer);
@@ -79,52 +82,37 @@ function setScrollChatPosition() {
 }
 
 // Función para hacer scroll al final del chat
-function scrollToBottom() {
+export function scrollToBottom() {
     chat_container.scrollTo({
         top: chat_container.scrollHeight,
         behavior: "smooth"
     });
 }
 
+function throttle(func, limit) {
+    let lastFunc;
+    let lastRan;
+    return function(...args) {
+        const context = this;
+        if (!lastRan) {
+            func.apply(context, args);
+            lastRan = Date.now();
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(() => {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                }
+            }, limit - (Date.now() - lastRan));
+        }
+    };
+}
+
 // Manejar la visibilidad del botón de scroll
 function handleScrollVisibility() {
     const atBottom = chat_container.scrollHeight - chat_container.scrollTop === chat_container.clientHeight;
     scroll_chat.style.display = atBottom ? "none" : "flex";
-}
-
-// Iniciar arrastre del chat
-function startDragging(e) {
-    isDragging = true;
-    updatePosChat(e);
-}
-
-// Detener arrastre del chat
-function stopDragging() {
-    if (isDragging) isDragging = false;
-}
-
-// Actualizar la posición del chat arrastrado
-function updatePosChat(e) {
-    if (isDragging) {
-        content_all_chat.style.position = "fixed";
-        updateRects();
-
-        position = {
-            x: Math.max(minX, Math.min(e.clientX - drag_chat_rect.width / 2, maxX - content_all_chat_rect.width)),
-            y: Math.max(minY - drag_chat_rect.height, Math.min(e.clientY - drag_chat_rect.height * 1.5, maxY - content_all_chat_rect.height))
-        };
-
-        content_all_chat.style.top = `${position.y}px`;
-        content_all_chat.style.left = `${position.x}px`;
-        setScrollChatPosition();
-    }
-}
-
-// Actualizar los rectángulos de los elementos
-function updateRects() {
-    drag_chat_rect = getElementRect(drag_chat);
-    content_all_chat_rect = getElementRect(content_all_chat);
-    chat_container_rect = getElementRect(chat_container);
 }
 
 // Manejar el envío de mensajes
@@ -214,7 +202,7 @@ function hideResendContainer() {
 }
 
 // Crear un mensaje y agregarlo al chat
-function createMessage(data) {
+async function createMessage(data) {
     let type = data.id_user == globals.getCookie("ID-USER") ? "right" : "left";
     
     if(data.response != undefined){
@@ -231,7 +219,17 @@ function createMessage(data) {
     const node_chat_bubble = chat_bubble.cloneNode(true);
     node_chat_bubble.style.display = "flex";
     node_chat_bubble.setAttribute("data-id", data.id);
-    
+
+    const profile_invite = node_chat_bubble.querySelector("#profile-invite");
+    const collaborators = JSON.parse((await req.getProject(KonvaLogic.id_stage)).data.message.collaborators || "[]");
+
+    const collaborator_chat_bubble = collaborators.find(item => item.user_id == data.id_user);
+    if(profile_invite){
+        profile_invite.innerText = collaborator_chat_bubble.name[0].toUpperCase();
+        profile_invite.style.backgroundColor = collaborator_chat_bubble.color.hex || "black"
+        profile_invite.setAttribute("data-id-user", collaborator_chat_bubble.user_id);
+    }
+
     if(data.response != undefined){
         node_chat_bubble.querySelector("#response-message").setAttribute("data-id-response", data.response.id);
     }
@@ -334,8 +332,8 @@ function updateResponseInput(chat){
     resend_container_input.querySelector("#message").textContent = chat.message;
 }
 
-async function loadChat(){
-    const project_response = await req.getProject(KonvaLogic.id_stage);
+export async function loadChat(id_stage){
+    const project_response = await req.getProject(id_stage);
 
     if(!project_response.state){
         front.utils.handleError(project_response);
@@ -349,6 +347,3 @@ async function loadChat(){
         createMessage(message);
     })
 }
-
-await loadChat();
-scrollToBottom();

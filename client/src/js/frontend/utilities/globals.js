@@ -36,12 +36,17 @@ export function setCookie(name, value, days) {
     document.cookie = name + "=" + (value || "") + expires + "; path=/";
 }
 
-export function startSession(project_id) {
+export async function startSession(project_id) {
+    console.log("Session started")
     const startTime = new Date();
     localStorage.setItem('sessionStartTime', JSON.stringify({startTime: startTime, project_id: project_id}));
+    await req.saveCollaborators(project_id, {
+        user_id: getCookie("ID-USER"),
+        state: true,
+    })
 }
 
-export function endSession() {
+export async function endSession(redirect = true) {
     const sessionStartTime = JSON.parse(localStorage.getItem('sessionStartTime'));
     const startTime = new Date(sessionStartTime.startTime);
     const endTime = new Date();
@@ -50,6 +55,11 @@ export function endSession() {
     const user_id = getCookie("ID-USER");
     const urlParams = new URLSearchParams(window.location.search);
     const projectId = urlParams.get('id');
+
+    await req.saveCollaborators(projectId, {
+        user_id: user_id,
+        state: false,
+    });
 
     req.getCollaborators(projectId).then((data) => {
         if (!data.state) {
@@ -79,8 +89,10 @@ export function endSession() {
         req.saveCollaborators(projectId, updatedCollaborator).then((response) => {
             if (!response.state) {
                 utils.handleError(response);
-            } else {
-                window.location.href = "/";
+            }else{
+                if(redirect){
+                    window.location.href = "/";
+                }
             }
         });
     });
@@ -207,8 +219,15 @@ export function generateString(length) {
 
 export function generateLinkInvitation(id_project){
     const invitation = generateString(30);
-    console.log(window.location.protocol)
     const url = `${window.location.protocol}//${window.location.host}/konva/?id=${id_project}&invitation=${invitation}`;
 
     return { url, invitation };
+}
+
+export function hexToRGBA(hex, alpha){
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

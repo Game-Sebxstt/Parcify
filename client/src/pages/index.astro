@@ -8,64 +8,95 @@ import Content from '../components/Sections/Content.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Layout from '../layouts/Layout.astro';
-import * as globals from '../js/frontend/utilities/globals'
-import * as environments from '../../../config'
+import * as globals from '../js/frontend/utilities/globals';
+import * as environments from '../../../config';
+import { getProject } from "../js/backend/requests";
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
 
-if(logged != 'true' && !id){
-  return Astro.redirect("/SignIn")
+if (logged != 'true' && !id) {
+  return Astro.redirect("/SignIn");
 }
 
 let get_data: any;
 let data: any;
+let projects_render: any = [];
 
-try{
-	get_data = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
-	data = await get_data.json();
-	data = data.message;
+try {
+  get_data = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
+  data = await get_data.json();
+  data = data.message;
+  projects_render = data.projects;
 
-	if(data == "El Usuario no existe."){
-		Astro.cookies.set("ID-USER", "false");
-		Astro.cookies.set("logged", "false");
-		return Astro.redirect("/SignIn")
-	}
-}catch(e){
-	Astro.cookies.set("ID-USER", "false");
+  if (data == "El Usuario no existe.") {
+    Astro.cookies.set("ID-USER", "false");
     Astro.cookies.set("logged", "false");
-	return Astro.redirect("/SignIn")
-}
+    return Astro.redirect("/SignIn");
+  }
 
+  const projects_collaborator = JSON.parse(data.users.projects_collaborator || "[]");
+
+  for (const projectID of projects_collaborator) {
+    const existProject = projects_render.find((project: any) => project.project_id == projectID);
+
+    if (!existProject) {
+      const projectFind = (await getProject(projectID)).data.message;
+      projects_render.push(projectFind);
+    }
+  }
+
+} catch (e) {
+  Astro.cookies.set("ID-USER", "false");
+  Astro.cookies.set("logged", "false");
+  return Astro.redirect("/SignIn");
+}
 ---
 
 <Layout title="Parcify">
-	<div class="w-full h-fit flex">
-		<Slide/>
-		<SlideMobile/>
-		<Content>
-			<article class="w-full h-80 max-[880px]:h-60 max-md:h-80 max-[500px]:h-64 relative flex justify-center items-center">
-				<CarouselTemplates first_text='Parcelador Básico' id_user={id}/>
-			</article>
+  <div class="w-full h-fit flex">
+    <Slide />
+    <SlideMobile />
+    <Content>
+      <!-- Carousel de plantillas -->
+      <article class="w-full h-80 max-[880px]:h-60 max-md:h-80 max-[500px]:h-64 relative flex justify-center items-center">
+        <CarouselTemplates first_text='Parcelador Básico' id_user={id} />
+      </article>
 
-			<article class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-start items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
-				<SearchBar placeholder='Search Projects' article='project' section='home'></SearchBar>
+      <!-- Barra de búsqueda y filtros -->
+      <article class="w-full flex max-[880px]:grid max-[880px]:grid-cols-1 max-[880px]:gap-3 justify-start items-center p-2 bg-[#383838] rounded-md shadow-lg shadow-[#181818] mb-4">
+        <SearchBar placeholder='Search Projects' article='project' section='home'></SearchBar>
 
-				<div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
-					<Filter section='home' article='project'/>
-				</div> 
-			</article>
+        <div class="flex w-full h-fit items-center justify-between max-[880px]:pl-3">
+          <Filter section='home' article='project' />
+        </div>
+      </article>
 
-			<article class="w-full">
-				<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-					<ArticlePlus/>
-					{
-						data.projects.map((item: any) => (
-							<Article id="project" id_element={globals.generateID()} name={item.name} project_id={item.project_id} preview={item.preview} last_modified={item.last_modified} />
-						))
-					}
-				</div>
-			</article>
-		</Content>
-	</div>
+      <!-- Renderizado de proyectos -->
+      <article class="w-full">
+        <div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
+          <!-- Botón para añadir un nuevo proyecto -->
+          <ArticlePlus />
+
+          <!-- Verificación de si los proyectos están cargados -->
+          {
+            projects_render.length === 0 ? (
+              <p>Cargando proyectos...</p>
+            ) : (
+              projects_render.map((item: any) => (
+                <Article
+                  id="project"
+                  id_element={globals.generateID()}
+                  name={item.name}
+                  project_id={item.project_id}
+                  preview={item.preview}
+                  last_modified={item.last_modified}
+                />
+              ))
+            )
+          }
+        </div>
+      </article>
+    </Content>
+  </div>
 </Layout>

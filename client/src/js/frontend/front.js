@@ -488,37 +488,54 @@ const addEventListeners = () => {
 
       function createGraphicOfCommits(){
         const commits = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).commits;
+        const dataSet = [];
+
+        collaboratorsProject.forEach(collaborator => {
+          dataSet.push({
+            label: collaborator.name,
+            data: collaborator.commits.map(c => c.commits),
+            backgroundColor: globals.hexToRGBA(collaborator.color.hex, .2),
+            borderColor: collaborator.color.hex,
+            borderWidth: 1,
+            fill: false,
+          });
+        })
+
         const labels = commits.map(c => c.date);
-        const data = commits.map(c => c.commits);
 
         chart.createGraphic(
           document.querySelector("#commits"),
           "bar",
           startDate,
           endDate,
-          data,
-          labels,
-          "rgba(147, 197, 253, 0.2)",
-          "rgb(147, 197, 253)",
-          1
+          dataSet,
+          labels
         );
       }
   
       function createGraphicOfTimeWorked() {
         const timeWorked = collaboratorsProject.find(c => c.user_id === Number(globals.getCookie("ID-USER"))).time_worked;
         const labels = timeWorked.map(c => c.date);
-        const data = timeWorked.map(c => c.time);
+        const dataSet = []
+
+        collaboratorsProject.forEach(collaborator => {
+          dataSet.push({
+            label: collaborator.name,
+            data: collaborator.time_worked.map(c => c.time),
+            backgroundColor: globals.hexToRGBA(collaborator.color.hex, .2),
+            borderColor: collaborator.color.hex,
+            borderWidth: 1,
+            fill: false,
+          });
+        })
 
         chart.createGraphic(
           document.querySelector("#time_worked"),
           "line",
           startDate,
           endDate,
-          data,
+          dataSet,
           labels,
-          "rgba(147, 197, 253, 0.2)",
-          "rgb(147, 197, 253)",
-          1
         );
       }
 

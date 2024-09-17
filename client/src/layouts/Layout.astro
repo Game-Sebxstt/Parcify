@@ -5,7 +5,6 @@ interface Props {
 const { title } = Astro.props;
 
 import '@fontsource/roboto';
-import MesageError from "../components/Popups/Alerts/Error.astro";
 import CreateParceller from '../components/Popups/CreateParceller.astro';
 import Header from '../components/Sections/Header.astro';
 import Settings from '../components/Sections/Settings.astro';
@@ -63,12 +62,10 @@ try{
 		<script src="../js/frontend/utilities/splide.js"></script>
 		<script src="../js/frontend/utilities/chart.js"></script>
 		<script src="../js/frontend/utilities/initial.js"></script>
-        <script src="../js/backend/websocket.js"></script>
 		<title>{title}</title>
 	</head>
 	<body>
 		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username} email={data.users.email}></Header>
-		<MesageError id="danger"></MesageError>
 		<CreateParceller id_content='content-create-parcel'/>
 		<Options/>
 		<Settings username={data.users.username} email={data.users.email} biography={data.users.biography}></Settings>
