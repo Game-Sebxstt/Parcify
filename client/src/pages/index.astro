@@ -8,7 +8,7 @@ import Content from '../components/Sections/Content.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Layout from '../layouts/Layout.astro';
-import * as globals from '../js/frontend/utilities/globals';
+import * as astro_utils from '../js/globals/astro-utils';
 import * as environments from '../../../config';
 import { getProject } from "../js/backend/requests";
 
@@ -36,7 +36,6 @@ try {
   }
 
   const projects_collaborator = JSON.parse(data.users.projects_collaborator || "[]");
-
   for (const projectID of projects_collaborator) {
     const existProject = projects_render.find((project: any) => project.project_id == projectID);
 
@@ -83,7 +82,7 @@ try {
               projects_render.map((item: any) => (
                 <Article
                   id="project"
-                  id_element={globals.generateID()}
+                  id_element={astro_utils.generateID()}
                   name={item.name}
                   project_id={item.project_id}
                   preview={item.preview}

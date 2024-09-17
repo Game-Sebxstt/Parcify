@@ -3,7 +3,7 @@ const connection = await getConnection();
 
 export const addFavorite = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     const { id, id_project, type } = req.body;
@@ -23,7 +23,7 @@ export const addFavorite = async (req, res) => {
             const isDuplicate = favorites.some(fav => fav.id === id_project && fav.type === type);
 
             if (isDuplicate) {
-                return res.status(200).send({ status: "Bad Request", message: "Favorite already exists" });
+                return res.status(200).send({ state: false, message: "Favorite already exists" });
             }
 
             favorites.push({ id: id_project, type: type });
@@ -31,7 +31,7 @@ export const addFavorite = async (req, res) => {
             const result = await connection.query("UPDATE preferences SET favorites = ? WHERE user_id = ?", [JSON.stringify(favorites), id]);
 
             if (result.affectedRows === 0) {
-                return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el favorito." });
+                return res.status(400).send({ state: false, message: "No se pudo guardar el favorito." });
             }
         } else {
             favorites.push({ id: id_project, type: type });
@@ -39,11 +39,11 @@ export const addFavorite = async (req, res) => {
             const result = await connection.query("INSERT INTO preferences (user_id, favorites) VALUES (?, ?)", [id, JSON.stringify(favorites)]);
 
             if (result.affectedRows === 0) {
-                return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el favorito." });
+                return res.status(400).send({ state: false, message: "No se pudo guardar el favorito." });
             }
         }
 
-        return res.status(200).send({ status: "Good Request", message: "Favorito guardado correctamente." });
+        return res.status(200).send({ state: true, message: "Favorito guardado correctamente." });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -52,7 +52,7 @@ export const addFavorite = async (req, res) => {
 
 export const getFavorites = async (req, res) => {
     if (!req.query.id_user) {
-        return res.status(400).send({ status: "Bad Request", message: "User ID is required" });
+        return res.status(400).send({ state: false, message: "User ID is required" });
     }
 
     const id_user = req.query.id_user;
@@ -61,10 +61,10 @@ export const getFavorites = async (req, res) => {
         const [data] = await connection.query("SELECT favorites FROM preferences WHERE user_id = ?", [id_user]);
     
         if (!data) {
-            return res.status(400).send({ status: "Bad Request", message: "No se encuentran favoritos." });
+            return res.status(400).send({ state: false, message: "No se encuentran favoritos." });
         }
 
-        res.status(200).send({ status: "Good Request", message: data });
+        res.status(200).send({ state: true, message: data });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -73,7 +73,7 @@ export const getFavorites = async (req, res) => {
 
 export const deleteFavorite = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     const { id, element } = req.body;
@@ -100,10 +100,10 @@ export const deleteFavorite = async (req, res) => {
         const result = await connection.query("UPDATE preferences SET favorites = ? WHERE user_id = ?", [JSON.stringify(newFavorites), id]);
 
         if (result.affectedRows === 0) {
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo eliminar el favorito." });
+            return res.status(400).send({ state: false, message: "No se pudo eliminar el favorito." });
         }
 
-        return res.status(200).send({ status: "Good Request", message: "Favorite removed successfully" });
+        return res.status(200).send({ state: true, message: "Favorite removed successfully" });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });

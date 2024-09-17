@@ -20,7 +20,7 @@ export const register = async (req, res, next) => {
 
         mail.sendCodeVerification(email, codeVerification);
 
-        res.status(200).json({ status: "Good request", message: "User register successful" });
+        res.status(200).json({ state: true, message: "User register successful" });
     } catch (error) {
         next(error);
     }
@@ -32,10 +32,10 @@ export const login = async (req, res, next) => {
 
         const id = await connection.query("SELECT user_id FROM users WHERE email = ? AND password = ?", [email, encrypt(password)]);
         if (!id.length > 0) {
-            return res.status(400).json({ status: "Bad Request", message: "El Usuario no existe." });
+            return res.status(400).json({ state: false, message: "El Usuario no existe." });
         }
 
-        res.status(200).json({ status: "Good Request", message: id[0].user_id });
+        res.status(200).json({ state: true, message: id[0].user_id });
     } catch (error) {
         next(error);
     }
@@ -48,16 +48,16 @@ export const verifyCode = async (req, res, next) => {
         const data_user = await connection.query("SELECT * FROM users WHERE email = ? AND auth_code = ?", [email, code]);
 
         if (!(data_user.length > 0)) {
-            return res.status(400).json({ status: "Bad Request", message: "Code not found." });
+            return res.status(400).json({ state: false, message: "Code not found." });
         }
 
         const dataUpdated = await connection.query("UPDATE users SET active = true, auth_code = NULL WHERE email = ?", [email]);
 
         if (!dataUpdated) {
-            return res.status(400).json({ status: "Bad Request", message: "Error in database." });
+            return res.status(400).json({ state: false, message: "Error in database." });
         }
 
-        res.status(200).json({ status: "Good request", message: "User Active successful" });
+        res.status(200).json({ state: true, message: "User Active successful" });
     } catch (error) {
         next(error);
     }
@@ -69,10 +69,10 @@ export const cancelRegistration = async (req, res, next) => {
 
         const deleteUser = await connection.query("DELETE FROM users WHERE email = ? AND active = false", [email]);
         if (deleteUser.affectedRows === 0) {
-            return res.status(400).json({ status: "Bad Request", message: "User not found or user doesn't exist." });
+            return res.status(400).json({ state: false, message: "User not found or user doesn't exist." });
         }
 
-        res.status(200).json({ status: "Good Request", message: "User deleted successful" });
+        res.status(200).json({ state: true, message: "User deleted successful" });
     } catch (error) {
         next(error);
     }
@@ -86,18 +86,18 @@ export const resendAuthCode = async (req, res, next) => {
         const userExist = await connection.query("SELECT * FROM users WHERE email = ? AND active = false", [email]);
 
         if (!(userExist.length > 0)) {
-            return res.status(400).json({ status: "Bad Request", message: "User doesn't exist." });
+            return res.status(400).json({ state: false, message: "User doesn't exist." });
         }
 
         const updateCode = await connection.query("UPDATE users SET auth_code = ? WHERE email = ?", [codeVerification, email]);
 
         if (updateCode.affectedRows === 0) {
-            return res.status(400).json({ status: "Bad Request", message: "Error in database." });
+            return res.status(400).json({ state: false, message: "Error in database." });
         }
 
         mail.sendCodeVerification(email, codeVerification);
         
-        res.status(200).json({ status: "Good Request", message: "New code generated successful" });
+        res.status(200).json({ state: true, message: "New code generated successful" });
     } catch (error) {
         next(error);
     }
@@ -109,7 +109,7 @@ export const registerDevice = async (req, res, next) => {
     const device_id = generateDeviceCode();
     let devices = [];
     
-    return res.status(200).send({ status: "Good Request", message: "New code generated succefull"});
+    return res.status(200).send({ state: true, message: "New code generated succefull"});
     } catch (error) {
         next(error);
     }

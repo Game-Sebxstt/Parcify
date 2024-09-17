@@ -1,5 +1,5 @@
 ---
-import { formatNumber } from '../../js/frontend/utilities/globals';
+import * as astro_utils from '../../js/globals/astro-utils';
 
 interface Props{
   id:string,
@@ -15,7 +15,7 @@ const {id, first_text, second_text, url_image, template_id, description, likes} 
 let formatLikes
 
 if(likes){
-  formatLikes = formatNumber(JSON.parse(likes).length || 0);
+  formatLikes = astro_utils.formatNumber(JSON.parse(likes).length || 0);
 }
 
 ---

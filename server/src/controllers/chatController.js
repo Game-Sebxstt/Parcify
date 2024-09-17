@@ -3,7 +3,7 @@ const connection = await getConnection();
 
 export const sendChatMessage = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     const { data, id_project } = req.body;
@@ -21,10 +21,10 @@ export const sendChatMessage = async (req, res) => {
         const result = await connection.query("UPDATE projects SET chat_message = ? WHERE project_id = ?", [JSON.stringify(chat), id_project]);
 
         if (result.affectedRows === 0) {
-            return res.status(400).send({ status: "Bad Request", message: "Error al enviar el mensaje." });
+            return res.status(400).send({ state: false, message: "Error al enviar el mensaje." });
         }
 
-        return res.status(200).send({ status: "Good Request", message: "Mensaje enviado correctamente." });
+        return res.status(200).send({ state: true, message: "Mensaje enviado correctamente." });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });

@@ -2,7 +2,7 @@
 import TemplateView from "../Articles/TemplateView.astro";
 import Article from "../Articles/Article.astro";
 import { getDataUser, getFavorites } from "../../js/backend/requests";
-import * as globals from '../../js/frontend/utilities/globals'
+import * as astro_utils from '../../js/globals/astro-utils';
 
 const id = Astro.cookies.get("ID-USER")?.value;
 
@@ -15,7 +15,7 @@ if(data_response.state){
     let favorites: any = await getFavorites(id);
 
     if(favorites.state){
-        favorites = JSON.parse(favorites.data.message[0].templates || "[]");
+        favorites = JSON.parse(favorites.data.message.templates || "[]");
 
         favorites.forEach((favorite: any) => {
             elementsUser.forEach((element: any) => {
@@ -62,7 +62,7 @@ if(data_response.state){
                         ) : (
                             <Article 
                                 id="project"
-                                id_element={globals.generateID()}
+                                id_element={astro_utils.generateID()}
                                 name={element.name} 
                                 last_modified={element.last_modified}
                                 project_id={element.project_id}

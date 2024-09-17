@@ -3,7 +3,7 @@ import { compareEncrypt, encrypt } from "../utilities/globals.js";
 
 export const updateProfile = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     let {id, username, email, biography} = req.body;
@@ -31,7 +31,7 @@ export const updateProfile = async (req, res) => {
 
 export const updateImageProfile = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
     const {userId, profileImage} = req.body;
 
@@ -54,7 +54,7 @@ export const updateImageProfile = async (req, res) => {
 
 export const getProfileImage = async (req, res) => {
     if (!req.body) {
-      return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+      return res.status(400).send({ state: false, message: "Body is empty" });
     }
   
     const { userId } = req.body;
@@ -79,7 +79,7 @@ export const getProfileImage = async (req, res) => {
 
 export const checkPassword = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     const { user, password } = req.body;
@@ -106,7 +106,7 @@ export const checkPassword = async (req, res) => {
 
 export const updatePassword = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     const { user, password } = req.body;
@@ -135,7 +135,7 @@ export const updatePassword = async (req, res) => {
 
 export const getUserData = async (req, res) => {
     if (!req.query.id_user) {
-        return res.status(400).send({ status: "Bad Request", message: "User ID is required" });
+        return res.status(400).send({ state: false, message: "User ID is required" });
     }
 
     const id_user = req.query.id_user;
@@ -147,7 +147,7 @@ export const getUserData = async (req, res) => {
         const templates = await connection.query("SELECT * FROM templates");
 
         if (!data && !projects.length && !templates.length) {
-            return res.status(400).send({ status: "Bad Request", message: "El Usuario no existe." });
+            return res.status(400).send({ state: false, message: "El Usuario no existe." });
         }
 
         if (data) {
@@ -160,7 +160,7 @@ export const getUserData = async (req, res) => {
             templates: templates
         };
 
-        res.status(200).send({ status: "Good Request", message: info_user });
+        res.status(200).send({ state: true, message: info_user });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -169,7 +169,7 @@ export const getUserData = async (req, res) => {
 
 export const getUserProjects = async (req, res) => {
     if (!req.query.id_user) {
-        return res.status(400).send({ status: "Bad Request", message: "User ID is required" });
+        return res.status(400).send({ state: false, message: "User ID is required" });
     }
 
     const id_user = req.query.id_user;
@@ -179,10 +179,10 @@ export const getUserProjects = async (req, res) => {
         const data = await connection.query("SELECT * FROM projects WHERE user_id = ?", [id_user]);
 
         if (!data.length) {
-            return res.status(400).send({ status: "Bad Request", message: "El Usuario no tiene proyectos." });
+            return res.status(400).send({ state: false, message: "El Usuario no tiene proyectos." });
         }
 
-        res.status(200).send({ status: "Good Request", message: data });
+        res.status(200).send({ state: true, message: data });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -191,7 +191,7 @@ export const getUserProjects = async (req, res) => {
 
 export const getProjectsAsCollaborator = async (req, res) => {
     if (!req.query.id_user) {
-        return res.status(400).send({ status: "Bad Request", message: "User ID is required" });
+        return res.status(400).send({ state: false, message: "User ID is required" });
     }
 
     const id_user = req.query.id_user;
@@ -201,10 +201,10 @@ export const getProjectsAsCollaborator = async (req, res) => {
         const data = await connection.query("SELECT * FROM projects WHERE collaborators LIKE ?", [`%${id_user}%`]);
 
         if (!data.length) {
-            return res.status(400).send({ status: "Bad Request", message: "El Usuario no tiene proyectos como colaborador." });
+            return res.status(400).send({ state: false, message: "El Usuario no tiene proyectos como colaborador." });
         }
 
-        res.status(200).send({ status: "Good Request", message: data });
+        res.status(200).send({ state: true, message: data });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -213,7 +213,7 @@ export const getProjectsAsCollaborator = async (req, res) => {
 
 export const getProjectById = async (req, res) => {
     if (!req.query.id_project) {
-        return res.status(400).send({ status: "Bad Request", message: "Project ID is required" });
+        return res.status(400).send({ state: false, message: "Project ID is required" });
     }
 
     const id_project = req.query.id_project;
@@ -223,10 +223,10 @@ export const getProjectById = async (req, res) => {
         const [data] = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
 
         if (!data) {
-            return res.status(400).send({ status: "Bad Request", message: "El Proyecto no existe." });
+            return res.status(400).send({ state: false, message: "El Proyecto no existe." });
         }
 
-        res.status(200).send({ status: "Good Request", message: data });
+        res.status(200).send({ state: true, message: data });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -235,7 +235,7 @@ export const getProjectById = async (req, res) => {
 
 export const sendInvitationProject = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     const { id_project, invitation, role } = req.body;
@@ -249,8 +249,30 @@ export const sendInvitationProject = async (req, res) => {
     const update_invitation = await connection.query("UPDATE projects SET invitation = ? WHERE project_id = ?", [JSON.stringify(invitationObject), id_project]);
 
     if (!update_invitation) {
-        return res.status(400).send({ status: "Bad Request", message: "No se pudo enviar la invitación." });
+        return res.status(400).send({ state: false, message: "No se pudo enviar la invitación." });
     }
 
-    return res.status(200).send({ status: "Good Request", message: "Invitación enviada correctamente." });
+    return res.status(200).send({ state: true, message: "Invitación enviada correctamente." });
+}
+
+export const getPreferencesUser = async (req, res) => {
+    if (!req.query.id_user) {
+        return res.status(400).send({ state: false, message: "User ID is required" });
+    }
+
+    const id_user = req.query.id_user;
+
+    try {
+        const connection = await getConnection();
+        const [data] = await connection.query("SELECT * FROM preferences WHERE user_id = ?", [id_user]);
+
+        if (!data) {
+            return res.status(400).send({ state: false, message: "No hay preferencias." });
+        }
+
+        res.status(200).send({ state: true, message: data });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
+    }
 }

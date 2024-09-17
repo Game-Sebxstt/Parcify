@@ -1,24 +1,21 @@
 import * as req from '../../backend/requests'
-import * as globals from '../utilities/globals'
-import * as reusable from '../utilities/reusable'
 import * as front from '../front'
+import * as environment_utils from '../../globals/environment-utils'
 
 const url_params = new URLSearchParams(window.location.search);
 
-async function hasTemplate(){
+function hasTemplate(){
     const has_template_params = url_params.has("template_id")
 
     if(has_template_params){
         const template_params = url_params.get("template_id");
         
-        let template = await req.getTemplate(template_params)
+        let template = environment_utils.getTemplate(template_params);
     
-        if(!template.state){
-            front.utils.handleError(template);
+        if(!template){
+            front.utils.handleError("Template not found");
             return
         }
-
-        template = template.data.message
 
         const dataId = template.template_id;
         const dataName = template.name;
@@ -36,4 +33,4 @@ async function hasTemplate(){
     }
 }
 
-await hasTemplate();
+hasTemplate();

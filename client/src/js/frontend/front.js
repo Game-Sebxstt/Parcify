@@ -3,6 +3,7 @@ import * as globals from './utilities/globals'
 import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
 import * as reusable from './utilities/reusable'
+import * as environment_utils from '../globals/environment-utils'
 import Toastify from 'toastify-js'
 
 // Utility Functions
@@ -117,7 +118,7 @@ export const utils = {
     parent.appendChild(input);
     return input;
   },
-  showPreviewTemplate: async (props) => {
+  showPreviewTemplate: (props) => {
     let tittlePrew  = document.querySelector("#tittlePreview")
     let authorPrew  = document.querySelector("#authorPreview")
     let infoPrew = document.getElementById("infoPreview")
@@ -130,16 +131,15 @@ export const utils = {
 
     elements.previewTemplate.setAttribute("data-id", props.dataId);
 
-    let favorites = await req.getFavorites(globals.getCookie("ID-USER"));
-    if (favorites.state) {
-      favorites = JSON.parse(favorites.data.message[0].favorites)
+    let favorites = environment_utils.getPreferences();
+    if (favorites) {
       const isFavorite = favorites.find(favorite => favorite.id == props.dataId);
       elements.favoriteTemplate.style.fill = isFavorite ? "#f4d462" : "none"
     }
 
-    let templates = await req.getTemplate(props.dataId);
-    if(templates.state){
-      let template_likes = JSON.parse(templates.data.message.likes);
+    let templates = environment_utils.getTemplate(props.dataId);
+    if(templates){
+      let template_likes = JSON.parse(templates.likes);
       const isLiked = template_likes.find(template => template.user_id == globals.getCookie("ID-USER"));
       elements.heartTemplate.style.fill = isLiked ? "#f46262" : "none"
     }
@@ -410,6 +410,7 @@ const addEventListeners = () => {
     if(window.getComputedStyle(elements.favoriteTemplate).fill != "none"){
       elements.favoriteTemplate.style.fill = "none"
       const petition = await req.unfavorite(userId, templateId)
+      environment_utils.removePreferences(data.id_project)
 
       if (!petition.state) {
         utils.handleError(petition);
@@ -418,6 +419,7 @@ const addEventListeners = () => {
     }else{
       elements.favoriteTemplate.style.fill = "#f4d462"
       const petition = await req.favorite(userId, data)
+      environment_utils.addPreferences({id: data.id_project, type: data.type})
 
       if (!petition.state) {
         utils.handleError(petition);
@@ -425,7 +427,7 @@ const addEventListeners = () => {
       }
     }
 
-    const renderResponse = await templates.renderFavorites()
+    const renderResponse = templates.renderFavorites()
 
     if(!renderResponse){
       utils.handleError(renderResponse)
@@ -437,7 +439,7 @@ const addEventListeners = () => {
   elements.shareTemplate?.addEventListener("click", () => {
     elements.shareTemplate.style.fill = "white"
     const dataId = elements.previewTemplate.getAttribute("data-id");
-    const urlCopy = `${window.location.origin}/?id_project=${dataId}`;
+    const urlCopy = `${window.location.origin}/?template_id=${dataId}`;
     navigator.clipboard.writeText(urlCopy);
 
     utils.handleError("Link copied to clipboard");
@@ -627,12 +629,12 @@ const addEventListeners = () => {
                 break;
 
             case 1:
-                const templates_db = await req.getAllTemplates();
-                let templates_data = templates_db.data.message;
+                let templates_db = environment_utils.getTemplates();
+                console.log(templates_db)
 
                 const arrowDate = item.children[1].firstChild.id;
 
-                templates_data = globals.sortByKey(templates_data, "date_create", arrowDate === 'arrowUp' ? 'asc' : 'desc');
+                templates_db = globals.sortByKey(templates_db, "date_create", arrowDate === 'arrowUp' ? 'asc' : 'desc');
                 
                 const contentGrid = document.querySelector("#content-grid-templates");
                 if(!contentGrid){
@@ -650,9 +652,9 @@ const addEventListeners = () => {
                   likes: null,
                 }
 
-                templates_data = [templateVoid, ...templates_data];
+                templates_db = [templateVoid, ...templates_db];
 
-                templates_data.forEach( async (template) => {
+                templates_db.forEach( async (template) => {
                   const props = {
                     template_id: template.template_id,
                     name: template.name,
@@ -794,7 +796,6 @@ const addEventListeners = () => {
       const elements_select = recourses.selectedElements;
       let id_selects = [];
 
-      console.log(elements_select)
       if (elements_select.length > 1) {
         elements_select.forEach((element) => {
           id_selects.push(element.querySelector("#element-project").getAttribute("data-id"));
@@ -810,9 +811,10 @@ const addEventListeners = () => {
         id_selects.forEach(async (id) => {
           templates.deleteProject(id);
           await req.unfavorite(globals.getCookie("ID-USER"), id);
+          environment_utils.removePreferences(id);
         })
 
-        const renderResponse = await templates.renderFavorites();
+        const renderResponse = templates.renderFavorites();
 
         if (!renderResponse) {
           utils.handleError(renderResponse);
@@ -829,8 +831,9 @@ const addEventListeners = () => {
   
         templates.deleteProject(projectId);
         await req.unfavorite(globals.getCookie("ID-USER"), projectId);
+        environment_utils.removePreferences(projectId);
       
-        const renderResponse = await templates.renderFavorites()
+        const renderResponse = templates.renderFavorites()
   
         if(!renderResponse){
           utils.handleError(renderResponse)
@@ -1016,13 +1019,14 @@ const addEventListeners = () => {
       }
 
       const petition = await req.favorite(userId, data);
+      environment_utils.addPreferences({id: data.id_project, type: data.type})
 
       if (!petition.state) {
         utils.handleError(petition)
         return petition.data;
       }
     
-      const renderResponse = await templates.renderFavorites()
+      const renderResponse = templates.renderFavorites()
 
       if(!renderResponse){
         utils.handleError(renderResponse)
@@ -1037,13 +1041,14 @@ const addEventListeners = () => {
       const userId = globals.getCookie("ID-USER");
       const idElement = Number(document.querySelector("#options-parcel").getAttribute("data-id"));
       const petition = await req.unfavorite(userId, idElement);
+      environment_utils.removePreferences(idElement)
 
       if (!petition.state) {
         utils.handleError(petition)
         return petition.data;
       }
     
-      const renderResponse = await templates.renderFavorites()
+      const renderResponse = templates.renderFavorites()
 
       if(!renderResponse){
         utils.handleError(renderResponse)

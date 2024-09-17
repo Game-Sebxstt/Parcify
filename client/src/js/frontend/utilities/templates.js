@@ -1,6 +1,7 @@
 import * as globals from '../utilities/globals'
 import * as reusable from '../utilities/reusable'
 import * as front from '../front'
+import * as environment_utils from '../../globals/environment-utils'
 import * as req from '../../backend/requests'
 
 const inputEmail = document.createElement('input');
@@ -260,16 +261,14 @@ export async function renderMoreFavorites(){
     }
 }
 
-export async function renderFavorites() {
+export function renderFavorites() {
     try {
-        let favorites = await req.getFavorites(globals.getCookie("ID-USER"))
+        let favorites = environment_utils.getPreferences();
   
-        if (!favorites.state) {
-            front.utils.handleError(favorites)
+        if (!favorites) {
+            front.utils.handleError("No preferences")
             return
         }
-
-        favorites = JSON.parse(favorites.data.message[0].favorites);
 
         const content_favorites = document.querySelector("#content-favorites");
         const svgIcons = {
@@ -277,21 +276,18 @@ export async function renderFavorites() {
             template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="grey" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-template"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z"/><path d="M4 12m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 12l6 0"/><path d="M14 16l6 0"/><path d="M14 20l6 0"/></svg>`
         };
 
-        let templates = await req.getAllTemplates();
+        let templates = environment_utils.getTemplates();
 
-        if(!templates.state){
-            front.utils.handleError(templates);
+        if(!templates){
+            front.utils.handleError("No templates found");
         }
 
-        let projects = await req.getAllProjects(globals.getCookie("ID-USER"));
+        let projects = environment_utils.getProjects();
 
-        if(!projects.state){
-            front.utils.handleError(projects);
+        if(!projects){
+            front.utils.handleError("No projects found");
         }
         
-        templates = templates.data.message;
-        projects = projects.data.message;
-
         content_favorites.innerHTML = "";
 
         if (favorites.length === 0) {
@@ -355,12 +351,12 @@ export async function renderFavorites() {
             content_favorites.parentNode.appendChild(pShowMoreFavorites);
         }
 
-        const responseRenderMoreFavorites = await renderMoreFavorites();
+        // const responseRenderMoreFavorites = await renderMoreFavorites();
 
-        if(responseRenderMoreFavorites){
-            front.utils.handleError("Favorites rendered successfully");
-            return content_favorites;
-        }
+        // if(responseRenderMoreFavorites){
+        //     front.utils.handleError("Favorites rendered successfully");
+        //     return content_favorites;
+        // }
         
         reusable.eventsListenerFavorites();
         front.utils.handleError("Favorites rendered successfully");

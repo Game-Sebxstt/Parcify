@@ -1,5 +1,5 @@
 ---
-import * as globals from '../../js/frontend/utilities/globals'
+import * as astro_utils from '../../js/globals/astro-utils';
 
 interface Props{
   id?: string,
@@ -33,7 +33,7 @@ const { id, id_project, id_element, name, last_modified, project_id, preview} = 
   <div class="flex justify-between w-full items-center p-2 bg-[#1f1f1f] rounded-b-md">
     <div class="flex flex-col w-full gap-y-1">
       <div class="w-full flex gap-x-2">
-        {globals.isNewProject(last_modified) && (
+        {astro_utils.isNewProject(last_modified) && (
           <span class="bg-[#1E90FF] p-1 rounded-md text-sm">
             Nuevo
           </span>
@@ -42,7 +42,7 @@ const { id, id_project, id_element, name, last_modified, project_id, preview} = 
         <input type="text" value={name} class="input-of-parcel bg-transparent hidden text-white outline-none pb-1 border-b-2 border-[#383838] hover:border-[#1E90FF] ease duration-150 text-xl font-bold max-xl:text-lg truncate w-full">
       </div>
 
-      <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {globals.lastModified([last_modified])}</h4>
+      <h4 class="text-gray-300 text-lg max-xl:text-base">Editado hace {astro_utils.lastModified([last_modified])}</h4>
     </div>
   </div>
 

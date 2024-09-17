@@ -1,5 +1,6 @@
 import * as req from "../../backend/requests";
 import * as environments from '../../../../../config'
+import * as environment_utils from '../../globals/environment-utils.js'
 
 let templates;
 
@@ -113,20 +114,6 @@ export function sortByKey(arr, key, order = 'asc') {
     });
 }
 
-export function formatEmail(email) {
-    const [user, domain] = email.split("@");
-    const visibleChars = Math.ceil(user.length * 0.3);
-
-    if (user.length <= visibleChars) {
-        return email;
-    }
-
-    const hiddenPart = "*".repeat(user.length - visibleChars);
-    const formattedEmail = `${user.slice(0, visibleChars)}${hiddenPart}@${domain}`;
-
-    return formattedEmail;
-}
-
 export function formatLocalTimeString(time){
     const timeParts = time.split(':');
     let hours = parseInt(timeParts[0], 10);
@@ -168,22 +155,15 @@ export function lastModified(fechas) {
 }
 
 export async function isFavorite(project_id) {
-    const id = getCookie("ID-USER");
-  
-    let getDataPreferences = await fetch(`${environments.DEFAULT_API_URL}/preferences/data?id_user=${id}`);
-    let dataPreferences = await getDataPreferences.json();
-  
-    let getDataUser = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
-    let dataUser = await getDataUser.json();
+    let dataPreferences = environment_utils.getPreferences();
+    let dataUser = environment_utils.getDataUser();
   
     let dataFilter = [];
-    const isData = getDataPreferences.ok ? true : false;
+
+    if (dataPreferences){
+        const projectUser = dataUser.projects;
   
-    if (isData){
-        const elementParsed = JSON.parse(dataPreferences.message[0].favorites)
-        const projectUser = dataUser.message.projects;
-  
-        elementParsed.forEach((item) => {
+        dataPreferences.forEach((item) => {
             projectUser.forEach((elementUser) => {
                 if (elementUser.project_id === item.id) {
                     elementUser["type"] = item.type;

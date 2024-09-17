@@ -220,7 +220,7 @@ function renameProjets(){
     
         templates.renameProject(projectId, input.value);
     
-        const renderResponse = await templates.renderFavorites();
+        const renderResponse = templates.renderFavorites();
     
         if (!renderResponse) {
           front.utils.handleError(renderResponse);

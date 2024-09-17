@@ -10,7 +10,7 @@ export const createProject = async (req, res, next) => {
         const userExist = await connection.query("SELECT user_id FROM users WHERE user_id = ?", [id]);
 
         if (!userExist.length > 0) {
-            return res.status(400).json({ status: "Bad Request", message: "El Usuario no existe." });
+            return res.status(400).json({ state: false, message: "El Usuario no existe." });
         }
 
         let template = await connection.query("SELECT stage, preview FROM templates WHERE template_id = ?", [template_id]);
@@ -47,7 +47,7 @@ export const createProject = async (req, res, next) => {
         );
 
         if (!data) {
-            return res.status(400).json({ status: "Bad Request", message: "No se pudo crear el proyecto" });
+            return res.status(400).json({ state: false, message: "No se pudo crear el proyecto" });
         }
 
         res.status(200).json({
@@ -71,10 +71,10 @@ export const deleteProject = async (req, res, next) => {
         const data = await connection.query("DELETE FROM projects WHERE project_id = ?", [id_project]);
 
         if (!data) {
-            return res.status(400).json({ status: "Bad Request", message: "No se pudo eliminar el proyecto." });
+            return res.status(400).json({ state: false, message: "No se pudo eliminar el proyecto." });
         }
 
-        res.status(200).json({ status: "Good Request", message: "El proyecto se eliminó correctamente." });
+        res.status(200).json({ state: true, message: "El proyecto se eliminó correctamente." });
     } catch (error) {
         next(error);
     }
@@ -88,11 +88,11 @@ export const deleteProjectList = async (req, res, next) => {
             const delete_project = await connection.query("DELETE FROM projects WHERE project_id = ?", [element]);
 
             if (!delete_project) {
-                return res.status(400).json({ status: "Bad Request", message: "No se pudo eliminar el proyecto." });
+                return res.status(400).json({ state: false, message: "No se pudo eliminar el proyecto." });
             }
         }
 
-        res.status(200).json({ status: "Good Request", message: "Los proyectos se eliminaron correctamente." });
+        res.status(200).json({ state: true, message: "Los proyectos se eliminaron correctamente." });
     } catch (error) {
         next(error);
     }
@@ -105,7 +105,7 @@ export const duplicateProject = async (req, res, next) => {
         const data = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
 
         if (!data.length > 0) {
-            return res.status(400).json({ status: "Bad Request", message: "El Proyecto no existe." });
+            return res.status(400).json({ state: false, message: "El Proyecto no existe." });
         }
 
         const project_id = await generateIdProject(connection);
@@ -116,11 +116,11 @@ export const duplicateProject = async (req, res, next) => {
         );
 
         if (!duplicate) {
-            return res.status(400).json({ status: "Bad Request", message: "No se pudo duplicar el proyecto." });
+            return res.status(400).json({ state: false, message: "No se pudo duplicar el proyecto." });
         }
 
         res.status(200).json({
-            status: "Good Request",
+            state: true,
             message: {
                 project_id: project_id,
                 stage: data[0].stage,
@@ -167,7 +167,7 @@ export const duplicateProjectList = async (req, res, next) => {
             }
         }
 
-        res.status(200).json({ status: "Good Request", message: returnData });
+        res.status(200).json({ state: true, message: returnData });
     } catch (error) {
         next(error);
     }
@@ -175,7 +175,7 @@ export const duplicateProjectList = async (req, res, next) => {
 
 export const renameProject = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
     const { id_project, name } = req.body;
 
@@ -183,16 +183,16 @@ export const renameProject = async (req, res) => {
         const [data] = await connection.query("SELECT * FROM projects WHERE project_id = ?", [id_project]);
 
         if (data && data.length === 0) {
-            return res.status(400).send({ status: "Bad Request", message: "El Proyecto no existe." });
+            return res.status(400).send({ state: false, message: "El Proyecto no existe." });
         }
 
         const result = await connection.query("UPDATE projects SET name = ? WHERE project_id = ?", [name, id_project]);
 
         if (result.affectedRows === 0) {
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo cambiar el nombre al proyecto." });
+            return res.status(400).send({ state: false, message: "No se pudo cambiar el nombre al proyecto." });
         }
 
-        return res.status(200).send({ status: "Good Request", message: "Nombre del proyecto actualizado correctamente." });
+        return res.status(200).send({ state: true, message: "Nombre del proyecto actualizado correctamente." });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -201,7 +201,7 @@ export const renameProject = async (req, res) => {
 
 export const saveProject = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
     const {stage, project_id, preview, user_id} = req.body;
 
@@ -211,7 +211,7 @@ export const saveProject = async (req, res) => {
         const update_project = await connection.query("UPDATE projects SET stage = ?, preview = ?, last_modified = ? WHERE project_id = ?", [stage, preview, dateCommit, project_id]);
 
         if(!update_project){
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el proyecto." });
+            return res.status(400).send({ state: false, message: "No se pudo guardar el proyecto." });
         }
 
         const [collaboratorsResult] = await connection.query("SELECT collaborators FROM projects WHERE project_id = ?", [project_id]);
@@ -237,10 +237,10 @@ export const saveProject = async (req, res) => {
         const update_collaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(data), project_id]);
 
         if(!update_collaborators){
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar el proyecto." });
+            return res.status(400).send({ state: false, message: "No se pudo guardar el proyecto." });
         }
 
-        return res.status(200).send({ status: "Good Request", message: "El proyecto se guardo correctamente." });
+        return res.status(200).send({ state: true, message: "El proyecto se guardo correctamente." });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -249,7 +249,7 @@ export const saveProject = async (req, res) => {
 
 export const saveCollaborators = async (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ status: "Bad Request", message: "Body is empty" });
+        return res.status(400).send({ state: false, message: "Body is empty" });
     }
 
     const { project_id, collaborators } = req.body;
@@ -258,7 +258,7 @@ export const saveCollaborators = async (req, res) => {
         const [collaboratorsProjectResult] = await connection.query("SELECT collaborators FROM projects WHERE project_id = ?", [project_id]);
 
         if(!collaboratorsProjectResult){
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo encontrar el proyecto."});
+            return res.status(400).send({ state: false, message: "No se pudo encontrar el proyecto."});
         }
 
         const existingCollaborators = JSON.parse(collaboratorsProjectResult.collaborators);
@@ -279,13 +279,13 @@ export const saveCollaborators = async (req, res) => {
         const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);
 
         if (!updateCollaborators) {
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar los colaboradores." });
+            return res.status(400).send({ state: false, message: "No se pudo guardar los colaboradores." });
         }
 
         const [existingsProjectsCollaboratorResult] = await connection.query("SELECT projects_collaborator FROM users WHERE user_id = ?", [collaborators.user_id]);
 
         if (!existingsProjectsCollaboratorResult) {
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo encontrar el usuario." });
+            return res.status(400).send({ state: false, message: "No se pudo encontrar el usuario." });
         }
 
         const projectsCollaborator = JSON.parse(existingsProjectsCollaboratorResult.projects_collaborator || "[]");
@@ -293,7 +293,7 @@ export const saveCollaborators = async (req, res) => {
         const existingCollaborator = projectsCollaborator.find(collaboratorItem => collaboratorItem == project_id);
 
         if (existingCollaborator) {
-            return res.status(200).send({ status: "Good Request", message: "Los colaboradores se guardaron correctamente." });
+            return res.status(200).send({ state: true, message: "Los colaboradores se guardaron correctamente." });
         }
 
         projectsCollaborator.push(project_id);
@@ -301,10 +301,10 @@ export const saveCollaborators = async (req, res) => {
         const updateCollaboratorUser = await connection.query("UPDATE users SET projects_collaborator = ? WHERE user_id = ?", [JSON.stringify(projectsCollaborator), collaborators.user_id]);
 
         if (!updateCollaboratorUser) {
-            return res.status(400).send({ status: "Bad Request", message: "No se pudo guardar los colaboradores." });
+            return res.status(400).send({ state: false, message: "No se pudo guardar los colaboradores." });
         }
 
-        return res.status(200).send({ status: "Good Request", message: "Los colaboradores se guardaron correctamente." });
+        return res.status(200).send({ state: true, message: "Los colaboradores se guardaron correctamente." });
     } catch (error) {
         console.error(error);
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
