@@ -4,6 +4,7 @@ import * as req from '../../js/backend/requests';
 import * as environment_utils from '../../js/globals/environment-utils'
 import * as globalFunctions from './GlobalFunctions'
 import * as chat from '../../js/frontend/utilities/chat';
+import * as globals from '../../js/frontend/utilities/globals';
 import * as websocket from '../../js/backend/websocket'
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import { PickerCustom } from "../ts/utilities/PickerCustom";
@@ -422,19 +423,30 @@ export function groupElements() {
     elements.push(group);
     tr.nodes([group]);
     layer.batchDraw();
+
+    const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"));
+    collaborator.group_created += 1;
+    environment_utils.setCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"), collaborator);
+    console.log(collaborator)
+
+    saveHistory(stage.toJSON())
 }
 
 export function ungroupElements() {
     let selectedNodes = tr.nodes();
-    if (selectedNodes.length === 0) {
+    console.log(selectedNodes)
+    console.log(selectedNodes.length);
+    if (selectedNodes.length < 2) {
         return;
     }
 
-    if (selectedNodes[0] instanceof Konva.Group == false) {
+
+    console.log(selectedNodes[0].parent)
+    if (selectedNodes[0].parent instanceof Konva.Group == false) {
         return;
     }
 
-    const children = selectedNodes[0].children.slice();
+    const children = selectedNodes[0].parent.children.slice();
     selectedNodes[0].remove();
 
     children.forEach((node) => {
@@ -443,8 +455,15 @@ export function ungroupElements() {
         elements.push(node);
     });
 
-    tr.nodes(children);
+    tr.nodes([]);
     layer.batchDraw();
+
+    const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"));
+    collaborator.group_deleted = 1;
+    environment_utils.setCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"), collaborator);
+    console.log(collaborator)
+
+    saveHistory(stage.toJSON())
 }
 
 export function saveHistory(stageJSON) {
@@ -556,7 +575,7 @@ export function updateElementsEvent() {
                             item.setAttrs({
                                 x: rectNode.x(),
                                 y: rectNode.y(),
-                                width: Math.max(5, rectNode.width() * rectNode.scaleX(), konva.getMinWidth()),
+                                width: Math.max(5, rectNode.width() * rectNode.scaleX(), getMinWidth()),
                                 height: Math.max(5, rectNode.height() * rectNode.scaleY()),
                                 scaleX: 1,
                                 scaleY: 1,

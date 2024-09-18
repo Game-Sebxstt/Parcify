@@ -1,10 +1,11 @@
 import * as konva from "./KonvaLogic";
 import * as globals from '../../js/frontend/utilities/globals';
 import * as websocket from '../../js/backend/websocket'
+import * as req from '../../js/backend/requests'
 import * as CustomCursor from '../ts/shapes/CustomCursor'
 import Konva from "konva";
 import * as States from "./StatesLogic";
-import Export from "../../components/Konva/Export.astro";
+import * as environment_utils from "../../js/globals/environment-utils";
 
 let needsUpdate = false;
 let isUpdateToolBar = false;
@@ -19,6 +20,26 @@ export function downloadURI(uri, name) {
     document.body.removeChild(link);
 
     return true;
+}
+
+export function processStage(layersToHide, callback) {
+    layersToHide.forEach(layerId => {
+        const layer = konva.stage.findOne(`#${layerId}`);
+        if (layer) {
+            layer.visible(false);
+        }
+    });
+
+    const dataURL = konva.stage.toDataURL();
+
+    layersToHide.forEach(layerId => {
+        const layer = konva.stage.findOne(`#${layerId}`);
+        if (layer) {
+            layer.visible(true);
+        }
+    });
+
+    callback(dataURL);
 }
 
 export function updateDimensionStage() {
@@ -198,12 +219,28 @@ export function createElement(elementKonva, trActive = true){
         States.StatesCursor.addShape = false;
         
         if(trActive){
+            const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
+            collaborator.elements_created += 1;
+            environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator); 
+            console.log(collaborator);
+
             konva.tr?.setAttr("visible", true);
             konva.tr?.nodes([elementKonva]);
         }
 
         konva.updateElementsEvent();
     }
+}
+
+export function deleteElement(element){
+    konva.setElements(konva.getElements().filter(item => item.attrs.id_unique !== element.attrs.id_unique));
+    element.destroy();
+    konva.layer.batchDraw();
+
+    const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
+    collaborator.elements_deleted += 1;
+    environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator);
+    console.log(collaborator);
 }
 
 export function createElementKonva(elementKonva){

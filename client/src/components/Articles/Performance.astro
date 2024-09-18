@@ -1,56 +1,53 @@
----
----
-
 <div class="relative bg-[#1E1E1E] w-full h-[18rem] rounded-md border-2 border-[rgba(255,255,255,.2)] flex flex-col">
     <div class="w-full h-fit flex justify-between items-center p-3 text-white border-b-2 border-[rgba(255,255,255,.2)]">
         <h2 class="font-semibold text-xl">
-            Commit Activity
+            Métricas de Rendimiento
         </h2>
 
         <h3 class="font-light text-gray-300 text-sm">
-            Last 30 days
+            Últimos 30 días
         </h3>
     </div>
 
-    <div class="w-full flex-grow flex justify-center items-center">
-        <ul class="w-full h-fit flex flex-col gap-y-2">
+    <div class="w-full flex-grow flex justify-center items-start py-2">
+        <ul class="w-full h-full flex flex-col gap-y-2">
             <li class="w-full h-full flex items-center justify-between py-1.5 px-6">
                 <h4 class="font-light">
-                    Page load time
+                    Total de Páginas
                 </h4>
 
-                <h4 class="font-bold">
-                    1.2s
+                <h4 id="total-pages" class="font-bold">
+                    0
                 </h4>
             </li>
 
             <li class="w-full h-full flex items-center justify-between py-1.5 px-6">
                 <h4 class="font-light">
-                    Lighthouse Score
+                    Total de Elementos
                 </h4>
 
-                <h4 class="font-bold">
-                    92
-                </h4>
-            </li>
-
-            <li class="w-full h-full flex items-center justify-between py-1.5 px-6">
-                <h4 class="font-light">
-                    Core Web Vitals
-                </h4>
-
-                <h4 class="font-bold">
-                    Good
+                <h4 id="total-elements" class="font-bold">
+                    0
                 </h4>
             </li>
 
             <li class="w-full h-full flex items-center justify-between py-1.5 px-6">
                 <h4 class="font-light">
-                    Accessibility
+                    Total de Grupos
                 </h4>
 
-                <h4 class="font-bold">
-                    98%
+                <h4 id="total-groups" class="font-bold">
+                    0
+                </h4>
+            </li>
+
+            <li class="w-full h-full flex items-center justify-between py-1.5 px-6">
+                <h4 class="font-light">
+                    Elemento Más Usado
+                </h4>
+
+                <h4 id="most-used-element" class="font-bold">
+                    Ninguno
                 </h4>
             </li>
         </ul>

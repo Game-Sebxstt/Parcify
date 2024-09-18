@@ -4,6 +4,7 @@ import * as req from '../../js/backend/requests'
 import * as websocket from '../../js/backend/websocket'
 import * as GlobalFunctions from "./GlobalFunctions";
 import * as globals from '../../js/frontend/utilities/globals'
+import * as environment_utils from "../../js/globals/environment-utils";
 
 // utilizables
 const elements = {
@@ -28,9 +29,12 @@ const utils = {
     },
     updatePreview: (element) => {
         const previewStyle = element.style;
-        previewStyle.backgroundImage = `url(${konva.stage.toDataURL()})`;
-        previewStyle.backgroundPosition = "center"
-        previewStyle.backgroundSize = "cover"
+
+        GlobalFunctions.processStage(['layerUtilities', 'layerBackground'], (dataURL) => {
+            previewStyle.backgroundImage = `url(${dataURL})`;
+            previewStyle.backgroundPosition = "center";
+            previewStyle.backgroundSize = "cover";
+        });
     },
 };
 
@@ -40,25 +44,30 @@ utils.updatePreview(elements.preview);
 document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        
-        const stageClone = konva.stage.clone();
 
-        stageClone.getLayers().forEach(layer => {
-            if(layer.attrs.id == "layerUtilities"){
-                layer.destroy();
+        GlobalFunctions.processStage(['layerUtilities', 'layerCollaborators'], (dataURL) => {
+            const stageJSON = konva.stage.toJSON();
+            localStorage.removeItem("STAGEJSON");
+            localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
+            const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
+            const dateCommit = new Date();
+
+            const existingEntry = collaborator.commits.find(entry => entry.date.split("T")[0] === dateCommit.toISOString().split("T")[0]);
+
+            if (existingEntry) {
+                existingEntry.commits += 1;
+                console.log("Se actualizó el commit del día.");
+            } else {
+                collaborator.commits.push({
+                    date: dateCommit,
+                    commits: 1,
+                });
             }
 
-            if(layer.attrs.id == "layerCollaborators"){
-                layer.destroy();
-            }
+            collaborator.last_commit = dateCommit;
+            environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator, true);
+            req.saveProject(stageJSON, konva.id_stage, dataURL);
         });
-
-        const stageJSON = (stageClone).toJSON();
-
-        localStorage.removeItem("STAGEJSON");
-        localStorage.setItem("STAGEJSON", JSON.stringify(stageJSON));
-        var dataURL = stageClone.toDataURL({ pixelRatio: 3 });
-        req.saveProject(stageJSON, konva.id_stage, dataURL, globals.getCookie("ID-USER"));
     }
 
     if (e.ctrlKey && e.key.toLowerCase() === 'z') {
@@ -76,10 +85,9 @@ document.addEventListener('keydown', function (e) {
         konva.groupElements();
     }
 
-    if (e.ctrlKey && e.key.toLowerCase() === 'g') { //Some problemsss
+    if (e.ctrlKey && e.key.toLowerCase() === 'g') {
         e.preventDefault();
         konva.ungroupElements();
-        konva.saveHistory(konva.stage.toJSON())
     }
 
     if(e.ctrlKey && e.key.toLowerCase() === 'u'){
@@ -131,7 +139,7 @@ document.addEventListener('keydown', function (e) {
         const copiedData = JSON.stringify(copiedNodes);
         navigator.clipboard.writeText(copiedData);
         selectedNodes.forEach(node => {
-            node.destroy();
+            GlobalFunctions.deleteElement(node);
             websocket.deleteElementKonva(node);
         });
 
@@ -182,6 +190,7 @@ document.addEventListener('keydown', function (e) {
 
 // Export Events
 elements.openExport?.addEventListener("click", ()=>{
+    utils.updatePreview(elements.preview);
     utils.show(elements.exportContent);
 });
 
@@ -189,11 +198,11 @@ elements.closeExport?.addEventListener("click", ()=>{
     utils.hidden(elements.exportContent);
 });
 
-elements.scaleRange.addEventListener("input", () => {
-    elements.typeScale.forEach(element => {
-        element.textContent = `${elements.scaleRange.value}x`
-    })
-})
+// elements.scaleRange.addEventListener("input", () => {
+//     elements.typeScale.forEach(element => {
+//         element.textContent = `${elements.scaleRange.value}x`
+//     })
+// })
 
 elements.export?.addEventListener("submit", (e)=> {
     e.preventDefault();

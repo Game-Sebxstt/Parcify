@@ -59,6 +59,16 @@ export function getProjects(){
     return projects;
 }
 
+export function getStageOfProject(project_id){
+    const project = getProject(project_id);
+
+    if(!project){
+        return false;
+    }
+
+    return JSON.parse(project.stage);
+}
+
 export function getCollaboratorOfProject(project_id, user_id){
     const project = getProject(project_id);
 
@@ -67,6 +77,29 @@ export function getCollaboratorOfProject(project_id, user_id){
     }
 
     return JSON.parse(project.collaborators).find(collaborator => collaborator.user_id == user_id);
+}
+
+export function setCollaboratorOfProject(project_id, user_id, collaborator, database = false){
+    const project = getProject(project_id);
+
+    if(!project){
+        return false;
+    }
+
+    const collaborators = JSON.parse(project.collaborators);
+    const index = collaborators.findIndex(collaborator => collaborator.user_id == user_id);
+
+    if(index == -1){
+        collaborators.push(collaborator);
+    } else {
+        collaborators[index] = collaborator;
+    }
+
+    project.collaborators = JSON.stringify(collaborators);
+
+    if(database){
+        req.saveCollaborators(project_id, collaborator);
+    }
 }
 
 function getCookie(name) {

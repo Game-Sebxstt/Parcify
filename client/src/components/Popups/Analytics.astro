@@ -2,6 +2,7 @@
 import Metric from '../Articles/Metric.astro';
 import Performance from '../Articles/Performance.astro';
 import Summary from '../Articles/Summary.astro';
+import Working from '../Articles/Working.astro';
 
 interface Props{
     id_content: string,
@@ -32,7 +33,7 @@ const {id_content} = Astro.props;
             <Metric metric='Commit Activity' id_graphic='commits' type='bar'/>
             <Metric metric='Total Time Worked' id_graphic='time_worked' type='line'/>
             <Performance/>
-            <Performance/>
+            <Working/>
             <Summary/>
         </section>
     </div>
