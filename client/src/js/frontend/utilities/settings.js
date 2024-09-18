@@ -2,7 +2,7 @@ import * as globals from '../utilities/globals'
 import * as req from "../../backend/requests";
 import * as templates from '../utilities/templates'    
 import * as front from '../front';
-import Toastify from 'toastify-js'
+import * as environment_utils from '../../globals/environment-utils';
 
 // Importar funciones y elementos de utilidad
 const utils = front.utils;
@@ -49,12 +49,11 @@ openButton?.addEventListener("click", () => {
 
 // Apply profile picture and store in database
 async function updateProfileImage() {
-    const userId = globals.getCookie("ID-USER");
-    const validation = await req.getProfileImage(userId);
+    const validation = environment_utils.getProfileImage();
 
-    if (validation.profileImage) {
+    if (validation) {
       elements.imageContainer.forEach(item => {
-        item.style.backgroundImage = `url(${validation.profileImage})`;
+        item.style.backgroundImage = `url(${validation})`;
         item.style.backgroundSize = 'cover';
         item.style.backgroundPosition = 'center';
         item.style.border = `2px solid #1E90FF`;
@@ -69,10 +68,7 @@ async function updateProfileImage() {
       });
     }
 }
-
-document?.addEventListener('DOMContentLoaded', () => {
-    updateProfileImage();
-});
+updateProfileImage();
 
 elements.imageUpload?.addEventListener('change', async (event) => {
     const target = event.target;

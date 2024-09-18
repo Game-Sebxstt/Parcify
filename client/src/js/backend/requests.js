@@ -187,6 +187,24 @@ export async function getTemplate(id_template){
     return {state: true, data: responseData};
 }
 
+//Funcion para obtener todos los proyectos en general
+export async function getAllProjectsGlobal() {
+    const response = await fetch(`${environments.DEFAULT_API_URL}/project/projectsGlobal`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
 //Funcion para obtener todos los proyectos de un usuario
 export async function getAllProjects(user_id) {
     const response = await fetch(`${environments.DEFAULT_API_URL}/user/projects?id_user=${user_id}`, {
@@ -477,24 +495,6 @@ export async function updateImageProfile(data){
     }
     
     return {state: true, data: responseData};
-}
-
-export async function getProfileImage(userId) {
-  const response = await fetch(`${environments.DEFAULT_API_URL}/user/getProfileImage`, {
-    method: "POST",
-    body: JSON.stringify({userId}),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  const responseData = await response.json();
-
-  if (!response.ok) {
-    return { state: false, data: responseData.message };
-  }
-
-  return { state: true, profileImage: responseData.profileImage };
 }
 
 export async function likeTemplate(template_id, id_user){

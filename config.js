@@ -19,10 +19,10 @@ export const DATABASE_OBJECT_DEV = { // Objeto de la base de datos para desarrol
 
 export const DATABASE_OBJECT_PROD = { // Objeto de la base de datos para producción (Prueba)
     connectionLimit: 10,
-    host: "bzic2wrqo4ogzg5qu30t-mysql.services.clever-cloud.com",
-    database: "bzic2wrqo4ogzg5qu30t",
-    user: "udgfj2luotgt639t",
-    password: "8ZfG5u1B0orFV0fhyNow",
+    host: "bc9mbnmlnmifmxejrfrg-mysql.services.clever-cloud.com",
+    database: "bc9mbnmlnmifmxejrfrg",
+    user: "ungc7pu4kqmidwtf",
+    password: "fwiYtIrZ0MJRGpb6y1y0",
 }
 
 export const DATABASE_OBJECT = isDevDB ? DATABASE_OBJECT_DEV : DATABASE_OBJECT_PROD; // Objeto de la base de datos segun el estado de la base de datos

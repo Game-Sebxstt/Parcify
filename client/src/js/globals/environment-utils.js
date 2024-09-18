@@ -7,15 +7,15 @@ preferences = preferences.state ? JSON.parse(preferences.data.message.favorites)
 
 let templates = (await req.getAllTemplates()).data.message;
 
-let projects = (await req.getAllProjects(id_user))
-projects = projects.state ? projects.data.message : projects.state;
-
-console.log(templates)
-console.log(projects)
-console.log(preferences)
+let projects = (await req.getAllProjectsGlobal())
+projects = projects.state ? projects.data.projects : projects.state;
 
 export function getDataUser() {
     return data_user.data.message;
+}
+
+export function getProfileImage(){
+    return data_user.data.message.users.profile_image
 }
 
 export function getPreferences(){
@@ -44,11 +44,29 @@ export function getTemplates(){
 }
 
 export function getProject(project_id) {
+    if(!projects){
+        return false;
+    }
+
     return projects.find(project => project.project_id == project_id);
 }
 
 export function getProjects(){
+    if(!projects){
+        return false;
+    }
+
     return projects;
+}
+
+export function getCollaboratorOfProject(project_id, user_id){
+    const project = getProject(project_id);
+
+    if(!project){
+        return false;
+    }
+
+    return JSON.parse(project.collaborators).find(collaborator => collaborator.user_id == user_id);
 }
 
 function getCookie(name) {

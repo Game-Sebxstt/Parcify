@@ -8,26 +8,23 @@ import * as environment_utils from '../../js/globals/environment-utils'
 import * as environments from '../../environments'
 import * as websocket from '../../js/backend/websocket'
 
-async function initialCollaboration(){
+function initialCollaboration(){
     const urlParams = new URLSearchParams(window.location.search);
     const invitation = urlParams.get('invitation');
     const id = urlParams.get('id');
 
-    let data_project;
     
     if(id){
-        const project = await req.getProject(id);
+        const project = environment_utils.getProject(id);
     
-        if (!project.state) {
-            front.utils.handleError(project);
+        if (!project) {
+            front.utils.handleError("Couldn't find project");
             return;
         }
     
-        data_project = project.data.message;
-
         globals.startSession(id);
-        const collaborators = JSON.parse(data_project.collaborators || "[]");
-        const data_invitation_project = JSON.parse(data_project.invitation || "[]");
+        const collaborators = JSON.parse(project.collaborators || "[]");
+        const data_invitation_project = JSON.parse(project.invitation || "[]");
         eventsListener(collaborators);
         resetCollaborators(collaborators);
         console.log(collaborators);
@@ -50,6 +47,7 @@ async function initialCollaboration(){
         if(collaborators.find(c => c.user_id == globals.getCookie("ID-USER"))){
             front.utils.handleError("You are already a collaborator");
             const collaborator = collaborators.find(c => c.user_id == globals.getCookie("ID-USER"));
+            console.log("Ya eres colaborador");
             websocket.enterCollaborator(collaborator);
             return
         }
@@ -130,4 +128,4 @@ window.addEventListener('beforeunload', function(e) {
     globals.endSession(false);
 });
 
-await initialCollaboration();
+initialCollaboration();

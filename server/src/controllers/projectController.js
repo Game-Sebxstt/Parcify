@@ -334,3 +334,19 @@ export const getProjectCollaborators = async (req, res) => {
         res.status(500).send({ status: "Internal Server Error", message: "Error al conectar con la base de datos." });
     }
 }
+
+export const getProjectsGlobal = async (req, res) => {
+    try {
+        const projects = await connection.query("SELECT * FROM projects");
+
+        if (!projects.length) {
+            return res.status(404).send({ status: "Not Found", message: "No hay proyectos." });
+        }
+
+        res.status(200).send({ state: true, projects: projects });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ status: "Internal Server Error", message: "Error al conectar con la base de datos." });
+    }
+}

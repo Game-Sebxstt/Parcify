@@ -52,31 +52,6 @@ export const updateImageProfile = async (req, res) => {
     }
 };
 
-export const getProfileImage = async (req, res) => {
-    if (!req.body) {
-      return res.status(400).send({ state: false, message: "Body is empty" });
-    }
-  
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).send({ state: false, message: "User ID is required" });
-    }
-  
-    try {
-        const connection = await getConnection();
-        const [results] = await connection.query("SELECT profile_image FROM users WHERE user_id = ?", [userId]);
-    
-        if (results) {
-            return res.status(200).send({ state: true, profileImage: results.profile_image });
-        }
-
-        return res.status(404).send({ state: false, message: "User does not exist" });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
-    }
-};
-
 export const checkPassword = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ state: false, message: "Body is empty" });

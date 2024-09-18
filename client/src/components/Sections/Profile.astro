@@ -50,14 +50,15 @@ let emailFormatt = astro_utils.formatEmail(email);
     </div>
 
     <!-- Edit username -->
-    <div class="py-4 mb-2 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
-        <span class="w-[55%] max-sm:w-full max-md:w-full">
+    <div class="py-4 pr-4 mb-2 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
+        <span class="flex-1">
           <h3 class="text-[#FFFFFF] text-sm">Username</h3>
           <h4 class="text-[#757575] text-sm font-light">
              Edit your username
           </h4>
         </span>
-        <div class="flex w-full h-full items-center gap-2">
+
+        <div class="flex flex-1 items-center justify-end gap-2">
             <input
                 type="text"
                 id="profile-username"
@@ -84,15 +85,16 @@ let emailFormatt = astro_utils.formatEmail(email);
     </div>
 
     <!-- Edit email -->
-    <div class="py-4 mb-2 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
-        <span class="w-[55%] max-sm:w-full max-md:w-full">
+    <div class="py-4 pr-4 mb-2 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
+        <span class="flex-1">
           <h3 class="text-[#FFFFFF] text-sm">Email</h3>
           <h4 class="text-[#757575] text-sm font-light">
             Edit your email
         </h4>
         </span>
-        <div id="div-edit-email" class="flex flex-col w-full items-center gap-2">
-            <div class="w-full flex items-center">
+
+        <div id="div-edit-email" class="flex flex-col flex-1 items-center gap-2">
+            <div class="w-full flex items-center justify-end">
                 <input
                     type="email"
                     id="profile-email"
@@ -123,20 +125,37 @@ let emailFormatt = astro_utils.formatEmail(email);
     </div>
 
     <!-- Edit Biography -->
-    <div class="py-4 mb-4 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
-        <span class="w-[55%] max-sm:w-full max-md:w-full">
+    <div class="py-4 pr-4 mb-4 w-full h-fit flex border-b-2 border-[#757575] max-sm:flex-col">
+        <span class="flex-1">
           <h3 class="text-[#FFFFFF] text-sm">Your Bio</h3>
           <h4 class="text-[#757575] text-sm font-light">
              Customize your biography
           </h4>
         </span>
-        <div class="flex w-full">
+        
+        <div class="flex flex-1 justify-end">
             <textarea
                 id="textarea-biography"
                 name="biography"
                 class="w-[50%] bg-[#1E1E1E] resize-none text-gray-200 rounded-md px-4 py-2 outline-none mt-1  max-sm:w-full max-sm:text-xs max-sm:mt-2 max-md:w-[70%] max-md:text-[12.9px]"
                 placeholder="Biographical username"
             >{biography}</textarea>
+            
+            <div class="flex items-center ml-2 opacity-0">
+                <!-- Contenedor del icono y el texto -->
+                <div class="relative group flex items-center">
+                  <!-- Icono de lápiz -->
+                  <svg class="cursor-pointer icon icon-tabler icon-tabler-pencil" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+                    <path d="M13.5 6.5l4 4" />
+                  </svg>
+
+                  <span class="ml-2 opacity-0 group-hover:opacity-100 group-hover:ml-2 duration-300 text-white text-sm">
+                    Editar
+                  </span>
+                </div>
+            </div>
         </div>
     </div>
 
