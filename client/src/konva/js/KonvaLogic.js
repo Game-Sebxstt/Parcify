@@ -1,6 +1,7 @@
 import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as req from '../../js/backend/requests';
+import * as environment_utils from '../../js/globals/environment-utils'
 import * as globalFunctions from './GlobalFunctions'
 import * as chat from '../../js/frontend/utilities/chat';
 import * as websocket from '../../js/backend/websocket'
@@ -385,17 +386,17 @@ saveHistory(stage.toJSON());
 // fitStageIntoParentContainer();
 
 async function getStage(id_stage) {
-    const validation = await req.getProject(id_stage);
+    const validation = environment_utils.getProject(id_stage);
 
-    if(!validation.state || !validation){
+    if(!validation){
         return null;
     }
 
-    if(!validation.data.message.stage){
+    if(!validation.stage){
         return null;
     }
 
-    return validation.data.message.stage;
+    return validation.stage;
 }
 
 export function groupElements() {

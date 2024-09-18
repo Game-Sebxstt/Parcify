@@ -41,7 +41,10 @@ try {
 
     if (!existProject) {
       const projectFind = (await getProject(projectID)).data.message;
-      projects_render.push(projectFind);
+
+      if(projectFind){
+        projects_render.push(projectFind);
+      }
     }
   }
 

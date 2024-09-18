@@ -1,11 +1,25 @@
-import * as websocket from './websocket.js'
-
 export function initSocket(data, ws, clients) {
     if (data.type === 'clientId') {
         clients.set(data.data.id, { ws: ws, data: data.data });
-        console.log('Identificador de cliente recibido:', data.data);
-    }
+        console.log('Identificador de cliente recibido:', Number(data.data.id));
+
+        const senderId = data.data.id;
+        const clientData = clients.get(senderId);
     
+        if (!clientData) return;
+    
+        clientData.data.collaborator = data.data.collaborator;
+        clients.set(senderId, clientData);
+    
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'enterCollaborator',
+                collaborator: data.data.collaborator,
+                user_id: senderId
+            }));
+        });
+    }
+
     if (data.type === 'createElementKonva') {
         const senderId = data.user_id;
 
@@ -101,7 +115,6 @@ export function initSocket(data, ws, clients) {
 
     if (data.type === 'enterCollaborator') {
         const senderId = data.user_id;
-    
         const clientData = clients.get(senderId);
     
         if (!clientData) return;

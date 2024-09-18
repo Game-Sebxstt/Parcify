@@ -476,16 +476,16 @@ const addEventListeners = () => {
       const dataId = item.getAttribute("data-id");
       elements.analytics.setAttribute("data-id", dataId);
   
-      const project = await req.getProject(dataId);
+      const project = environment_utils.getProject(dataId);
   
-      if (!project.state) {
-        utils.handleError(project);
+      if (!project) {
+        utils.handleError("Project not found");
         return;
       }
   
-      const collaboratorsProject = JSON.parse(project.data.message.collaborators);
+      const collaboratorsProject = JSON.parse(project.collaborators);
   
-      const startDate = project.data.message.create_date;
+      const startDate = project.create_date;
       const endDate = new Date().toISOString();
 
       function createGraphicOfCommits(){

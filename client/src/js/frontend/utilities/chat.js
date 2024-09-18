@@ -141,10 +141,9 @@ async function handleSendMessage(e) {
         chat_message_form.setAttribute("data-id", "right");
         websocket.sendStopTypingCollaborators(globals.getCookie("ID-USER"));
 
-        let project = await req.getProject(KonvaLogic.id_stage);
+        let project = environment_utils.getProject(KonvaLogic.id_stage);
         
         if(project){
-            project = project.data.message;
             const collaborators = JSON.parse(project.collaborators || "[]");
             websocket.sendMessageCollaborators(data, collaborators);
         }
@@ -221,7 +220,7 @@ async function createMessage(data) {
     node_chat_bubble.setAttribute("data-id", data.id);
 
     const profile_invite = node_chat_bubble.querySelector("#profile-invite");
-    const collaborators = JSON.parse((await req.getProject(KonvaLogic.id_stage)).data.message.collaborators || "[]");
+    const collaborators = JSON.parse(environment_utils.getProject(KonvaLogic.id_stage).collaborators || "[]");
 
     const collaborator_chat_bubble = collaborators.find(item => item.user_id == data.id_user);
     if(profile_invite){
@@ -313,14 +312,14 @@ function attachResendListener(chat_bubble) {
 }
 
 async function findChat(id_chat){
-    const project_response = await req.getProject(KonvaLogic.id_stage);
+    const project_response = environment_utils.getProject(KonvaLogic.id_stage);
 
-    if(!project_response.state){
-        front.utils.handleError(project_response);
+    if(!project_response){
+        front.utils.handleError("Failed to find project");
         return;
     }
 
-    const chat = JSON.parse(project_response.data.message.chat_message || "[]");
+    const chat = JSON.parse(project_response.chat_message || "[]");
     return chat.find(message => message.id == id_chat);
 }
 
@@ -333,14 +332,14 @@ function updateResponseInput(chat){
 }
 
 export async function loadChat(id_stage){
-    const project_response = await req.getProject(id_stage);
+    const project_response = environment_utils.getProject(id_stage);
 
-    if(!project_response.state){
-        front.utils.handleError(project_response);
+    if(!project_response){
+        front.utils.handleError("Failed to find project");
         return;
     }
 
-    const chat = JSON.parse(project_response.data.message.chat_message || "[]");
+    const chat = JSON.parse(project_response.chat_message || "[]");
     console.log(chat);
 
     chat.forEach(message => {

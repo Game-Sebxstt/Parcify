@@ -4,17 +4,22 @@ import * as GlobalFunctions from '../../konva/js/GlobalFunctions';
 import * as Render from '../../konva/js/Render';
 import * as chat from '../frontend/utilities/chat';
 import * as environments from '../../../../config';
+import * as environments_utils from '../globals/environment-utils';
 import * as konva from '../../konva/js/KonvaLogic'
 
 let socket = null;
 let isReconnecting = false;
+let collaborator = null;
 
 function createWebSocket() {
     socket = new WebSocket(environments.DEFAULT_SOCKET_URL);
 
     socket.onopen = function(event) {
         if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: 'clientId', data: {id: globals.getCookie("ID-USER")} }));
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            const collaborator = environments_utils.getCollaboratorOfProject(id, globals.getCookie("ID-USER"));
+            socket.send(JSON.stringify({ type: 'clientId', data: {id: globals.getCookie("ID-USER"), collaborator: collaborator} }));
         }
     };
 
@@ -78,7 +83,11 @@ function createWebSocket() {
                 state: true,
             }
 
-            await req.saveCollaborators(data.collaborator.project_id, data_change)
+            const collaboratorFind = environments_utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
+
+            if(!collaboratorFind){
+                await req.saveCollaborators(data.collaborator.project_id, data_change)
+            }
             
             const project_collaborators = JSON.parse((await req.getProject(data.collaborator.project_id)).data.message.collaborators);
             project_collaborators.forEach(item => {
@@ -103,7 +112,11 @@ function createWebSocket() {
                 state: false,
             }
 
-            await req.saveCollaborators(data.data.collaborator.project_id, data_change)
+            const collaboratorFind = environments_utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
+
+            if(!collaboratorFind){
+                await req.saveCollaborators(data.collaborator.project_id, data_change)
+            }
             
             const project_collaborators = JSON.parse((await req.getProject(data.data.collaborator.project_id)).data.message.collaborators);
             project_collaborators.forEach(item => {
@@ -201,6 +214,7 @@ export function deselectElementKonva(){
 }
 
 export function enterCollaborator(collaborator){
+    collaborator = collaborator;
     const userId = globals.getCookie("ID-USER");
     sendIfOpen(JSON.stringify({ type: 'enterCollaborator', collaborator, user_id: userId }));
 }
