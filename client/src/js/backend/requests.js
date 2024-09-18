@@ -88,12 +88,11 @@ export async function createProject(id, name, template_id){
     return {state: true, data: responseData};
 }
 
-export async function saveProject(stageJson, project_id, preview, user_id) {
+export async function saveProject(stageJson, project_id, preview) {
     const data = {
         stage: stageJson,
         project_id: project_id,
         preview: preview,
-        user_id: user_id
     }
 
     const response = await fetch(`${environments.DEFAULT_API_URL}/project/save`, {

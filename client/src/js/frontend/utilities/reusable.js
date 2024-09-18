@@ -97,7 +97,6 @@ function showContextMenu(){
 function eventsHandlerProjects(){
   document.querySelectorAll(".project").forEach(item => {
     item.addEventListener("click", async (e) => {
-        console.log(front.recourses.selectedElements)
         const element = e.currentTarget;
         const index = Array.from(document.querySelectorAll(".project")).indexOf(element);
 

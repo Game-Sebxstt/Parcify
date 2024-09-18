@@ -112,10 +112,11 @@ function createWebSocket() {
                 state: false,
             }
 
-            const collaboratorFind = environments_utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
+            console.log(data.data.collaborator.project_id)
+            const collaboratorFind = environments_utils.getCollaboratorOfProject(data.data.collaborator.project_id, data.user_id);
 
             if(!collaboratorFind){
-                await req.saveCollaborators(data.collaborator.project_id, data_change)
+                await req.saveCollaborators(data.data.collaborator.project_id, data_change)
             }
             
             const project_collaborators = JSON.parse((await req.getProject(data.data.collaborator.project_id)).data.message.collaborators);

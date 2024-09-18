@@ -162,6 +162,90 @@ export const utils = {
       document.querySelectorAll(".project").forEach(item => { utils.isDeselected(item) });
       recourses.selectedElements = [];
       recourses.lastIndex = null;
+  },
+  updatePerformanceMetrics: (collaborator, collaboratorsProject) => {
+    const analytics = document.querySelector("#analytics");
+    const total_pages = analytics.querySelector("#total-pages");
+    const total_elements = analytics.querySelector("#total-elements");
+    const total_groups = analytics.querySelector("#total-groups");
+    const most_used_element = analytics.querySelector("#most-used-element");
+
+    const stageProject = environment_utils.getStageOfProject(collaborator.project_id)
+    const elementsInLayer = stageProject.children.find(c => c.attrs.id == "layer").children.filter(c => c.attrs.id != "selection");
+    const elementCounts = {};
+    const number_groups = elementsInLayer.filter(c => c.className == "Group").length;
+    let mostUsedElement;
+
+    if(elementsInLayer.length > 0){
+      elementsInLayer.forEach(element => {
+        const type = element.className
+        if(type == "Group") return;
+
+        elementCounts[type] = (elementCounts[type] || 0) + 1;
+      })
+
+      mostUsedElement = Object.keys(elementCounts).reduce((a, b) => elementCounts[a] > elementCounts[b] ? a : b);
+    }
+
+    const today = new Date();
+
+    function getDaysDifference(date1, date2) {
+      const diffTime = Math.abs(date2 - date1);
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    const commits_collaborators = collaboratorsProject.map(c => {
+      const recentCommits = c.commits.filter(commit => {
+        const commitDate = new Date(commit.date);
+        const daysDifference = getDaysDifference(commitDate, today);
+        return daysDifference <= 30;
+      });
+
+      const totalCommitsLast30Days = recentCommits.reduce((acc, commit) => acc + commit.commits, 0);
+
+      return {
+        user_id: c.user_id,
+        totalCommitsLast30Days,
+      };
+    });
+
+    most_used_element.textContent = mostUsedElement == undefined ? "Ninguno" : `${mostUsedElement} (${elementCounts[mostUsedElement]} veces)`;
+    total_pages.textContent = collaborator.pages_created;
+    total_elements.textContent = elementsInLayer.length;
+    total_groups.textContent = number_groups;
+  },
+  updateWorkMetrics: (collaborator, collaboratorsProject) => {
+    const analytics = document.querySelector("#analytics");
+    const averageTimeElem = analytics.querySelector("#average-time");
+    const totalChangesElem = analytics.querySelector("#total-changes");
+    const totalCommentsElem = analytics.querySelector("#total-comments");
+    const totalTimeWorkedElem = analytics.querySelector("#total-time-worked");
+
+    // Inicializar acumuladores
+    let totalMinutesWorked = 0;
+    let totalChanges = 0;
+    let totalComments = 0;
+    let timeRecordsCount = 0;
+
+    // Recorrer todos los colaboradores
+    collaboratorsProject.forEach(collaborator => {
+        const timeWorked = collaborator.time_worked || [];
+        totalMinutesWorked += timeWorked.reduce((total, record) => total + record.time, 0);
+        collaborator.commits.forEach(commits => {
+            totalChanges += commits.commits || 0;
+        })
+        totalComments += collaborator.comments || 0;
+        timeRecordsCount += timeWorked.length;
+    });
+
+    // Calcular el tiempo promedio de trabajo
+    const averageMinutesWorked = timeRecordsCount > 0 ? totalMinutesWorked / timeRecordsCount : 0;
+
+    // Actualizar el contenido del HTML
+    averageTimeElem.textContent = globals.formatTimeMinute(averageMinutesWorked);
+    totalChangesElem.textContent = totalChanges;
+    totalCommentsElem.textContent = totalComments;
+    totalTimeWorkedElem.textContent = globals.formatTimeMinute(totalMinutesWorked);
   }
 };
 
@@ -482,14 +566,23 @@ const addEventListeners = () => {
         utils.handleError("Project not found");
         return;
       }
-  
+    
       const collaboratorsProject = JSON.parse(project.collaborators);
+      const collaborator = collaboratorsProject.find(c => c.user_id == globals.getCookie("ID-USER"));
   
+      if (!collaborator) {
+        utils.handleError("Collaborator not found");
+        return;
+      }
+
+      utils.updatePerformanceMetrics(collaborator, collaboratorsProject);
+      utils.updateWorkMetrics(collaborator, collaboratorsProject);
+
       const startDate = project.create_date;
       const endDate = new Date().toISOString();
 
       function createGraphicOfCommits(){
-        const commits = collaboratorsProject.find(c => c.user_id == globals.getCookie("ID-USER"))?.commits;
+        const commits = collaborator?.commits;
         const dataSet = [];
 
         collaboratorsProject.forEach(collaborator => {
@@ -516,7 +609,7 @@ const addEventListeners = () => {
       }
   
       function createGraphicOfTimeWorked() {
-        const timeWorked = collaboratorsProject.find(c => c.user_id == globals.getCookie("ID-USER")).time_worked;
+        const timeWorked = collaborator.time_worked;
         const labels = timeWorked.map(c => c.date);
         const dataSet = []
 

@@ -32,7 +32,10 @@ export const createProject = async (req, res, next) => {
             last_access: "",
             time_worked: [],
             pages_created: 0,
-            elements_used: 0,
+            elements_created: 0,
+            elements_deleted: 0,
+            groups_created: 0,
+            group_deleted: 0,
             plugins_used: 0,
             color: {
                 tailwind: "blue-500",
@@ -203,7 +206,7 @@ export const saveProject = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ state: false, message: "Body is empty" });
     }
-    const {stage, project_id, preview, user_id} = req.body;
+    const {stage, project_id, preview} = req.body;
 
     try {
         const dateCommit = new Date();
@@ -211,32 +214,6 @@ export const saveProject = async (req, res) => {
         const update_project = await connection.query("UPDATE projects SET stage = ?, preview = ?, last_modified = ? WHERE project_id = ?", [stage, preview, dateCommit, project_id]);
 
         if(!update_project){
-            return res.status(400).send({ state: false, message: "No se pudo guardar el proyecto." });
-        }
-
-        const [collaboratorsResult] = await connection.query("SELECT collaborators FROM projects WHERE project_id = ?", [project_id]);
-        const data = JSON.parse(collaboratorsResult.collaborators);
-
-        data.forEach(element => {
-            if(element.user_id != user_id) return;
-
-            const existingEntry = element.commits.find(entry => entry.date.split("T")[0] === dateCommit.toISOString().split("T")[0]);
-
-            if (existingEntry) {
-                existingEntry.commits += 1;
-            } else {
-                element.commits.push({
-                    date: dateCommit,
-                    commits: 1,
-                });
-            }
-
-            element.last_commit = dateCommit;
-        });
-
-        const update_collaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(data), project_id]);
-
-        if(!update_collaborators){
             return res.status(400).send({ state: false, message: "No se pudo guardar el proyecto." });
         }
 
