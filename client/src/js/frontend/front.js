@@ -1066,3 +1066,18 @@ const init = () => {
 
 // Run initialization
 init();
+
+const buttonReward = document.querySelector("#reward-btn");
+
+buttonReward?.addEventListener("click", () => {
+    const popup = document.querySelector("#popup-rewards");
+    if (popup) {
+        popup.style.display = "flex";
+    }
+});
+
+const buttonCloseReward = document.querySelector("#close-reward")?.addEventListener("click", () =>{
+  const popup = document.querySelector("#popup-rewards");
+      popup.style.display = "none";
+
+})

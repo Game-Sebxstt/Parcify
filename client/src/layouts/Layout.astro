@@ -13,6 +13,7 @@ import MoreFavorites from '../components/Popups/MoreFavorites.astro';
 import Options from '../components/Articles/Options.astro';
 import * as environments from '../../../config'
 import TwoStepVerification from '../components/Popups/TwoStepVerification.astro';
+import Rewards from "../components/Popups/Reward/Rewards.astro";
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -65,6 +66,7 @@ try{
 		<title>{title}</title>
 	</head>
 	<body>
+		<Rewards/>
 		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username} email={data.users.email}></Header>
 		<CreateParceller id_content='content-create-parcel'/>
 		<Options/>

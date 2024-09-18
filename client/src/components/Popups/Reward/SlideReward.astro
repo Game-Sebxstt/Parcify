@@ -1,0 +1,36 @@
+---
+import ProgressBar from "./ProgressBar.astro";
+
+---
+
+<div class="bg-[#343333] w-[15%] max-h-[60%] min-h-fit flex flex-col animate-deployment z-10 max-md:w-[20%] max-[600px]:hidden">
+    <header class="w-full h-fit flex justify-center p-4">
+        <svg class="icon icon-tabler icons-tabler-outline icon-tabler-gift" xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 8m0 1a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1z" />
+            <path d="M12 8l0 13"/>
+            <path d="M19 12v7a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-7"/>
+            <path d="M7.5 8a2.5 2.5 0 0 1 0 -5a4.8 8 0 0 1 4.5 5a4.8 8 0 0 1 4.5 -5a2.5 2.5 0 0 1 0 5" />         
+        </svg>
+    </header>
+
+    <section class="px-2 text-start overflow-auto w-full">
+        <p class="text-xs">Acceso anticipado de 48 horas a Nuevas Plantillas de parceladores
+        antes de que estén disponibles para el público general.</p>    
+    </section>
+        
+    <footer class="flex-col mt-auto p-2 py-4">
+        <div class="pb-4">
+            <ProgressBar/>
+        </div>
+    
+        <div class="px-2 flex-col">
+            <h1 class="text-white text-xs pb-1">Remaining time</h1>
+            <span class="flex gap-2 items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                <p class="text-white text-xs"> 5 : 45 : 34</p>
+            </span>
+        </div>
+    </footer>      
+</div>

@@ -1,0 +1,51 @@
+---
+import ArticleReward from "../../Articles/ArticleReward.astro";
+import SlideReward from "./SlideReward.astro";
+
+---
+
+<div id="popup-rewards" class="flex w-screen h-screen gap-3 fixed z-50 justify-center items-center max-sm:px-3">
+    <div class="w-full h-full absolute top-0 left-0 cursor-pointer bg-black/70 z-0"></div>
+    
+    <SlideReward/>
+
+    <div id="rewards-content" class="bg-[#343333] w-fit max-h-[80%] min-h-[60%] max-[300px]:w-[80%] flex flex-col justify-between animate-deployment z-10">
+        
+        <!-- Header -->
+        <header class="flex justify-center w-full p-2 border-b-[1px] border-blue-600">
+            <h1 class="text-white font-bold mx-auto text-xl">Rewards</h1>
+
+            <span>
+                <svg id="close-reward" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="size-6 cursor-pointer">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </span>
+        </header>
+
+        <!-- Content -->
+        <section class="grid grid-cols-4 flex-[1] w-full px-3 py-6 pb-0 gap-3 overflow-y-scroll max-xl:grid-cols-3 max-[980px]:grid-cols-2 max-[375px]:grid-cols-1 max-[375px]:w-full">
+            <ArticleReward/>            
+        </section>
+
+        <!-- Footer -->
+        <footer class="w-full px-4 py-6 text-white">
+            <div class="grid grid-cols-2 max-md:grid-cols-2 max-[300px]:grid-cols-1 gap-4">
+                <div class="flex flex-col max-[300px]:items-center">
+                    <h1 class="text-lg font-bold max-md:text-[14px] max-sm:text-[11px] sm:text-[12px]">Rewards Update</h1>
+                    <span class="flex items-center gap-2 mt-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        <p class="text-white max-md:text-[12px] max-sm:text-[10px] sm:text-[12px]">5 : 45 : 34</p>
+                    </span>
+                </div>
+        
+                <div class="flex justify-end items-center px-2 max-[300px]:flex-col">
+                    <button class="bg-blue-500 px-4 py-2 max-md:text-[12px] max-md:px-3 max-md:py-2 h-fit rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Aceptar</button>
+                </div>
+            </div>
+        </footer>
+        
+    </div>
+</div>
+
