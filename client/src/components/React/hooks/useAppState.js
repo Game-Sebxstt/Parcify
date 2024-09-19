@@ -30,11 +30,25 @@ function createFavorites(user_id) {
 
 const useGlobalStore = create((set) => {
     const user_id = environment_utils.getDataUser().users.user_id;
+    let projects_obtein = environment_utils.getProjects();
+    let projects_shared_obtein = environment_utils.getProjectsShared();
+
+    if(projects_obtein){
+        projects_obtein = projects_obtein.filter(project => project.user_id == user_id);
+    }else{
+        projects_obtein = [];
+    }
+
+    if(projects_shared_obtein){
+        projects_shared_obtein = projects_shared_obtein.filter(project => project.user_id == user_id);
+    }else{
+        projects_shared_obtein = [];
+    }
 
     return {
         projects: [
-            ...environment_utils.getProjects().filter(project => project.user_id === user_id),
-            ...environment_utils.getProjectsShared()
+            ...projects_obtein,
+            ...projects_shared_obtein
         ],
         templates: environment_utils.getTemplates(),
         favorites: createFavorites(user_id).dataFilter,

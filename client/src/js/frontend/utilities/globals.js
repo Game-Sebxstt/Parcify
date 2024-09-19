@@ -99,21 +99,6 @@ export async function endSession(redirect = true) {
     });
 }
 
-export function sortByKey(arr, key, order = 'asc') {
-    return arr.sort((a, b) => {
-        const dateA = Date.parse(a[key]);
-        const dateB = Date.parse(b[key]);
-
-        if (order === 'asc') {
-            return dateA - dateB;
-        } else if (order === 'desc') {
-            return dateB - dateA;
-        }
-
-        return 0;
-    });
-}
-
 export function formatLocalTimeString(time){
     const timeParts = time.split(':');
     let hours = parseInt(timeParts[0], 10);
@@ -159,7 +144,13 @@ export async function isFavorite(project_id) {
     let dataFilter = [];
 
     if (dataPreferences){
-        const projectUser = environment_utils.getProjects().filter(project => project.user_id == getCookie("ID-USER"));
+        let projectUser = environment_utils.getProjects();
+
+        if(!projectUser){
+            projectUser = [];
+        }else{
+            projectUser = projectUser.filter(project => project.user_id == getCookie("ID-USER"));
+        }
         console.log(projectUser)
         console.log(dataPreferences)
         

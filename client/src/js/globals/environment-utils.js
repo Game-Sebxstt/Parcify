@@ -20,6 +20,10 @@ export function getPreferences(){
 }
 
 export function getPreference(id){
+    if(!preferences){
+        return false;
+    }
+
     return preferences.find(preference => preference.id == id);
 }
 

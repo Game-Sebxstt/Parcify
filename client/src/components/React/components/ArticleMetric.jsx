@@ -21,7 +21,7 @@ const Article = ({ id, id_project, id_element, name, last_modified, project_id, 
 
       <div className="bg-[#f5f5f5] relative cursor-pointer w-full h-72">
         {preview ? (
-          <img src={preview} className="w-full h-full" alt="Project Preview" />
+          <img src={preview} className="w-full h-full object-cover" alt="Project Preview" />
         ) : (
           <img src="../../../placeholder/image_preview.svg" className="w-full h-full" alt="Placeholder" />
         )}
