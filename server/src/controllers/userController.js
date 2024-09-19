@@ -251,3 +251,31 @@ export const getPreferencesUser = async (req, res) => {
         return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
     }
 }
+
+export const getPrimaryData = async (req, res) => {
+    if (!req.query.id_user) {
+        return res.status(400).send({ state: false, message: "User ID is required" });
+    }
+
+    const id_user = req.query.id_user;
+
+    try {
+        const connection = await getConnection();
+        const user_get = await connection.query("SELECT * FROM users WHERE user_id = ?", [id_user]);
+        const templates_get = await connection.query("SELECT * FROM templates ORDER BY date_create ASC");
+        const favorites_get = await connection.query("SELECT favorites FROM preferences WHERE user_id = ?", [id_user]);
+        const projects_get = await connection.query("SELECT * FROM projects");
+
+        const data = {
+            user: user_get,
+            templates: templates_get,
+            favorites: favorites_get,
+            projects: projects_get
+        };
+
+        res.status(200).send({ state: true, message: data });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send({ status: "Internal Server Error", message: "An error occurred while processing your request." });
+    }
+}

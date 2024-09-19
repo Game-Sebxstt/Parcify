@@ -1,6 +1,5 @@
 ---
-import Favorites from "../Articles/Favorites.astro";
-
+import Favorites from "../React/components/Favorites"
 ---
 <div id="slideMobile" class="fixed top-16 z-[12] w-full -left-full transition-[left] duration-300 0 ease-in border-r-[1px] max-md:flex border-slate-500 h-screen bg-[#2b2929] hidden flex-col justify-between">
     <header class="flex flex-col">
@@ -57,7 +56,7 @@ import Favorites from "../Articles/Favorites.astro";
     
         <hr class="border-slate-500">
     
-        <Favorites></Favorites>
+        <!-- <Favorites client:only="react"/> -->
     
     </section>
     

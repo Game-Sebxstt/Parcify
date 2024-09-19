@@ -23,13 +23,7 @@ function hasTemplate(){
         const dataPreview = template.preview;
         const dataDescription = template.description;
   
-        front.utils.showPreviewTemplate({
-          dataId,
-          dataName,
-          dataAuthor,
-          dataPreview,
-          dataDescription
-        })
+        
     }
 }
 

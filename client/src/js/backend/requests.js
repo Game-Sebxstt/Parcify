@@ -64,6 +64,23 @@ export async function getDataUser(user_id){
     return {state: true, data: responseData};
 }
 
+export async function getPrimaryData(user_id){
+    const response = await fetch(`${environments.DEFAULT_API_URL}/user/primaryData?id_user=${user_id}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        }
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+        return {state: false, data: responseData.message};
+    }
+
+    return {state: true, data: responseData};
+}
+
 export async function createProject(id, name, template_id){
     const data = {
         id: Number(id),

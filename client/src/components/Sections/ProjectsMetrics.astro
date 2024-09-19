@@ -1,0 +1,25 @@
+---
+import Article from "../Articles/Article.astro"
+
+const data = {
+    projects: [
+        {
+            name: "Plantilla Vacia",
+            template_id: 0,
+            preview: "../../../placeholder/image_preview.svg",
+            description: "Plantilla Vacia.",
+            autor: "Parcify",
+            likes: null
+        }
+    ]
+}
+
+---
+
+<div id="content-grid" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
+    {
+        data.projects.map((item: any) => (
+            <Article id="project" id_project='metric-project' name={item.name} project_id={item.project_id} preview={item.preview} last_modified={item.last_modified} />
+        ))
+    }
+</div>

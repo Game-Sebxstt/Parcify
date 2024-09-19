@@ -7,6 +7,7 @@ router.get("/data", userController.getUserData);
 router.get("/projects", userController.getUserProjects);
 router.get("/project", userController.getProjectById);
 router.get("/preferences", userController.getPreferencesUser)
+router.get("/primaryData", userController.getPrimaryData)
 router.post("/updateProfile", userController.updateProfile)
 router.post("/updateImageProfile", userController.updateImageProfile)
 router.post('/checkPassword', userController.checkPassword);

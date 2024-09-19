@@ -1,25 +1,30 @@
 import * as req from '../backend/requests';
 
 const id_user = getCookie("ID-USER");
-const data_user = await req.getDataUser(id_user);
-let preferences = (await req.getFavorites(id_user));
-preferences = preferences.state ? JSON.parse(preferences.data.message.favorites) : preferences.state;
-
-let templates = (await req.getAllTemplates()).data.message;
-
-let projects = (await req.getAllProjectsGlobal())
-projects = projects.state ? projects.data.projects : projects.state;
+const primary_data = (await req.getPrimaryData(id_user)).data.message;
+const data_user = {users: primary_data.user[0]};
+let preferences = primary_data.favorites.length > 0 ? JSON.parse(primary_data.favorites[0].favorites) : false;
+let templates = primary_data.templates.length > 0 ? primary_data.templates : false;
+let projects = primary_data.projects.length > 0 ? primary_data.projects : false;
 
 export function getDataUser() {
-    return data_user.data.message;
+    return data_user;
 }
 
 export function getProfileImage(){
-    return data_user.data.message.users.profile_image
+    return data_user.users.profile_image
 }
 
 export function getPreferences(){
     return preferences;
+}
+
+export function getPreference(id){
+    return preferences.find(preference => preference.id == id);
+}
+
+export function setPreferences(newPreferences) {
+    preferences = newPreferences;
 }
 
 export function addPreferences(newPreferences) {
@@ -32,11 +37,21 @@ export function addPreferences(newPreferences) {
 }
 
 export function removePreferences(id) {
-    preferences = preferences.filter(preference => preference.id !== id);
+    preferences = preferences.filter(preference => preference.id != id);
 }
 
 export function getTemplate(template_id){
     return templates.find(template => template.template_id == template_id);
+}
+
+export function setTemplate(template_id, template){
+    const index = templates.findIndex(template => template.template_id == template_id);
+
+    if(index == -1){
+        templates.push(template);
+    } else {
+        templates[index] = template;
+    }
 }
 
 export function getTemplates(){
@@ -51,12 +66,28 @@ export function getProject(project_id) {
     return projects.find(project => project.project_id == project_id);
 }
 
+export function getProjectsUser(user_id){
+    if(!projects){
+        return false;
+    }
+
+    return projects.filter(project => project.user_id == user_id);
+}
+
 export function getProjects(){
     if(!projects){
         return false;
     }
 
     return projects;
+}
+
+export function getProjectsShared(){
+    if(!projects){
+        return false;
+    }
+
+    return projects.filter(project => project.collaborators.includes(id_user) && project.user_id != id_user);
 }
 
 export function getStageOfProject(project_id){

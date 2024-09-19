@@ -55,7 +55,7 @@ export const likeTemplate = async (req, res) => {
             return res.status(400).json({ state: false, message: "No se pudo guardar el like." });
         }
 
-        res.status(200).json({ state: true, message: "Like guardado correctamente." });
+        res.status(200).json({ state: true, message: likes_template });
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: "Internal Server Error", message: "An error occurred while processing your request." });
@@ -80,7 +80,7 @@ export const dislikeTemplate = async (req, res) => {
             return res.status(400).json({ state: false, message: "No se pudo guardar el dislike." });
         }
 
-        res.status(200).json({ state: true, message: "Dislike guardado correctamente." });
+        res.status(200).json({ state: true, message: likes_template });
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: "Internal Server Error", message: "An error occurred while processing your request." });

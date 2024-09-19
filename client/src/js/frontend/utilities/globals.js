@@ -156,16 +156,16 @@ export function lastModified(fechas) {
 
 export async function isFavorite(project_id) {
     let dataPreferences = environment_utils.getPreferences();
-    let dataUser = environment_utils.getDataUser();
-  
     let dataFilter = [];
 
     if (dataPreferences){
-        const projectUser = dataUser.projects;
-  
+        const projectUser = environment_utils.getProjects().filter(project => project.user_id == getCookie("ID-USER"));
+        console.log(projectUser)
+        console.log(dataPreferences)
+        
         dataPreferences.forEach((item) => {
             projectUser.forEach((elementUser) => {
-                if (elementUser.project_id === item.id) {
+                if (elementUser.project_id == item.id) {
                     elementUser["type"] = item.type;
                     dataFilter.push(elementUser);
                 }
@@ -173,7 +173,7 @@ export async function isFavorite(project_id) {
         });
     }
   
-    return dataFilter.some((favorite) => favorite.project_id === project_id);
+    return dataFilter.some((favorite) => favorite.project_id == project_id);
 }
 
 export function isNewProject(last_modified){

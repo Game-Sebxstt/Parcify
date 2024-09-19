@@ -2,8 +2,10 @@
   "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
     "lib": [
-        "es6",
-        "dom"
-    ]
+      "es6",
+      "dom"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
   }
 }
