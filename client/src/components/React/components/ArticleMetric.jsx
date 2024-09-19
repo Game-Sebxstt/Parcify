@@ -3,8 +3,6 @@ import * as astro_utils from '../../../js/globals/astro-utils';
 import * as front from '../../../js/frontend/front';
 
 const Article = ({ id, id_project, id_element, name, last_modified, project_id, preview }) => {
-  const [inputValue, setInputValue] = useState(name);
-
   const onClickMetric = (e) => {
     front.utils.showAnalytics(e.target)
   }

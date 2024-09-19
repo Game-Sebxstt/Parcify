@@ -122,9 +122,7 @@ export const utils = {
     const total_groups = analytics.querySelector("#total-groups");
     const most_used_element = analytics.querySelector("#most-used-element");
 
-    console.log(collaborator)
     const stageProject = environment_utils.getStageOfProject(collaborator.project_id)
-    console.log(stageProject)
     const elementsInLayer = stageProject.children.find(c => c.attrs.id == "layer").children.filter(c => c.attrs.id != "selection");
     const elementCounts = {};
     const number_groups = elementsInLayer.filter(c => c.className == "Group").length;

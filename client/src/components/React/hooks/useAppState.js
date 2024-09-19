@@ -9,7 +9,7 @@ function createFavorites(user_id) {
     let numFavorites = [];
 
     if (isData) {
-        const projects = environment_utils.getProjects().filter(project => project.user_id === user_id);
+        const projects = environment_utils.getProjects();
         const templates = environment_utils.getTemplates();
         const elementsUser = [...projects, ...templates];
 
@@ -39,9 +39,7 @@ const useGlobalStore = create((set) => {
         projects_obtein = [];
     }
 
-    if(projects_shared_obtein){
-        projects_shared_obtein = projects_shared_obtein.filter(project => project.user_id == user_id);
-    }else{
+    if(!projects_shared_obtein){
         projects_shared_obtein = [];
     }
 

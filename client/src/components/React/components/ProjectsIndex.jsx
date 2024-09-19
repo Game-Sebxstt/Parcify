@@ -26,7 +26,7 @@ export default function ProjectsIndex() {
     };
 
     const handleFilter = (index, arrow) => {
-        let updatedProjects = [...environment_utils.getProjects().filter(project => project.user_id === user_id), ...environment_utils.getProjectsShared()];
+        let updatedProjects = [...environment_utils.getProjects().filter(project => project.user_id == user_id), ...environment_utils.getProjectsShared()];
 
         switch (index) {
             case 0:

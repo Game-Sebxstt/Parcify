@@ -92,7 +92,7 @@ export default function OptionsMenu() {
 
           id_list.forEach((id) => {
               const project = projects.find(project => project.project_id == id);
-              const projectCloned = { ...project, project_id: validation.data.message.project_id };
+              const projectCloned = { ...project, project_id: id };
               projectsCloned.push(projectCloned);
           })
 

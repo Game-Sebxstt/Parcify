@@ -39,8 +39,6 @@ export async function actionContextMenu(e, item){
       }
     }
 
-    console.log(elements_select.length)
-
     if(elements_select.length > 1){
       optionsParcel.querySelector("#redirect").style.display = "none";
       optionsParcel.querySelector("#redirect-external").style.display = "none";

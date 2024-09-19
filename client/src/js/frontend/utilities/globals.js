@@ -38,7 +38,6 @@ export function setCookie(name, value, days) {
 }
 
 export async function startSession(project_id) {
-    console.log("Session started")
     const startTime = new Date();
     localStorage.setItem('sessionStartTime', JSON.stringify({startTime: startTime, project_id: project_id}));
     await req.saveCollaborators(project_id, {
@@ -148,12 +147,8 @@ export async function isFavorite(project_id) {
 
         if(!projectUser){
             projectUser = [];
-        }else{
-            projectUser = projectUser.filter(project => project.user_id == getCookie("ID-USER"));
         }
-        console.log(projectUser)
-        console.log(dataPreferences)
-        
+
         dataPreferences.forEach((item) => {
             projectUser.forEach((elementUser) => {
                 if (elementUser.project_id == item.id) {
