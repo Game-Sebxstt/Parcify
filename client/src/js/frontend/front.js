@@ -124,6 +124,7 @@ export const utils = {
 
     const stageProject = environment_utils.getStageOfProject(collaborator.project_id)
     const elementsInLayer = stageProject.children.find(c => c.attrs.id == "layer").children.filter(c => c.attrs.id != "selection");
+    console.log(elementsInLayer);
     const elementCounts = {};
     const number_groups = elementsInLayer.filter(c => c.className == "Group").length;
     let mostUsedElement;
@@ -136,7 +137,13 @@ export const utils = {
         elementCounts[type] = (elementCounts[type] || 0) + 1;
       })
 
-      mostUsedElement = Object.keys(elementCounts).reduce((a, b) => elementCounts[a] > elementCounts[b] ? a : b);
+      console.log(elementCounts);
+
+      if(Object.keys(elementCounts).length > 0){
+        mostUsedElement = Object.keys(elementCounts).reduce((a, b) => elementCounts[a] > elementCounts[b] ? a : b);
+      }else{
+        mostUsedElement = undefined;
+      }
     }
 
     const today = new Date();

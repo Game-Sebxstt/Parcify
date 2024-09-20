@@ -308,9 +308,9 @@ if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers
     stage.add(layerBackground);
 }
 
+layerCollaborators.zIndex(1); 
 layer.zIndex(1);
 layerUtilities.zIndex(1);
-layerCollaborators.zIndex(3); 
 layerBackground.zIndex(0);
 globalFunctions.updateDimensionStage();
 
@@ -419,6 +419,22 @@ export function groupElements() {
         group.add(node);
     });
 
+    const boxGroupDeleted = group.getChildren().find(item => item.attrs.id == "boxGroup");
+
+    if(boxGroupDeleted){
+        boxGroupDeleted.destroy();
+        console.log("boxGroupDeleted")
+    }
+
+    const boxGroup = new Konva.Rect({
+        fill: 'rgba(252,127,83, 0)',
+        id: "boxGroup",
+        listening: false,
+    });
+
+    globalFunctions.updateBoundingRect(boxGroup, group.children);
+
+    group.add(boxGroup);
     layer.add(group);
     elements.push(group);
     tr.nodes([group]);
@@ -427,21 +443,17 @@ export function groupElements() {
     const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"));
     collaborator.group_created += 1;
     environment_utils.setCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"), collaborator);
-    console.log(collaborator)
 
     saveHistory(stage.toJSON())
 }
 
 export function ungroupElements() {
     let selectedNodes = tr.nodes();
-    console.log(selectedNodes)
-    console.log(selectedNodes.length);
     if (selectedNodes.length < 2) {
         return;
     }
 
 
-    console.log(selectedNodes[0].parent)
     if (selectedNodes[0].parent instanceof Konva.Group == false) {
         return;
     }
@@ -454,6 +466,13 @@ export function ungroupElements() {
         layer.add(node);
         elements.push(node);
     });
+
+    const boxGroupDeleted = children.find(item => item.attrs.id == "boxGroup");
+
+    if(boxGroupDeleted){
+        boxGroupDeleted.destroy();
+        console.log("boxGroupDeleted")
+    }
 
     tr.nodes([]);
     layer.batchDraw();

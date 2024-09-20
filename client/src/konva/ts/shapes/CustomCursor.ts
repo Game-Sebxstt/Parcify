@@ -33,6 +33,9 @@ export class CustomCursor {
         this.id = options.id;
         this.id_user = options.id_user;
 
+    }
+
+    public initCursor() {
         this.createCursor();
         this.eventsGlobal();
     }

@@ -7,7 +7,7 @@ import { addShape } from "../ts/CreationShapes";
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 
 konva.layer.on('dragmove', function (e) {
-    if (e.target.id() === 'transformer') {
+    if (e.target.id() === 'transformer', e.target.id() === 'boxShape') {
         return;
     }
     

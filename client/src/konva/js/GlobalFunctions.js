@@ -207,6 +207,24 @@ export function randomId(){
     return Math.random().toString(36).substr(2, 9);
 }
 
+export function findElementByIdUnique(node, id_unique) {
+    if (node.attrs && node.attrs.id_unique === id_unique) {
+        return node;
+    }
+
+    if (node.hasChildren && node.hasChildren()) {
+        const children = node.getChildren();
+        for (let i = 0; i < children.length; i++) {
+            const found = findElementByIdUnique(children[i], id_unique);
+            if (found) {
+                return found;
+            }
+        }
+    }
+
+    return null;
+}
+
 export function createElement(elementKonva, trActive = true){
     if(elementKonva){
         konva.getElements().push(elementKonva);
@@ -319,6 +337,7 @@ export function createCursorCollaborator(collaborator){
     }
     
     const customCursor = new CustomCursor.CustomCursor(options, konva.layerCollaborators, konva.stage)
+    customCursor.initCursor();
     konva.setCursorCollaborators(customCursor);
 }
 
@@ -360,6 +379,7 @@ export function getCursorCollaborator(id_user){
 }
 
 export function setBorderElement(element, collaborator) {
+    console.log(element);
     removeBorderElement();
     konva.setElementSelectedCollaborators(element);
     const beforeStroke = element.stroke();
@@ -387,6 +407,33 @@ export function removeBorderElement() {
     });
 }
 
+export function updateBoundingRect(rect, nodes) {
+    let maxX = -Infinity, maxY = -Infinity, minX = Infinity, minY = Infinity;
+
+    nodes.forEach(node => {
+        let nodeX = node.x();
+        let nodeY = node.y();
+        let nodeWidth, nodeHeight;
+
+        if (node.radius) {
+            nodeWidth = nodeHeight = node.radius() * node.scaleX() * 2;
+            nodeX -= node.radius() * node.scaleX();
+            nodeY -= node.radius() * node.scaleX();
+        } else {
+            nodeWidth = node.width() * node.scaleX();
+            nodeHeight = node.height() * node.scaleY();
+        }
+
+        maxX = Math.max(maxX, nodeX + nodeWidth);
+        maxY = Math.max(maxY, nodeY + nodeHeight);
+        minX = Math.min(minX, nodeX);
+        minY = Math.min(minY, nodeY);
+    });
+
+    rect.position({ x: minX, y: minY });
+    rect.size({ width: maxX - minX, height: maxY - minY });
+}
+
 function updateElement() {
     if (needsUpdate) {
         konva.layer.batchDraw();
@@ -402,7 +449,6 @@ requestAnimationFrame(updateElement);
 export function changeElement(element, updatedAttrs, user_id, posRelativePointer, collaborator) {
     element.setAttrs(updatedAttrs);
     updateCursorCollaborator(posRelativePointer, user_id);
-    setBorderElement(element, collaborator);
     needsUpdate = true;
 }
 
@@ -439,7 +485,7 @@ export function showBarTool(nodes) {
 
     function createBoundingRectForNodes(nodes) {
         const boundingRect = new Konva.Rect({
-            fill: 'rgba(0, 255, 255, 0)',
+            fill: 'rgba(0, 255, 0, 0)',
             strokeWidth: 1,
             listening: false,
         });
@@ -463,23 +509,6 @@ export function showBarTool(nodes) {
         })
 
         return boundingRect;
-    }
-
-    function updateBoundingRect(rect, nodes) {
-        let maxX = 0, maxY = 0, minX = Infinity, minY = Infinity;
-
-        nodes.forEach(node => {
-            const nodeX = node.x();
-            const nodeY = node.y();
-
-            if (nodeX + node.width() > maxX) maxX = nodeX + node.width();
-            if (nodeY + node.height() > maxY) maxY = nodeY + node.height();
-            if (nodeX < minX) minX = nodeX;
-            if (nodeY < minY) minY = nodeY;
-        });
-
-        rect.position({ x: minX, y: minY });
-        rect.size({ width: maxX - minX, height: maxY - minY });
     }
 
     function initializeBarTool(target, barTool) {

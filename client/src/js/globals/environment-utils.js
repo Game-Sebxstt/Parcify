@@ -41,6 +41,10 @@ export function addPreferences(newPreferences) {
 }
 
 export function removePreferences(id) {
+    if(!preferences){
+        return false;
+    }
+    
     preferences = preferences.filter(preference => preference.id != id);
 }
 

@@ -9,8 +9,8 @@ function createFavorites(user_id) {
     let numFavorites = [];
 
     if (isData) {
-        const projects = environment_utils.getProjects();
-        const templates = environment_utils.getTemplates();
+        const projects = environment_utils.getProjects() || [];
+        const templates = environment_utils.getTemplates() || [];
         const elementsUser = [...projects, ...templates];
 
         isData.forEach((item) => {

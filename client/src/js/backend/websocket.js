@@ -1,3 +1,4 @@
+import Konva from 'konva';
 import * as req from '../backend/requests'
 import * as globals from '../frontend/utilities/globals';
 import * as GlobalFunctions from '../../konva/js/GlobalFunctions';
@@ -55,11 +56,26 @@ function createWebSocket() {
         }
 
         if (data.type === 'selectElementKonva') {
-            if(data.user_id != globals.getCookie("ID-USER")){
+            if (data.user_id != globals.getCookie("ID-USER")) {
                 const elementKonva = JSON.parse(data.elementKonva);
                 const layerKonva = konva.stage.children.find(item => item.id() === "layer");
-                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
-                GlobalFunctions.setBorderElement(elementKonvaOfLayer, data.collaborator)
+            
+                let elementKonvaOfLayer = GlobalFunctions.findElementByIdUnique(layerKonva, elementKonva.attrs.id_unique);
+
+                if(elementKonvaOfLayer.parent instanceof Konva.Group){
+                    const group = elementKonvaOfLayer.parent;
+                    const boxGroup = group.children.find(item => item.attrs.id === "boxGroup");
+
+                    if(boxGroup){
+                        elementKonvaOfLayer = boxGroup;
+                    }
+                }
+
+                console.log(elementKonvaOfLayer);
+
+                if (elementKonvaOfLayer) {
+                    GlobalFunctions.setBorderElement(elementKonvaOfLayer, data.collaborator);
+                }
             }
         }
 
@@ -112,7 +128,6 @@ function createWebSocket() {
                 state: false,
             }
 
-            console.log(data.data.collaborator.project_id)
             const collaboratorFind = environments_utils.getCollaboratorOfProject(data.data.collaborator.project_id, data.user_id);
 
             if(!collaboratorFind){
