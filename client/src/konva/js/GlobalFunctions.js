@@ -240,7 +240,6 @@ export function createElement(elementKonva, trActive = true){
             const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
             collaborator.elements_created += 1;
             environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator); 
-            console.log(collaborator);
 
             konva.tr?.setAttr("visible", true);
             konva.tr?.nodes([elementKonva]);
@@ -379,11 +378,11 @@ export function getCursorCollaborator(id_user){
 }
 
 export function setBorderElement(element, collaborator) {
-    console.log(element);
     removeBorderElement();
     konva.setElementSelectedCollaborators(element);
     const beforeStroke = element.stroke();
     const beforeStrokeWidth = element.strokeWidth();
+
     element.setAttrs({
         stroke: collaborator ? collaborator.color.hex : "rgb(0, 161, 255)",
         strokeWidth: 3,
@@ -448,7 +447,10 @@ requestAnimationFrame(updateElement);
 
 export function changeElement(element, updatedAttrs, user_id, posRelativePointer, collaborator) {
     element.setAttrs(updatedAttrs);
+    setBorderElement(element, collaborator);
     updateCursorCollaborator(posRelativePointer, user_id);
+    hiddenToolBarShape();
+    konva.layer.batchDraw();
     needsUpdate = true;
 }
 
@@ -708,6 +710,11 @@ export function updateToolBarShape() {
     updateToolBarButtons(node);
     updateToolBarFont(node);
     updateBarToolExtra(node);
+}
+
+export function hiddenToolBarShape(){
+    const barTool = document.querySelector("#BarTool");
+    barTool.style.display = "none";
 }
 
 function updateToolBarButtons(node) {

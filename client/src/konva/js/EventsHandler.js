@@ -76,13 +76,21 @@ document.addEventListener('keydown', function (e) {
     }
 
     if (e.ctrlKey && e.key.toLowerCase() === 'y') {
-        e.preventDefault()
+        e.preventDefault() //hacerlo a nivel de socket
         konva.redo();
     }
 
     if(e.ctrlKey && e.key.toLowerCase() === 'j'){
         e.preventDefault();
-        konva.groupElements();
+
+        const nodes = konva.tr.nodes();
+
+        if(!nodes){
+            console.log("No nodes")
+            return;
+        }
+
+        websocket.groupElements(nodes);
     }
 
     if (e.ctrlKey && e.key.toLowerCase() === 'g') {
@@ -213,8 +221,13 @@ elements.export?.addEventListener("submit", (e)=> {
         return;
     }
 
+    const layerBackground = konva.stage.children.find(item => item.attrs.id == "layerbackground")
+    // layerBackground.visible(false);
+
     var dataURL = konva.stage.toDataURL({ pixelRatio: 3 });
     GlobalFunctions.downloadURI(dataURL, `stage.${extension.value}`);
+
+    // layerBackground.visible(true);
 });
 
 elements.export?.elements['extension'].forEach(radio => {

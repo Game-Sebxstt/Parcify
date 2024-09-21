@@ -27,6 +27,19 @@ function createWebSocket() {
     socket.onmessage = async function(event) {
         const data = JSON.parse(event.data);
 
+        if (data.type === "groupElements"){
+            const stringifyElements = data.elements
+            const nodesList = []
+
+            stringifyElements.forEach(item => {
+                const element = JSON.parse(item);
+                const elementInKonva = konva.stage.children.find(child => child.attrs.id == "layer").children.find(child => child.attrs.id_unique == element.attrs.id_unique);
+                nodesList.push(elementInKonva);
+            })
+
+            konva.groupElements(nodesList);
+        }
+
         if (data.type === 'createElementKonva') {
             if(data.user_id != globals.getCookie("ID-USER")){
                 const elementKonva = JSON.parse(data.elementKonva);
@@ -192,12 +205,15 @@ function sendIfOpen(message) {
     }
 }
 
+export function groupElements(nodesKonva){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'groupElements', elements: nodesKonva, user_id: userId }));
+}
+
 export function createElementKonva(elementKonva){
     const userId = globals.getCookie("ID-USER");
     sendIfOpen(JSON.stringify({ type: 'createElementKonva', elementKonva, user_id: userId }));
 }
-
-//Añadir nueva tabla en user con collaborators_project donde estan los id de los proyectos que esta colaborando el usuario
 
 export function deleteElementKonva(elementKonva){
     const userId = globals.getCookie("ID-USER");

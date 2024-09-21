@@ -400,8 +400,8 @@ async function getStage(id_stage) {
     return validation.stage;
 }
 
-export function groupElements() {
-    let selectedNodes = tr.nodes();
+export function groupElements(nodes) {
+    let selectedNodes = nodes || tr.nodes();
     if(selectedNodes[0] instanceof Konva.Group){
         selectedNodes = tr.nodes()[0].getChildren();    
     }
@@ -585,6 +585,7 @@ export function updateElementsEvent() {
             websocket.changeElementKonva(updatedAttrs, stage.getRelativePointerPosition());
 
             if (element instanceof Konva.Group) {
+                console.log(element)
                 const groupNode = element;
 
                 if (groupNode.attrs.name == "ShapeText") {

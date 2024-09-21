@@ -1,3 +1,5 @@
+import { elements } from "chart.js";
+
 export function initSocket(data, ws, clients) {
     if (data.type === 'clientId') {
         clients.set(data.data.id, { ws: ws, data: data.data });
@@ -16,6 +18,18 @@ export function initSocket(data, ws, clients) {
                 type: 'enterCollaborator',
                 collaborator: data.data.collaborator,
                 user_id: senderId
+            }));
+        });
+    }
+
+    if (data.type === 'groupElements') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'groupElements',
+                user_id: senderId,
+                elements: data.elements
             }));
         });
     }
