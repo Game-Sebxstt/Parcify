@@ -5,8 +5,7 @@ import Content from '../components/Sections/Content.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Layout from '../layouts/Layout.astro';
-import * as environments from '../../../config';
-import { getProject } from "../js/backend/requests";
+import * as config from '../config';
 import ProjectsIndex from "../components/React/components/ProjectsIndex";
 import CarouselTemplates from "../components/React/components/Articles/CarouselTemplates";
 
@@ -21,14 +20,14 @@ let get_data: any;
 let data: any;
 
 try {
-  get_data = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
+  get_data = await fetch(`${config.getApiUrl()}/user/data?id_user=${id}`);
   data = await get_data.json();
   data = data.message;
 
-  if (data == "El Usuario no existe.") {
-    Astro.cookies.set("ID-USER", "false");
-    Astro.cookies.set("logged", "false");
-    return Astro.redirect("/SignIn");
+  if(!data.users){
+    Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
+    Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
+    return Astro.redirect("/SignIn")
   }
 } catch (e) {
   Astro.cookies.set("ID-USER", "false");

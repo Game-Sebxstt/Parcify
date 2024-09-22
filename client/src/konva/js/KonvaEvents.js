@@ -5,12 +5,13 @@ import * as GlobalFunctions from "./GlobalFunctions";
 import * as websocket from '../../js/backend/websocket'
 import { addShape } from "../ts/CreationShapes";
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
+import * as config from '../config'
 
 konva.layer.on('dragmove', function (e) {
-    if (e.target.id() === 'transformer', e.target.id() === 'boxShape') {
+    if (config.list_id_ignore.includes(e.target.id() )) {
         return;
     }
-    
+
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
 
     var lineGuideStops = GlobalFunctions.getLineGuideStops(e.target);
@@ -72,7 +73,7 @@ konva.layer.on('dragmove', function (e) {
 });
 
 konva.layer.on('dragend', function (e) {
-    if (e.target.id() === 'transformer') {
+    if (config.list_id_ignore.includes(e.target.id() )) {
         return;
     }
     
@@ -81,6 +82,10 @@ konva.layer.on('dragend', function (e) {
 });
 
 konva.tr?.on('transform', function (e) {
+    if (config.list_id_ignore.includes(e.target.id() )) {
+        return;
+    }
+
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
 
     var lineGuideStops = GlobalFunctions.getLineGuideStops(e.target);
@@ -142,6 +147,10 @@ konva.tr?.on('transform', function (e) {
 });
 
 konva.tr?.on("transformend", function (e) {
+    if (config.list_id_ignore.includes(e.target.id() )) {
+        return;
+    }
+
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
     konva.saveHistory(konva.stage.toJSON());
 });
@@ -386,8 +395,9 @@ konva.stage.on('click tap', function (e) {
     }
 
     if (e.target instanceof Konva.Stage == true) {
-        konva.tr?.nodes([])
-        websocket.deselectElementKonva()
+        console.log("click on stage");
+        websocket.ungroupElements(konva.tr.nodes())
+        konva.tr?.nodes([]);
         return;
     }
 
@@ -419,13 +429,14 @@ konva.stage.on('click tap', function (e) {
         const nodes = konva.tr?.nodes().slice();
         nodes.splice(nodes.indexOf(e.target), 1);
         konva.tr?.nodes(nodes);
+        websocket.groupElements(nodes)
     } else if (metaPressed && !isSelected) {
         konva.tr?.moveUp();
         const nodes = konva.tr?.nodes().concat([e.target]);
         konva.tr?.nodes(nodes);
         GlobalFunctions.showBarTool(nodes)
+        websocket.groupElements(nodes)
     }
-
 });
 
 konva.stage.on('dblclick dbltap', (e) => {

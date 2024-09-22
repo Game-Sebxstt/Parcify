@@ -1,5 +1,3 @@
-import { elements } from "chart.js";
-
 export function initSocket(data, ws, clients) {
     if (data.type === 'clientId') {
         clients.set(data.data.id, { ws: ws, data: data.data });
@@ -29,7 +27,21 @@ export function initSocket(data, ws, clients) {
             client.ws.send(JSON.stringify({
                 type: 'groupElements',
                 user_id: senderId,
-                elements: data.elements
+                elements: data.elements,
+                generatedId: data.generatedId,
+            }));
+        });
+    }
+
+    if (data.type === 'ungroupElements') {
+        const senderId = data.user_id;
+        console.log('Desagrupar elementos:', data);
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'ungroupElements',
+                user_id: senderId,
+                groupKonva: data.groupKonva
             }));
         });
     }

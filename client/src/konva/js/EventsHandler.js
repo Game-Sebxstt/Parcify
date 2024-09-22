@@ -240,3 +240,42 @@ elements.export?.elements['extension'].forEach(radio => {
 // window.addEventListener('wheel', function(e) {
 //     e.preventDefault();
 // }, { passive: false });
+
+
+//Prank
+let opacityInterval;
+
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        
+        if (opacityInterval) {
+            clearInterval(opacityInterval);
+        }
+        
+        opacityInterval = setInterval(() => {
+            const body = document.querySelector("body");
+            let currentOpacity = parseFloat(window.getComputedStyle(body).opacity);
+            
+            if (currentOpacity > 0) {
+                currentOpacity = Math.max(0, currentOpacity - 0.1);
+                body.style.opacity = currentOpacity;
+                console.log(`Current opacity: ${currentOpacity}`);
+            } else {
+                clearInterval(opacityInterval);
+                console.log("Opacity reduction completed");
+            }
+        }, 100);
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        if (opacityInterval) {
+            clearInterval(opacityInterval);
+        }
+        document.querySelector("body").style.opacity = 1;
+        console.log("Opacity reset to 1");
+    }
+});

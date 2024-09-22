@@ -4,7 +4,7 @@ import * as globals from '../frontend/utilities/globals';
 import * as GlobalFunctions from '../../konva/js/GlobalFunctions';
 import * as Render from '../../konva/js/Render';
 import * as chat from '../frontend/utilities/chat';
-import * as environments from '../../../../config';
+import * as config from '../../config.ts';
 import * as environments_utils from '../globals/environment-utils';
 import * as konva from '../../konva/js/KonvaLogic'
 
@@ -13,7 +13,7 @@ let isReconnecting = false;
 let collaborator = null;
 
 function createWebSocket() {
-    socket = new WebSocket(environments.DEFAULT_SOCKET_URL);
+    socket = new WebSocket(config.getSocketUrl());
 
     socket.onopen = function(event) {
         if (socket.readyState === WebSocket.OPEN) {
@@ -37,7 +37,13 @@ function createWebSocket() {
                 nodesList.push(elementInKonva);
             })
 
-            konva.groupElements(nodesList);
+            konva.groupElements(nodesList, data.generatedId, data.user_id);
+        }
+
+        if (data.type === "ungroupElements"){
+            if(!data.groupKonva) return;
+            const groupKonva = JSON.parse(data.groupKonva[0]);
+            konva.ungroupElements(groupKonva);
         }
 
         if (data.type === 'createElementKonva') {
@@ -75,16 +81,13 @@ function createWebSocket() {
             
                 let elementKonvaOfLayer = GlobalFunctions.findElementByIdUnique(layerKonva, elementKonva.attrs.id_unique);
 
-                if(elementKonvaOfLayer.parent instanceof Konva.Group){
-                    const group = elementKonvaOfLayer.parent;
-                    const boxGroup = group.children.find(item => item.attrs.id === "boxGroup");
+                if(elementKonvaOfLayer instanceof Konva.Group){
+                    const boxGroup = elementKonvaOfLayer.children.find(item => item.attrs.id === "boxGroup");
 
                     if(boxGroup){
                         elementKonvaOfLayer = boxGroup;
                     }
                 }
-
-                console.log(elementKonvaOfLayer);
 
                 if (elementKonvaOfLayer) {
                     GlobalFunctions.setBorderElement(elementKonvaOfLayer, data.collaborator);
@@ -187,13 +190,6 @@ function createWebSocket() {
 
     socket.onclose = function(event) {
         console.log('WebSocket connection closed:', event);
-        if (event.code !== 1000 && !isReconnecting) {
-            isReconnecting = true;
-            setTimeout(() => {
-                createWebSocket();
-                isReconnecting = false;
-            }, 5000);
-        }
     };
 }
 
@@ -207,7 +203,51 @@ function sendIfOpen(message) {
 
 export function groupElements(nodesKonva){
     const userId = globals.getCookie("ID-USER");
-    sendIfOpen(JSON.stringify({ type: 'groupElements', elements: nodesKonva, user_id: userId }));
+    sendIfOpen(JSON.stringify({ type: 'groupElements', elements: nodesKonva, generatedId: globals.generateID(), user_id: userId }));
+}
+
+export function ungroupElements(groupKonva) {
+    console.log('groupKonva:', groupKonva);
+    if (!Array.isArray(groupKonva)) {
+        groupKonva = [groupKonva];
+    }
+
+    if (groupKonva.length < 1) {
+        console.error("No group elements provided for ungrouping");
+        return;
+    }
+
+    let group = groupKonva[0];
+
+    if (!(group instanceof Konva.Group)) {
+        group = group.parent instanceof Konva.Group ? group.parent : group;
+    }
+
+    if (!(group instanceof Konva.Group)) {
+        console.error("Invalid group for ungrouping");
+        return;
+    }
+
+    group.setAttrs({
+        posCustom: group.position(),
+        scaleCustom: {x: group.scaleX(), y: group.scaleY()},
+        rotationCustom: group.rotation(),
+    });
+
+    if (!group.children || group.children.length === 0) {
+        console.warn("Group has no children to ungroup");
+        return;
+    }
+
+    group.children.forEach(item => {
+        item.setAttrs({
+            rotationCustom: item.rotation(),
+            scaleCustom: {x: item.scaleX(), y: item.scaleY()},
+        });
+    });
+
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'ungroupElements', groupKonva: [group], user_id: userId }));
 }
 
 export function createElementKonva(elementKonva){

@@ -260,14 +260,14 @@ export function deleteElement(element){
     console.log(collaborator);
 }
 
-export function createElementKonva(elementKonva){
-    console.log(elementKonva);
+export function createElementKonva(elementKonva, attrs){
     const className = elementKonva.className;
-    const options = elementKonva.attrs;
+    const options = attrs ?? elementKonva.attrs;
 
     if(className == "Rect"){
         const rect = new Konva.Rect(options);
         createElement(rect, false);
+        console.log("Creado",rect);
     }
 
     if(className == "Circle"){
@@ -285,8 +285,6 @@ export function createElementKonva(elementKonva){
         const text = new Konva.Text(options);
         createElement(text, false);
     }
-
-
 }
 
 export function deleteElementKonva(elementKonva){
@@ -408,12 +406,13 @@ export function removeBorderElement() {
 
 export function updateBoundingRect(rect, nodes) {
     let maxX = -Infinity, maxY = -Infinity, minX = Infinity, minY = Infinity;
-
+    
     nodes.forEach(node => {
-        let nodeX = node.x();
-        let nodeY = node.y();
+        let nodePos = node.getAbsolutePosition();
+        let nodeX = nodePos.x;
+        let nodeY = nodePos.y;
         let nodeWidth, nodeHeight;
-
+        
         if (node.radius) {
             nodeWidth = nodeHeight = node.radius() * node.scaleX() * 2;
             nodeX -= node.radius() * node.scaleX();
@@ -422,13 +421,13 @@ export function updateBoundingRect(rect, nodes) {
             nodeWidth = node.width() * node.scaleX();
             nodeHeight = node.height() * node.scaleY();
         }
-
+        
         maxX = Math.max(maxX, nodeX + nodeWidth);
         maxY = Math.max(maxY, nodeY + nodeHeight);
         minX = Math.min(minX, nodeX);
         minY = Math.min(minY, nodeY);
     });
-
+    
     rect.position({ x: minX, y: minY });
     rect.size({ width: maxX - minX, height: maxY - minY });
 }

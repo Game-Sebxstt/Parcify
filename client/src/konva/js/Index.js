@@ -4,8 +4,8 @@ import * as templates from '../../js/frontend/utilities/templates';
 import * as GlobalFunctions from './GlobalFunctions'
 import * as Render from './Render'
 import * as front from '../../js/frontend/front';
-import * as environment_utils from '../../js/globals/environment-utils'
 import * as environments from '../../environments'
+import * as environment_utils from '../../js/globals/environment-utils'
 import * as websocket from '../../js/backend/websocket'
 
 function initialCollaboration(){

@@ -1,4 +1,4 @@
-import * as environments from '../../../../config'
+import * as config from '../../config'
 
 export async function registerUser(name, mail, pass) {
     const data = {
@@ -7,7 +7,7 @@ export async function registerUser(name, mail, pass) {
         password: pass
     };
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/register`, {
+    const response = await fetch(`${config.getApiUrl()}/auth/register`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -30,7 +30,7 @@ export async function loginUser(email, password) {
         password: password,
     };
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/login`, {
+    const response = await fetch(`${config.getApiUrl()}/auth/login`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -48,7 +48,7 @@ export async function loginUser(email, password) {
 }
 
 export async function getDataUser(user_id){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${user_id}`, {
+    const response = await fetch(`${config.getApiUrl()}/user/data?id_user=${user_id}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -65,7 +65,7 @@ export async function getDataUser(user_id){
 }
 
 export async function getPrimaryData(user_id){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/primaryData?id_user=${user_id}`, {
+    const response = await fetch(`${config.getApiUrl()}/user/primaryData?id_user=${user_id}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -88,7 +88,7 @@ export async function createProject(id, name, template_id){
         template_id: template_id
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/create`, {
+    const response = await fetch(`${config.getApiUrl()}/project/create`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -112,7 +112,7 @@ export async function saveProject(stageJson, project_id, preview) {
         preview: preview,
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/save`, {
+    const response = await fetch(`${config.getApiUrl()}/project/save`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -135,7 +135,7 @@ export async function saveCollaborators(project_id, collaborators) {
         collaborators: collaborators
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/collaborators`, {
+    const response = await fetch(`${config.getApiUrl()}/project/collaborators`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -153,7 +153,7 @@ export async function saveCollaborators(project_id, collaborators) {
 }
 
 export async function getCollaborators(id_project) {
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/collaborators?id_project=${id_project}`, {
+    const response = await fetch(`${config.getApiUrl()}/project/collaborators?id_project=${id_project}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -170,7 +170,7 @@ export async function getCollaborators(id_project) {
 }
 
 export async function getAllTemplates(){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/template/templates`, {
+    const response = await fetch(`${config.getApiUrl()}/template/templates`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -187,7 +187,7 @@ export async function getAllTemplates(){
 }
 
 export async function getTemplate(id_template){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/template/${id_template}`, {
+    const response = await fetch(`${config.getApiUrl()}/template/${id_template}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -205,7 +205,7 @@ export async function getTemplate(id_template){
 
 //Funcion para obtener todos los proyectos en general
 export async function getAllProjectsGlobal() {
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/projectsGlobal`, {
+    const response = await fetch(`${config.getApiUrl()}/project/projectsGlobal`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -223,7 +223,7 @@ export async function getAllProjectsGlobal() {
 
 //Funcion para obtener todos los proyectos de un usuario
 export async function getAllProjects(user_id) {
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/projects?id_user=${user_id}`, {
+    const response = await fetch(`${config.getApiUrl()}/user/projects?id_user=${user_id}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -244,7 +244,7 @@ export async function getProject(id_project){
         return {state: false, data: "El id del proyecto no es valido"};
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/project?id_project=${id_project}`, {
+    const response = await fetch(`${config.getApiUrl()}/user/project?id_project=${id_project}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -262,7 +262,7 @@ export async function getProject(id_project){
 
 //Delete project with method post
 export async function deleteProject(id_project){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/delete`, {
+    const response = await fetch(`${config.getApiUrl()}/project/delete`, {
         method: "POST",
         body: JSON.stringify({id_project: id_project}),
         headers: {
@@ -281,7 +281,7 @@ export async function deleteProject(id_project){
 
 //Delete list project with method post
 export async function deleteListProjects(list_projects){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/deleteList`, {
+    const response = await fetch(`${config.getApiUrl()}/project/deleteList`, {
         method: "POST",
         body: JSON.stringify({list_projects: list_projects}),
         headers: {
@@ -299,7 +299,7 @@ export async function deleteListProjects(list_projects){
 }
 
 export async function duplicateProject(id_project){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/duplicate`, {
+    const response = await fetch(`${config.getApiUrl()}/project/duplicate`, {
         method: "POST",
         body: JSON.stringify({id_project: id_project}),
         headers: {
@@ -317,7 +317,7 @@ export async function duplicateProject(id_project){
 }
 
 export async function duplicateListProjects(list_projects){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/duplicateList`, {
+    const response = await fetch(`${config.getApiUrl()}/project/duplicateList`, {
         method: "POST",
         body: JSON.stringify({list_projects: list_projects}),
         headers: {
@@ -345,7 +345,7 @@ export async function renameProject(id_project, name){
         return {state: false, data: "Nombre no valido"};
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/project/rename`, {
+    const response = await fetch(`${config.getApiUrl()}/project/rename`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -372,7 +372,7 @@ export async function favorite(id, element) {
         type: type,
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/preferences/favorite`, {
+    const response = await fetch(`${config.getApiUrl()}/preferences/favorite`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -397,7 +397,7 @@ export async function unfavorite(id_user, id_element) {
         element:id_element,
     }; 
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/preferences/favorite`, {
+    const response = await fetch(`${config.getApiUrl()}/preferences/favorite`, {
         method: "DELETE",
         body: JSON.stringify(data),
         headers: {
@@ -415,7 +415,7 @@ export async function unfavorite(id_user, id_element) {
 }
 
 export async function getFavorites(id_user) {
-    const response = await fetch(`${environments.DEFAULT_API_URL}/preferences/data?id_user=${id_user}`, {
+    const response = await fetch(`${config.getApiUrl()}/preferences/data?id_user=${id_user}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -437,7 +437,7 @@ export async function checkPassword(user, password){
         password: password,
     };
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/checkPassword`,{
+    const response = await fetch(`${config.getApiUrl()}/user/checkPassword`,{
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -460,7 +460,7 @@ export async function updatePassword(user, newPassword) {
         password: newPassword,
     };
     
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/updatePassword`, {
+    const response = await fetch(`${config.getApiUrl()}/user/updatePassword`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -478,7 +478,7 @@ export async function updatePassword(user, newPassword) {
 }
 
 export async function updateProfile(data){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/updateProfile`, {
+    const response = await fetch(`${config.getApiUrl()}/user/updateProfile`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -496,7 +496,7 @@ export async function updateProfile(data){
 }
 
 export async function updateImageProfile(data){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/updateImageProfile`, {
+    const response = await fetch(`${config.getApiUrl()}/user/updateImageProfile`, {
         method: "POST",
         body: JSON.stringify(data),
         headers:{
@@ -519,7 +519,7 @@ export async function likeTemplate(template_id, id_user){
         template_id: template_id
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/template/like`, {
+    const response = await fetch(`${config.getApiUrl()}/template/like`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -542,7 +542,7 @@ export async function dislikeTemplate(template_id, id_user){
         template_id: template_id
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/template/dislike`, {
+    const response = await fetch(`${config.getApiUrl()}/template/dislike`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -560,7 +560,7 @@ export async function dislikeTemplate(template_id, id_user){
 }
 
 export async function sendMessageChat(data, id_project){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/chat/send`, {
+    const response = await fetch(`${config.getApiUrl()}/chat/send`, {
         method: "POST",
         body: JSON.stringify({data: data, id_project: id_project}),
         headers: {
@@ -578,7 +578,7 @@ export async function sendMessageChat(data, id_project){
 }
 
 export async function sendInvitationProject(id_project, props){
-    const response = await fetch(`${environments.DEFAULT_API_URL}/user/invitation/send`, {
+    const response = await fetch(`${config.getApiUrl()}/user/invitation/send`, {
         method: "POST",
         body: JSON.stringify({invitation: props.invitation, role: props.role, id_project: id_project}),
         headers: {
@@ -602,7 +602,7 @@ export async function verificateCode(email, code) {
         code:code,
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/codeVerification`, {
+    const response = await fetch(`${config.getApiUrl()}/auth/codeVerification`, {
         method: "POST",
         body: JSON.stringify(data),
         headers:{
@@ -626,7 +626,7 @@ export async function cancelVerificateCode(email) {
         email:email,
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/register/cancel`, {
+    const response = await fetch(`${config.getApiUrl()}/auth/register/cancel`, {
         method: "POST",
         body: JSON.stringify(data),
         headers:{
@@ -650,7 +650,7 @@ export async function resendAuthCode(email) {
         email:email,
     }
 
-    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/resendAuthCode`, {
+    const response = await fetch(`${config.getApiUrl()}/auth/resendAuthCode`, {
         method: "POST",
         body: JSON.stringify(data),
         headers:{
@@ -670,7 +670,7 @@ export async function resendAuthCode(email) {
 
 // 2FA send data
 export async function twoFastAuth(data) {
-    const response = await fetch(`${environments.DEFAULT_API_URL}/auth/device`, {
+    const response = await fetch(`${config.getApiUrl()}/auth/device`, {
         method: "POST",
         body: JSON.stringify(data),
         headers:{
@@ -686,11 +686,3 @@ export async function twoFastAuth(data) {
 
     return {state: true, data: responseData};
 }
-
-twoFastAuth({
-    id_user:1234,
-    device:"android_10",
-    country:"pakistan",
-    date:"91280491",
-    type:"mobile",
-});

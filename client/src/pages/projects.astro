@@ -7,7 +7,7 @@ import ProjectsMetrics from '../components/React/components/ProjectsMetrics.jsx'
 import Slide from '../components/Sections/SlideDesktop.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import Layout from '../layouts/Layout.astro';
-import * as environments from '../../../config'
+import * as config from '../config'
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -20,7 +20,7 @@ let get_data: any;
 let data: any;
 
 try{
-	get_data = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
+	get_data = await fetch(`${config.getApiUrl()}/user/data?id_user=${id}`);
 	data = await get_data.json();
 	data = data.message;
 

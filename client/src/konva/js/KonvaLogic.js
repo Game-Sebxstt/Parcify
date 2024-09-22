@@ -1,11 +1,11 @@
 import Konva from "konva";
 import * as States from "./StatesLogic";
-import * as req from '../../js/backend/requests';
 import * as environment_utils from '../../js/globals/environment-utils'
 import * as globalFunctions from './GlobalFunctions'
 import * as chat from '../../js/frontend/utilities/chat';
 import * as globals from '../../js/frontend/utilities/globals';
 import * as websocket from '../../js/backend/websocket'
+import * as config_konva from '../config'
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import { PickerCustom } from "../ts/utilities/PickerCustom";
 
@@ -310,7 +310,7 @@ if(!stage.getLayers().find(item => item.attrs.id == "layer") && !stage.getLayers
 
 layerCollaborators.zIndex(1); 
 layer.zIndex(1);
-layerUtilities.zIndex(1);
+layerUtilities.zIndex(2);
 layerBackground.zIndex(0);
 globalFunctions.updateDimensionStage();
 
@@ -348,6 +348,8 @@ export var tr = layerUtilities.getChildren().find(item => item.attrs.id == "tran
     rotationSnaps: [0, 90, 180, 270],
     id: "transformer"
 });
+
+
 
 if(!layerUtilities.getChildren().find(item => item.attrs.id == "transformer")){
     layerUtilities.add(tr);
@@ -400,89 +402,171 @@ async function getStage(id_stage) {
     return validation.stage;
 }
 
-export function groupElements(nodes) {
+export function groupElements(nodes, generatedId, user_id) {
     let selectedNodes = nodes || tr.nodes();
-    if(selectedNodes[0] instanceof Konva.Group){
-        selectedNodes = tr.nodes()[0].getChildren();    
+
+    function flattenNodes(node) {
+        if (node.nodeType === 'Group') {
+            return node.getChildren().flatMap(flattenNodes);
+        }
+        return [node];
     }
-    if (selectedNodes.length < 2) {
-        alert("cagaste")
+    
+    selectedNodes = selectedNodes.flatMap(flattenNodes).filter(item => item.attrs.id != "boxGroup");
+    
+    if(!selectedNodes.length > 2){
+        console.error("Group elements must have at least");
         return;
     }
 
     const group = new Konva.Group({
         draggable: true,
-    });
+        name: "GroupElements",
+        id_unique: generatedId ?? globals.generateID(),
+    })
 
-    selectedNodes.forEach((node) => {
+    selectedNodes.forEach(node => {
         node.draggable(false);
+        node.listening(false);
         group.add(node);
-    });
-
-    const boxGroupDeleted = group.getChildren().find(item => item.attrs.id == "boxGroup");
-
-    if(boxGroupDeleted){
-        boxGroupDeleted.destroy();
-        console.log("boxGroupDeleted")
-    }
+    })
 
     const boxGroup = new Konva.Rect({
         fill: 'rgba(252,127,83, 0)',
         id: "boxGroup",
-        listening: false,
-    });
+    })
 
     globalFunctions.updateBoundingRect(boxGroup, group.children);
 
     group.add(boxGroup);
     layer.add(group);
-    elements.push(group);
-    tr.nodes([group]);
+
+    if(user_id && user_id == globals.getCookie("ID-USER")){
+        tr.nodes([group]);
+        tr.moveToTop();
+
+        const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"));
+        collaborator.group_created += 1;
+        environment_utils.setCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"), collaborator);
+    }
+
     layer.batchDraw();
 
-    const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"));
-    collaborator.group_created += 1;
-    environment_utils.setCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"), collaborator);
+    config_konva.setBoxGroup(boxGroup);
+    config_konva.setGroup(group);
+    setElements([...getElements(), group]);
+    updateElementsEvent();
 
     saveHistory(stage.toJSON())
+    websocket.selectElementKonva(group)
 }
 
-export function ungroupElements() {
-    let selectedNodes = tr.nodes();
-    if (selectedNodes.length < 2) {
+export function ungroupElements(group) {
+    let selectedNodes = group ? [group] : tr.nodes();
+
+    if (selectedNodes.length === 0) {
+        console.error("No elements selected for ungrouping");
         return;
     }
 
-
-    if (selectedNodes[0].parent instanceof Konva.Group == false) {
-        return;
+    if (!group && !(selectedNodes[0] instanceof Konva.Group)) {
+        selectedNodes = [selectedNodes[0].getParent()];
     }
 
-    const children = selectedNodes[0].parent.children.slice();
-    selectedNodes[0].remove();
+    selectedNodes.forEach(itemGroup => {
+        if (itemGroup.attrs.name != "GroupElements") {
+            return;
+        }
 
-    children.forEach((node) => {
-        node.draggable(true);
-        layer.add(node);
-        elements.push(node);
+        const childNodes = itemGroup.children ? itemGroup.children.filter(item => item.attrs.id != "boxGroup") : [];
+
+        let isCustom = itemGroup.attrs.posCustom ? true : false;
+
+        const groupPosition = isCustom ? itemGroup.attrs.posCustom : itemGroup.position();
+        const groupScale = {
+            x: isCustom ? itemGroup.attrs.scaleCustom.x : itemGroup.scaleX(),
+            y: isCustom ? itemGroup.attrs.scaleCustom.y : itemGroup.scaleY(),
+        };
+        const groupRotation = isCustom ? itemGroup.attrs.rotationCustom : itemGroup.rotation();
+
+        childNodes.forEach(node => {
+            const nodePosition = isCustom ? {x: node.attrs.x, y: node.attrs.y} : node.position();
+            const nodeScale = isCustom ? {x: node.attrs.scaleCustom.x, y: node.attrs.scaleCustom.y} : {x: node.scaleX(), y: node.scaleY()};
+            const nodeRotation = isCustom ? node.attrs.rotationCustom : node.rotation();
+
+            const absoluteX = groupPosition.x + (nodePosition.x * groupScale.x);
+            const absoluteY = groupPosition.y + (nodePosition.y * groupScale.y);
+
+            let nodeCloned;
+
+            if(isCustom){
+                const className = node.className;
+                node.attrs.x = absoluteX;
+                node.attrs.y = absoluteY;
+                node.attrs.scaleX = nodeScale.x * groupScale.x;
+                node.attrs.scaleY = nodeScale.y * groupScale.y;
+                node.attrs.rotation = nodeRotation + groupRotation;
+                node.attrs.draggable = true;
+                node.attrs.listening = true;
+
+                nodeCloned = new Konva[className](node.attrs);
+            }else{
+                nodeCloned = node.clone({
+                    x: absoluteX,
+                    y: absoluteY,
+                    scaleX: nodeScale.x * groupScale.x,
+                    scaleY: nodeScale.y * groupScale.y,
+                    rotation: nodeRotation + groupRotation,
+                    draggable: true,
+                    listening: true,
+                    id: globals.generateID(),
+                });
+            }
+
+            if (groupRotation !== 0) {
+                const rotatedPosition = rotatePoint(
+                    {x: absoluteX, y: absoluteY},
+                    {x: groupPosition.x, y: groupPosition.y},
+                    groupRotation
+                );
+                nodeCloned.position(rotatedPosition);
+            }
+
+            layer.add(nodeCloned);
+            setElements([...getElements(), nodeCloned]);
+            updateElementsEvent();
+        });
+
+        if(isCustom){
+            config_konva.getGroups().forEach(item => {
+                if(item.attrs.id == itemGroup.attrs.id){
+                    item.destroy();
+                }
+            })
+        }else{
+            itemGroup.destroy();
+        }
+        config_konva.setGroups(config_konva.getGroups().filter(item => item.attrs.id !== itemGroup.attrs.id));
     });
-
-    const boxGroupDeleted = children.find(item => item.attrs.id == "boxGroup");
-
-    if(boxGroupDeleted){
-        boxGroupDeleted.destroy();
-        console.log("boxGroupDeleted")
-    }
 
     tr.nodes([]);
     layer.batchDraw();
 
     const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"));
-    collaborator.group_deleted = 1;
+    collaborator.group_deleted += 1;
     environment_utils.setCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"), collaborator);
-    console.log(collaborator)
 
-    saveHistory(stage.toJSON())
+    saveHistory(stage.toJSON());
+    websocket.deselectElementKonva();
+}
+
+function rotatePoint(point, center, angle) {
+    const radians = (Math.PI / 180) * angle,
+        cos = Math.cos(radians),
+        sin = Math.sin(radians),
+        nx = (cos * (point.x - center.x)) + (sin * (point.y - center.y)) + center.x,
+        ny = (cos * (point.y - center.y)) - (sin * (point.x - center.x)) + center.y;
+    return {x: nx, y: ny};
 }
 
 export function saveHistory(stageJSON) {
@@ -585,7 +669,6 @@ export function updateElementsEvent() {
             websocket.changeElementKonva(updatedAttrs, stage.getRelativePointerPosition());
 
             if (element instanceof Konva.Group) {
-                console.log(element)
                 const groupNode = element;
 
                 if (groupNode.attrs.name == "ShapeText") {
