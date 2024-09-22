@@ -225,6 +225,20 @@ export function findElementByIdUnique(node, id_unique) {
     return null;
 }
 
+export function getSvgString(svgElement){
+    var svgString = new XMLSerializer().serializeToString(svgElement);
+    var decoded = unescape(encodeURIComponent(svgString));
+    var base64 = btoa(decoded);
+    return `data:image/svg+xml;base64,${base64}`
+}
+
+export function createCursorCustom(fill, stroke){
+    const svgElement = konva.getCursorCustom();
+    const svgDataUrl = getSvgString(svgElement);
+
+    konva.stage.container().style.cursor = svgElement ? `url(${svgDataUrl}), auto` : "move";
+}
+
 export function createElement(elementKonva, trActive = true){
     if(elementKonva){
         konva.getElements().push(elementKonva);
@@ -315,25 +329,40 @@ export function moveDownElementKonva(elementKonva){
 }
 
 export function createCursorCollaborator(collaborator){
-    const cursorById = konva.layer.find(item => item.id() === "mouseCursor");
-    if(cursorById.find(item => item.getAttr("id_user") == collaborator.user_id)) return;
+    const svgElement = konva.getCursorCustom();
+    svgElement.setAttribute("fill", collaborator.color.hex);
+    const svgDataUrl = getSvgString(svgElement);
 
-    const options = {
-        x: 0,
-        y: 0,
-        radius: 10,
+    const configCursor = {
         fill: collaborator.color.hex,
-        stroke: 'white',
-        strokeWidth: 1,
-        draggable: false,
         id: "mouseCursor",
         id_user: collaborator.user_id,
-        visible: false,
+        string_svg: svgDataUrl,
+        margin: {
+            top: 5,
+            left: 2.5,
+            right: 0,
+            bottom: 0,
+        }
+    }
+
+    const configName = {
         name_user: collaborator.name,
-        font_size: 20,
+        font_size: 14,
+        padding: {
+            top: 2.5,
+            left: 5,
+            right: 5,
+            bottom: 2.5,
+        },
+    }
+
+    const configGlobal = {
+        configCursor,
+        configName,
     }
     
-    const customCursor = new CustomCursor.CustomCursor(options, konva.layerCollaborators, konva.stage)
+    const customCursor = new CustomCursor.CustomCursor(configGlobal, konva.layerCollaborators, konva.stage)
     customCursor.initCursor();
     konva.setCursorCollaborators(customCursor);
 }

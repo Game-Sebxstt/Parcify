@@ -1,7 +1,7 @@
 import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as environment_utils from '../../js/globals/environment-utils'
-import * as globalFunctions from './GlobalFunctions'
+import * as GlobalFunctions from './GlobalFunctions'
 import * as chat from '../../js/frontend/utilities/chat';
 import * as globals from '../../js/frontend/utilities/globals';
 import * as websocket from '../../js/backend/websocket'
@@ -42,6 +42,7 @@ var historySave = [];
 var indexHistory = 0;
 
 // BarTool Variables
+var customCursor = document.querySelector("#cursor-custom")
 var BarTool = document.querySelector('#BarTool');
 var BarToolExtra = document.querySelector('#BarToolExtra'); 
 var widthBarTool;
@@ -156,6 +157,10 @@ export function setDimensionBarToolExtra(dimensionBarToolExtraChange, key){
     if(!key) return;
 
     dimensionBarToolExtra[key] = dimensionBarToolExtraChange;
+}
+
+export function getCursorCustom(){
+    return customCursor;
 }
 
 export function getCursorCollaborators(){
@@ -312,7 +317,7 @@ layerCollaborators.zIndex(1);
 layer.zIndex(1);
 layerUtilities.zIndex(2);
 layerBackground.zIndex(0);
-globalFunctions.updateDimensionStage();
+GlobalFunctions.updateDimensionStage();
 
 export let bg = layerBackground.getChildren().find(item => item.attrs.id == "bg") ||  new Konva.Rect({
     x: 0,
@@ -386,6 +391,8 @@ export const picker = new PickerCustom(stagePickCustom, layerBasePickCustom, lay
 
 transformer.init();
 saveHistory(stage.toJSON());
+GlobalFunctions.createCursorCustom("#1E90FF", "white", globals.getCookie("ID-USER"));
+
 // fitStageIntoParentContainer();
 
 async function getStage(id_stage) {
@@ -402,7 +409,7 @@ async function getStage(id_stage) {
     return validation.stage;
 }
 
-export function groupElements(nodes, generatedId, user_id) {
+export function groupElements(nodes, generatedId, user_id, isSame = false) {
     let selectedNodes = nodes || tr.nodes();
 
     function flattenNodes(node) {
@@ -436,7 +443,7 @@ export function groupElements(nodes, generatedId, user_id) {
         id: "boxGroup",
     })
 
-    globalFunctions.updateBoundingRect(boxGroup, group.children);
+    GlobalFunctions.updateBoundingRect(boxGroup, group.children);
 
     group.add(boxGroup);
     layer.add(group);
@@ -458,7 +465,9 @@ export function groupElements(nodes, generatedId, user_id) {
     updateElementsEvent();
 
     saveHistory(stage.toJSON())
-    websocket.selectElementKonva(group)
+    if(!isSame){
+        GlobalFunctions.setBorderElement(boxGroup, environment_utils.getCollaboratorOfProject(id_stage, user_id))
+    }
 }
 
 export function ungroupElements(group) {

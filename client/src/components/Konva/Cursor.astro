@@ -1,0 +1,9 @@
+---
+    interface Props{
+        id_user: string | undefined,
+    }
+
+    const {id_user}: Props = Astro.props
+---
+
+<svg id="cursor-custom" data-id-user={id_user} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#1E90FF" stroke-width="2" stroke="white"><path d="M4.5.79v22.42l6.56-6.57h9.29L4.5.79z"></path></svg>

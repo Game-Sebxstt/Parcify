@@ -37,7 +37,11 @@ function createWebSocket() {
                 nodesList.push(elementInKonva);
             })
 
-            konva.groupElements(nodesList, data.generatedId, data.user_id);
+            if(data.user_id != globals.getCookie("ID-USER")){
+                konva.groupElements(nodesList, data.generatedId, data.user_id);
+            }else{
+                konva.groupElements(nodesList, data.generatedId, data.user_id, true);
+            }
         }
 
         if (data.type === "ungroupElements"){
@@ -90,7 +94,8 @@ function createWebSocket() {
                 }
 
                 if (elementKonvaOfLayer) {
-                    GlobalFunctions.setBorderElement(elementKonvaOfLayer, data.collaborator);
+                    const collaborator = environments_utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
+                    GlobalFunctions.setBorderElement(elementKonvaOfLayer, collaborator);
                 }
             }
         }
@@ -105,7 +110,8 @@ function createWebSocket() {
             if(data.user_id != globals.getCookie("ID-USER")){
                 const layerKonva = konva.stage.children.find(item => item.id() === "layer");
                 const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === data.updatedAttrs.id_unique);
-                GlobalFunctions.changeElement(elementKonvaOfLayer, data.updatedAttrs, data.user_id, data.posRelativePointer, data.collaborator);
+                const collaborator = environments_utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
+                GlobalFunctions.changeElement(elementKonvaOfLayer, data.updatedAttrs, data.user_id, data.posRelativePointer, collaborator);
             }
         }
 
@@ -207,7 +213,6 @@ export function groupElements(nodesKonva){
 }
 
 export function ungroupElements(groupKonva) {
-    console.log('groupKonva:', groupKonva);
     if (!Array.isArray(groupKonva)) {
         groupKonva = [groupKonva];
     }

@@ -1,7 +1,6 @@
 export function initSocket(data, ws, clients) {
     if (data.type === 'clientId') {
         clients.set(data.data.id, { ws: ws, data: data.data });
-        console.log('Identificador de cliente recibido:', Number(data.data.id));
 
         const senderId = data.data.id;
         const clientData = clients.get(senderId);
@@ -35,7 +34,6 @@ export function initSocket(data, ws, clients) {
 
     if (data.type === 'ungroupElements') {
         const senderId = data.user_id;
-        console.log('Desagrupar elementos:', data);
 
         clients.forEach((client) => {
             client.ws.send(JSON.stringify({
