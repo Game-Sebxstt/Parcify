@@ -335,6 +335,7 @@ konva.stage.on('click tap', function (e) {
                 transformer.attachTo(e.target);
                 konva.layer.draw();
                 websocket.selectElementKonva(e.target)
+                config.setNodeSelected(e.target)
             }
         }
     }
@@ -395,7 +396,7 @@ konva.stage.on('click tap', function (e) {
     }
 
     if (e.target instanceof Konva.Stage == true) {
-        console.log("click on stage");
+        websocket.deselectElementKonva();
         websocket.ungroupElements(konva.tr.nodes())
         konva.tr?.nodes([]);
         return;

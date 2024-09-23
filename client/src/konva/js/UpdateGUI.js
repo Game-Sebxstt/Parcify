@@ -6,7 +6,6 @@ import * as globals from '../../js/frontend/utilities/globals'
 import * as req from '../../js/backend/requests'
 import * as front from '../../js/frontend/front'
 import * as GlobalFunctions from "./GlobalFunctions";
-import { elements } from "chart.js";
 
 // Selección de elementos del DOM
 const domElements = {

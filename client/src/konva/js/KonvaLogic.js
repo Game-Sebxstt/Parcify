@@ -7,7 +7,6 @@ import * as globals from '../../js/frontend/utilities/globals';
 import * as websocket from '../../js/backend/websocket'
 import * as config_konva from '../config'
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
-import { PickerCustom } from "../ts/utilities/PickerCustom";
 
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
@@ -240,24 +239,6 @@ if(new_stage_db){
 
 stage.stopDrag();
 
-const stagePickCustom = new Konva.Stage({
-    container: 'konvaPickCustom',
-    width: 320,
-    height: 110,
-    draggable: false,
-});
-
-stagePickCustom.stopDrag();
-
-const layerPickCustom = new Konva.Layer();
-const layerBasePickCustom = new Konva.Layer();
-
-stagePickCustom.add(layerPickCustom);
-stagePickCustom.add(layerBasePickCustom);
-
-layerPickCustom.zIndex(1);
-layerBasePickCustom.zIndex(2);
-
 export var layerCollaborators = new Konva.Layer({
     id: "layerCollaborators"
 });
@@ -380,14 +361,6 @@ export const transformer = new TransformerPoints(stage, layer, layerUtilities, {
     enabledAnchors: ["left", "right", "top", "bottom"],
     proximityThreshold: 20,
 });
-
-const config = {
-    blockWidth: 200,
-    blockHeight: 100,
-    stripWidth: 30
-};
-
-export const picker = new PickerCustom(stagePickCustom, layerBasePickCustom, layerPickCustom, config);
 
 transformer.init();
 saveHistory(stage.toJSON());

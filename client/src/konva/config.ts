@@ -5,6 +5,11 @@ export const list_id_ignore = ["transformer", "boxShape", "anchorPoint"]
 
 let list_box_groups: Node<NodeConfig>[] = []
 let list_groups: Node<NodeConfig>[] = []
+let node_selected: Node;
+
+export function setNodeSelected(node: Node){
+    node_selected = node
+}
 
 export function setBoxGroup(group: Konva.Node){
     list_box_groups.push(group)
@@ -16,6 +21,10 @@ export function setGroup(group: Konva.Node){
 
 export function setGroups(groups: Konva.Node[]){
     list_groups = groups
+}
+
+export function getNodeSelected(): Konva.Node{
+    return node_selected
 }
 
 export function getBoxGroups(){

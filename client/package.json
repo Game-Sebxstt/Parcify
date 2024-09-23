@@ -14,6 +14,7 @@
     "@astrojs/tailwind": "^5.1.0",
     "@astrojs/vercel": "^7.6.0",
     "@fontsource/roboto": "^5.0.13",
+    "@jaames/iro": "^5.5.2",
     "@splidejs/splide": "^4.1.4",
     "@types/react": "^18.3.7",
     "@types/react-dom": "^18.3.0",

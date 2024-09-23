@@ -107,6 +107,7 @@ import PickCustom from "./PickCustom.astro";
     import * as konva from "../../konva/js/KonvaLogic";
     import * as websocket from '../../js/backend/websocket'
     import * as GlobalFunctions from "../../konva/js/GlobalFunctions";
+import { setColor } from "../../konva/js/PickerCustom";
 
     const BarTool = document.getElementById("BarTool") as HTMLDivElement;
     let wheelTimeout: NodeJS.Timeout;
@@ -207,9 +208,9 @@ import PickCustom from "./PickCustom.astro";
         const nameBar = item.querySelector("#nameBar") as HTMLElement;
 
         nameBar.addEventListener("click", () => {
-            item.classList.remove("flex")
-            item.classList.add("hidden")
-            document.querySelector("#konvaPickCustom")?.classList.replace("flex", "hidden")
+            item.classList.remove("flex");
+            item.classList.add("hidden");
+            (document.querySelector("#konvaPickCustom") as HTMLElement).style.display = "none";
         })
 
         const styleColor = item.querySelector("#style_color") as HTMLElement;
@@ -225,6 +226,7 @@ import PickCustom from "./PickCustom.astro";
 
                 if(dataFill != "custom"){
                     GlobalFunctions.actionToolBar(dataFill, newDataTypeItem, true)
+                    setColor(dataFill)
 
                     if(dataTypeItem == "color"){
                         element.style.borderColor = "rgba(251, 127, 83)";
@@ -248,8 +250,7 @@ import PickCustom from "./PickCustom.astro";
                 }
 
                 if(isCustomColor){
-                    konva.picker.changePos({x: 0, y: 0})
-                    document.querySelector("#konvaPickCustom")?.classList.replace("hidden", "flex")
+                    (document.querySelector("#konvaPickCustom") as HTMLElement).style.display = window.getComputedStyle(document.querySelector("#konvaPickCustom") as HTMLElement).display == "none" ? "flex" : "none";
                 }
             })
         })
