@@ -78,6 +78,12 @@ if(BarTool && BarToolExtra){
             y: 0,
             width: BarToolExtra.offsetWidth,
             height: BarToolExtra.offsetHeight,
+        },
+        svg: {
+            x: 0,
+            y: 0,
+            width: 36,
+            height: 36,
         }
     };
 }

@@ -571,7 +571,7 @@ export function showBarTool(nodes) {
 
     function onDragStart(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
-        barTool.style.display = "none"
+        // barTool.style.display = "none"
         barTool.style.pointerEvents = "none";
     }
 
@@ -621,27 +621,6 @@ export function showBarTool(nodes) {
     function updateBarToolPosition(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
 
-        // barTool.childNodes.forEach((item) => {
-        //     let idItem = item.id;
-        //     if(!idItem) return;
-
-        //     idItem = idItem.split("_").filter((item) => item == "font");
-
-        //     if(idItem.length > 0){
-        //         if(nodeContainText()){
-        //             item.style.display = "flex";
-        //             document.querySelectorAll("#sep").forEach(item => {
-        //                 item.style.display = "flex";
-        //             })
-        //         }else{
-        //             item.style.display = "none";
-        //             document.querySelectorAll("#sep").forEach(item => {
-        //                 item.style.display = "none";
-        //             })
-        //         }
-        //     }
-        // })
-
         const { x, y } = target.absolutePosition();
         const scaleX = target.scaleX() * stage.scaleX();
         const scaleY = target.scaleY() * stage.scaleY();
@@ -658,76 +637,26 @@ export function showBarTool(nodes) {
             scaleY: Math.min(Math.max(stage.scaleY(), 0.4), 0.5),
             x: barToolRect.left,
             y: barToolRect.top,
+            svgDimension: konva.getDimensionBarToolExtra("svg"),
         };
 
-        let BarToolExtra = null;
-        document.querySelectorAll("#BarToolExtra").forEach(child => {
-            if (window.getComputedStyle(child).display !== "none") {
-                BarToolExtra = child;
-            }
-        });
-        
-        const barToolHalfWidth = barToolRect.width / 2;
-        const barToolHalfHeight = barToolRect.height / 2;
-        let adjustedBarToolTop;
-        let adjustedBarToolLeft;
-    
-        let topTarget, leftTarget;
-        if (target instanceof Konva.Rect) {
-            topTarget = y - height / 4;
-            leftTarget = x - barToolHalfWidth + width / 2;
-        } else {
-            topTarget = y - barToolHalfHeight - height;
-            leftTarget = x - barToolHalfWidth;
-        }
+        const xPosition = x - barToolRect.width / 2;
+        const yPosition = y - height - barToolRect.height / 2;
 
-        const headerHeight = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
-    
-        if(BarToolExtra){
-            const BarToolExtraRect = BarToolExtra.getBoundingClientRect();
-            adjustedBarToolTop = BarToolExtraRect.y <= headerHeight ? konva.stage.height() : topTarget;
-            adjustedBarToolLeft = BarToolExtraRect.x <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
-        }else{
-            adjustedBarToolTop = topTarget <= headerHeight ? konva.stage.height() : topTarget;
-            adjustedBarToolLeft = leftTarget <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
-        }
-    
-        barTool.style.display = "flex"
-        barTool.style.pointerEvents = "auto";
-        barTool.style.top = `${adjustedBarToolTop}px`;
-        barTool.style.left = `${adjustedBarToolLeft}px`;
+        console.log(barToolShape);
+
+        barTool.style.left = `${xPosition}px`;
+        barTool.style.top = `${yPosition}px`;
         barTool.style.width = `${barToolShape.originalWidth * barToolShape.scaleX}px`;
         barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
-        barTool.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
-    
-        // document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
-        // document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
-    
-        if(!isUpdateToolBar) return;
 
-        if (BarToolExtra) {
-            const keyBarToolExtra = BarToolExtra.getAttribute("data-type")
-            const BarToolExtraShape = {
-                width: parseFloat(window.getComputedStyle(BarToolExtra).width) || BarToolExtra.width || 0,
-                height: parseFloat(window.getComputedStyle(BarToolExtra).height) || BarToolExtra.height || 0,
-                originalWidth: konva.getDimensionBarToolExtra(keyBarToolExtra).width,
-                originalHeight: konva.getDimensionBarToolExtra(keyBarToolExtra).height,
-            };
+        barTool.querySelectorAll("svg").forEach((svg) => {
+            svg.style.width = `${barToolShape.svgDimension.width * barToolShape.scaleX}px`;
+            svg.style.height = `${barToolShape.svgDimension.height * barToolShape.scaleY}px`;
+        })
 
-            BarToolExtra.style.height = `${BarToolExtraShape.originalHeight * barToolShape.scaleY}px`;
-            BarToolExtra.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
-    
-            document.querySelector("#nameBar").querySelector("#name").style.fontSize = `${24 * barToolShape.scaleX}px`;
-    
-            document.querySelector("#style_color").style.padding = `${8 * barToolShape.scaleX}px`;
-            document.querySelector("#style_color").style.gap = `${8 * barToolShape.scaleX} 0px`;
-    
-            BarToolExtra.querySelectorAll("#input_color").forEach(child => {
-                child.style.width = `${36 * barToolShape.scaleX}px`;
-                child.style.height = `${36 * barToolShape.scaleX}px`;
-                child.style.borderRadius = `${6 * barToolShape.scaleX}px`;
-            });
-        }
+        // barTool.querySelector("#BarToolFontSize").style.fontSize = `${14 * barToolShape.scaleY}px`;
+        // barTool.querySelector("#BarToolFontFamily").style.fontSize = `${14 * barToolShape.scaleY}px`;
     }
 }
 

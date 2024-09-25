@@ -21,11 +21,9 @@ colorInput.value = colorPicker.color.hexString;
 colorPicker.on('color:change', function(color) {
     colorInput.value = color.hexString;
     setColorNode(color.hexString);
-    console.log("El color actual es:", color.hexString);
 });
 
 export function setColor(colorValue) {
-    console.log("setColor", colorValue);
     if (colorValue.startsWith("#")) {
         colorPicker.color.hexString = colorValue;
     } else if (colorValue.startsWith("rgb")) {
@@ -43,7 +41,6 @@ function setColorNode(colorValue){
     const node = config.getNodeSelected();
 
     if(!node) return;
-    console.log("node selected", config.getNodeSelected())
     node.fill(colorValue);
     konva.layer.batchDraw();
 }
