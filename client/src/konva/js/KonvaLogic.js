@@ -47,6 +47,7 @@ var BarToolExtra = document.querySelector('#BarToolExtra');
 var widthBarTool;
 var heightBarTool;
 var dimensionBarToolExtra;
+var dimensionDropdown;
 
 if(BarTool && BarToolExtra){
     BarTool.style.display = "flex";
@@ -101,6 +102,10 @@ let isInitiated = true;
 if(konva){
     widthKonva = Number(window.getComputedStyle(konva).width.split("px")[0]);
     heightKonva = Number(window.getComputedStyle(konva).height.split("px")[0]);
+}
+
+export function setDimensionDropdown(dimensionDropdownNew){
+    dimensionDropdown = dimensionDropdownNew
 }
 
 export function setCursorCollaborators(cursorCollaborator){
@@ -162,6 +167,10 @@ export function setDimensionBarToolExtra(dimensionBarToolExtraChange, key){
     if(!key) return;
 
     dimensionBarToolExtra[key] = dimensionBarToolExtraChange;
+}
+
+export function getDimensionDropdown(){
+    return dimensionDropdown
 }
 
 export function getCursorCustom(){

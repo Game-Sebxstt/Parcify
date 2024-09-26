@@ -481,6 +481,23 @@ export function setUpdateToolBar(state){
     showBarTool(nodeSelect);
 }
 
+export function adjustDropdownPositions(barToolRect, headerHeight) {
+    const dropdownDimension = konva.getDimensionDropdown();
+
+    if(!dropdownDimension) return;
+
+    const rectReference = document.createElement("span")
+    rectReference.style.position = "absolute"
+    document.querySelector("body").appendChild(rectReference)
+
+    const yPositionDropdown = barToolRect.y - dropdownDimension.height;
+    const yPosition = yPositionDropdown <= headerHeight ? barToolRect.height + dropdownDimension.height : -barToolRect.height / 2
+    rectReference.style.top = `${yPositionDropdown}px`
+    dropdownDimension.element.style.top = `${yPosition}px`
+
+    rectReference.remove();
+}
+
 function updateToolBarState(attrsNode){
     const customEvent = new CustomEvent("updateToolBar", {
         detail: {attrs: attrsNode},
@@ -491,6 +508,21 @@ function updateToolBarState(attrsNode){
 
 export function showBarTool(nodes) {
     const barTool = document.querySelector("#BarTool");
+    const dropdown = barTool.querySelector(".dropdown-tool-bar")
+
+    if(dropdown){
+        const rect = dropdown.getBoundingClientRect();
+        const dimensionRect = {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left,
+            element:  dropdown,
+        }
+        konva.setDimensionDropdown(dimensionRect);
+        adjustDropdownPositions(document.querySelector("#BarTool").getBoundingClientRect(), document.querySelector("#header-konva").getBoundingClientRect().height)
+    }
+
     const stage = konva.stage;
     let target = States.StatesCursor.select;
     let boundingRect;
@@ -619,12 +651,12 @@ export function showBarTool(nodes) {
         const targetRect = target.getClientRect();
         const barToolRect = barTool.getBoundingClientRect();
         const headerHeight = document.querySelector("#header-konva").getBoundingClientRect().height;
-    
+
         const barToolDimensions = calculateBarToolDimensions(barTool, barToolRect, stage);
         const barToolPosition = calculateBarToolPosition(targetRect, barToolDimensions, headerHeight);
     
         applyBarToolStyles(barTool, barToolPosition, barToolDimensions);
-        adjustDropdownPositions(barTool, barToolPosition, headerHeight);
+        adjustDropdownPositions(barToolRect, headerHeight);
     }
     
     function calculateBarToolDimensions(barTool, barToolRect, stage) {
@@ -650,23 +682,11 @@ export function showBarTool(nodes) {
     }
     
     function applyBarToolStyles(barTool, position, dimensions) {
-        barTool.style.display = "flex";
+        // barTool.style.display = "flex";
         barTool.style.left = `${position.x}px`;
         barTool.style.top = `${position.y}px`;
         barTool.style.width = `${dimensions.originalWidth * dimensions.scaleX}px`;
         barTool.style.height = `${dimensions.originalHeight * dimensions.scaleY}px`;
-    }
-    
-    function adjustDropdownPositions(barTool, barToolPosition, headerHeight) {
-        const dropdowns = barTool.querySelectorAll('.dropdown-tool-bar');
-        dropdowns.forEach(dropdown => {
-            const dropdownRect = dropdown.getBoundingClientRect();
-            const barToolRect = barTool.getBoundingClientRect();
-
-            const relativeTop = dropdownRect.top - barToolRect.top;
-            const relativeLeft = dropdownRect.left - barToolRect.left;
-
-        });
     }
 
     function clamp(value, min, max) {
@@ -815,6 +835,7 @@ export function actionToolBar(change, type, action){
     }
 
     change = parseFloat(change) ? parseFloat(change) : change;
+    console.log(change, type)
 
     if(type == "border"){
         node = nodeSelect;
@@ -871,5 +892,4 @@ export function actionToolBar(change, type, action){
     
     websocket.changeElementKonva(newAttrs, konva.stage.getRelativePointerPosition());
     konva.layer.draw();
-    console.log(node);
 }

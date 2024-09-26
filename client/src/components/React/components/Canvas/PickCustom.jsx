@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import iro from '@jaames/iro';
+import Konva from 'konva';
 import * as konva from '../../../../konva/js/KonvaLogic.js';
 import * as config from '../../../../konva/config.ts';
 
-const PickCustom = () => {
+const PickCustom = ({ onColorChange, colorProperty }) => {
     const pickerRef = useRef(null);
     const inputRef = useRef(null);
     const [color, setColor] = useState("#ff0000");
@@ -29,53 +30,28 @@ const PickCustom = () => {
         });
     }, []);
 
-    useEffect(() => {
-        const element = document.getElementById("konvaPickCustom");
-        let wheelTimeout;
-
-        const handleWheel = (event) => {
-            event.preventDefault();
-            element.style.pointerEvents = "none";
-
-            if (wheelTimeout) {
-                clearTimeout(wheelTimeout);
-            }
-
-            wheelTimeout = setTimeout(() => {
-                element.style.pointerEvents = "auto";
-            }, 150);
-        };
-
-        if (element) {
-            element.addEventListener("wheel", handleWheel);
-        }
-
-        return () => {
-            if (element) {
-                element.removeEventListener("wheel", handleWheel);
-            }
-        };
-    }, []);
-
     const setColorValue = (colorValue) => {
-        if (colorValue.startsWith("#")) {
+        if (colorValue.startsWith("#") || colorValue.startsWith("rgb")) {
             setColor(colorValue);
-        } else if (colorValue.startsWith("rgb")) {
-            setColor(colorValue);
+            setColorNode(colorValue);
         } else {
             console.error("Formato de color inválido. Usa #hex o rgb.");
-            return;
         }
-
-        setColorNode(colorValue);
     };
 
     const setColorNode = (colorValue) => {
         const node = config.getNodeSelected();
 
         if (!node) return;
-        node.fill(colorValue);
+        
+        if (colorProperty === 'textColor') {
+            node.parent.children.find(item => item instanceof Konva.Text).fill(colorValue);
+        } else {
+            node.fill(colorValue);
+        }
+        
         konva.layer.batchDraw();
+        onColorChange(colorValue);
     };
 
     const handleInputChange = (e) => {
@@ -88,7 +64,7 @@ const PickCustom = () => {
     };
 
     return (
-        <div id="konvaPickCustom" data-type="align" className="pointer-events-auto top-0 flex flex-col gap-y-2 w-fit h-fit justify-start items-center">
+        <div className="flex flex-col gap-y-2 items-center justify-center">
             <div id="picker" ref={pickerRef}></div>
             <input
                 type="text"
