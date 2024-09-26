@@ -108,10 +108,20 @@ function createWebSocket() {
 
         if (data.type === 'changeElementKonva') {
             if(data.user_id != globals.getCookie("ID-USER")){
+                const node = JSON.parse(data.data.node);
                 const layerKonva = konva.stage.children.find(item => item.id() === "layer");
-                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === data.updatedAttrs.id_unique);
-                const collaborator = environments_utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
-                GlobalFunctions.changeElement(elementKonvaOfLayer, data.updatedAttrs, data.user_id, data.posRelativePointer, collaborator);
+                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === node.attrs.id_unique);
+                GlobalFunctions.setAttrOfAction(data.data.change, data.data.type, true, elementKonvaOfLayer)
+                console.log(elementKonvaOfLayer)
+            }
+        }
+
+        if(data.type === 'updatePosElementKonva'){
+            if(data.user_id != globals.getCookie("ID-USER")){
+                const dataNode = data.data;
+                const layerKonva = konva.stage.children.find(item => item.id() === "layer");
+                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === dataNode.id_unique);
+                GlobalFunctions.updateAttrsElement(elementKonvaOfLayer, dataNode)
             }
         }
 
@@ -275,9 +285,14 @@ export function moveDownElementKonva(elementKonva){
     sendIfOpen(JSON.stringify({ type: 'moveDownElementKonva', elementKonva, user_id: userId }));
 }
 
-export function changeElementKonva(updatedAttrs, posRelativePointer){
+export function changeElementKonva(data, posRelativePointer){
     const userId = globals.getCookie("ID-USER");
-    sendIfOpen(JSON.stringify({ type: 'changeElementKonva', updatedAttrs, posRelativePointer, user_id: userId }));
+    sendIfOpen(JSON.stringify({ type: 'changeElementKonva', data, posRelativePointer, user_id: userId }));
+}
+
+export function updatePosElementKonva(data){
+    const userId = globals.getCookie("ID-USER");
+    sendIfOpen(JSON.stringify({ type: 'updatePosElementKonva', data, user_id: userId }));
 }
 
 export function selectElementKonva(elementKonva){

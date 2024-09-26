@@ -129,8 +129,22 @@ export function initSocket(data, ws, clients) {
             if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'changeElementKonva',
-                updatedAttrs: data.updatedAttrs,
+                data: data.data,
                 posRelativePointer: data.posRelativePointer,
+                collaborator: client.data.collaborator,
+                user_id: senderId
+            }));
+        });
+    }
+
+    if(data.type === "updatePosElementKonva"){
+        const senderId = data.user_id;
+    
+        clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'updatePosElementKonva',
+                data: data.data,
                 collaborator: client.data.collaborator,
                 user_id: senderId
             }));

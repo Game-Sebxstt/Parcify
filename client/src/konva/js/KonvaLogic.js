@@ -663,7 +663,7 @@ export function updateElementsEvent() {
                 id_unique: e.target.attrs.id_unique,
             };
 
-            websocket.changeElementKonva(updatedAttrs, stage.getRelativePointerPosition());
+            websocket.updatePosElementKonva(updatedAttrs)
 
             if (element instanceof Konva.Group) {
                 const groupNode = element;

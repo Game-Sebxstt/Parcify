@@ -472,6 +472,11 @@ export function changeElement(element, updatedAttrs, user_id, posRelativePointer
     needsUpdate = true;
 }
 
+export function updateAttrsElement(element, updatedAttrs){
+    element.setAttrs(updatedAttrs);
+    konva.layer.batchDraw();
+}
+
 export function getNodeSelectToolBar(){
     return nodeSelect;
 }
@@ -826,9 +831,16 @@ export function isGroupText(node){
     return returnNode;
 }
 
-export function actionToolBar(change, type, action){
-    let node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+export function actionToolBar(change, type, action, nodeChange){
+    let node = isGroupText((nodeChange ?? nodeSelect)) ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
+    websocket.changeElementKonva({change: change, type: type, action: action, node: node}, konva.stage.getRelativePointerPosition());
+}
+
+export function setAttrOfAction(change, type, action, nodeChange){
+    let node = isGroupText((nodeChange ?? nodeSelect)) ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
     let extra;
+
+    console.log(node)
 
     if(node.getAttr(type) == change && action){
         change = null
@@ -889,7 +901,5 @@ export function actionToolBar(change, type, action){
     }
 
     node.setAttrs(newAttrs)
-    
-    websocket.changeElementKonva(newAttrs, konva.stage.getRelativePointerPosition());
     konva.layer.draw();
 }
