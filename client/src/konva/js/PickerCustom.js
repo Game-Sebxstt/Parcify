@@ -1,60 +1,60 @@
-import iro from '@jaames/iro';
-import * as konva from './KonvaLogic';
-import * as config from '../config';
+// import iro from '@jaames/iro';
+// import * as konva from './KonvaLogic';
+// import * as config from '../config';
 
-var colorPicker = new iro.ColorPicker('#picker', {
-    width: 120,
-    color: "rgb(255, 0, 0)",
-    handleRadius: 7,
-    layout: [
-        {
-            component: iro.ui.Wheel,
-        },
-    ]
-});
+// var colorPicker = new iro.ColorPicker('#picker', {
+//     width: 120,
+//     color: "rgb(255, 0, 0)",
+//     handleRadius: 7,
+//     layout: [
+//         {
+//             component: iro.ui.Wheel,
+//         },
+//     ]
+// });
 
-var colorInput = document.getElementById('colorInput');
-var debounceTimeout;
+// var colorInput = document.getElementById('colorInput');
+// var debounceTimeout;
 
-colorInput.value = colorPicker.color.hexString;
+// colorInput.value = colorPicker.color.hexString;
 
-colorPicker.on('color:change', function(color) {
-    colorInput.value = color.hexString;
-    setColorNode(color.hexString);
-});
+// colorPicker.on('color:change', function(color) {
+//     colorInput.value = color.hexString;
+//     setColorNode(color.hexString);
+// });
 
-export function setColor(colorValue) {
-    if (colorValue.startsWith("#")) {
-        colorPicker.color.hexString = colorValue;
-    } else if (colorValue.startsWith("rgb")) {
-        colorPicker.color.rgbString = colorValue;
-    } else {
-        console.error("Formato de color inválido. Usa #hex o rgb.");
-        return;
-    }
+// export function setColor(colorValue) {
+//     if (colorValue.startsWith("#")) {
+//         colorPicker.color.hexString = colorValue;
+//     } else if (colorValue.startsWith("rgb")) {
+//         colorPicker.color.rgbString = colorValue;
+//     } else {
+//         console.error("Formato de color inválido. Usa #hex o rgb.");
+//         return;
+//     }
     
-    colorInput.value = colorPicker.color.hexString;
-    setColorNode(colorPicker.color.hexString);
-}
+//     colorInput.value = colorPicker.color.hexString;
+//     setColorNode(colorPicker.color.hexString);
+// }
 
-function setColorNode(colorValue){
-    const node = config.getNodeSelected();
+// function setColorNode(colorValue){
+//     const node = config.getNodeSelected();
 
-    if(!node) return;
-    node.fill(colorValue);
-    konva.layer.batchDraw();
-}
+//     if(!node) return;
+//     node.fill(colorValue);
+//     konva.layer.batchDraw();
+// }
 
-colorInput.addEventListener('input', function(e) {
-    var colorValue = e.target.value;
+// colorInput.addEventListener('input', function(e) {
+//     var colorValue = e.target.value;
 
-    clearTimeout(debounceTimeout);
+//     clearTimeout(debounceTimeout);
 
-    debounceTimeout = setTimeout(function() {
-        setColor(colorValue);
-    }, 400);
-});
+//     debounceTimeout = setTimeout(function() {
+//         setColor(colorValue);
+//     }, 400);
+// });
 
-colorInput.addEventListener('blur', () => {
-    setColor(colorInput.value);
-})
+// colorInput.addEventListener('blur', () => {
+//     setColor(colorInput.value);
+// })

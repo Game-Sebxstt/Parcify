@@ -1,5 +1,5 @@
 ---
-import BarTool from "../components/Konva/BarTool.astro";
+import { Toolbar } from "../components/React/components/Canvas/Toolbar.jsx";
 import DesplegableMenu from "../components/Konva/DesplegableMenu.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
 import Chat from "../components/Konva/Chat.astro";
@@ -85,11 +85,10 @@ if(project.state){
     </div>
 </LayoutKonva>
 
-<BarTool/>
+<Toolbar client:only="rect"/>
 <Cursor id_user={id_user}/>
 
 <script src="../konva/js/KonvaLogic.js"></script>
 <script src="../konva/js/UpdateGUI.js"></script>
 <script src="../konva/js/EventsHandler.js"></script>
 <script src="../konva/js/KonvaEvents.js"></script>
-<script src="../konva/js/PickerCustom.js"></script>

@@ -255,7 +255,6 @@ konva.stage.on('mousedown touchstart', (e) => {
     }
 
     e.evt.preventDefault();
-    document.querySelector("#BarTool").style.pointerEvents = 'none';
     konva.setPositions({
         X1: konva.stage.getRelativePointerPosition().x,
         Y1: konva.stage.getRelativePointerPosition().y,
@@ -294,7 +293,6 @@ konva.stage.on('mousemove touchmove', (e) => {
 });
 
 konva.stage.on('mouseup touchend', (e) => {
-    document.querySelector("#BarTool").style.pointerEvents = 'auto';
     konva.setSelecting(false);
     if (!konva.selectionRectangle?.visible()) {
         return;
@@ -430,11 +428,13 @@ konva.stage.on('click tap', function (e) {
         const nodes = konva.tr?.nodes().slice();
         nodes.splice(nodes.indexOf(e.target), 1);
         konva.tr?.nodes(nodes);
+        config.setNodesSelected(nodes)
         websocket.groupElements(nodes)
     } else if (metaPressed && !isSelected) {
         konva.tr?.moveUp();
         const nodes = konva.tr?.nodes().concat([e.target]);
         konva.tr?.nodes(nodes);
+        config.setNodesSelected(nodes)
         GlobalFunctions.showBarTool(nodes)
         websocket.groupElements(nodes)
     }

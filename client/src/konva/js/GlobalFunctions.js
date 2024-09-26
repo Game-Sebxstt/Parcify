@@ -6,6 +6,7 @@ import * as CustomCursor from '../ts/shapes/CustomCursor'
 import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as environment_utils from "../../js/globals/environment-utils";
+import * as config from "../config";
 
 let needsUpdate = false;
 let isUpdateToolBar = false;
@@ -435,30 +436,19 @@ export function removeBorderElement() {
 
 export function updateBoundingRect(rect, nodes) {
     let maxX = -Infinity, maxY = -Infinity, minX = Infinity, minY = Infinity;
-    
+
     nodes.forEach(node => {
-        let nodePos = node.getAbsolutePosition();
-        let nodeX = nodePos.x;
-        let nodeY = nodePos.y;
-        let nodeWidth, nodeHeight;
-        
-        if (node.radius) {
-            nodeWidth = nodeHeight = node.radius() * node.scaleX() * 2;
-            nodeX -= node.radius() * node.scaleX();
-            nodeY -= node.radius() * node.scaleX();
-        } else {
-            nodeWidth = node.width() * node.scaleX();
-            nodeHeight = node.height() * node.scaleY();
-        }
-        
-        maxX = Math.max(maxX, nodeX + nodeWidth);
-        maxY = Math.max(maxY, nodeY + nodeHeight);
-        minX = Math.min(minX, nodeX);
-        minY = Math.min(minY, nodeY);
+        let box = node.getClientRect({ relativeTo: konva.stage });
+
+        maxX = Math.max(maxX, box.x + box.width);
+        maxY = Math.max(maxY, box.y + box.height);
+        minX = Math.min(minX, box.x);
+        minY = Math.min(minY, box.y);
     });
-    
+
     rect.position({ x: minX, y: minY });
     rect.size({ width: maxX - minX, height: maxY - minY });
+    konva.layer.batchDraw();
 }
 
 function updateElement() {
@@ -491,6 +481,14 @@ export function setUpdateToolBar(state){
     showBarTool(nodeSelect);
 }
 
+function updateToolBarState(attrsNode){
+    const customEvent = new CustomEvent("updateToolBar", {
+        detail: {attrs: attrsNode},
+    });
+
+    document.dispatchEvent(customEvent);
+}
+
 export function showBarTool(nodes) {
     const barTool = document.querySelector("#BarTool");
     const stage = konva.stage;
@@ -507,6 +505,28 @@ export function showBarTool(nodes) {
     }
 
     nodeSelect = target;
+    let attrsSend = {
+        fontStyle: null,
+        fontFamily: null,
+        fontSize: null,
+        textDecoration: null,
+        align: null,
+        fill: null,
+        type: [],
+    }
+    if(isGroupText(nodeSelect)){
+        const textNode = isGroupText(nodeSelect);
+        attrsSend["fontStyle"] = textNode.fontStyle();
+        attrsSend["fontFamily"] = textNode.fontFamily();
+        attrsSend["fontSize"] = textNode.fontSize();
+        attrsSend["textDecoration"] = textNode.textDecoration();
+        attrsSend["align"] = textNode.align();
+        attrsSend["type"].push(textNode.className);
+    }
+
+    attrsSend["fill"] = target.fill();
+    attrsSend["type"].push(target.className);
+    updateToolBarState(attrsSend);
 
     updateToolBarShape();
     initializeBarTool(target, barTool);
@@ -514,21 +534,20 @@ export function showBarTool(nodes) {
 
     function createBoundingRectForNodes(nodes) {
         const boundingRect = new Konva.Rect({
-            fill: 'rgba(0, 255, 0, 0)',
+            fill: 'rgba(0, 255, 0, .1)',
             strokeWidth: 1,
             listening: false,
+            id: "boundingRect",
         });
 
         konva.layer.add(boundingRect);
         updateBoundingRect(boundingRect, nodes);
         konva.layer.draw();
 
-        nodes.forEach(node => {
-            node.on("dragmove transform", () => {
-                target.setAttr("barToolSelected", true);
-                updateBoundingRect(boundingRect, nodes);
-                updateToolBar(target, barTool);
-            });
+        konva.tr.on("dragmove transform", () => {
+            target.setAttr("barToolSelected", true);
+            updateBoundingRect(boundingRect, nodes);
+            updateToolBar(target, barTool);
         });
 
         stage.on("dragmove wheel", () => {
@@ -541,28 +560,16 @@ export function showBarTool(nodes) {
     }
 
     function initializeBarTool(target, barTool) {
+        if(!barTool) return;
+
         target.setAttr("barToolSelected", true);
         barTool.style.display = "flex"
         updateToolBar(target, barTool);
     }
 
-    function nodeContainText(){
-        if(!nodeSelect.parent instanceof Konva.Group) return false;
-
-        let isContain = false;
-
-        nodeSelect.parent.getChildren().forEach((item) => {
-            if(item instanceof Konva.Text){
-                isContain = true;
-            }
-        })
-
-        return isContain;
-    }
-
     function setUpEventListeners(target, barTool, stage, nodes) {
         target.on("dragstart", () => onDragStart(target, barTool));
-        target.on("dragmove transform", () => updateToolBar(target, barTool));
+        target.on("dragmove, transform", () => updateToolBar(target, barTool));
         target.on("dragend", () => onDragEnd(target, barTool));
         stage.on("wheel", () => updateToolBar(target, barTool));
         stage.on("dragmove transform", () => updateToolBar(target, barTool));
@@ -571,7 +578,7 @@ export function showBarTool(nodes) {
 
     function onDragStart(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
-        // barTool.style.display = "none"
+        barTool.style.display = "none"
         barTool.style.pointerEvents = "none";
     }
 
@@ -583,33 +590,20 @@ export function showBarTool(nodes) {
     }
 
     function onStageClick(e, target, barTool, nodes) {
-        if (e.target !== target) {
-            target.setAttr("barToolSelected", false);
-            let isNodeElement = false;
-
-            if (nodes && nodes.length > 0 && boundingRect) {
-                nodes.forEach(node => {
-                    if (node === e.target) {
-                        isNodeElement = true;
-                    }
-                });
-
-                if (!isNodeElement) {
-                    boundingRect.destroy();
-                    konva.layer.draw();
-                } else {
-                    barTool.style.display = "flex"
-                    barTool.style.pointerEvents = "auto";
-                }
-            }
-
-            if (e.target instanceof Konva.Stage) {
-                barTool.style.display = "none"
-                barTool.style.pointerEvents = "none";
-            }
-        } else {
-            updateToolBar(target, barTool);
+        if(e.target instanceof Konva.Stage){
+            hiddenToolBarShape();
+            boundingRect?.destroy();
+            return;
         }
+
+        target = config.getBarElementSelected() != e.target ? e.target : target;
+
+        if(nodes){
+            target = boundingRect;
+        }
+
+        config.setBarElementSelected(target);
+        updateToolBar(target, barTool);
     }
 
     function updateToolBar(target, barTool){
@@ -620,43 +614,63 @@ export function showBarTool(nodes) {
 
     function updateBarToolPosition(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
-
-        const { x, y } = target.absolutePosition();
-        const scaleX = target.scaleX() * stage.scaleX();
-        const scaleY = target.scaleY() * stage.scaleY();
-        const width = target instanceof Konva.Rect || target instanceof Konva.Text ? target.width() * scaleX : target.radius() * scaleX;
-        const height = target instanceof Konva.Rect || target instanceof Konva.Text ? target.height() * scaleY : target.radius() * scaleY;
     
+        const stage = konva.stage;
+        const targetRect = target.getClientRect();
         const barToolRect = barTool.getBoundingClientRect();
-        const barToolShape = {
-            width: parseFloat(window.getComputedStyle(barTool).width) || barToolRect.width || 0,
-            height: parseFloat(window.getComputedStyle(barTool).height) || barToolRect.height || 0,
+        const headerHeight = document.querySelector("#header-konva").getBoundingClientRect().height;
+    
+        const barToolDimensions = calculateBarToolDimensions(barTool, barToolRect, stage);
+        const barToolPosition = calculateBarToolPosition(targetRect, barToolDimensions, headerHeight);
+    
+        applyBarToolStyles(barTool, barToolPosition, barToolDimensions);
+        adjustDropdownPositions(barTool, barToolPosition, headerHeight);
+    }
+    
+    function calculateBarToolDimensions(barTool, barToolRect, stage) {
+        const computedStyle = window.getComputedStyle(barTool);
+        return {
+            width: parseFloat(computedStyle.width) || barToolRect.width || 0,
+            height: parseFloat(computedStyle.height) || barToolRect.height || 0,
             originalWidth: konva.getWidthBarTool(),
             originalHeight: konva.getHeightBarTool(),
             scaleX: Math.min(Math.max(stage.scaleX(), 0.5), 0.6),
-            scaleY: Math.min(Math.max(stage.scaleY(), 0.4), 0.5),
-            x: barToolRect.left,
-            y: barToolRect.top,
-            svgDimension: konva.getDimensionBarToolExtra("svg"),
+            scaleY: Math.min(Math.max(stage.scaleY(), 0.4), 0.5)
         };
+    }
+    
+    function calculateBarToolPosition(targetRect, barToolDimensions, headerHeight) {
+        const xPosition = targetRect.x - barToolDimensions.width / 2 + targetRect.width / 2;
+        const yPosition = targetRect.y - barToolDimensions.height - 10;
+    
+        return {
+            x: clamp(xPosition, 0, window.innerWidth - barToolDimensions.width),
+            y: clamp(yPosition, headerHeight + barToolDimensions.height / 2, window.innerHeight - barToolDimensions.height - headerHeight)
+        };
+    }
+    
+    function applyBarToolStyles(barTool, position, dimensions) {
+        barTool.style.display = "flex";
+        barTool.style.left = `${position.x}px`;
+        barTool.style.top = `${position.y}px`;
+        barTool.style.width = `${dimensions.originalWidth * dimensions.scaleX}px`;
+        barTool.style.height = `${dimensions.originalHeight * dimensions.scaleY}px`;
+    }
+    
+    function adjustDropdownPositions(barTool, barToolPosition, headerHeight) {
+        const dropdowns = barTool.querySelectorAll('.dropdown-tool-bar');
+        dropdowns.forEach(dropdown => {
+            const dropdownRect = dropdown.getBoundingClientRect();
+            const barToolRect = barTool.getBoundingClientRect();
 
-        const xPosition = x - barToolRect.width / 2;
-        const yPosition = y - height - barToolRect.height / 2;
+            const relativeTop = dropdownRect.top - barToolRect.top;
+            const relativeLeft = dropdownRect.left - barToolRect.left;
 
-        console.log(barToolShape);
+        });
+    }
 
-        barTool.style.left = `${xPosition}px`;
-        barTool.style.top = `${yPosition}px`;
-        barTool.style.width = `${barToolShape.originalWidth * barToolShape.scaleX}px`;
-        barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
-
-        barTool.querySelectorAll("svg").forEach((svg) => {
-            svg.style.width = `${barToolShape.svgDimension.width * barToolShape.scaleX}px`;
-            svg.style.height = `${barToolShape.svgDimension.height * barToolShape.scaleY}px`;
-        })
-
-        // barTool.querySelector("#BarToolFontSize").style.fontSize = `${14 * barToolShape.scaleY}px`;
-        // barTool.querySelector("#BarToolFontFamily").style.fontSize = `${14 * barToolShape.scaleY}px`;
+    function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
     }
 }
 
@@ -836,8 +850,16 @@ export function actionToolBar(change, type, action){
                 border: "none",
             }
         }
-
     }
+
+    if (type === 'fontStyle' && change === 'strikethrough') {
+        const currentDecoration = node.textDecoration() || '';
+        if (currentDecoration.includes('line-through')) {
+          node.textDecoration(currentDecoration.replace('line-through', '').trim());
+        } else {
+          node.textDecoration((currentDecoration + ' line-through').trim());
+        }
+      }
 
     const newAttrs = {
         [type]: change,
@@ -846,8 +868,8 @@ export function actionToolBar(change, type, action){
     }
 
     node.setAttrs(newAttrs)
-    console.log(newAttrs);
     
     websocket.changeElementKonva(newAttrs, konva.stage.getRelativePointerPosition());
     konva.layer.draw();
+    console.log(node);
 }
