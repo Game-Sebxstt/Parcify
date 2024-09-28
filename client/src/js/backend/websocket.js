@@ -107,12 +107,16 @@ function createWebSocket() {
         }
 
         if (data.type === 'changeElementKonva') {
-            if(data.user_id != globals.getCookie("ID-USER")){
-                const node = JSON.parse(data.data.node);
-                const layerKonva = konva.stage.children.find(item => item.id() === "layer");
-                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === node.attrs.id_unique);
-                GlobalFunctions.setAttrOfAction(data.data.change, data.data.type, true, elementKonvaOfLayer)
-                console.log(elementKonvaOfLayer)
+            const node = JSON.parse(data.data.node);
+            const layerKonva = konva.stage.children.find(item => item.id() === "layer");
+            
+            const elementKonvaOfLayer = GlobalFunctions.findElementRecursively(layerKonva, node.attrs.id_unique);
+            
+            if (elementKonvaOfLayer) {
+                GlobalFunctions.setAttrOfAction(data.data.change, data.data.type, false, elementKonvaOfLayer);
+                console.log(elementKonvaOfLayer, node);
+            } else {
+                console.error('Elemento no encontrado:', node.attrs.id_unique);
             }
         }
 

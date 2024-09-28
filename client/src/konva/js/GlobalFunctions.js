@@ -23,6 +23,25 @@ export function downloadURI(uri, name) {
     return true;
 }
 
+export function findElementRecursively(container, id_unique) {
+    for (let i = 0; i < container.children.length; i++) {
+        const child = container.children[i];
+        
+        if (child.attrs.id_unique === id_unique) {
+            return child;
+        }
+        
+        if (child.nodeType === 'Group') {
+            const foundInGroup = findElementRecursively(child, id_unique);
+            if (foundInGroup) {
+                return foundInGroup;
+            }
+        }
+    }
+    
+    return null;
+}
+
 export function processStage(layersToHide, callback) {
     layersToHide.forEach(layerId => {
         const layer = konva.stage.findOne(`#${layerId}`);
@@ -425,9 +444,10 @@ export function removeBorderElement() {
     if (!elementSelectedList) return;
     
     elementSelectedList.forEach((element) => {
+        console.log(element.attrs)
         element.setAttrs({
-            stroke: element.getAttr("beforeStroke"),
-            strokeWidth: element.getAttr("beforeStrokeWidth"),
+            stroke: element.getAttr("beforeStroke") || "white",
+            strokeWidth: element.getAttr("beforeStrokeWidth") || 2,
         });
 
         konva.layer.draw();
@@ -839,18 +859,16 @@ export function actionToolBar(change, type, action, nodeChange){
 export function setAttrOfAction(change, type, action, nodeChange){
     let node = isGroupText((nodeChange ?? nodeSelect)) ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
     let extra;
-
-    console.log(node)
+    console.log(node);
 
     if(node.getAttr(type) == change && action){
         change = null
     }
 
     change = parseFloat(change) ? parseFloat(change) : change;
-    console.log(change, type)
 
     if(type == "border"){
-        node = nodeSelect;
+        node = nodeChange || nodeSelect;
 
         if(change == "dash"){
             change = [10, 5];

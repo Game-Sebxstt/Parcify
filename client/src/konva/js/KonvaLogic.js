@@ -661,9 +661,12 @@ export function updateElementsEvent() {
                 y: e.target.y(),
                 rotation: e.target.rotation(),
                 id_unique: e.target.attrs.id_unique,
-            };
+                isGroup: element instanceof Konva.Group,
+                childNodes: element.getChildren(),
+                minWidth: getMinWidth(),
+                rectNode: element.getChildren().find(item => item instanceof Konva.Rect),
 
-            websocket.updatePosElementKonva(updatedAttrs)
+            };
 
             if (element instanceof Konva.Group) {
                 const groupNode = element;
@@ -684,6 +687,8 @@ export function updateElementsEvent() {
                     });
                 }
             }
+
+            websocket.updatePosElementKonva(updatedAttrs)
         }, throttleLimit));
 
         element.on("dragend", throttle((e) => {
@@ -702,7 +707,7 @@ export function updateElementsEvent() {
                 id_unique: e.target.attrs.id_unique,
             };
 
-            websocket.changeElementKonva(updatedAttrs, stage.getRelativePointerPosition());
+            websocket.updatePosElementKonva(updatedAttrs)
         }, throttleLimit));
     });
 }
@@ -915,10 +920,12 @@ function dbClickRect(elementDrag) {
         } else {
             group = new Konva.Group({
                 draggable: true,
+                id_unique: globals.generateID(),
                 name: "ShapeText"
             });
             
             layer.add(group);
+            setElements([...getElements(), group]);
         }
 
         group.add(elementDrag);
@@ -937,6 +944,7 @@ function dbClickRect(elementDrag) {
             verticalAlign: textNode ? textNode.verticalAlign() : "middle",
             draggable: true,
             listening: false,
+            id_unique: globals.generateID(),
         }));
 
         layer.draw();
@@ -984,6 +992,8 @@ function dbClickRect(elementDrag) {
                 }
             });
         });
+
+        updateElementsEvents();
     }
 
     textarea.addEventListener('keydown', function (e) {
