@@ -6,7 +6,7 @@ import * as Render from './Render'
 import * as front from '../../js/frontend/front';
 import * as environments from '../../environments'
 import * as environment_utils from '../../js/globals/environment-utils'
-import * as websocket from '../../js/backend/websocket'
+import * as websocket from '../../js/websocket/actions'
 
 function initialCollaboration(){
     const urlParams = new URLSearchParams(window.location.search);
@@ -27,7 +27,6 @@ function initialCollaboration(){
         const data_invitation_project = JSON.parse(project.invitation || "[]");
         eventsListener(collaborators);
         resetCollaborators(collaborators);
-        console.log(collaborators);
 
         Render.utils.list_collaborators = document.querySelectorAll("#list-collaborators");
 
@@ -69,7 +68,8 @@ function eventsListener(collaborators){
     GlobalFunctions.detectedMouseMove();
 
     collaborators.forEach(collaborator => {
-        if(collaborator.user_id == globals.getCookie("ID-USER")) return;
+        if(collaborator.user_id == globals.getCookie("ID-USER") && collaborator.state) return;
+        console.log("collaborator", collaborator);
         GlobalFunctions.createCursorCollaborator(collaborator);
     })
 }

@@ -1,7 +1,7 @@
 import Konva from "konva";
 import * as konva from "./KonvaLogic";
 import * as req from '../../js/backend/requests'
-import * as websocket from '../../js/backend/websocket'
+import * as websocket from '../../js/websocket/actions'
 import * as GlobalFunctions from "./GlobalFunctions";
 import * as globals from '../../js/frontend/utilities/globals'
 import * as environment_utils from "../../js/globals/environment-utils";
@@ -56,7 +56,6 @@ document.addEventListener('keydown', function (e) {
 
             if (existingEntry) {
                 existingEntry.commits += 1;
-                console.log("Se actualizó el commit del día.");
             } else {
                 collaborator.commits.push({
                     date: dateCommit,
@@ -86,7 +85,6 @@ document.addEventListener('keydown', function (e) {
         const nodes = konva.tr.nodes();
 
         if(!nodes){
-            console.log("No nodes")
             return;
         }
 
@@ -260,10 +258,8 @@ document.addEventListener('keydown', function(e) {
             if (currentOpacity > 0) {
                 currentOpacity = Math.max(0, currentOpacity - 0.1);
                 body.style.opacity = currentOpacity;
-                console.log(`Current opacity: ${currentOpacity}`);
             } else {
                 clearInterval(opacityInterval);
-                console.log("Opacity reduction completed");
             }
         }, 100);
     }
@@ -276,6 +272,5 @@ document.addEventListener('keydown', function(e) {
             clearInterval(opacityInterval);
         }
         document.querySelector("body").style.opacity = 1;
-        console.log("Opacity reset to 1");
     }
 });

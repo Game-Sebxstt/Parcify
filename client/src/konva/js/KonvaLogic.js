@@ -4,7 +4,7 @@ import * as environment_utils from '../../js/globals/environment-utils'
 import * as GlobalFunctions from './GlobalFunctions'
 import * as chat from '../../js/frontend/utilities/chat';
 import * as globals from '../../js/frontend/utilities/globals';
-import * as websocket from '../../js/backend/websocket'
+import * as websocket from '../../js/websocket/actions'
 import * as config_konva from '../config'
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 
@@ -716,8 +716,6 @@ export function updateElementsEvent() {
         }, throttleLimit));
 
         element.on("transform", throttle((e) => {
-            console.log(e.target)
-
             const updatedAttrs = {
                 x: e.target.x(),
                 y: e.target.y(),

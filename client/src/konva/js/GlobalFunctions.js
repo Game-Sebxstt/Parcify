@@ -1,6 +1,6 @@
 import * as konva from "./KonvaLogic";
 import * as globals from '../../js/frontend/utilities/globals';
-import * as websocket from '../../js/backend/websocket'
+import * as websocket from '../../js/websocket/actions'
 import * as req from '../../js/backend/requests'
 import * as CustomCursor from '../ts/shapes/CustomCursor'
 import Konva from "konva";
@@ -291,7 +291,6 @@ export function deleteElement(element){
     const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
     collaborator.elements_deleted += 1;
     environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator);
-    console.log(collaborator);
 }
 
 export function createElementKonva(elementKonva, attrs){
@@ -301,12 +300,10 @@ export function createElementKonva(elementKonva, attrs){
     if(className == "Rect"){
         const rect = new Konva.Rect(options);
         createElement(rect, false);
-        console.log("Creado",rect);
     }
 
     if(className == "Circle"){
         const circle = new Konva.Circle(options);
-        console.log(circle);
         createElement(circle, false);
     }
 
@@ -349,6 +346,7 @@ export function moveDownElementKonva(elementKonva){
 }
 
 export function createCursorCollaborator(collaborator){
+    console.log(collaborator);
     const svgElement = konva.getCursorCustom();
     svgElement.setAttribute("fill", collaborator.color.hex);
     const svgDataUrl = getSvgString(svgElement);
@@ -492,15 +490,14 @@ export function changeElement(element, updatedAttrs, user_id, posRelativePointer
 }
 
 export function updateAttrsElement(element, updatedAttrs){
-    if(!updatedAttrs.isGroup){
-        element.setAttrs(updatedAttrs);
+    if(!updatedAttrs.data.isGroup){
+        element.setAttrs(updatedAttrs.data);
         konva.layer.batchDraw();
         return
     }
 
-    console.log(updatedAttrs);
     element.children.forEach(child => {
-        const attrsChild = updatedAttrs.childAttrs.find(item => item.id_unique == child.attrs.id_unique)
+        const attrsChild = updatedAttrs.data.childAttrs.find(item => item.id_unique == child.attrs.id_unique)
         child.setAttrs(attrsChild);
     })
 }
@@ -924,7 +921,6 @@ export function setAttrOfAction(change, type, action, nodeChange){
     const isAvailable = type != "fill" && type != "border"
     let node = isGroupText((nodeChange ?? nodeSelect)) && isAvailable ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
     let extra;
-    console.log(node, type, change);
 
     if(node.getAttr(type) == change && action){
         change = null

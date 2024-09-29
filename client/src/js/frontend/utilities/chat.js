@@ -1,6 +1,6 @@
 import * as globals from '../utilities/globals';
 import * as templates from '../utilities/templates';
-import * as websocket from '../../backend/websocket';
+import * as websocket from '../../websocket/actions';
 import * as front from '../front';
 import * as req from '../../backend/requests'
 import * as KonvaLogic from '../../../konva/js/KonvaLogic'
@@ -340,7 +340,6 @@ export async function loadChat(id_stage){
     }
 
     const chat = JSON.parse(project_response.chat_message || "[]");
-    console.log(chat);
 
     chat.forEach(message => {
         createMessage(message);

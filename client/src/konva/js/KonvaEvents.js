@@ -2,7 +2,7 @@ import * as States from "./StatesLogic";
 import Konva from "konva";
 import * as konva from "./KonvaLogic";
 import * as GlobalFunctions from "./GlobalFunctions";
-import * as websocket from '../../js/backend/websocket'
+import * as websocket from '../../js/websocket/actions'
 import { addShape } from "../ts/CreationShapes";
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import * as config from '../config'
