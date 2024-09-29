@@ -6,6 +6,7 @@ import * as websocket from '../../js/backend/websocket'
 import { addShape } from "../ts/CreationShapes";
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import * as config from '../config'
+import * as globals from "../../js/frontend/utilities/globals";
 
 konva.layer.on('dragmove', function (e) {
     if (config.list_id_ignore.includes(e.target.id() )) {
@@ -171,7 +172,51 @@ konva.tr?.on("transform", (e) => {
 
     if(e.target instanceof Konva.Rect){
         if (e.target.parent instanceof Konva.Group) {
+            const element = e.target.parent;
             konva.tr?.nodes(e.target.parent.getChildren());
+
+            const childAttrs = [];
+        
+            element.getChildren().forEach(item => {
+                childAttrs.push({
+                    x: item.x(),
+                    y: item.y(),
+                    scaleX: item.scaleX(),
+                    scaleY: item.scaleY(),
+                    width: item.width(),
+                    height: item.height(),
+                    rotation: item.rotation(),
+                    id_unique: item.attrs.id_unique,
+                })
+            })
+    
+            const updatedAttrs = {
+                isGroup: true,
+                childAttrs: childAttrs,
+                id_unique: element.getAttr("id_unique"),
+                id_user: globals.getCookie("ID-USER"),
+                posCursor: konva.stage.getRelativePointerPosition(),
+            };
+
+            if (element.attrs.name == "ShapeText") {
+                const rectNode = element.getChildren().find(item => item instanceof Konva.Rect);
+                
+                element.getChildren().forEach(item => {
+                    if (item instanceof Konva.Text) {
+                        const textPos = item.getPosition();
+                        item.setAttrs({
+                            x: textPos.x,
+                            y: textPos.y,
+                            width: Math.max(5, rectNode.width() * rectNode.scaleX(), konva.getMinWidth()),
+                            height: Math.max(5, rectNode.height() * rectNode.scaleY()),
+                            scaleX: 1,
+                            scaleY: 1,
+                        });
+                    }
+                });
+            }
+
+            websocket.updatePosElementKonva(updatedAttrs);
         }
     }
 

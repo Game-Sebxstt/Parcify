@@ -444,7 +444,6 @@ export function removeBorderElement() {
     if (!elementSelectedList) return;
     
     elementSelectedList.forEach((element) => {
-        console.log(element.attrs)
         element.setAttrs({
             stroke: element.getAttr("beforeStroke") || "white",
             strokeWidth: element.getAttr("beforeStrokeWidth") || 2,
@@ -493,8 +492,17 @@ export function changeElement(element, updatedAttrs, user_id, posRelativePointer
 }
 
 export function updateAttrsElement(element, updatedAttrs){
-    element.setAttrs(updatedAttrs);
-    konva.layer.batchDraw();
+    if(!updatedAttrs.isGroup){
+        element.setAttrs(updatedAttrs);
+        konva.layer.batchDraw();
+        return
+    }
+
+    console.log(updatedAttrs);
+    element.children.forEach(child => {
+        const attrsChild = updatedAttrs.childAttrs.find(item => item.id_unique == child.attrs.id_unique)
+        child.setAttrs(attrsChild);
+    })
 }
 
 export function getNodeSelectToolBar(){
@@ -837,6 +845,63 @@ function resetCustomColor(inputColor, newDataTypeItem) {
     });
 }
 
+export function createTextInShape(attrs, elementDrag){
+    let group;
+
+    if (elementDrag.parent instanceof Konva.Group) {
+        elementDrag.parent.getChildren().forEach(item => {
+            if(item instanceof Konva.Text){
+                item.destroy();
+            }
+        });
+
+        group = elementDrag.parent;
+    } else {
+        group = new Konva.Group({
+            draggable: true,
+            id_unique: globals.generateID(),
+            name: "ShapeText"
+        });
+        
+        konva.layer.add(group);
+        konva.setElements([...konva.getElements(), group]);
+    }
+
+    group.add(elementDrag);
+    group.add(new Konva.Text(attrs));
+
+    konva.layer.draw();
+    konva.updateElementsEvent();
+
+    konva.tr.show();
+    konva.tr.forceUpdate();
+    konva.tr.moveToTop();
+    konva.tr.nodes(group.getChildren());
+    konva.setSelectAll(true)
+    States.StatesCursor.textEditing = undefined;
+
+    let isTextFind = false
+    group.getChildren().forEach(item => {
+        if (item instanceof Konva.Text) {
+            isTextFind = true;
+
+            item.setAttrs({
+                width: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).width() * group.getChildren().find(item => item instanceof Konva.Rect).scaleX(), konva.getMinWidth()), 
+                height: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).height() * group.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
+                scaleX: 1,
+                scaleY: 1,
+            });
+        }
+    });
+
+    if(isTextFind){
+        group.setAttrs({
+            scaleX: 1,
+            scaleY: 1,
+        });
+    }
+}
+
 export function isGroupText(node){
     let returnNode = false
     if(node.parent instanceof Konva.Group){
@@ -852,14 +917,14 @@ export function isGroupText(node){
 }
 
 export function actionToolBar(change, type, action, nodeChange){
-    let node = isGroupText((nodeChange ?? nodeSelect)) ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
-    websocket.changeElementKonva({change: change, type: type, action: action, node: node}, konva.stage.getRelativePointerPosition());
+    websocket.changeElementKonva({change: change, type: type, action: action, node: (nodeChange ?? nodeSelect)}, konva.stage.getRelativePointerPosition());
 }
 
 export function setAttrOfAction(change, type, action, nodeChange){
-    let node = isGroupText((nodeChange ?? nodeSelect)) ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
+    const isAvailable = type != "fill" && type != "border"
+    let node = isGroupText((nodeChange ?? nodeSelect)) && isAvailable ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
     let extra;
-    console.log(node);
+    console.log(node, type, change);
 
     if(node.getAttr(type) == change && action){
         change = null
@@ -910,7 +975,11 @@ export function setAttrOfAction(change, type, action, nodeChange){
         } else {
           node.textDecoration((currentDecoration + ' line-through').trim());
         }
-      }
+    }
+
+    if (type === 'textColor') {
+        node.fill(change);
+    }
 
     const newAttrs = {
         [type]: change,

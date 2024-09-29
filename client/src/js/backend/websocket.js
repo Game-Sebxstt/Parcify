@@ -1,12 +1,12 @@
 import Konva from 'konva';
-import * as req from '../backend/requests'
-import * as globals from '../frontend/utilities/globals';
-import * as GlobalFunctions from '../../konva/js/GlobalFunctions';
-import * as Render from '../../konva/js/Render';
-import * as chat from '../frontend/utilities/chat';
+import * as req from './requests.js'
+import * as globals from '../frontend/utilities/globals.js';
+import * as GlobalFunctions from '../../konva/js/GlobalFunctions.js';
+import * as Render from '../../konva/js/Render.js';
+import * as chat from '../frontend/utilities/chat.js';
 import * as config from '../../config.ts';
-import * as environments_utils from '../globals/environment-utils';
-import * as konva from '../../konva/js/KonvaLogic'
+import * as environments_utils from '../globals/environment-utils.js';
+import * as konva from '../../konva/js/KonvaLogic.js'
 
 let socket = null;
 let isReconnecting = false;
@@ -114,7 +114,6 @@ function createWebSocket() {
             
             if (elementKonvaOfLayer) {
                 GlobalFunctions.setAttrOfAction(data.data.change, data.data.type, false, elementKonvaOfLayer);
-                console.log(elementKonvaOfLayer, node);
             } else {
                 console.error('Elemento no encontrado:', node.attrs.id_unique);
             }
@@ -124,8 +123,16 @@ function createWebSocket() {
             if(data.user_id != globals.getCookie("ID-USER")){
                 const dataNode = data.data;
                 const layerKonva = konva.stage.children.find(item => item.id() === "layer");
-                const elementKonvaOfLayer = layerKonva.children.find(item => item.attrs.id_unique === dataNode.id_unique);
-                GlobalFunctions.updateAttrsElement(elementKonvaOfLayer, dataNode)
+                
+                const elementKonvaOfLayer = GlobalFunctions.findElementRecursively(layerKonva, dataNode.id_unique);
+
+                if (elementKonvaOfLayer){
+                    GlobalFunctions.updateAttrsElement(elementKonvaOfLayer, dataNode)
+                    GlobalFunctions.updateCursorCollaborator(data.data.posCursor, data.data.id_user)
+                }else{
+                    console.error('Elemento no encontrado:', dataNode.id_unique);
+                }
+
             }
         }
 

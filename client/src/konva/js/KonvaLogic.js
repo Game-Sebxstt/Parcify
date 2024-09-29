@@ -656,28 +656,39 @@ export function updateElementsEvent() {
         });
 
         element.on("dragmove", throttle((e) => {
-            const updatedAttrs = {
-                x: e.target.x(),
-                y: e.target.y(),
-                rotation: e.target.rotation(),
-                id_unique: e.target.attrs.id_unique,
-                isGroup: element instanceof Konva.Group,
-                childNodes: element.getChildren(),
-                minWidth: getMinWidth(),
-                rectNode: element.getChildren().find(item => item instanceof Konva.Rect),
-
-            };
-
+            let updatedAttrs;
+        
             if (element instanceof Konva.Group) {
-                const groupNode = element;
+                const childAttrs = [];
 
-                if (groupNode.attrs.name == "ShapeText") {
-                    const rectNode = groupNode.getChildren().find(item => item instanceof Konva.Rect);
-                    groupNode.getChildren().forEach(item => {
+                element.getChildren().forEach(item => {
+                    childAttrs.push({
+                        x: item.x(),
+                        y: item.y(),
+                        scaleX: item.scaleX(),
+                        scaleY: item.scaleY(),
+                        rotation: item.rotation(),
+                        id_unique: item.attrs.id_unique,
+                    })
+                })
+        
+                updatedAttrs = {
+                    isGroup: element instanceof Konva.Group,
+                    childAttrs: childAttrs,
+                    id_unique: element.getAttr("id_unique"),
+                    id_user: globals.getCookie("ID-USER"),
+                    posCursor: stage.getRelativePointerPosition(),
+                };
+        
+                if (element.attrs.name == "ShapeText") {
+                    const rectNode = element.getChildren().find(item => item instanceof Konva.Rect);
+                    
+                    element.getChildren().forEach(item => {
                         if (item instanceof Konva.Text) {
+                            const textPos = item.getPosition();
                             item.setAttrs({
-                                x: rectNode.x(),
-                                y: rectNode.y(),
+                                x: textPos.x,
+                                y: textPos.y,
                                 width: Math.max(5, rectNode.width() * rectNode.scaleX(), getMinWidth()),
                                 height: Math.max(5, rectNode.height() * rectNode.scaleY()),
                                 scaleX: 1,
@@ -686,9 +697,18 @@ export function updateElementsEvent() {
                         }
                     });
                 }
+            } else {
+                updatedAttrs = {
+                    x: e.target.x(),
+                    y: e.target.y(),
+                    rotation: e.target.rotation(),
+                    id_unique: e.target.attrs.id_unique,
+                    id_user: globals.getCookie("ID-USER"),
+                    posCursor: stage.getRelativePointerPosition(),
+                };
             }
-
-            websocket.updatePosElementKonva(updatedAttrs)
+        
+            websocket.updatePosElementKonva(updatedAttrs);
         }, throttleLimit));
 
         element.on("dragend", throttle((e) => {
@@ -696,6 +716,8 @@ export function updateElementsEvent() {
         }, throttleLimit));
 
         element.on("transform", throttle((e) => {
+            console.log(e.target)
+
             const updatedAttrs = {
                 x: e.target.x(),
                 y: e.target.y(),
@@ -705,6 +727,8 @@ export function updateElementsEvent() {
                 height: e.target.height(),
                 rotation: e.target.rotation(),
                 id_unique: e.target.attrs.id_unique,
+                id_user: globals.getCookie("ID-USER"),
+                posCursor: stage.getRelativePointerPosition(),
             };
 
             websocket.updatePosElementKonva(updatedAttrs)
@@ -907,29 +931,7 @@ function dbClickRect(elementDrag) {
         window.removeEventListener('click', handleOutsideClick);
         elementDrag.show();
 
-        let group;
-
-        if (elementDrag.parent instanceof Konva.Group) {
-            elementDrag.parent.getChildren().forEach(item => {
-                if(item instanceof Konva.Text){
-                    item.destroy();
-                }
-            });
-
-            group = elementDrag.parent;
-        } else {
-            group = new Konva.Group({
-                draggable: true,
-                id_unique: globals.generateID(),
-                name: "ShapeText"
-            });
-            
-            layer.add(group);
-            setElements([...getElements(), group]);
-        }
-
-        group.add(elementDrag);
-        group.add(new Konva.Text({
+        const attrsText = {
             x: elementDrag.x(),
             y: elementDrag.y(),
             width: elementDrag.width(),
@@ -945,55 +947,9 @@ function dbClickRect(elementDrag) {
             draggable: true,
             listening: false,
             id_unique: globals.generateID(),
-        }));
-
-        layer.draw();
-        updateElementsEvent();
-
-        tr.show();
-        tr.forceUpdate();
-        tr.moveToTop();
-        tr.nodes(group.getChildren());
-        SELECTALL = true;
-        States.StatesCursor.textEditing = undefined;
-
-        let isTextFind = false
-        group.getChildren().forEach(item => {
-            if (item instanceof Konva.Text) {
-                isTextFind = true;
-
-                item.setAttrs({
-                    width: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).width() * group.getChildren().find(item => item instanceof Konva.Rect).scaleX(), MIN_WIDTH), 
-                    height: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).height() * group.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
-                    scaleX: 1,
-                    scaleY: 1,
-                });
-            }
-        });
-
-        if(isTextFind){
-            group.setAttrs({
-                scaleX: 1,
-                scaleY: 1,
-            });
         }
 
-        group.on('transform dragmove', function() {
-            group.getChildren().forEach(item => {
-                if (item instanceof Konva.Text) {
-                    item.setAttrs({
-                        x: group.getChildren().find(item => item instanceof Konva.Rect).x(),
-                        y: group.getChildren().find(item => item instanceof Konva.Rect).y(),
-                        width: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).width() * group.getChildren().find(item => item instanceof Konva.Rect).scaleX(), MIN_WIDTH), 
-                        height: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).height() * group.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
-                        scaleX: 1,
-                        scaleY: 1,
-                    });
-                }
-            });
-        });
-
-        updateElementsEvents();
+        GlobalFunctions.createTextInShape(attrsText, elementDrag)
     }
 
     textarea.addEventListener('keydown', function (e) {
