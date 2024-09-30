@@ -94,14 +94,13 @@ export function updatePosElementKonva(data) {
 }
 
 export function enterCollaborator(data) {
-    console.log("data", data)
     const collaboratorFind = utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
     if (!collaboratorFind) {
         req.saveCollaborators(data.collaborator.project_id, { user_id: data.user_id, state: true });
     }
     Render.updateCollaborators(data.collaborator);
     if (data.user_id !== globals.getCookie("ID-USER")) {
-        // GlobalFunctions.createCursorCollaborator(data.collaborator);
+        GlobalFunctions.createCursorCollaborator(data.collaborator);
     }
 }
 

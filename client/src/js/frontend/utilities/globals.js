@@ -1,3 +1,4 @@
+import { initialCollaboration } from "../../../konva/js/Index.js";
 import * as req from "../../backend/requests";
 import * as environment_utils from '../../globals/environment-utils.js'
 
@@ -43,6 +44,14 @@ export async function startSession(project_id) {
         user_id: getCookie("ID-USER"),
         state: true,
     })
+    .then(async () => {
+        console.log('Session started', JSON.parse((await req.getProject(project_id)).data.message.collaborators));
+       await environment_utils.initUtilsEnvironment().then(() => {
+            initialCollaboration();
+       })
+    })
+
+
 }
 
 export async function endSession(redirect = true) {

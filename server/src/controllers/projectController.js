@@ -252,7 +252,6 @@ export const saveCollaborators = async (req, res) => {
 
         if (!updated) {
             console.log("No se actualizó ningún colaborador, se añadirá uno nuevo.");
-            existingCollaborators.push(collaborators);
         }
 
         const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);
@@ -260,6 +259,8 @@ export const saveCollaborators = async (req, res) => {
         if (!updateCollaborators) {
             return res.status(400).send({ state: false, message: "No se pudo guardar los colaboradores." });
         }
+
+        console.log(existingCollaborators);
 
         const [existingsProjectsCollaboratorResult] = await connection.query("SELECT projects_collaborator FROM users WHERE user_id = ?", [collaborators.user_id]);
 

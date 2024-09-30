@@ -1,11 +1,19 @@
 import * as req from '../backend/requests';
 
-const id_user = getCookie("ID-USER");
-const primary_data = (await req.getPrimaryData(id_user)).data.message;
-const data_user = {users: primary_data.user[0]};
+let id_user = getCookie("ID-USER");
+let primary_data = (await req.getPrimaryData(id_user)).data.message;
+let data_user = {users: primary_data.user[0]};
 let preferences = primary_data.favorites.length > 0 ? JSON.parse(primary_data.favorites[0].favorites) : false;
 let templates = primary_data.templates.length > 0 ? primary_data.templates : false;
 let projects = primary_data.projects.length > 0 ? primary_data.projects : false;
+
+export async function initUtilsEnvironment(){
+    // primary_data = (await req.getPrimaryData(id_user)).data.message;
+    // data_user = {users: primary_data.user[0]};
+    // preferences = primary_data.favorites.length > 0 ? JSON.parse(primary_data.favorites[0].favorites) : false;
+    // templates = primary_data.templates.length > 0 ? primary_data.templates : false;
+    // projects = primary_data.projects.length > 0 ? primary_data.projects : false;
+}
 
 export function getDataUser() {
     return data_user;

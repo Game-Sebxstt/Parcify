@@ -346,7 +346,6 @@ export function moveDownElementKonva(elementKonva){
 }
 
 export function createCursorCollaborator(collaborator){
-    console.log(collaborator);
     const svgElement = konva.getCursorCustom();
     svgElement.setAttribute("fill", collaborator.color.hex);
     const svgDataUrl = getSvgString(svgElement);

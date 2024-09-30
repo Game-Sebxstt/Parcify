@@ -8,69 +8,66 @@ import * as environments from '../../environments'
 import * as environment_utils from '../../js/globals/environment-utils'
 import * as websocket from '../../js/websocket/actions'
 
-function initialCollaboration(){
-    const urlParams = new URLSearchParams(window.location.search);
-    const invitation = urlParams.get('invitation');
-    const id = urlParams.get('id');
+const urlParams = new URLSearchParams(window.location.search);
+const invitation = urlParams.get('invitation');
+const id = urlParams.get('id');
 
-    
-    if(id){
-        const project = environment_utils.getProject(id);
-    
-        if (!project) {
-            front.utils.handleError("Couldn't find project");
+export function initialCollaboration(){
+    if(!id) return; 
+
+    const project = environment_utils.getProject(id);
+
+    if (!project) {
+        front.utils.handleError("Couldn't find project");
+        return;
+    }
+
+    const collaborators = JSON.parse(project.collaborators || "[]");
+    const data_invitation_project = JSON.parse(project.invitation || "[]");
+    eventsListener(collaborators);
+    resetCollaborators(collaborators);
+    console.log("collaborators index",collaborators)
+
+    Render.utils.list_collaborators = document.querySelectorAll("#list-collaborators");
+
+    const collaboratorOwner = collaborators.find(c => c.role === 'owner');
+
+    if(collaboratorOwner.user_id == globals.getCookie("ID-USER")){
+        front.utils.handleError("You are the owner of the project");
+        websocket.enterCollaborator(collaboratorOwner);
+        return
+    }
+
+    if(data_invitation_project.invitation !== invitation){
+        front.utils.handleError("Invalid invitation");
+        return
+    }
+
+    if(collaborators.find(c => c.user_id == globals.getCookie("ID-USER"))){
+        front.utils.handleError("You are already a collaborator");
+        const collaborator = collaborators.find(c => c.user_id == globals.getCookie("ID-USER"));
+        websocket.enterCollaborator(collaborator);
+        return
+    }
+
+    let isFindColor = false;
+    environments.colors.forEach(color => {
+        if (isFindColor) return;
+
+        if(!collaborators.find(c => c.color == color)){
+            sendCollaboration(id, data_invitation_project, color, collaborators);
+            isFindColor = true;
             return;
         }
-    
-        globals.startSession(id);
-        const collaborators = JSON.parse(project.collaborators || "[]");
-        const data_invitation_project = JSON.parse(project.invitation || "[]");
-        eventsListener(collaborators);
-        resetCollaborators(collaborators);
-
-        Render.utils.list_collaborators = document.querySelectorAll("#list-collaborators");
-
-        const collaboratorOwner = collaborators.find(c => c.role === 'owner');
-
-        if(collaboratorOwner.user_id == globals.getCookie("ID-USER")){
-            front.utils.handleError("You are the owner of the project");
-            websocket.enterCollaborator(collaboratorOwner);
-            return
-        }
-    
-        if(data_invitation_project.invitation !== invitation){
-            front.utils.handleError("Invalid invitation");
-            return
-        }
-
-        if(collaborators.find(c => c.user_id == globals.getCookie("ID-USER"))){
-            front.utils.handleError("You are already a collaborator");
-            const collaborator = collaborators.find(c => c.user_id == globals.getCookie("ID-USER"));
-            console.log("Ya eres colaborador");
-            websocket.enterCollaborator(collaborator);
-            return
-        }
-
-        let isFindColor = false;
-        environments.colors.forEach(color => {
-            if (isFindColor) return;
-
-            if(!collaborators.find(c => c.color == color)){
-                sendCollaboration(id, data_invitation_project, color, collaborators);
-                isFindColor = true;
-                return;
-            }
-        })
-    }
+    })
 }
 
 function eventsListener(collaborators){
     GlobalFunctions.detectedMouseMove();
 
     collaborators.forEach(collaborator => {
-        if(collaborator.user_id == globals.getCookie("ID-USER") && collaborator.state) return;
-        console.log("collaborator", collaborator);
-        GlobalFunctions.createCursorCollaborator(collaborator);
+        if(collaborator.user_id == globals.getCookie("ID-USER") || !collaborator.state) return;
+        GlobalFunctions.createCursorCollaborator(collaborator);  
     })
 }
 
@@ -128,4 +125,4 @@ window.addEventListener('beforeunload', function(e) {
     globals.endSession(false);
 });
 
-initialCollaboration();
+globals.startSession(id);

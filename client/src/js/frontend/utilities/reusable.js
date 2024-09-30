@@ -104,8 +104,8 @@ function searchProjects(){
 
 export function redirectProjectAction(projectId, external = false){
   const collaborators = {
-  user_id: globals.getCookie("ID-USER"),
-  last_access: new Date(),
+    user_id: globals.getCookie("ID-USER"),
+    last_access: new Date(),
   }
 
   req.saveCollaborators(projectId, collaborators).then((data) => {
