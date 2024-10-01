@@ -149,6 +149,19 @@ export function setCollaboratorOfProject(project_id, user_id, collaborator, data
     }
 }
 
+export function sendChatMessage(project_id, data){
+    const project = getProject(project_id);
+
+    if(!project){
+        return false;
+    }
+
+    const chat = project.chat_message ? JSON.parse(project.chat_message) : [];
+    chat.push(data);
+
+    project.chat_message = JSON.stringify(chat);
+}
+
 function getCookie(name) {
     const nameEQ = name + "=";
     const ca = document.cookie.split(";");

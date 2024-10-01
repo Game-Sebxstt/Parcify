@@ -146,12 +146,12 @@ export function message(data) {
 
 export function typing(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
-        chat.createTypingExternal(data.data);
+        chat.createTypingExternal(data.data.data);
     }
 }
 
 export function stopTyping(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
-        chat.removeTypingExternal(data.data);
+        chat.removeTypingExternal(data.data.data);
     }
 }
