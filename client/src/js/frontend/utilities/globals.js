@@ -1,5 +1,5 @@
+// import { initialCollaboration } from "../../../konva/js/Index.js";
 import * as req from "../../backend/requests";
-import * as environments from '../../../../../config'
 import * as environment_utils from '../../globals/environment-utils.js'
 
 let templates;
@@ -38,12 +38,17 @@ export function setCookie(name, value, days) {
 }
 
 export async function startSession(project_id) {
-    console.log("Session started")
     const startTime = new Date();
     localStorage.setItem('sessionStartTime', JSON.stringify({startTime: startTime, project_id: project_id}));
     await req.saveCollaborators(project_id, {
         user_id: getCookie("ID-USER"),
         state: true,
+    })
+    .then(async () => {
+        console.log('Session started', JSON.parse((await req.getProject(project_id)).data.message.collaborators));
+        await environment_utils.initUtilsEnvironment().then(() => {
+                initialCollaboration();
+        })
     })
 }
 
@@ -99,21 +104,6 @@ export async function endSession(redirect = true) {
     });
 }
 
-export function sortByKey(arr, key, order = 'asc') {
-    return arr.sort((a, b) => {
-        const dateA = Date.parse(a[key]);
-        const dateB = Date.parse(b[key]);
-
-        if (order === 'asc') {
-            return dateA - dateB;
-        } else if (order === 'desc') {
-            return dateB - dateA;
-        }
-
-        return 0;
-    });
-}
-
 export function formatLocalTimeString(time){
     const timeParts = time.split(':');
     let hours = parseInt(timeParts[0], 10);
@@ -156,16 +146,18 @@ export function lastModified(fechas) {
 
 export async function isFavorite(project_id) {
     let dataPreferences = environment_utils.getPreferences();
-    let dataUser = environment_utils.getDataUser();
-  
     let dataFilter = [];
 
     if (dataPreferences){
-        const projectUser = dataUser.projects;
-  
+        let projectUser = environment_utils.getProjects();
+
+        if(!projectUser){
+            projectUser = [];
+        }
+
         dataPreferences.forEach((item) => {
             projectUser.forEach((elementUser) => {
-                if (elementUser.project_id === item.id) {
+                if (elementUser.project_id == item.id) {
                     elementUser["type"] = item.type;
                     dataFilter.push(elementUser);
                 }
@@ -173,7 +165,7 @@ export async function isFavorite(project_id) {
         });
     }
   
-    return dataFilter.some((favorite) => favorite.project_id === project_id);
+    return dataFilter.some((favorite) => favorite.project_id == project_id);
 }
 
 export function isNewProject(last_modified){

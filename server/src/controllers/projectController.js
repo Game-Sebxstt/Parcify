@@ -59,7 +59,8 @@ export const createProject = async (req, res, next) => {
                 project_id: project_id,
                 stage: template[0].stage,
                 preview: template[0].preview,
-                collaborators: collaborators
+                collaborators: collaborators,
+                last_modified: date_now
             }
         });
     } catch (error) {
@@ -129,7 +130,8 @@ export const duplicateProject = async (req, res, next) => {
                 stage: data[0].stage,
                 preview: data[0].preview,
                 collaborators: data[0].collaborators,
-                name: data[0].name
+                name: data[0].name,
+                last_modified: date_now
             }
         });
     } catch (error) {
@@ -250,7 +252,6 @@ export const saveCollaborators = async (req, res) => {
 
         if (!updated) {
             console.log("No se actualizó ningún colaborador, se añadirá uno nuevo.");
-            existingCollaborators.push(collaborators);
         }
 
         const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);

@@ -1,5 +1,5 @@
 ---
-import Favorites from "../Articles/Favorites.astro";
+import Favorites from "../React/components/Favorites"
 ---
 
 <div id="slide" class=`fixed top-0 z-10 w-[20rem] left-0 border-r-[1px] max-md:hidden border-blue-400 h-screen bg-[#2b2929] flex flex-col justify-between`>
@@ -57,7 +57,7 @@ import Favorites from "../Articles/Favorites.astro";
     
         <hr class="border-blue-400">
     
-        <Favorites></Favorites>
+        <Favorites client:only="react"/>
     
     </section>
     

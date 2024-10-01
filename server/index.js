@@ -5,6 +5,9 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import bodyParser from 'body-parser';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Local imports
 import * as websocket from './src/utilities/websocket.js';
@@ -33,6 +36,7 @@ const setupMiddleware = (app) => {
   app.use(morgan("dev"));
   app.use(express.json());
 };
+
 
 // Routes setup
 const setupRoutes = (app) => {

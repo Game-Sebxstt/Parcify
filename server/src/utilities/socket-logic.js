@@ -1,21 +1,57 @@
 export function initSocket(data, ws, clients) {
     if (data.type === 'clientId') {
-        clients.set(data.data.id, { ws: ws, data: data.data });
-        console.log('Identificador de cliente recibido:', Number(data.data.id));
+        clients.set(data.id, { ws: ws, data: data });
 
-        const senderId = data.data.id;
+        const senderId = data.id;
         const clientData = clients.get(senderId);
     
         if (!clientData) return;
     
-        clientData.data.collaborator = data.data.collaborator;
+        clientData.collaborator = data.collaborator;
         clients.set(senderId, clientData);
     
         clients.forEach((client) => {
             client.ws.send(JSON.stringify({
                 type: 'enterCollaborator',
-                collaborator: data.data.collaborator,
+                collaborator: data.collaborator,
                 user_id: senderId
+            }));
+        });
+    }
+
+    if (data.type === 'groupElements') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'groupElements',
+                user_id: senderId,
+                elements: data.elements,
+                generatedId: data.generatedId,
+            }));
+        });
+    }
+
+    if (data.type === 'createTextInElementKonva') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'createTextInElementKonva',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
+    if (data.type === 'ungroupElements') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'ungroupElements',
+                user_id: senderId,
+                groupKonva: data.groupKonva
             }));
         });
     }
@@ -24,7 +60,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'createElementKonva',
                 elementKonva: data.elementKonva,
@@ -37,7 +73,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'deleteElementKonva',
                 elementKonva: data.elementKonva,
@@ -50,7 +86,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'moveUpElementKonva',
                 elementKonva: data.elementKonva,
@@ -63,7 +99,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'moveDownElementKonva',
                 elementKonva: data.elementKonva,
@@ -76,11 +112,11 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
     
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'selectElementKonva',
                 elementKonva: data.elementKonva,
-                collaborator: client.data.collaborator,
+                collaborator: client.collaborator,
                 user_id: senderId
             }));
         });
@@ -90,7 +126,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
     
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'deselectElementKonva',
                 user_id: senderId
@@ -102,12 +138,26 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
     
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'changeElementKonva',
-                updatedAttrs: data.updatedAttrs,
+                data: data,
                 posRelativePointer: data.posRelativePointer,
-                collaborator: client.data.collaborator,
+                collaborator: client.collaborator,
+                user_id: senderId
+            }));
+        });
+    }
+
+    if(data.type === "updatePosElementKonva"){
+        const senderId = data.user_id;
+    
+        clients.forEach((client) => {
+            if(client.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'updatePosElementKonva',
+                data: data,
+                collaborator: client.collaborator,
                 user_id: senderId
             }));
         });
@@ -119,7 +169,7 @@ export function initSocket(data, ws, clients) {
     
         if (!clientData) return;
     
-        clientData.data.collaborator = data.collaborator;
+        clientData.collaborator = data.collaborator;
         clients.set(senderId, clientData);
     
         clients.forEach((client) => {
@@ -135,9 +185,9 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
-                type: 'mouseCursor',
+                type: data.type,
                 position: data.position,
                 user_id: senderId,
                 collaborators: data.collaborators
@@ -149,10 +199,10 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'message',
-                data: data.data,
+                data: data,
                 user_id: senderId,
                 collaborators: data.collaborators
             }));
@@ -163,10 +213,10 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-        if(client.data.user_id === senderId) return;
+        if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'typing',
-                data: data.data,
+                data: data,
                 user_id: senderId
             }));
         });
@@ -176,10 +226,10 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
-            if(client.data.user_id === senderId) return;
+            if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'stopTyping',
-                data: data.data,
+                data: data,
                 user_id: senderId
             }));
         });
@@ -195,7 +245,7 @@ export function finishSocket(ws, clients) {
         clients.forEach((clientDifferent) => {
             clientDifferent.ws.send(JSON.stringify({
                 type: 'exitCollaborator',
-                data: client.data,
+                data: client,
             }));
         })
     });

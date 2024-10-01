@@ -2,14 +2,14 @@
 import Layout from '../layouts/Layout.astro';
 import Slide from '../components/Sections/SlideDesktop.astro';
 import Content from '../components/Sections/Content.astro';
-import Header from '../components/Sections/Header.astro';
 import SlideMobile from '../components/Sections/SlideMobile.astro';
 import FilterTemplates from '../components/Articles/FilterTemplates.astro';
 import SearchBar from '../components/Articles/SearchBar.astro';
-import TemplateView from '../components/Articles/TemplateView.astro'
-import * as environments from '../../../config'
+import * as config from '../config'
+import TemplateView from '../components/React/components/TemplateView';
 
 import { getAllTemplates } from '../js/backend/requests';
+import ProjectsTemplates from '../components/React/components/ProjectsTemplates';
 
 const reqTemplates = await getAllTemplates();
 let templates;
@@ -41,7 +41,7 @@ let get_data: any;
 let data: any;
 
 try{
-	get_data = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
+	get_data = await fetch(`${config.getApiUrl()}/user/data?id_user=${id}`);
 	data = await get_data.json();
 	data = data.message;
 
@@ -72,26 +72,7 @@ try{
 				</div>
 
 				<article class="w-full">
-					<div id="content-grid-templates" data-section="templates" class="w-full grid grid-cols-3 max-xl:grid-cols-2 max-[980px]:grid-cols-1 gap-5 gap-y-10 overflow-hidden">
-						{
-							templates.length > 0 ? (
-								templates.map((template: any) => (
-									<TemplateView
-									    id="template"
-										first_text={template.name} 
-										second_text={template.autor} 
-										url_image={template.preview} 
-										template_id={template.template_id} 
-										description={template.description}
-										likes={template.likes}
-									/>
-								))
-							) : (
-								<p>No templates available</p>
-							)
-						}
-					</div>
-					
+					<ProjectsTemplates client:only="react"/>
 				</article>
 			</article>
 		</Content>

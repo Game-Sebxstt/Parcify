@@ -2,15 +2,17 @@ import * as States from "./StatesLogic";
 import Konva from "konva";
 import * as konva from "./KonvaLogic";
 import * as GlobalFunctions from "./GlobalFunctions";
-import * as websocket from '../../js/backend/websocket'
+import * as websocket from '../../js/websocket/actions'
 import { addShape } from "../ts/CreationShapes";
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
+import * as config from '../config'
+import * as globals from "../../js/frontend/utilities/globals";
 
 konva.layer.on('dragmove', function (e) {
-    if (e.target.id() === 'transformer') {
+    if (config.list_id_ignore.includes(e.target.id() )) {
         return;
     }
-    
+
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
 
     var lineGuideStops = GlobalFunctions.getLineGuideStops(e.target);
@@ -72,7 +74,7 @@ konva.layer.on('dragmove', function (e) {
 });
 
 konva.layer.on('dragend', function (e) {
-    if (e.target.id() === 'transformer') {
+    if (config.list_id_ignore.includes(e.target.id() )) {
         return;
     }
     
@@ -81,6 +83,10 @@ konva.layer.on('dragend', function (e) {
 });
 
 konva.tr?.on('transform', function (e) {
+    if (config.list_id_ignore.includes(e.target.id() )) {
+        return;
+    }
+
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
 
     var lineGuideStops = GlobalFunctions.getLineGuideStops(e.target);
@@ -142,6 +148,10 @@ konva.tr?.on('transform', function (e) {
 });
 
 konva.tr?.on("transformend", function (e) {
+    if (config.list_id_ignore.includes(e.target.id() )) {
+        return;
+    }
+
     konva.layer.find('.guid-line').forEach((l) => l.destroy());
     konva.saveHistory(konva.stage.toJSON());
 });
@@ -162,7 +172,51 @@ konva.tr?.on("transform", (e) => {
 
     if(e.target instanceof Konva.Rect){
         if (e.target.parent instanceof Konva.Group) {
+            const element = e.target.parent;
             konva.tr?.nodes(e.target.parent.getChildren());
+
+            const childAttrs = [];
+        
+            element.getChildren().forEach(item => {
+                childAttrs.push({
+                    x: item.x(),
+                    y: item.y(),
+                    scaleX: item.scaleX(),
+                    scaleY: item.scaleY(),
+                    width: item.width(),
+                    height: item.height(),
+                    rotation: item.rotation(),
+                    id_unique: item.attrs.id_unique,
+                })
+            })
+    
+            const updatedAttrs = {
+                isGroup: true,
+                childAttrs: childAttrs,
+                id_unique: element.getAttr("id_unique"),
+                id_user: globals.getCookie("ID-USER"),
+                posCursor: konva.stage.getRelativePointerPosition(),
+            };
+
+            if (element.attrs.name == "ShapeText") {
+                const rectNode = element.getChildren().find(item => item instanceof Konva.Rect);
+                
+                element.getChildren().forEach(item => {
+                    if (item instanceof Konva.Text) {
+                        const textPos = item.getPosition();
+                        item.setAttrs({
+                            x: textPos.x,
+                            y: textPos.y,
+                            width: Math.max(5, rectNode.width() * rectNode.scaleX(), konva.getMinWidth()),
+                            height: Math.max(5, rectNode.height() * rectNode.scaleY()),
+                            scaleX: 1,
+                            scaleY: 1,
+                        });
+                    }
+                });
+            }
+
+            websocket.updatePosElementKonva(updatedAttrs);
         }
     }
 
@@ -246,7 +300,6 @@ konva.stage.on('mousedown touchstart', (e) => {
     }
 
     e.evt.preventDefault();
-    document.querySelector("#BarTool").style.pointerEvents = 'none';
     konva.setPositions({
         X1: konva.stage.getRelativePointerPosition().x,
         Y1: konva.stage.getRelativePointerPosition().y,
@@ -285,7 +338,6 @@ konva.stage.on('mousemove touchmove', (e) => {
 });
 
 konva.stage.on('mouseup touchend', (e) => {
-    document.querySelector("#BarTool").style.pointerEvents = 'auto';
     konva.setSelecting(false);
     if (!konva.selectionRectangle?.visible()) {
         return;
@@ -326,6 +378,7 @@ konva.stage.on('click tap', function (e) {
                 transformer.attachTo(e.target);
                 konva.layer.draw();
                 websocket.selectElementKonva(e.target)
+                config.setNodeSelected(e.target)
             }
         }
     }
@@ -386,8 +439,9 @@ konva.stage.on('click tap', function (e) {
     }
 
     if (e.target instanceof Konva.Stage == true) {
-        konva.tr?.nodes([])
-        websocket.deselectElementKonva()
+        websocket.deselectElementKonva();
+        websocket.ungroupElements(konva.tr.nodes())
+        konva.tr?.nodes([]);
         return;
     }
 
@@ -419,13 +473,16 @@ konva.stage.on('click tap', function (e) {
         const nodes = konva.tr?.nodes().slice();
         nodes.splice(nodes.indexOf(e.target), 1);
         konva.tr?.nodes(nodes);
+        config.setNodesSelected(nodes)
+        websocket.groupElements(nodes)
     } else if (metaPressed && !isSelected) {
         konva.tr?.moveUp();
         const nodes = konva.tr?.nodes().concat([e.target]);
         konva.tr?.nodes(nodes);
+        config.setNodesSelected(nodes)
         GlobalFunctions.showBarTool(nodes)
+        websocket.groupElements(nodes)
     }
-
 });
 
 konva.stage.on('dblclick dbltap', (e) => {

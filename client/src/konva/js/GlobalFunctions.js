@@ -1,11 +1,12 @@
 import * as konva from "./KonvaLogic";
 import * as globals from '../../js/frontend/utilities/globals';
-import * as websocket from '../../js/backend/websocket'
+import * as websocket from '../../js/websocket/actions'
 import * as req from '../../js/backend/requests'
 import * as CustomCursor from '../ts/shapes/CustomCursor'
 import Konva from "konva";
 import * as States from "./StatesLogic";
 import * as environment_utils from "../../js/globals/environment-utils";
+import * as config from "../config";
 
 let needsUpdate = false;
 let isUpdateToolBar = false;
@@ -20,6 +21,25 @@ export function downloadURI(uri, name) {
     document.body.removeChild(link);
 
     return true;
+}
+
+export function findElementRecursively(container, id_unique) {
+    for (let i = 0; i < container.children.length; i++) {
+        const child = container.children[i];
+        
+        if (child.attrs.id_unique === id_unique) {
+            return child;
+        }
+        
+        if (child.nodeType === 'Group') {
+            const foundInGroup = findElementRecursively(child, id_unique);
+            if (foundInGroup) {
+                return foundInGroup;
+            }
+        }
+    }
+    
+    return null;
 }
 
 export function processStage(layersToHide, callback) {
@@ -207,6 +227,38 @@ export function randomId(){
     return Math.random().toString(36).substr(2, 9);
 }
 
+export function findElementByIdUnique(node, id_unique) {
+    if (node.attrs && node.attrs.id_unique === id_unique) {
+        return node;
+    }
+
+    if (node.hasChildren && node.hasChildren()) {
+        const children = node.getChildren();
+        for (let i = 0; i < children.length; i++) {
+            const found = findElementByIdUnique(children[i], id_unique);
+            if (found) {
+                return found;
+            }
+        }
+    }
+
+    return null;
+}
+
+export function getSvgString(svgElement){
+    var svgString = new XMLSerializer().serializeToString(svgElement);
+    var decoded = unescape(encodeURIComponent(svgString));
+    var base64 = btoa(decoded);
+    return `data:image/svg+xml;base64,${base64}`
+}
+
+export function createCursorCustom(fill, stroke){
+    const svgElement = konva.getCursorCustom();
+    const svgDataUrl = getSvgString(svgElement);
+
+    konva.stage.container().style.cursor = svgElement ? `url(${svgDataUrl}), auto` : "move";
+}
+
 export function createElement(elementKonva, trActive = true){
     if(elementKonva){
         konva.getElements().push(elementKonva);
@@ -222,7 +274,6 @@ export function createElement(elementKonva, trActive = true){
             const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
             collaborator.elements_created += 1;
             environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator); 
-            console.log(collaborator);
 
             konva.tr?.setAttr("visible", true);
             konva.tr?.nodes([elementKonva]);
@@ -240,13 +291,11 @@ export function deleteElement(element){
     const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
     collaborator.elements_deleted += 1;
     environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator);
-    console.log(collaborator);
 }
 
-export function createElementKonva(elementKonva){
-    console.log(elementKonva);
+export function createElementKonva(elementKonva, attrs){
     const className = elementKonva.className;
-    const options = elementKonva.attrs;
+    const options = attrs ?? elementKonva.attrs;
 
     if(className == "Rect"){
         const rect = new Konva.Rect(options);
@@ -255,7 +304,6 @@ export function createElementKonva(elementKonva){
 
     if(className == "Circle"){
         const circle = new Konva.Circle(options);
-        console.log(circle);
         createElement(circle, false);
     }
 
@@ -268,8 +316,6 @@ export function createElementKonva(elementKonva){
         const text = new Konva.Text(options);
         createElement(text, false);
     }
-
-
 }
 
 export function deleteElementKonva(elementKonva){
@@ -300,25 +346,41 @@ export function moveDownElementKonva(elementKonva){
 }
 
 export function createCursorCollaborator(collaborator){
-    const cursorById = konva.layer.find(item => item.id() === "mouseCursor");
-    if(cursorById.find(item => item.getAttr("id_user") == collaborator.user_id)) return;
+    const svgElement = konva.getCursorCustom();
+    svgElement.setAttribute("fill", collaborator.color.hex);
+    const svgDataUrl = getSvgString(svgElement);
 
-    const options = {
-        x: 0,
-        y: 0,
-        radius: 10,
+    const configCursor = {
         fill: collaborator.color.hex,
-        stroke: 'white',
-        strokeWidth: 1,
-        draggable: false,
         id: "mouseCursor",
         id_user: collaborator.user_id,
-        visible: false,
+        string_svg: svgDataUrl,
+        margin: {
+            top: 5,
+            left: 2.5,
+            right: 0,
+            bottom: 0,
+        }
+    }
+
+    const configName = {
         name_user: collaborator.name,
-        font_size: 20,
+        font_size: 14,
+        padding: {
+            top: 2.5,
+            left: 5,
+            right: 5,
+            bottom: 2.5,
+        },
+    }
+
+    const configGlobal = {
+        configCursor,
+        configName,
     }
     
-    const customCursor = new CustomCursor.CustomCursor(options, konva.layerCollaborators, konva.stage)
+    const customCursor = new CustomCursor.CustomCursor(configGlobal, konva.layerCollaborators, konva.stage)
+    customCursor.initCursor();
     konva.setCursorCollaborators(customCursor);
 }
 
@@ -364,6 +426,7 @@ export function setBorderElement(element, collaborator) {
     konva.setElementSelectedCollaborators(element);
     const beforeStroke = element.stroke();
     const beforeStrokeWidth = element.strokeWidth();
+
     element.setAttrs({
         stroke: collaborator ? collaborator.color.hex : "rgb(0, 161, 255)",
         strokeWidth: 3,
@@ -379,12 +442,29 @@ export function removeBorderElement() {
     
     elementSelectedList.forEach((element) => {
         element.setAttrs({
-            stroke: element.getAttr("beforeStroke"),
-            strokeWidth: element.getAttr("beforeStrokeWidth"),
+            stroke: element.getAttr("beforeStroke") || "white",
+            strokeWidth: element.getAttr("beforeStrokeWidth") || 2,
         });
 
         konva.layer.draw();
     });
+}
+
+export function updateBoundingRect(rect, nodes) {
+    let maxX = -Infinity, maxY = -Infinity, minX = Infinity, minY = Infinity;
+
+    nodes.forEach(node => {
+        let box = node.getClientRect({ relativeTo: konva.stage });
+
+        maxX = Math.max(maxX, box.x + box.width);
+        maxY = Math.max(maxY, box.y + box.height);
+        minX = Math.min(minX, box.x);
+        minY = Math.min(minY, box.y);
+    });
+
+    rect.position({ x: minX, y: minY });
+    rect.size({ width: maxX - minX, height: maxY - minY });
+    konva.layer.batchDraw();
 }
 
 function updateElement() {
@@ -401,9 +481,24 @@ requestAnimationFrame(updateElement);
 
 export function changeElement(element, updatedAttrs, user_id, posRelativePointer, collaborator) {
     element.setAttrs(updatedAttrs);
-    updateCursorCollaborator(posRelativePointer, user_id);
     setBorderElement(element, collaborator);
+    updateCursorCollaborator(posRelativePointer, user_id);
+    hiddenToolBarShape();
+    konva.layer.batchDraw();
     needsUpdate = true;
+}
+
+export function updateAttrsElement(element, updatedAttrs){
+    if(!updatedAttrs.data.isGroup){
+        element.setAttrs(updatedAttrs.data);
+        konva.layer.batchDraw();
+        return
+    }
+
+    element.children.forEach(child => {
+        const attrsChild = updatedAttrs.data.childAttrs.find(item => item.id_unique == child.attrs.id_unique)
+        child.setAttrs(attrsChild);
+    })
 }
 
 export function getNodeSelectToolBar(){
@@ -415,8 +510,48 @@ export function setUpdateToolBar(state){
     showBarTool(nodeSelect);
 }
 
+export function adjustDropdownPositions(barToolRect, headerHeight) {
+    const dropdownDimension = konva.getDimensionDropdown();
+
+    if(!dropdownDimension) return;
+
+    const rectReference = document.createElement("span")
+    rectReference.style.position = "absolute"
+    document.querySelector("body").appendChild(rectReference)
+
+    const yPositionDropdown = barToolRect.y - dropdownDimension.height;
+    const yPosition = yPositionDropdown <= headerHeight ? barToolRect.height + dropdownDimension.height : -barToolRect.height / 2
+    rectReference.style.top = `${yPositionDropdown}px`
+    dropdownDimension.element.style.top = `${yPosition}px`
+
+    rectReference.remove();
+}
+
+function updateToolBarState(attrsNode){
+    const customEvent = new CustomEvent("updateToolBar", {
+        detail: {attrs: attrsNode},
+    });
+
+    document.dispatchEvent(customEvent);
+}
+
 export function showBarTool(nodes) {
     const barTool = document.querySelector("#BarTool");
+    const dropdown = barTool.querySelector(".dropdown-tool-bar")
+
+    if(dropdown){
+        const rect = dropdown.getBoundingClientRect();
+        const dimensionRect = {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left,
+            element:  dropdown,
+        }
+        konva.setDimensionDropdown(dimensionRect);
+        adjustDropdownPositions(document.querySelector("#BarTool").getBoundingClientRect(), document.querySelector("#header-konva").getBoundingClientRect().height)
+    }
+
     const stage = konva.stage;
     let target = States.StatesCursor.select;
     let boundingRect;
@@ -431,7 +566,28 @@ export function showBarTool(nodes) {
     }
 
     nodeSelect = target;
-    konva.picker.updateNodeSelect(nodeSelect);
+    let attrsSend = {
+        fontStyle: null,
+        fontFamily: null,
+        fontSize: null,
+        textDecoration: null,
+        align: null,
+        fill: null,
+        type: [],
+    }
+    if(isGroupText(nodeSelect)){
+        const textNode = isGroupText(nodeSelect);
+        attrsSend["fontStyle"] = textNode.fontStyle();
+        attrsSend["fontFamily"] = textNode.fontFamily();
+        attrsSend["fontSize"] = textNode.fontSize();
+        attrsSend["textDecoration"] = textNode.textDecoration();
+        attrsSend["align"] = textNode.align();
+        attrsSend["type"].push(textNode.className);
+    }
+
+    attrsSend["fill"] = target.fill();
+    attrsSend["type"].push(target.className);
+    updateToolBarState(attrsSend);
 
     updateToolBarShape();
     initializeBarTool(target, barTool);
@@ -439,21 +595,20 @@ export function showBarTool(nodes) {
 
     function createBoundingRectForNodes(nodes) {
         const boundingRect = new Konva.Rect({
-            fill: 'rgba(0, 255, 255, 0)',
+            fill: 'rgba(0, 255, 0, .1)',
             strokeWidth: 1,
             listening: false,
+            id: "boundingRect",
         });
 
         konva.layer.add(boundingRect);
         updateBoundingRect(boundingRect, nodes);
         konva.layer.draw();
 
-        nodes.forEach(node => {
-            node.on("dragmove transform", () => {
-                target.setAttr("barToolSelected", true);
-                updateBoundingRect(boundingRect, nodes);
-                updateToolBar(target, barTool);
-            });
+        konva.tr.on("dragmove transform", () => {
+            target.setAttr("barToolSelected", true);
+            updateBoundingRect(boundingRect, nodes);
+            updateToolBar(target, barTool);
         });
 
         stage.on("dragmove wheel", () => {
@@ -465,46 +620,17 @@ export function showBarTool(nodes) {
         return boundingRect;
     }
 
-    function updateBoundingRect(rect, nodes) {
-        let maxX = 0, maxY = 0, minX = Infinity, minY = Infinity;
-
-        nodes.forEach(node => {
-            const nodeX = node.x();
-            const nodeY = node.y();
-
-            if (nodeX + node.width() > maxX) maxX = nodeX + node.width();
-            if (nodeY + node.height() > maxY) maxY = nodeY + node.height();
-            if (nodeX < minX) minX = nodeX;
-            if (nodeY < minY) minY = nodeY;
-        });
-
-        rect.position({ x: minX, y: minY });
-        rect.size({ width: maxX - minX, height: maxY - minY });
-    }
-
     function initializeBarTool(target, barTool) {
+        if(!barTool) return;
+
         target.setAttr("barToolSelected", true);
         barTool.style.display = "flex"
         updateToolBar(target, barTool);
     }
 
-    function nodeContainText(){
-        if(!nodeSelect.parent instanceof Konva.Group) return false;
-
-        let isContain = false;
-
-        nodeSelect.parent.getChildren().forEach((item) => {
-            if(item instanceof Konva.Text){
-                isContain = true;
-            }
-        })
-
-        return isContain;
-    }
-
     function setUpEventListeners(target, barTool, stage, nodes) {
         target.on("dragstart", () => onDragStart(target, barTool));
-        target.on("dragmove transform", () => updateToolBar(target, barTool));
+        target.on("dragmove, transform", () => updateToolBar(target, barTool));
         target.on("dragend", () => onDragEnd(target, barTool));
         stage.on("wheel", () => updateToolBar(target, barTool));
         stage.on("dragmove transform", () => updateToolBar(target, barTool));
@@ -525,33 +651,20 @@ export function showBarTool(nodes) {
     }
 
     function onStageClick(e, target, barTool, nodes) {
-        if (e.target !== target) {
-            target.setAttr("barToolSelected", false);
-            let isNodeElement = false;
-
-            if (nodes && nodes.length > 0 && boundingRect) {
-                nodes.forEach(node => {
-                    if (node === e.target) {
-                        isNodeElement = true;
-                    }
-                });
-
-                if (!isNodeElement) {
-                    boundingRect.destroy();
-                    konva.layer.draw();
-                } else {
-                    barTool.style.display = "flex"
-                    barTool.style.pointerEvents = "auto";
-                }
-            }
-
-            if (e.target instanceof Konva.Stage) {
-                barTool.style.display = "none"
-                barTool.style.pointerEvents = "none";
-            }
-        } else {
-            updateToolBar(target, barTool);
+        if(e.target instanceof Konva.Stage){
+            hiddenToolBarShape();
+            boundingRect?.destroy();
+            return;
         }
+
+        target = config.getBarElementSelected() != e.target ? e.target : target;
+
+        if(nodes){
+            target = boundingRect;
+        }
+
+        config.setBarElementSelected(target);
+        updateToolBar(target, barTool);
     }
 
     function updateToolBar(target, barTool){
@@ -562,114 +675,51 @@ export function showBarTool(nodes) {
 
     function updateBarToolPosition(target, barTool) {
         if (!target.getAttr("barToolSelected")) return;
-
-        // barTool.childNodes.forEach((item) => {
-        //     let idItem = item.id;
-        //     if(!idItem) return;
-
-        //     idItem = idItem.split("_").filter((item) => item == "font");
-
-        //     if(idItem.length > 0){
-        //         if(nodeContainText()){
-        //             item.style.display = "flex";
-        //             document.querySelectorAll("#sep").forEach(item => {
-        //                 item.style.display = "flex";
-        //             })
-        //         }else{
-        //             item.style.display = "none";
-        //             document.querySelectorAll("#sep").forEach(item => {
-        //                 item.style.display = "none";
-        //             })
-        //         }
-        //     }
-        // })
-
-        const { x, y } = target.absolutePosition();
-        const scaleX = target.scaleX() * stage.scaleX();
-        const scaleY = target.scaleY() * stage.scaleY();
-        const width = target instanceof Konva.Rect || target instanceof Konva.Text ? target.width() * scaleX : target.radius() * scaleX;
-        const height = target instanceof Konva.Rect || target instanceof Konva.Text ? target.height() * scaleY : target.radius() * scaleY;
     
+        const stage = konva.stage;
+        const targetRect = target.getClientRect();
         const barToolRect = barTool.getBoundingClientRect();
-        const barToolShape = {
-            width: parseFloat(window.getComputedStyle(barTool).width) || barToolRect.width || 0,
-            height: parseFloat(window.getComputedStyle(barTool).height) || barToolRect.height || 0,
+        const headerHeight = document.querySelector("#header-konva").getBoundingClientRect().height;
+
+        const barToolDimensions = calculateBarToolDimensions(barTool, barToolRect, stage);
+        const barToolPosition = calculateBarToolPosition(targetRect, barToolDimensions, headerHeight);
+    
+        applyBarToolStyles(barTool, barToolPosition, barToolDimensions);
+        adjustDropdownPositions(barToolRect, headerHeight);
+    }
+    
+    function calculateBarToolDimensions(barTool, barToolRect, stage) {
+        const computedStyle = window.getComputedStyle(barTool);
+        return {
+            width: parseFloat(computedStyle.width) || barToolRect.width || 0,
+            height: parseFloat(computedStyle.height) || barToolRect.height || 0,
             originalWidth: konva.getWidthBarTool(),
             originalHeight: konva.getHeightBarTool(),
             scaleX: Math.min(Math.max(stage.scaleX(), 0.5), 0.6),
-            scaleY: Math.min(Math.max(stage.scaleY(), 0.4), 0.5),
-            x: barToolRect.left,
-            y: barToolRect.top,
+            scaleY: Math.min(Math.max(stage.scaleY(), 0.4), 0.5)
         };
+    }
+    
+    function calculateBarToolPosition(targetRect, barToolDimensions, headerHeight) {
+        const xPosition = targetRect.x - barToolDimensions.width / 2 + targetRect.width / 2;
+        const yPosition = targetRect.y - barToolDimensions.height - 10;
+    
+        return {
+            x: clamp(xPosition, 0, window.innerWidth - barToolDimensions.width),
+            y: clamp(yPosition, headerHeight + barToolDimensions.height / 2, window.innerHeight - barToolDimensions.height - headerHeight)
+        };
+    }
+    
+    function applyBarToolStyles(barTool, position, dimensions) {
+        // barTool.style.display = "flex";
+        barTool.style.left = `${position.x}px`;
+        barTool.style.top = `${position.y}px`;
+        barTool.style.width = `${dimensions.originalWidth * dimensions.scaleX}px`;
+        barTool.style.height = `${dimensions.originalHeight * dimensions.scaleY}px`;
+    }
 
-        let BarToolExtra = null;
-        document.querySelectorAll("#BarToolExtra").forEach(child => {
-            if (window.getComputedStyle(child).display !== "none") {
-                BarToolExtra = child;
-            }
-        });
-        
-        const barToolHalfWidth = barToolRect.width / 2;
-        const barToolHalfHeight = barToolRect.height / 2;
-        let adjustedBarToolTop;
-        let adjustedBarToolLeft;
-    
-        let topTarget, leftTarget;
-        if (target instanceof Konva.Rect) {
-            topTarget = y - height / 4;
-            leftTarget = x - barToolHalfWidth + width / 2;
-        } else {
-            topTarget = y - barToolHalfHeight - height;
-            leftTarget = x - barToolHalfWidth;
-        }
-
-        const headerHeight = parseFloat(window.getComputedStyle(document.querySelector("#header-konva")).height);
-    
-        if(BarToolExtra){
-            const BarToolExtraRect = BarToolExtra.getBoundingClientRect();
-            adjustedBarToolTop = BarToolExtraRect.y <= headerHeight ? konva.stage.height() : topTarget;
-            adjustedBarToolLeft = BarToolExtraRect.x <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
-        }else{
-            adjustedBarToolTop = topTarget <= headerHeight ? konva.stage.height() : topTarget;
-            adjustedBarToolLeft = leftTarget <= 0  ? barToolHalfHeight : leftTarget > window.innerWidth - barToolShape.width ? window.innerWidth - barToolShape.width - barToolHalfHeight : leftTarget;
-        }
-    
-        barTool.style.display = "flex"
-        barTool.style.pointerEvents = "auto";
-        barTool.style.top = `${adjustedBarToolTop}px`;
-        barTool.style.left = `${adjustedBarToolLeft}px`;
-        barTool.style.width = `${barToolShape.originalWidth * barToolShape.scaleX}px`;
-        barTool.style.height = `${barToolShape.originalHeight * barToolShape.scaleY}px`;
-        barTool.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
-    
-        // document.querySelector("#font_size").style.fontSize = `${14 * barToolShape.scaleX}px`;
-        // document.querySelector("#font_family").style.fontSize = `${14 * barToolShape.scaleX}px`;
-    
-        if(!isUpdateToolBar) return;
-
-        if (BarToolExtra) {
-            const keyBarToolExtra = BarToolExtra.getAttribute("data-type")
-            const BarToolExtraShape = {
-                width: parseFloat(window.getComputedStyle(BarToolExtra).width) || BarToolExtra.width || 0,
-                height: parseFloat(window.getComputedStyle(BarToolExtra).height) || BarToolExtra.height || 0,
-                originalWidth: konva.getDimensionBarToolExtra(keyBarToolExtra).width,
-                originalHeight: konva.getDimensionBarToolExtra(keyBarToolExtra).height,
-            };
-
-            BarToolExtra.style.height = `${BarToolExtraShape.originalHeight * barToolShape.scaleY}px`;
-            BarToolExtra.style.border = `${1 * barToolShape.scaleX}px solid rgba(255, 255, 255, .2)`;
-    
-            document.querySelector("#nameBar").querySelector("#name").style.fontSize = `${24 * barToolShape.scaleX}px`;
-    
-            document.querySelector("#style_color").style.padding = `${8 * barToolShape.scaleX}px`;
-            document.querySelector("#style_color").style.gap = `${8 * barToolShape.scaleX} 0px`;
-    
-            BarToolExtra.querySelectorAll("#input_color").forEach(child => {
-                child.style.width = `${36 * barToolShape.scaleX}px`;
-                child.style.height = `${36 * barToolShape.scaleX}px`;
-                child.style.borderRadius = `${6 * barToolShape.scaleX}px`;
-            });
-        }
+    function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
     }
 }
 
@@ -679,6 +729,11 @@ export function updateToolBarShape() {
     updateToolBarButtons(node);
     updateToolBarFont(node);
     updateBarToolExtra(node);
+}
+
+export function hiddenToolBarShape(){
+    const barTool = document.querySelector("#BarTool");
+    barTool.style.display = "none";
 }
 
 function updateToolBarButtons(node) {
@@ -786,6 +841,65 @@ function resetCustomColor(inputColor, newDataTypeItem) {
     });
 }
 
+export function createTextInShape(attrs, elementDrag, isSelected = false){
+    let group;
+
+    if (elementDrag.parent instanceof Konva.Group) {
+        elementDrag.parent.getChildren().forEach(item => {
+            if(item instanceof Konva.Text){
+                item.destroy();
+            }
+        });
+
+        group = elementDrag.parent;
+    } else {
+        group = new Konva.Group({
+            draggable: true,
+            id_unique: globals.generateID(),
+            name: "ShapeText"
+        });
+        
+        konva.layer.add(group);
+        konva.setElements([...konva.getElements(), group]);
+    }
+
+    group.add(elementDrag);
+    group.add(new Konva.Text(attrs));
+
+    konva.layer.draw();
+    konva.updateElementsEvent();
+
+    if(isSelected){
+        konva.tr.show();
+        konva.tr.forceUpdate();
+        konva.tr.moveToTop();
+        konva.tr.nodes(group.getChildren());
+        konva.setSelectAll(true)
+    }
+    States.StatesCursor.textEditing = undefined;
+
+    let isTextFind = false
+    group.getChildren().forEach(item => {
+        if (item instanceof Konva.Text) {
+            isTextFind = true;
+
+            item.setAttrs({
+                width: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).width() * group.getChildren().find(item => item instanceof Konva.Rect).scaleX(), konva.getMinWidth()), 
+                height: Math.max(5, group.getChildren().find(item => item instanceof Konva.Rect).height() * group.getChildren().find(item => item instanceof Konva.Rect).scaleY()),
+                scaleX: 1,
+                scaleY: 1,
+            });
+        }
+    });
+
+    if(isTextFind){
+        group.setAttrs({
+            scaleX: 1,
+            scaleY: 1,
+        });
+    }
+}
+
 export function isGroupText(node){
     let returnNode = false
     if(node.parent instanceof Konva.Group){
@@ -800,8 +914,13 @@ export function isGroupText(node){
     return returnNode;
 }
 
-export function actionToolBar(change, type, action){
-    let node = isGroupText(nodeSelect) ? isGroupText(nodeSelect) : nodeSelect;
+export function actionToolBar(change, type, action, nodeChange){
+    websocket.changeElementKonva({change: change, type: type, action: action, node: (nodeChange ?? nodeSelect)}, konva.stage.getRelativePointerPosition());
+}
+
+export function setAttrOfAction(change, type, action, nodeChange){
+    const isAvailable = type != "fill" && type != "border"
+    let node = isGroupText((nodeChange ?? nodeSelect)) && isAvailable ? isGroupText((nodeChange ?? nodeSelect)) : (nodeChange ?? nodeSelect);
     let extra;
 
     if(node.getAttr(type) == change && action){
@@ -811,7 +930,7 @@ export function actionToolBar(change, type, action){
     change = parseFloat(change) ? parseFloat(change) : change;
 
     if(type == "border"){
-        node = nodeSelect;
+        node = nodeChange || nodeSelect;
 
         if(change == "dash"){
             change = [10, 5];
@@ -844,7 +963,19 @@ export function actionToolBar(change, type, action){
                 border: "none",
             }
         }
+    }
 
+    if (type === 'fontStyle' && change === 'strikethrough') {
+        const currentDecoration = node.textDecoration() || '';
+        if (currentDecoration.includes('line-through')) {
+          node.textDecoration(currentDecoration.replace('line-through', '').trim());
+        } else {
+          node.textDecoration((currentDecoration + ' line-through').trim());
+        }
+    }
+
+    if (type === 'textColor') {
+        node.fill(change);
     }
 
     const newAttrs = {
@@ -854,8 +985,5 @@ export function actionToolBar(change, type, action){
     }
 
     node.setAttrs(newAttrs)
-    console.log(newAttrs);
-    
-    websocket.changeElementKonva(newAttrs, konva.stage.getRelativePointerPosition());
     konva.layer.draw();
 }

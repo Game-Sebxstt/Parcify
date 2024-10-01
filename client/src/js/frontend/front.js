@@ -1,6 +1,5 @@
 import * as req from "../backend/requests";
 import * as globals from './utilities/globals'
-import * as templates from './utilities/templates'
 import * as chart from './utilities/chart'
 import * as reusable from './utilities/reusable'
 import * as environment_utils from '../globals/environment-utils'
@@ -52,14 +51,6 @@ export const utils = {
   toggleHidden: (element, condition) => {
     element.classList.toggle("hidden", condition);
   },
-  sortElements: (elements, key, ascending = true) => {
-    const sorted = elements.sort((a, b) => {
-      const valA = key === 'name' ? a.name : new Date(a.date);
-      const valB = key === 'name' ? b.name : new Date(b.date);
-      return ascending ? valA - valB : valB - valA;
-    });
-    sorted.forEach(item => item.element.parentElement.appendChild(item.element));
-  },
   handleError: (validation) => {
     Toastify({
       text: validation.data ?? validation,
@@ -71,10 +62,6 @@ export const utils = {
         background: "#1E90FF",
       },
     }).showToast();
-  },
-  validateEmail: (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
   },
   getCommitsByMonth: (data, startDate, endDate) => {
     const commitsByMonth = {};
@@ -106,45 +93,6 @@ export const utils = {
     const data = Object.values(commitsByMonth);
 
     return { labels, data };
-  },
-  createInput: (id, classInput, type, placeholder, value, parent) => {
-    const input = document.createElement("input");
-    input.id = id;
-    input.className = classInput;
-    input.type = type;
-    input.placeholder = placeholder;
-    input.value = value;
-
-    parent.appendChild(input);
-    return input;
-  },
-  showPreviewTemplate: (props) => {
-    let tittlePrew  = document.querySelector("#tittlePreview")
-    let authorPrew  = document.querySelector("#authorPreview")
-    let infoPrew = document.getElementById("infoPreview")
-    let infoDescription = document.getElementById("infoDescription")
-
-    tittlePrew.textContent = props.dataName;
-    authorPrew.textContent =  "By " + props.dataAuthor;
-    infoPrew.src = props.dataPreview;
-    infoDescription.textContent = props.dataDescription;
-
-    elements.previewTemplate.setAttribute("data-id", props.dataId);
-
-    let favorites = environment_utils.getPreferences();
-    if (favorites) {
-      const isFavorite = favorites.find(favorite => favorite.id == props.dataId);
-      elements.favoriteTemplate.style.fill = isFavorite ? "#f4d462" : "none"
-    }
-
-    let templates = environment_utils.getTemplate(props.dataId);
-    if(templates){
-      let template_likes = JSON.parse(templates.likes);
-      const isLiked = template_likes.find(template => template.user_id == globals.getCookie("ID-USER"));
-      elements.heartTemplate.style.fill = isLiked ? "#f46262" : "none"
-    }
-
-    window.getComputedStyle(elements.previewTemplate).display == "none" ? elements.previewTemplate.style.display = "flex" : elements.previewTemplate.style.display = "none";
   },
   isSelected: (element) => {
       if (!recourses.selectedElements.includes(element)) {
@@ -184,7 +132,11 @@ export const utils = {
         elementCounts[type] = (elementCounts[type] || 0) + 1;
       })
 
-      mostUsedElement = Object.keys(elementCounts).reduce((a, b) => elementCounts[a] > elementCounts[b] ? a : b);
+      if(Object.keys(elementCounts).length > 0){
+        mostUsedElement = Object.keys(elementCounts).reduce((a, b) => elementCounts[a] > elementCounts[b] ? a : b);
+      }else{
+        mostUsedElement = undefined;
+      }
     }
 
     const today = new Date();
@@ -246,6 +198,88 @@ export const utils = {
     totalChangesElem.textContent = totalChanges;
     totalCommentsElem.textContent = totalComments;
     totalTimeWorkedElem.textContent = globals.formatTimeMinute(totalMinutesWorked);
+  },
+  showAnalytics: (item) => {
+    elements.analytics.style.display = window.getComputedStyle(elements.analytics).display === "none" ? "flex" : "none";
+      const dataId = item.getAttribute("data-id");
+      elements.analytics.setAttribute("data-id", dataId);
+  
+      const project = environment_utils.getProject(dataId);
+  
+      if (!project) {
+        utils.handleError("Project not found");
+        return;
+      }
+    
+      const collaboratorsProject = JSON.parse(project.collaborators);
+      const collaborator = collaboratorsProject.find(c => c.user_id == globals.getCookie("ID-USER"));
+  
+      if (!collaborator) {
+        utils.handleError("Collaborator not found");
+        return;
+      }
+
+      utils.updatePerformanceMetrics(collaborator, collaboratorsProject);
+      utils.updateWorkMetrics(collaborator, collaboratorsProject);
+
+      const startDate = project.create_date;
+      const endDate = new Date().toISOString();
+
+      function createGraphicOfCommits(){
+        const commits = collaborator?.commits;
+        const dataSet = [];
+
+        collaboratorsProject.forEach(collaborator => {
+          dataSet.push({
+            label: collaborator.name,
+            data: collaborator.commits.map(c => c.commits),
+            backgroundColor: globals.hexToRGBA(collaborator.color.hex, .2),
+            borderColor: collaborator.color.hex,
+            borderWidth: 1,
+            fill: false,
+          });
+        })
+
+        const labels = commits?.map(c => c.date);
+
+        chart.createGraphic(
+          document.querySelector("#commits"),
+          "bar",
+          startDate,
+          endDate,
+          dataSet,
+          labels
+        );
+      }
+  
+      function createGraphicOfTimeWorked() {
+        const timeWorked = collaborator.time_worked;
+        const labels = timeWorked.map(c => c.date);
+        const dataSet = []
+
+        collaboratorsProject.forEach(collaborator => {
+          dataSet.push({
+            label: collaborator.name,
+            data: collaborator.time_worked.map(c => c.time),
+            backgroundColor: globals.hexToRGBA(collaborator.color.hex, .2),
+            borderColor: collaborator.color.hex,
+            borderWidth: 1,
+            fill: false,
+          });
+        })
+
+        chart.createGraphic(
+          document.querySelector("#time_worked"),
+          "line",
+          startDate,
+          endDate,
+          dataSet,
+          labels,
+        );
+      }
+
+      createGraphicOfCommits();
+      createGraphicOfTimeWorked();
   }
 };
 
@@ -257,42 +291,21 @@ export const elements = {
   usersInvited: document.getElementById("users-invited"),
   projectContent: document.getElementById("projectContent"),
   menuBtnList: document.querySelectorAll("#menu-btn"),
-  menuBtnList: document.querySelectorAll("#menu-btn"),
-  formLogin: document.getElementById("form_login"),
   formRegister: document.getElementById("form_signUp"),
   openSetting: document.querySelector("#openSettings"),
   closeSettings: document.querySelectorAll("#closeSetting"),
   userPhoto: document.querySelector("#userPhoto"),
   changeUserPhoto: document.querySelector("#inputfile"),
-  moreOptionIcons: document.querySelectorAll('#more-options-icon'),
-  moreOptionDivs: document.querySelectorAll('#more-options-parceller'),
   template: document.querySelectorAll(".create-template"),
-  previewTemplate: document.getElementById("previewTemplate"),
-  favorite: document.querySelectorAll("#favorite"),
-  unfavorite: document.querySelectorAll("#unfavorite"),
-  favoriteTemplate:document.querySelector("#favoriteTemplate"),
-  shareTemplate:document.querySelector("#shareTemplate"),
-  heartTemplate:document.querySelector("#heartTemplate"),
-  moreFavorites:document.querySelector("#moreFavorites"),
-  createTemplate: document.querySelector("#createTemplate"),
   analytics: document.querySelector("#analytics"),
-  imageContainer: document.querySelectorAll('#image-container'),//yo
+  imageContainer: document.querySelectorAll('#image-container'),
   imageUpload: document.getElementById('image-upload'),
   themeOptions: document.querySelectorAll(".theme-option"),
-  fontSelect: document.querySelector('select[name="Font theme"]'),//
+  fontSelect: document.querySelector('select[name="Font theme"]'),
   openDesplegableMenuKonva: document.querySelector("#openMenuDesplegableKonva"),
   moreOptionsFilter: document.querySelector("#more-options-filter"),
+  moreOptionsRole: document.querySelector("#more-options-role"),
   desplegableMenuKonva:document.querySelector("#desplegableMenuKonva"),
-  authCodeContainer: document.querySelector("#authCodeContainer"),
-  authCodeClose: document.querySelector("#close-authCode"),
-  authCodeVerificate: document.querySelector("#authCodeVerificate"),
-  resendCodeAuth: document.querySelector("#resendCodeAuth")
-};
-
-//Seleccionar theme (diseño)
-const configs = {
-  theme: localStorage.getItem('selectedTheme') || "",
-  font: localStorage.getItem('selectedFont') || "",
 };
 
 // Recursos reutilizables
@@ -305,16 +318,6 @@ export let recourses = {
 
 // Event Listeners
 const addEventListeners = () => {
-
-  // window.addEventListener('beforeunload', async (e) => {
-  //   e.preventDefault();
-  //   const email = document.getElementById("email_register").value;
-  //   const cancelRegister = await req.cancelVerificateCode(email);
-  //   if (!cancelRegister.state) {
-  //     utils.handleError(cancelRegister);
-  //     return;
-  //   }
-  // });
 
   document.addEventListener("keydown", (press) => {
       if (press.shiftKey) {
@@ -349,7 +352,7 @@ const addEventListeners = () => {
     });
   });
 
-  elements.moreOptionsFilter?.childNodes.forEach((element) => {
+  elements.moreOptionsRole?.childNodes.forEach((element) => {
     element.addEventListener("click", () => {
       const text = element.textContent;
       const role = element.getAttribute("data-role");
@@ -444,17 +447,6 @@ const addEventListeners = () => {
     });
   });
 
-  // Slide controls
-  document.querySelector("#close-right-slide")?.addEventListener("click", () => {
-    const rightSlide = document.querySelector("#right-slide");
-    rightSlide.style.right = window.getComputedStyle(rightSlide).right === "0px" ? "-25rem" : "0px";
-  });
-
-  document.querySelector("#close-left-slide")?.addEventListener("click", () => {
-    const leftSlide = document.querySelector("#left-slide");
-    leftSlide.style.left = window.getComputedStyle(leftSlide).left === "0px" ? "-25rem" : "0px";
-  });
-
   // Menu sections
   elements.menuBtnList.forEach((element) => {
     element.addEventListener("click", () => {
@@ -477,223 +469,12 @@ const addEventListeners = () => {
     globals.endSession();
   });
 
-  // Events listener projects and favorites
-  reusable.eventsListenerProjects();
-  reusable.eventsListenerFavorites();
-
-  // send template to Favorite
-  elements.favoriteTemplate?.addEventListener("click", async ()=>{
-    const userId = globals.getCookie("ID-USER")
-    const templateId = elements.previewTemplate.getAttribute("data-id")
-
-    const data = {
-      id_project: templateId,
-      type: "template",
-    }
-
-    if(window.getComputedStyle(elements.favoriteTemplate).fill != "none"){
-      elements.favoriteTemplate.style.fill = "none"
-      const petition = await req.unfavorite(userId, templateId)
-      environment_utils.removePreferences(data.id_project)
-
-      if (!petition.state) {
-        utils.handleError(petition);
-        return petition.data
-      }
-    }else{
-      elements.favoriteTemplate.style.fill = "#f4d462"
-      const petition = await req.favorite(userId, data)
-      environment_utils.addPreferences({id: data.id_project, type: data.type})
-
-      if (!petition.state) {
-        utils.handleError(petition);
-        return;
-      }
-    }
-
-    const renderResponse = templates.renderFavorites()
-
-    if(!renderResponse){
-      utils.handleError(renderResponse)
-      return
-    }
-  });
-
-  // Share template
-  elements.shareTemplate?.addEventListener("click", () => {
-    elements.shareTemplate.style.fill = "white"
-    const dataId = elements.previewTemplate.getAttribute("data-id");
-    const urlCopy = `${window.location.origin}/?template_id=${dataId}`;
-    navigator.clipboard.writeText(urlCopy);
-
-    utils.handleError("Link copied to clipboard");
-  })
-
-  // Like template
-  elements.heartTemplate?.addEventListener("click", async () => {
-    const userId = globals.getCookie("ID-USER")
-    const templateId = elements.previewTemplate.getAttribute("data-id")
-
-    if(window.getComputedStyle(elements.heartTemplate).fill != "none"){
-      elements.heartTemplate.style.fill = "none"
-      const petition = await req.dislikeTemplate(templateId, userId)
-
-      if (!petition.state) {
-        utils.handleError(petition);
-        return petition.data
-      }
-    }else{
-      elements.heartTemplate.style.fill = "#f46262"
-      const petition = await req.likeTemplate(templateId, userId)
-
-      if (!petition.state) {
-        utils.handleError(petition);
-        return;
-      }
-    }
-  })
-
   // Metric for projects
   document.querySelectorAll("#metric-project").forEach((item) => {
     item.addEventListener("click", async () => {
-      elements.analytics.style.display = window.getComputedStyle(elements.analytics).display === "none" ? "flex" : "none";
-      const dataId = item.getAttribute("data-id");
-      elements.analytics.setAttribute("data-id", dataId);
-  
-      const project = environment_utils.getProject(dataId);
-  
-      if (!project) {
-        utils.handleError("Project not found");
-        return;
-      }
-    
-      const collaboratorsProject = JSON.parse(project.collaborators);
-      const collaborator = collaboratorsProject.find(c => c.user_id == globals.getCookie("ID-USER"));
-  
-      if (!collaborator) {
-        utils.handleError("Collaborator not found");
-        return;
-      }
-
-      utils.updatePerformanceMetrics(collaborator, collaboratorsProject);
-      utils.updateWorkMetrics(collaborator, collaboratorsProject);
-
-      const startDate = project.create_date;
-      const endDate = new Date().toISOString();
-
-      function createGraphicOfCommits(){
-        const commits = collaborator?.commits;
-        const dataSet = [];
-
-        collaboratorsProject.forEach(collaborator => {
-          dataSet.push({
-            label: collaborator.name,
-            data: collaborator.commits.map(c => c.commits),
-            backgroundColor: globals.hexToRGBA(collaborator.color.hex, .2),
-            borderColor: collaborator.color.hex,
-            borderWidth: 1,
-            fill: false,
-          });
-        })
-
-        const labels = commits?.map(c => c.date);
-
-        chart.createGraphic(
-          document.querySelector("#commits"),
-          "bar",
-          startDate,
-          endDate,
-          dataSet,
-          labels
-        );
-      }
-  
-      function createGraphicOfTimeWorked() {
-        const timeWorked = collaborator.time_worked;
-        const labels = timeWorked.map(c => c.date);
-        const dataSet = []
-
-        collaboratorsProject.forEach(collaborator => {
-          dataSet.push({
-            label: collaborator.name,
-            data: collaborator.time_worked.map(c => c.time),
-            backgroundColor: globals.hexToRGBA(collaborator.color.hex, .2),
-            borderColor: collaborator.color.hex,
-            borderWidth: 1,
-            fill: false,
-          });
-        })
-
-        chart.createGraphic(
-          document.querySelector("#time_worked"),
-          "line",
-          startDate,
-          endDate,
-          dataSet,
-          labels,
-        );
-      }
-
-      createGraphicOfCommits();
-      createGraphicOfTimeWorked();
-
+      utils.showAnalytics(item);
     });
   }); 
-
-  // Filter options
-  document.querySelectorAll("#filtro").forEach((item, index) => {
-    item.addEventListener("click", () => {
-      const mainBox = item.parentElement.getAttribute("data-article");
-      const elements = Array.from(document.querySelectorAll(`.${mainBox}`) || document.querySelectorAll(`#${mainBox}`));
-
-      switch (index) {
-        case 0: // Sort by Name
-        const namesAndElements = elements.map(el => ({
-          name: el.getAttribute("data-name").toLowerCase(),  // Use lowercase for consistent comparison
-          element: el
-        }));
-
-        const arrow = document.querySelector("#orden").firstChild.id;
-        
-        // Sort elements by name
-        namesAndElements.sort((a, b) => {
-          if (a.name < b.name) return arrow === 'arrowUp' ? -1 : 1;
-          if (a.name > b.name) return arrow === 'arrowUp' ? 1 : -1;
-          return 0;
-        });
-
-        // Append sorted elements back to the DOM
-        namesAndElements.forEach(item => {
-          item.element.parentElement.appendChild(item.element);
-        });
-        break;
-
-        case 1: // Sort by Date
-          const datesAndElements = elements.map(el => ({
-            date: el.getAttribute("data-modified"),
-            element: el
-          }));
-          const arrowDate = item.children[1].firstChild.id;
-          utils.sortElements(datesAndElements, 'date', arrowDate === 'arrowUp');
-          break;
-
-        case 2: // Show Shared Projects
-          const sharedProjects = document.querySelectorAll("#projectShared");
-          elements.forEach(project => {
-            const isShared = Array.from(sharedProjects).includes(project);
-            utils.toggleHidden(project, !isShared);
-          });
-          break;
-
-        case 3: // Show All Projects
-          elements.forEach(item => utils.toggleHidden(item, false));
-          break;
-
-        default:
-          console.error("Error al filtrar");
-      }
-    });
-  });
 
   // filter template
   document.querySelectorAll("#filtroTemplate").forEach((item, index) => {
@@ -702,7 +483,7 @@ const addEventListeners = () => {
         const elements = Array.from(document.querySelectorAll(`#${mainBox}`));
         
         switch (index) {
-            case 0:
+          case 0:
                 const namesAndElements = elements.map(el => ({
                     name: el.getAttribute("data-name").toLowerCase(),
                     element: el
@@ -721,55 +502,25 @@ const addEventListeners = () => {
                 });
                 break;
 
-            case 1:
-                let templates_db = environment_utils.getTemplates();
-                console.log(templates_db)
+          case 1:
+                const datesAndElements = elements.map(el => ({
+                    date: el.getAttribute("data-create"),
+                    element: el
+                }));
 
                 const arrowDate = item.children[1].firstChild.id;
 
-                templates_db = globals.sortByKey(templates_db, "date_create", arrowDate === 'arrowUp' ? 'asc' : 'desc');
-                
-                const contentGrid = document.querySelector("#content-grid-templates");
-                if(!contentGrid){
-                    utils.handleError("No se encontró el contenedor de los templates");
-                    return;
-                }
+                datesAndElements.sort((a, b) => {
+                    if (a.date < b.date) return arrowDate === 'arrowUp' ? -1 : 1;
+                    if (a.date > b.date) return arrowDate === 'arrowUp' ? 1 : -1;
+                    return 0;
+                })
 
-                contentGrid.innerHTML = ""
-
-                const templateVoid = {
-                  template_id: 0,
-                  name: "Plantilla vacia",
-                  autor: "Parcify",
-                  description: "Plantilla vacia",
-                  likes: null,
-                }
-
-                templates_db = [templateVoid, ...templates_db];
-
-                templates_db.forEach( async (template) => {
-                  const props = {
-                    template_id: template.template_id,
-                    name: template.name,
-                    author: template.autor,
-                    preview: template.preview,
-                    description: template.description,
-                    likes: template.likes,
-                  }
-
-                  templates.renderTemplate(props, contentGrid);
+                datesAndElements.forEach(item => {
+                    item.element.parentElement.appendChild(item.element);
                 });
-                break;
-
+            break;
           case 2:
-            const sharedProjects = document.querySelectorAll("#projectShared");
-            elements.forEach(project => {
-                const isShared = Array.from(sharedProjects).includes(project);
-                utils.toggleHidden(project, !isShared);
-            });
-          break;
-
-          case 3:
             elements.forEach(item => utils.toggleHidden(item, false));
           break;
 
@@ -784,257 +535,6 @@ const addEventListeners = () => {
     const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
     reusable.redirectProjectAction(projectId);
   })
-
-  // Open project external
-  document.querySelector("#redirect-external")?.addEventListener("click", () => {
-    const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
-    reusable.redirectProjectAction(projectId, true);
-  })
-  
-  // Create project
-  elements.createTemplate?.addEventListener("click",  async () => {
-    const templateId = elements.previewTemplate.getAttribute("data-id");
-    const userId = globals.getCookie("ID-USER");
-
-    const validation = await req.createProject(userId, "Untitled", templateId);
-
-    if (!validation.state || !validation) {
-      utils.handleError(validation);
-      return;
-    }
-    
-    const props = {
-        name: "Untitled",
-        last_modified: new Date(),
-        project_id: validation.data.message.project_id,
-        preview: validation.data.message.preview,
-        stage: validation.data.message.stage,
-        collaborators: validation.data.message.collaborators,
-    }
-
-    if(!document.querySelector("#content-grid")){
-      window.location.href = "/"
-      return
-    }
-
-    templates.renderProject(props, document.querySelector("#content-grid"));
-  });
-
-  // Duplicate project
-  document.querySelectorAll("#duplicate-parcel").forEach((item) => {
-    item.addEventListener("click", async () => {
-      const elements_select = recourses.selectedElements;
-      let id_selects = [];
-
-      if (elements_select.length > 1) {
-        elements_select.forEach((element) => {
-          id_selects.push(element.querySelector("#element-project").getAttribute("data-id"));
-        });
-
-        const validation = await req.duplicateListProjects(id_selects);
-
-        if (!validation.state || !validation) {
-          utils.handleError(validation);
-          return;
-        }
-
-        validation.data.message.forEach(async (project) => {
-          const props = {
-              name: project.name,
-              last_modified: new Date(),
-              project_id: project.project_id,
-              preview: project.preview,
-              stage: project.stage,
-              collaborators: project.collaborators,
-          }
-
-          if(!document.querySelector("#content-grid")){
-            utils.handleError("No se encontró el contenedor de los proyectos");
-            return
-          }
-
-          templates.renderProject(props, document.querySelector("#content-grid"));
-        })
-      }else{
-        const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
-        const validation = await req.duplicateProject(projectId);
-
-        if (!validation.state || !validation) {
-          utils.handleError(validation);
-          return;
-        }
-
-        const props = {
-            name: validation.data.message.name,
-            last_modified: new Date(),
-            project_id: validation.data.message.project_id,
-            preview: validation.data.message.preview,
-            stage: validation.data.message.stage,
-            collaborators: validation.data.message.collaborators,
-        }
-
-        if(!document.querySelector("#content-grid")){
-          utils.handleError("No se encontró el contenedor de los proyectos");
-          return
-        }
-
-        templates.renderProject(props, document.querySelector("#content-grid"));
-      }
-    });
-  });
-
-  // Delete project
-  document.querySelectorAll("#delete-parcel").forEach((item) => {
-    item.addEventListener("click", async () => {
-      const elements_select = recourses.selectedElements;
-      let id_selects = [];
-
-      if (elements_select.length > 1) {
-        elements_select.forEach((element) => {
-          id_selects.push(element.querySelector("#element-project").getAttribute("data-id"));
-        });
-        
-        const validation = await req.deleteListProjects(id_selects);
-
-        if (!validation.state || !validation) {
-          utils.handleError(validation);
-          return;
-        }
-
-        id_selects.forEach(async (id) => {
-          templates.deleteProject(id);
-          await req.unfavorite(globals.getCookie("ID-USER"), id);
-          environment_utils.removePreferences(id);
-        })
-
-        const renderResponse = templates.renderFavorites();
-
-        if (!renderResponse) {
-          utils.handleError(renderResponse);
-          return;
-        }
-      }else{
-        const projectId = document.querySelector("#options-parcel").getAttribute("data-id");
-        const validation = await req.deleteProject(projectId);
-        
-        if (!validation.state || !validation) {
-          utils.handleError(validation);
-          return;
-        }
-  
-        templates.deleteProject(projectId);
-        await req.unfavorite(globals.getCookie("ID-USER"), projectId);
-        environment_utils.removePreferences(projectId);
-      
-        const renderResponse = templates.renderFavorites()
-  
-        if(!renderResponse){
-          utils.handleError(renderResponse)
-          return
-        }
-      }
-    });
-  });
-    
-  // User authentication
-  elements.formRegister?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const username = document.getElementById("name_register").value;
-    const email = document.getElementById("email_register").value;
-    const password = document.getElementById("password_register").value;
-    const displayAuth = window.getComputedStyle(elements.authCodeContainer).display;
-
-    if (username.length > 3 && utils.validateEmail(email)) {
-      const dataRegister = await req.registerUser(username, email, password);
-
-      if (!dataRegister.state) {
-        utils.handleError(dataRegister);
-        return;
-      }
-
-      elements.authCodeContainer.style.display = displayAuth == "none" ? "flex" : "none";      
-      // window.location.href = "/SignIn";
-    }
-  });
-
-  elements.authCodeVerificate?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const errorCode = document.getElementById("errorCodeAuth")
-    const email = document.getElementById("email_register").value;
-    const inputs = document.querySelectorAll("#inputCode");
-    const errorDisplay = window.getComputedStyle(errorCode).display;
-    let code = [];
-
-    inputs.forEach(input => {
-      code.push(Number(input.value))
-    })
-    
-    const auth = await req.verificateCode(email, code.join(""));
-  
-    if (!auth.state) {
-      utils.handleError(auth);
-      inputs.forEach(input => {
-        input.style.outline = "2px solid #f87171"
-      })
-      errorCode.style.display = errorDisplay == "none" ? "flex" : "none";
-      return;
-    }
-
-    window.location.href = "/SignIn";
-  })
-
-  // close code Authentication
-  elements.authCodeClose?.addEventListener("click", async ()=>{
-    const email = document.getElementById("email_register").value;
-
-    const cancelAuth = await req.cancelVerificateCode(email);
-
-    if (!cancelAuth.state) {
-      utils.handleError(cancelAuth);
-      return;
-    }
-
-    const display = window.getComputedStyle(elements.authCodeContainer).display;
-    elements.authCodeContainer.style.display = display == "flex" ? "none" : "flex"
-  })
-
-  elements.resendCodeAuth?.addEventListener("click", async () => {
-    const email = document.getElementById("email_register").value;
-    const resendAuthSuccess = document.getElementById("resendAuthSuccess");
-    const displayResend = window.getComputedStyle(resendAuthSuccess).display;
-
-    const resendCode = await req.resendAuthCode(email);
-    
-    if (!resendCode.state) {
-      utils.handleError(resendCode);
-      return;
-    }
-
-    resendAuthSuccess.style.display = displayResend == "none" ? "flex" : "none";
-    setTimeout(() => {
-      resendAuthSuccess.style.display = "none";
-    }, 3000);
-
-
-  });
-
-  elements.formLogin?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email_login").value;
-    const password = document.getElementById("password_login").value;
-
-    const validation = await req.loginUser(email, password);
-
-    if (!validation.state || !validation) {
-      utils.handleError(validation);
-      return;
-    }
-
-    globals.setCookie("ID-USER", validation.data.message, 1);
-    globals.setCookie("logged", true, 1);
-    window.location.href = "/";
-  });
-
 
   // Logout
   document.querySelector("#logout")?.addEventListener("click", (e) => {
@@ -1087,69 +587,6 @@ const addEventListeners = () => {
       reader.readAsDataURL(files[0]);
     }
   });
-
-  // Parcel Options
-  elements.moreOptionIcons.forEach((icon, index) => {
-    icon.addEventListener("click", () => {
-      const relatedOptionDiv = elements.moreOptionDivs[index];
-      utils.toggleDisplay(relatedOptionDiv, window.getComputedStyle(relatedOptionDiv).display === "none");
-    });
-  });
-
-  //previewParceller
-  reusable.showPreviewTemplate();
-
-  //favorites
-  elements.favorite.forEach(item =>{
-    item.addEventListener("click", async ()=>{
-      const userId = globals.getCookie("ID-USER");
-      const idElement = Number(document.querySelector("#options-parcel").getAttribute("data-id"));
-      const typeElement = document.querySelector("#options-parcel").getAttribute("data-type");
-      
-      const data = {
-        id_project:idElement,
-        type:typeElement,
-      }
-
-      const petition = await req.favorite(userId, data);
-      environment_utils.addPreferences({id: data.id_project, type: data.type})
-
-      if (!petition.state) {
-        utils.handleError(petition)
-        return petition.data;
-      }
-    
-      const renderResponse = templates.renderFavorites()
-
-      if(!renderResponse){
-        utils.handleError(renderResponse)
-        return
-      }
-    });
-  });
-
-  //unfavorite
-  elements.unfavorite.forEach((item)=>{
-    item.addEventListener("click", async ()=>{
-      const userId = globals.getCookie("ID-USER");
-      const idElement = Number(document.querySelector("#options-parcel").getAttribute("data-id"));
-      const petition = await req.unfavorite(userId, idElement);
-      environment_utils.removePreferences(idElement)
-
-      if (!petition.state) {
-        utils.handleError(petition)
-        return petition.data;
-      }
-    
-      const renderResponse = templates.renderFavorites()
-
-      if(!renderResponse){
-        utils.handleError(renderResponse)
-        return
-      }
-    })
-  });
-
 };
 
 // Initialize

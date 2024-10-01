@@ -8,7 +8,7 @@ const { title } = Astro.props;
 import '@fontsource/roboto';
 import Invite from '../components/Popups/Invite.astro';
 import Export from '../components/Konva/Export.astro';
-import * as environments from '../../../config'
+import * as config from '../config'
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -21,7 +21,7 @@ let get_data: any;
 let data: any;
 
 try{
-	get_data = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
+	get_data = await fetch(`${config.getApiUrl()}/user/data?id_user=${id}`);
 	data = await get_data.json();
 	data = data.message;
 
@@ -60,7 +60,7 @@ try{
 		<script src="../js/frontend/utilities/chat.js"></script>
 		<script src="../konva/js/Index.js"></script>
 		<script src="../konva/js/Render.js"></script>
-        <script src="../js/backend/websocket.js"></script>
+        <script src="../js/websocket/index.js"></script>
 	</body>
 </html>
 <style is:global>
@@ -87,6 +87,7 @@ try{
 		overflow:hidden;
 		background-color: #2b2929;
 		touch-action: none;
+		opacity: 1;
 	}
 
 	input[type="number"]::-webkit-inner-spin-button,

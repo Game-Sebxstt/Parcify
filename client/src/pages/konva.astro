@@ -1,11 +1,12 @@
 ---
-import BarTool from "../components/Konva/BarTool.astro";
+import { Toolbar } from "../components/React/components/Canvas/Toolbar.jsx";
 import DesplegableMenu from "../components/Konva/DesplegableMenu.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
 import Chat from "../components/Konva/Chat.astro";
 import Collaborators from "../components/Konva/Collaborators.astro";
 import BarToolLeft from "../components/Konva/BarToolLeft.astro";
 import * as req from '../js/backend/requests';
+import Cursor from "../components/Konva/Cursor.astro";
 
 const logged = Astro.cookies.get("logged")?.value;
 const id_user = Astro.cookies.get("ID-USER")?.value;
@@ -84,18 +85,8 @@ if(project.state){
     </div>
 </LayoutKonva>
 
-<BarTool/>
-{
-    collaborators && collaborators.length > 0 ? (
-        collaborators.map((collaborator: any) => {
-            return (
-                <span data-id-user={collaborator.user_id} id="mouseCursor" class="w-4 h-4 hidden rounded-full fixed top-1/2 left 1/2 z-[999]"></span>
-            )
-        })
-    ) : (
-        <span></span>
-    )
-}
+<Toolbar client:only="rect"/>
+<Cursor id_user={id_user}/>
 
 <script src="../konva/js/KonvaLogic.js"></script>
 <script src="../konva/js/UpdateGUI.js"></script>

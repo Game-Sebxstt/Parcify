@@ -5,15 +5,15 @@ interface Props {
 const { title } = Astro.props;
 
 import '@fontsource/roboto';
-import CreateParceller from '../components/Popups/CreateParceller.astro';
 import Header from '../components/Sections/Header.astro';
 import Settings from '../components/Sections/Settings.astro';
-import PreviewTemplate from '../components/Popups/PreviewTemplate.astro';
-import MoreFavorites from '../components/Popups/MoreFavorites.astro';
-import Options from '../components/Articles/Options.astro';
-import * as environments from '../../../config'
 import TwoStepVerification from '../components/Popups/TwoStepVerification.astro';
 import Rewards from "../components/Popups/Reward/Rewards.astro";
+import OptionsMenu from '../components/React/components/OptionsMenu';
+import PreviewTemplate from '../components/React/Popups/PreviewTemplate';
+import MoreFavorites from '../components/React/Popups/MoreFavorites';
+import CreateParceller from '../components/React/Popups/CreateParceller';
+import * as config from '../config'
 
 const logged = Astro.cookies.get("logged")?.value;
 const id = Astro.cookies.get("ID-USER")?.value;
@@ -26,16 +26,15 @@ let get_data: any;
 let data: any;
 
 try{
-	get_data = await fetch(`${environments.DEFAULT_API_URL}/user/data?id_user=${id}`);
+	get_data = await fetch(`${config.getApiUrl()}/user/data?id_user=${id}`);
 	data = await get_data.json();
 	data = data.message;
 
-	if(data == "El Usuario no existe."){
+	if(!data.users){
 		Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
 		Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
 		return Astro.redirect("/SignIn")
 	}
-
 }catch(e){
 	Astro.cookies.set("ID-USER", "false", {expires: new Date("9999-12-31")});
     Astro.cookies.set("logged", "false", {expires: new Date("9999-12-31")});
@@ -60,7 +59,6 @@ try{
 		<script src="../js/frontend/front.js"></script>
 		<script src="../js/globals/environment-utils.js"></script>
 		<script src="../js/frontend/utilities/settings.js"></script>
-		<script src="../js/frontend/utilities/splide.js"></script>
 		<script src="../js/frontend/utilities/chart.js"></script>
 		<script src="../js/frontend/utilities/initial.js"></script>
 		<title>{title}</title>
@@ -68,11 +66,11 @@ try{
 	<body>
 		<Rewards/>
 		<Header header_text='Management Parcellers' color='bg-purple-500' username={data.users.username} email={data.users.email}></Header>
-		<CreateParceller id_content='content-create-parcel'/>
-		<Options/>
+		<CreateParceller client:only="react" id_content='content-create-parcel'/>
 		<Settings username={data.users.username} email={data.users.email} biography={data.users.biography}></Settings>
-		<PreviewTemplate tittle="Asignatura de periodo" author="Luisk" description="loremasdasdasdasdasdasdasdsadas" location="template"></PreviewTemplate>
-		<MoreFavorites></MoreFavorites>
+		<OptionsMenu client:only="react"/>
+		<PreviewTemplate client:only="react"/>
+		<MoreFavorites client:only="react"/>
 		<TwoStepVerification></TwoStepVerification>
 		<slot />
 	</body>

@@ -1,6 +1,6 @@
 import * as globals from '../utilities/globals';
 import * as templates from '../utilities/templates';
-import * as websocket from '../../backend/websocket';
+import * as websocket from '../../websocket/actions';
 import * as front from '../front';
 import * as req from '../../backend/requests'
 import * as KonvaLogic from '../../../konva/js/KonvaLogic'
@@ -157,7 +157,7 @@ async function handleSendMessage(e) {
 }
 
 export function createMessageExternal(data){
-    createMessage(data);
+    createMessage(data.data);
     scrollToBottom();
 }
 
@@ -222,7 +222,7 @@ async function createMessage(data) {
     const profile_invite = node_chat_bubble.querySelector("#profile-invite");
     const collaborators = JSON.parse(environment_utils.getProject(KonvaLogic.id_stage).collaborators || "[]");
 
-    const collaborator_chat_bubble = collaborators.find(item => item.user_id == data.id_user);
+    const collaborator_chat_bubble = collaborators.find(item => item.user_id == (data.id_user));
     if(profile_invite){
         profile_invite.innerText = collaborator_chat_bubble.name[0].toUpperCase();
         profile_invite.style.backgroundColor = collaborator_chat_bubble.color.hex || "black"
@@ -235,6 +235,7 @@ async function createMessage(data) {
 
     let user = type.includes("right") ? "Tu" : data.name;
     updateMessageDetails(node_chat_bubble, data.time, user, data.message, data.response);
+    environment_utils.sendChatMessage(KonvaLogic.id_stage, data);
 
     render_container_chat.appendChild(node_chat_bubble);
     attachResendListener(node_chat_bubble);
@@ -340,7 +341,6 @@ export async function loadChat(id_stage){
     }
 
     const chat = JSON.parse(project_response.chat_message || "[]");
-    console.log(chat);
 
     chat.forEach(message => {
         createMessage(message);
