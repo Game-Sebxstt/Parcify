@@ -32,6 +32,18 @@ export function initSocket(data, ws, clients) {
         });
     }
 
+    if (data.type === 'createTextInElementKonva') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'createTextInElementKonva',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
     if (data.type === 'ungroupElements') {
         const senderId = data.user_id;
 

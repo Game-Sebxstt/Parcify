@@ -53,6 +53,10 @@ export function sendMessageCollaborators(data) {
     send('message', { data });
 }
 
+export function createTextInElementKonva(data) {
+    send('createTextInElementKonva', { data });
+}
+
 export function sendTypingCollaborators(user_id) {
     send('typing', { data: user_id });
 }

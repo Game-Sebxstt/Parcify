@@ -88,7 +88,7 @@ export function updatePosElementKonva(data) {
         const elementKonvaOfLayer = GlobalFunctions.findElementRecursively(layerKonva, dataNode.data.id_unique);
         if (elementKonvaOfLayer) {
             GlobalFunctions.updateAttrsElement(elementKonvaOfLayer, dataNode);
-            GlobalFunctions.updateCursorCollaborator(data.data.data.posCursor, data.data.id_user);
+            GlobalFunctions.updateCursorCollaborator(data.data.data.posCursor, data.data.user_id);
         }
     }
 }
@@ -141,6 +141,18 @@ export function mouseCursor(data) {
 export function message(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
         chat.createMessageExternal(data.data);
+    }
+}
+
+export function createTextInElementKonva(data){
+    const node = JSON.parse(data.data.element);
+    const attrsText = data.data.attrs;
+    const layerKonva = konva.stage.findOne('#layer');
+    const elementKonvaOfLayer = GlobalFunctions.findElementRecursively(layerKonva, node.attrs.id_unique);
+    const isSelected = data.user_id == globals.getCookie("ID-USER");
+
+    if (elementKonvaOfLayer) {
+        GlobalFunctions.createTextInShape(attrsText, elementKonvaOfLayer, isSelected);
     }
 }
 

@@ -841,7 +841,7 @@ function resetCustomColor(inputColor, newDataTypeItem) {
     });
 }
 
-export function createTextInShape(attrs, elementDrag){
+export function createTextInShape(attrs, elementDrag, isSelected = false){
     let group;
 
     if (elementDrag.parent instanceof Konva.Group) {
@@ -869,11 +869,13 @@ export function createTextInShape(attrs, elementDrag){
     konva.layer.draw();
     konva.updateElementsEvent();
 
-    konva.tr.show();
-    konva.tr.forceUpdate();
-    konva.tr.moveToTop();
-    konva.tr.nodes(group.getChildren());
-    konva.setSelectAll(true)
+    if(isSelected){
+        konva.tr.show();
+        konva.tr.forceUpdate();
+        konva.tr.moveToTop();
+        konva.tr.nodes(group.getChildren());
+        konva.setSelectAll(true)
+    }
     States.StatesCursor.textEditing = undefined;
 
     let isTextFind = false

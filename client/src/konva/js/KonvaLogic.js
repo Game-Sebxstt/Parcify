@@ -947,7 +947,10 @@ function dbClickRect(elementDrag) {
             id_unique: globals.generateID(),
         }
 
-        GlobalFunctions.createTextInShape(attrsText, elementDrag)
+        websocket.createTextInElementKonva({
+            attrs: attrsText,
+            element: elementDrag
+        })
     }
 
     textarea.addEventListener('keydown', function (e) {
