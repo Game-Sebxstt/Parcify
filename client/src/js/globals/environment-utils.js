@@ -8,11 +8,11 @@ let templates = primary_data.templates.length > 0 ? primary_data.templates : fal
 let projects = primary_data.projects.length > 0 ? primary_data.projects : false;
 
 export async function initUtilsEnvironment(){
-    // primary_data = (await req.getPrimaryData(id_user)).data.message;
-    // data_user = {users: primary_data.user[0]};
-    // preferences = primary_data.favorites.length > 0 ? JSON.parse(primary_data.favorites[0].favorites) : false;
-    // templates = primary_data.templates.length > 0 ? primary_data.templates : false;
-    // projects = primary_data.projects.length > 0 ? primary_data.projects : false;
+    primary_data = (await req.getPrimaryData(id_user)).data.message;
+    data_user = {users: primary_data.user[0]};
+    preferences = primary_data.favorites.length > 0 ? JSON.parse(primary_data.favorites[0].favorites) : false;
+    templates = primary_data.templates.length > 0 ? primary_data.templates : false;
+    projects = primary_data.projects.length > 0 ? primary_data.projects : false;
 }
 
 export function getDataUser() {

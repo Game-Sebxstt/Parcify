@@ -114,8 +114,6 @@ export function redirectProjectAction(projectId, external = false){
         return;
     }
 
-    globals.startSession(projectId);
-
     if(external){
       window.open(`/konva?id=${projectId}`, '_blank');
       return

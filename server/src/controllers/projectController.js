@@ -260,8 +260,6 @@ export const saveCollaborators = async (req, res) => {
             return res.status(400).send({ state: false, message: "No se pudo guardar los colaboradores." });
         }
 
-        console.log(existingCollaborators);
-
         const [existingsProjectsCollaboratorResult] = await connection.query("SELECT projects_collaborator FROM users WHERE user_id = ?", [collaborators.user_id]);
 
         if (!existingsProjectsCollaboratorResult) {

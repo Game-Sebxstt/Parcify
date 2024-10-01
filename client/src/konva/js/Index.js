@@ -125,4 +125,19 @@ window.addEventListener('beforeunload', function(e) {
     globals.endSession(false);
 });
 
-globals.startSession(id);
+async function startSession(project_id) {
+    const startTime = new Date();
+    localStorage.setItem('sessionStartTime', JSON.stringify({startTime: startTime, project_id: project_id}));
+    await req.saveCollaborators(project_id, {
+        user_id: globals.getCookie("ID-USER"),
+        state: true,
+    })
+    .then(async () => {
+        console.log('Session started', JSON.parse((await req.getProject(project_id)).data.message.collaborators));
+        await environment_utils.initUtilsEnvironment().then(() => {
+                initialCollaboration();
+        })
+    })
+}
+
+startSession(id);
