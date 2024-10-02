@@ -21,8 +21,8 @@ export function groupElements(data) {
 //Disabled
 export function ungroupElements(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
-        const groupKonva = JSON.parse(data.groupKonva[0]);
-        konva.ungroupElements(groupKonva);
+        // const groupKonva = JSON.parse(data.groupKonva[0]);
+        // konva.ungroupElements(groupKonva);
     }
 }
 
@@ -96,6 +96,7 @@ export function updatePosElementKonva(data) {
 export function enterCollaborator(data) {
     const collaboratorFind = utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
     if (!collaboratorFind) {
+        console.log('Collaborator not found:', data);
         req.saveCollaborators(data.collaborator.project_id, { user_id: data.user_id, state: true });
     }
     Render.updateCollaborators(data.collaborator);
@@ -168,22 +169,36 @@ export function startEditTextInElementKonva(data){
     textarea_config.elementDrag = elementDrag;
     textarea_config.textNode = textNode
 
+    var textPosition = elementDrag.absolutePosition();
+    var stageBox = konva.stage.container().getBoundingClientRect();
+
+    var areaPosition = {
+        x: stageBox.left + textPosition.x,
+        y: stageBox.top + textPosition.y,
+    };
+
     if(textNode){
         textNode.hide();
     }
     
     konva.createTextArea(
-        textarea_config.textAlign, textarea_config.areaPosition, 
+        textarea_config.textAlign, areaPosition, 
         textarea_config.elementDrag, textarea_config.textNode, 
         textarea_config.value, textarea_config.textarea_edit, 
         data.data.collaborator
     )
 }
 
-export function selectionText(data){
+export function createHighlightText(data){
     if(data.user_id == globals.getCookie("ID-USER")) return;
 
-    konva.highlightTextArea(data.data)
+    konva.createHighlight(data.data)
+}
+
+export function removeHighlightText(data){
+    if(data.user_id == globals.getCookie("ID-USER")) return;
+
+    konva.removeHighlight(data.data)
 }
 
 export function typing(data) {

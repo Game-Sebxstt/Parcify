@@ -61,8 +61,12 @@ export function startEditTextInElementKonva(data) {
     send('startEditTextInElementKonva', { data });
 }
 
-export function selectionText(data) {
-    send('selectionText', { data });
+export function createHighlightText(data) {
+    send('createHighlightText', { data });
+}
+
+export function removeHighlightText(data) {
+    send('removeHighlightText', { data });
 }
 
 export function sendTypingCollaborators(user_id) {

@@ -759,26 +759,45 @@ export function fitStageIntoParentContainer() {
     stage.scale({ x: scale, y: scale });
 }
 
-export function highlightTextArea(data) {
+export function createHighlight(data) {
     const element = document.querySelector(`#${data.id}`);
-    
-    if (element && element.childNodes.length > 0) {
-        const range = document.createRange();
-        const selection = window.getSelection();
+    const textContainer = element.firstChild;
+    textContainer.innerHTML = data.completeText;
 
-        selection.removeAllRanges();
+    if (textContainer && textContainer.childNodes.length > 0) {
+        const textNode = textContainer.childNodes[0];
+        const text = textNode.textContent;
 
-        const textNode = element.childNodes[0];
-        range.setStart(textNode, data.start);
-        range.setEnd(textNode, data.end);
+        const fragment = document.createDocumentFragment();
 
-        selection.addRange(range);
+        if (data.start > 0) {
+            fragment.appendChild(document.createTextNode(text.slice(0, data.start)));
+        }
 
-        document.execCommand('backColor', false, 'red');
-        document.execCommand('foreColor', false, 'black');
+        const highlightSpan = document.createElement('span');
+        highlightSpan.style.backgroundColor = data.collaboratorData.color.hex;
+        highlightSpan.style.opacity = '0.5';
+        highlightSpan.style.color = 'inherit';
+        highlightSpan.textContent = text.slice(data.start, data.end);
+        fragment.appendChild(highlightSpan);
+
+        if (data.end < text.length) {
+            fragment.appendChild(document.createTextNode(text.slice(data.end)));
+        }
+
+        while (textContainer.firstChild) {
+            textContainer.removeChild(textContainer.firstChild);
+        }
+
+        textContainer.appendChild(fragment);
     }
 }
 
+export function removeHighlight(data) {
+    const element = document.querySelector(`#${data.id}`);
+    const textContainer = element.firstChild;
+    textContainer.innerHTML = data.completeText;
+}
 
 export function createTextArea(textAlign, areaPosition, elementDrag, textNode, value, textarea_edit, collaborator) {
     let fillColor = "rgb(0 0 0 / 1)";
@@ -799,59 +818,85 @@ export function createTextArea(textAlign, areaPosition, elementDrag, textNode, v
     textarea.style.position = 'absolute';
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
-    textarea.style.width = elementDrag.width() * elementDrag.scaleX() * stage.scaleX() + "px"
-    textarea.style.height = elementDrag.height() * elementDrag.scaleY() * stage.scaleY() + "px"
+    textarea.style.width = elementDrag.width() * elementDrag.scaleX() * stage.scaleX() + "px";
+    textarea.style.height = elementDrag.height() * elementDrag.scaleY() * stage.scaleY() + "px";
     textarea.style.fontSize = fontSize * stage.scaleX() + "px";
     textarea.style.fontWeight = textNode ? textNode.fontStyle() : "normal";
     textarea.style.fontStyle = textNode ? textNode.fontStyle() : "normal";
     textarea.style.textDecoration = textNode ? textNode.textDecoration() : "none";
     textarea.style.border = '0px';
     textarea.style.padding = '0px';
-    textarea.style.margin = 'none';
+    textarea.style.margin = '0px';
     textarea.style.overflow = 'hidden';
     textarea.style.background = 'none';
     textarea.style.outline = 'none';
-    textarea.style.zIndex = "1"
+    textarea.style.zIndex = "1";
     textarea.style.resize = 'none';
-    textarea.style.lineHeight = 1;
+    textarea.style.lineHeight = '1.2';
     textarea.style.fontFamily = fontFamily;
-    textarea.style.transformOrigin = 'right top';
-    textarea.style.textAlign = textAlign;
-    // textarea.style.display = 'flex';
-    // textarea.style.justifyContent = textAlign;
-    // textarea.style.alignItems = textAlign;
+    textarea.style.transformOrigin = 'center center';
     textarea.style.color = fillColor;
     textarea.style.transform = `rotateZ(${elementDrag.rotation() ?? 0}deg)`;
+
+    textarea.style.display = 'flex';
+    textarea.style.flexDirection = 'column';
+    textarea.style.justifyContent = 'center';
+    textarea.style.alignItems = textAlign === 'center' ? 'center' : (textAlign === 'right' ? 'flex-end' : 'flex-start');
+
+    var textContainer = document.createElement('div');
+    textContainer.id = 'inner-div'
+    textContainer.style.width = '100%';
+    textContainer.style.textAlign = textAlign;
+    textarea.appendChild(textContainer);
+
+    textContainer.innerHTML = textarea.innerHTML;
+    textarea.innerHTML = '';
+    textarea.appendChild(textContainer);
 
     setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x, textarea, textNode);
     textarea.focus();
     moveCursorToEnd(textarea);
     SELECTALL = false;
 
+    let isSelecting = false;
+
+    textarea.addEventListener('mousedown', () => {
+        isSelecting = true;
+    });
+
+    textarea.addEventListener('mousemove', () => {
+        if (isSelecting) {
+            const selection = window.getSelection();
+            const selectedText = selection.toString();
+            if (selectedText.length > 0) {
+                const range = selection.getRangeAt(0);
+                const start = range.startOffset;
+                const end = range.endOffset;
+    
+                websocket.createHighlightText({
+                    start: start,
+                    end: end,
+                    completeText: textContainer.innerText,
+                    text: selectedText,
+                    id: 'edit-text-collaborator',
+                    collaboratorData: collaborator
+                });
+            }
+        }
+    });
+
     textarea.addEventListener('mouseup', () => {
-        const selection = window.getSelection();
-        const selectedText = selection.toString();
-        if (selectedText.length > 0) {
-            const range = selection.getRangeAt(0);
-            const start = range.startOffset;
-            const end = range.endOffset;
-
-            websocket.selectionText({
-                start: start,
-                end: end,
-                text: selectedText,
-                id: 'edit-text-collaborator'
-            })
-        }
+        isSelecting = false;
     });
 
-    textarea.addEventListener('keyup', () => {
-        const selection = window.getSelection();
-        const selectedText = selection.toString();
-        if (selectedText.length > 0) {
-            console.log('Seleccionando:', selectedText);
-        }
-    });
+    textContainer.addEventListener("click", () => {
+        if(isSelecting) return;
+        
+        websocket.removeHighlightText({
+            id: 'edit-text-collaborator',
+            completeText: textContainer.innerText,
+        })
+    })
 
     return textarea;
 }
@@ -972,7 +1017,9 @@ function dbClickRect(elementDrag) {
         value: true
     }
 
-    var textarea = createTextArea(textAlign, areaPosition, elementDrag, textNode, value, textarea_edit);
+    const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"))
+
+    var textarea = createTextArea(textAlign, areaPosition, elementDrag, textNode, value, textarea_edit, collaborator);
     websocket.startEditTextInElementKonva({
         textarea_config: {
             textAlign: textAlign,
@@ -985,7 +1032,7 @@ function dbClickRect(elementDrag) {
                 value: false
             }
         },
-        collaborator: environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"))
+        collaborator: collaborator
     })
 
     function removeTextarea() {
@@ -1066,7 +1113,7 @@ function dbClickRect(elementDrag) {
             element = element.parentElement;
         }
 
-        if (e.target !== textarea && !isBarTool) {
+        if (e.target !== textarea && e.target.id != 'inner-div' && !isBarTool) {
             elementDrag.attrs.text = textarea.innerText;
             removeTextarea();
         }

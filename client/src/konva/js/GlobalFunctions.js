@@ -842,6 +842,8 @@ function resetCustomColor(inputColor, newDataTypeItem) {
 }
 
 export function createTextInShape(attrs, elementDrag, isSelected = false){
+    document.querySelector("#edit-text-collaborator")?.remove();
+    elementDrag.show();
     let group;
 
     if (elementDrag.parent instanceof Konva.Group) {

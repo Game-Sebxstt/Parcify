@@ -251,7 +251,9 @@ export const saveCollaborators = async (req, res) => {
         });
 
         if (!updated) {
-            console.log("No se actualizó ningún colaborador, se añadirá uno nuevo.");
+            if(collaborators.project_id){
+                existingCollaborators.push(collaborators);
+            }
         }
 
         const updateCollaborators = await connection.query("UPDATE projects SET collaborators = ? WHERE project_id = ?", [JSON.stringify(existingCollaborators), project_id]);

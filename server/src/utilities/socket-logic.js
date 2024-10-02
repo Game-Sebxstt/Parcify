@@ -57,13 +57,26 @@ export function initSocket(data, ws, clients) {
         })
     }
 
-    if (data.type === 'selectionText') {
+    if (data.type === 'createHighlightText') {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
             if(client.user_id === senderId) return;
             client.ws.send(JSON.stringify({
-                type: 'selectionText',
+                type: 'createHighlightText',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
+    if (data.type === 'removeHighlightText') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            if(client.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'removeHighlightText',
                 user_id: senderId,
                 data: data.data
             }))
