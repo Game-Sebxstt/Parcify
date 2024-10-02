@@ -44,6 +44,32 @@ export function initSocket(data, ws, clients) {
         })
     }
 
+    if (data.type === 'startEditTextInElementKonva') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            if(client.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'startEditTextInElementKonva',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
+    if (data.type === 'selectionText') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            if(client.user_id === senderId) return;
+            client.ws.send(JSON.stringify({
+                type: 'selectionText',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
     if (data.type === 'ungroupElements') {
         const senderId = data.user_id;
 

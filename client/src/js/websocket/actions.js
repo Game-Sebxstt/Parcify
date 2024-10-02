@@ -57,6 +57,14 @@ export function createTextInElementKonva(data) {
     send('createTextInElementKonva', { data });
 }
 
+export function startEditTextInElementKonva(data) {
+    send('startEditTextInElementKonva', { data });
+}
+
+export function selectionText(data) {
+    send('selectionText', { data });
+}
+
 export function sendTypingCollaborators(user_id) {
     send('typing', { data: user_id });
 }

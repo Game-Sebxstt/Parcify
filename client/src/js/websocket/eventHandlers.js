@@ -156,6 +156,36 @@ export function createTextInElementKonva(data){
     }
 }
 
+export function startEditTextInElementKonva(data){
+    if(data.user_id == globals.getCookie("ID-USER")) return;
+
+    const textarea_config = data.data.textarea_config
+    const nodeElementDrag = JSON.parse(textarea_config.elementDrag);
+    const nodeTextNode = JSON.parse(textarea_config.textNode);
+    const layerKonva = konva.stage.findOne('#layer');
+    const elementDrag = GlobalFunctions.findElementRecursively(layerKonva, nodeElementDrag.attrs.id_unique);
+    const textNode = GlobalFunctions.findElementRecursively(layerKonva, nodeTextNode.attrs.id_unique);
+    textarea_config.elementDrag = elementDrag;
+    textarea_config.textNode = textNode
+
+    if(textNode){
+        textNode.hide();
+    }
+    
+    konva.createTextArea(
+        textarea_config.textAlign, textarea_config.areaPosition, 
+        textarea_config.elementDrag, textarea_config.textNode, 
+        textarea_config.value, textarea_config.textarea_edit, 
+        data.data.collaborator
+    )
+}
+
+export function selectionText(data){
+    if(data.user_id == globals.getCookie("ID-USER")) return;
+
+    konva.highlightTextArea(data.data)
+}
+
 export function typing(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
         chat.createTypingExternal(data.data.data);

@@ -83,7 +83,8 @@ konva.layer.on('dragend', function (e) {
 });
 
 konva.tr?.on('transform', function (e) {
-    if (config.list_id_ignore.includes(e.target.id() )) {
+    if (config.list_id_ignore.includes(e.target.id())) {
+        console.log('ignore', e.target.id());
         return;
     }
 
@@ -148,7 +149,7 @@ konva.tr?.on('transform', function (e) {
 });
 
 konva.tr?.on("transformend", function (e) {
-    if (config.list_id_ignore.includes(e.target.id() )) {
+    if (config.list_id_ignore.includes(e.target.id())) {
         return;
     }
 
@@ -159,15 +160,6 @@ konva.tr?.on("transformend", function (e) {
 konva.tr?.on("transform", (e) => {
     if (!e.target) {
         return;
-    }
-
-    if (e.target instanceof Konva.Text) {
-        e.target.setAttrs({
-            width: Math.max(5, e.target.width() * e.target.scaleX(), konva.getMinWidth()),
-            height: Math.max(5, e.target.height() * e.target.scaleY()),
-            scaleX: 1,
-            scaleY: 1,
-        });
     }
 
     if(e.target instanceof Konva.Rect){
@@ -200,19 +192,15 @@ konva.tr?.on("transform", (e) => {
 
             if (element.attrs.name == "ShapeText") {
                 const rectNode = element.getChildren().find(item => item instanceof Konva.Rect);
+                const textNode = element.getChildren().find(item => item instanceof Konva.Text);
                 
-                element.getChildren().forEach(item => {
-                    if (item instanceof Konva.Text) {
-                        const textPos = item.getPosition();
-                        item.setAttrs({
-                            x: textPos.x,
-                            y: textPos.y,
-                            width: Math.max(5, rectNode.width() * rectNode.scaleX(), konva.getMinWidth()),
-                            height: Math.max(5, rectNode.height() * rectNode.scaleY()),
-                            scaleX: 1,
-                            scaleY: 1,
-                        });
-                    }
+                textNode.setAttrs({
+                    x: rectNode.getPosition().x,
+                    y: rectNode.getPosition().y,
+                    width: rectNode.width() * rectNode.scaleX(),
+                    height: rectNode.height() * rectNode.scaleY(),
+                    scaleX: 1,
+                    scaleY: 1,
                 });
             }
 

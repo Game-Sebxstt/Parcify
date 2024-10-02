@@ -649,16 +649,19 @@ export function updateElementsEvent() {
     }
 
     const throttleLimit = 50;
+    const throttledWebsocketUpdate = throttle(websocket.updatePosElementKonva, throttleLimit);
+    const throttledWebsocketDeselect = throttle(websocket.deselectElementKonva, throttleLimit);
+
 
     elements.forEach(element => {
         element.on("transformend", () => {
             saveHistory(stage.toJSON());
         });
 
-        element.on("dragmove", throttle((e) => {
+        element.on("dragmove", (e) => {
             let updatedAttrs;
         
-            if (element instanceof Konva.Group) {
+            if (element instanceof Konva.Group || e.target.parent instanceof Konva.Group) {
                 const childAttrs = [];
 
                 element.getChildren().forEach(item => {
@@ -682,19 +685,15 @@ export function updateElementsEvent() {
         
                 if (element.attrs.name == "ShapeText") {
                     const rectNode = element.getChildren().find(item => item instanceof Konva.Rect);
+                    const textNode = element.getChildren().find(item => item instanceof Konva.Text);
                     
-                    element.getChildren().forEach(item => {
-                        if (item instanceof Konva.Text) {
-                            const textPos = item.getPosition();
-                            item.setAttrs({
-                                x: textPos.x,
-                                y: textPos.y,
-                                width: Math.max(5, rectNode.width() * rectNode.scaleX(), getMinWidth()),
-                                height: Math.max(5, rectNode.height() * rectNode.scaleY()),
-                                scaleX: 1,
-                                scaleY: 1,
-                            });
-                        }
+                    textNode.setAttrs({
+                        x: rectNode.getPosition().x,
+                        y: rectNode.getPosition().y,
+                        width: rectNode.width() * rectNode.scaleX(),
+                        height: rectNode.height() * rectNode.scaleY(),
+                        scaleX: 1,
+                        scaleY: 1,
                     });
                 }
             } else {
@@ -708,14 +707,14 @@ export function updateElementsEvent() {
                 };
             }
         
-            websocket.updatePosElementKonva(updatedAttrs);
-        }, throttleLimit));
+            throttledWebsocketUpdate(updatedAttrs);
+        });
 
-        element.on("dragend", throttle((e) => {
-            websocket.deselectElementKonva();
-        }, throttleLimit));
+        element.on("dragend", () => {
+            throttledWebsocketDeselect();
+        });
 
-        element.on("transform", throttle((e) => {
+        element.on("transform", (e) => {
             const updatedAttrs = {
                 x: e.target.x(),
                 y: e.target.y(),
@@ -729,8 +728,8 @@ export function updateElementsEvent() {
                 posCursor: stage.getRelativePointerPosition(),
             };
 
-            websocket.updatePosElementKonva(updatedAttrs)
-        }, throttleLimit));
+            throttledWebsocketUpdate(updatedAttrs);
+        });
     });
 }
 
@@ -760,7 +759,28 @@ export function fitStageIntoParentContainer() {
     stage.scale({ x: scale, y: scale });
 }
 
-function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
+export function highlightTextArea(data) {
+    const element = document.querySelector(`#${data.id}`);
+    
+    if (element && element.childNodes.length > 0) {
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        selection.removeAllRanges();
+
+        const textNode = element.childNodes[0];
+        range.setStart(textNode, data.start);
+        range.setEnd(textNode, data.end);
+
+        selection.addRange(range);
+
+        document.execCommand('backColor', false, 'red');
+        document.execCommand('foreColor', false, 'black');
+    }
+}
+
+
+export function createTextArea(textAlign, areaPosition, elementDrag, textNode, value, textarea_edit, collaborator) {
     let fillColor = "rgb(0 0 0 / 1)";
     let fontSize = 20;
     let fontFamily = "Arial";
@@ -772,8 +792,8 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     }
 
     var textarea = document.createElement('div');
-    textarea.contentEditable = true;
-    textarea.id = "edit-text";
+    textarea.contentEditable = textarea_edit.value;
+    textarea.id = textarea_edit.id_collaborator_textarea;
     document.body.appendChild(textarea);
     textarea.innerText = value || "‎";
     textarea.style.position = 'absolute';
@@ -797,9 +817,9 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     textarea.style.fontFamily = fontFamily;
     textarea.style.transformOrigin = 'right top';
     textarea.style.textAlign = textAlign;
-    textarea.style.display = 'flex';
-    textarea.style.justifyContent = textAlign;
-    textarea.style.alignItems = textAlign;
+    // textarea.style.display = 'flex';
+    // textarea.style.justifyContent = textAlign;
+    // textarea.style.alignItems = textAlign;
     textarea.style.color = fillColor;
     textarea.style.transform = `rotateZ(${elementDrag.rotation() ?? 0}deg)`;
 
@@ -807,6 +827,31 @@ function createTextArea(textAlign, areaPosition, elementDrag, textNode, value) {
     textarea.focus();
     moveCursorToEnd(textarea);
     SELECTALL = false;
+
+    textarea.addEventListener('mouseup', () => {
+        const selection = window.getSelection();
+        const selectedText = selection.toString();
+        if (selectedText.length > 0) {
+            const range = selection.getRangeAt(0);
+            const start = range.startOffset;
+            const end = range.endOffset;
+
+            websocket.selectionText({
+                start: start,
+                end: end,
+                text: selectedText,
+                id: 'edit-text-collaborator'
+            })
+        }
+    });
+
+    textarea.addEventListener('keyup', () => {
+        const selection = window.getSelection();
+        const selectedText = selection.toString();
+        if (selectedText.length > 0) {
+            console.log('Seleccionando:', selectedText);
+        }
+    });
 
     return textarea;
 }
@@ -922,7 +967,26 @@ function dbClickRect(elementDrag) {
         y: stageBox.top + textPosition.y,
     };
 
-    var textarea = createTextArea(textAlign, areaPosition, elementDrag, textNode, value);
+    const textarea_edit = {
+        id_collaborator_textarea: 'edit-text',
+        value: true
+    }
+
+    var textarea = createTextArea(textAlign, areaPosition, elementDrag, textNode, value, textarea_edit);
+    websocket.startEditTextInElementKonva({
+        textarea_config: {
+            textAlign: textAlign,
+            areaPosition: areaPosition,
+            elementDrag: elementDrag,
+            textNode: textNode,
+            value: value,
+            textarea_edit: {
+                id_collaborator_textarea: 'edit-text-collaborator',
+                value: false
+            }
+        },
+        collaborator: environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"))
+    })
 
     function removeTextarea() {
         document.querySelector("#edit-text")?.remove();
@@ -945,6 +1009,7 @@ function dbClickRect(elementDrag) {
             draggable: true,
             listening: false,
             id_unique: globals.generateID(),
+            id: "textNotAvailable"
         }
 
         websocket.createTextInElementKonva({
