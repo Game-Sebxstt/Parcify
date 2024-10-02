@@ -201,6 +201,13 @@ export function removeHighlightText(data){
     konva.removeHighlight(data.data)
 }
 
+export function typingShapeText(data){
+    if(data.user_id == globals.getCookie("ID-USER")) return;
+
+    
+    konva.textAreaUpdate(data.data)
+}
+
 export function typing(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
         chat.createTypingExternal(data.data.data);

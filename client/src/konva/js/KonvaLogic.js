@@ -799,6 +799,20 @@ export function removeHighlight(data) {
     textContainer.innerHTML = data.completeText;
 }
 
+export function textAreaUpdate(data){
+    const textarea = document.querySelector(`#${data.id}`);
+    
+    var textContainer = document.createElement('div');
+    textContainer.id = 'inner-div'
+    textContainer.style.width = '100%';
+    textContainer.style.textAlign = data.textAlign;
+    textarea.appendChild(textContainer);
+
+    textContainer.innerHTML = data.newText;
+    textarea.innerHTML = '';
+    textarea.appendChild(textContainer);
+}
+
 export function createTextArea(textAlign, areaPosition, elementDrag, textNode, value, textarea_edit, collaborator) {
     let fillColor = "rgb(0 0 0 / 1)";
     let fontSize = 20;
@@ -890,11 +904,19 @@ export function createTextArea(textAlign, areaPosition, elementDrag, textNode, v
     });
 
     textContainer.addEventListener("click", () => {
-        if(isSelecting) return;
+        if(!isSelecting) return;
         
         websocket.removeHighlightText({
             id: 'edit-text-collaborator',
             completeText: textContainer.innerText,
+        })
+    })
+
+    textarea.addEventListener("input", () => {
+        websocket.typingShapeText({
+            newText: textarea.innerText,
+            id: 'edit-text-collaborator',
+            textAlign: textAlign,
         })
     })
 

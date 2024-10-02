@@ -83,6 +83,18 @@ export function initSocket(data, ws, clients) {
         })
     }
 
+    if (data.type === 'typingShapeText') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'typingShapeText',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
     if (data.type === 'ungroupElements') {
         const senderId = data.user_id;
 
