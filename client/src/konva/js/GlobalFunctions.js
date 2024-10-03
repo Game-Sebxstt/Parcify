@@ -319,10 +319,13 @@ export function createElementKonva(elementKonva, attrs){
 }
 
 export function deleteElementKonva(elementKonva){
-    const element = konva.getElements().find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
+    const element = elementKonva instanceof Konva.Node ? elementKonva : konva.getElements().find(item => item.attrs.id_unique == elementKonva.attrs.id_unique);
 
     if(element){
         element.remove();
+        hiddenToolBarShape();
+        hiddenContextMenu();
+        konva.transformer.destroy();
         konva.layer.draw();
     }
 }

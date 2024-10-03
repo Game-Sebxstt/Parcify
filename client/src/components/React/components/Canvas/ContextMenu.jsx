@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import useAppState from '../../hooks/useAppState';
 import { Copy, Clipboard, Trash2, ChevronUp, ChevronDown, Lock} from 'lucide-react';
 import * as konva from '../../../../konva/js/KonvaLogic.js';
+import Konva from 'konva'
 import * as GlobalFunctions from '../../../../konva/js/GlobalFunctions';
+import * as websocket from '../../../../js/websocket/eventHandlers'
 
 const ContextMenu = () => {
     const { nodeSelected, nodeSelectedUpdate } = useAppState();
@@ -13,12 +15,14 @@ const ContextMenu = () => {
 
     const deleteNode = () => {
         const element = nodeSelected.parent instanceof Konva.Group ? nodeSelected.parent : nodeSelected;
-        element.destroy();
+        GlobalFunctions.deleteElement(element);
+        websocket.deleteElementKonva({elementKonva: element});
+
         konva.tr.nodes([]);
-        GlobalFunctions.hiddenToolBarShape();
-        GlobalFunctions.hiddenContextMenu();
-        konva.transformer.destroy();
+        konva.layer.batchDraw();
     }
+
+
 
     return (
         <div id='contextMenu' className="bg-[#2e2e2e] border border-[rgba(255,255,255,.2)] rounded-lg shadow-lg p-1 w-48 hidden flex-col absolute top-28 left-28">

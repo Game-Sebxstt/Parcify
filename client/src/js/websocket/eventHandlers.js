@@ -35,7 +35,14 @@ export function createElementKonva(data) {
 
 export function deleteElementKonva(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
-        const elementKonva = JSON.parse(data.elementKonva);
+        let elementKonva
+
+        if(typeof data.elementKonva == "string"){
+            elementKonva = JSON.parse(data.elementKonva);
+        }else{
+            elementKonva = data.elementKonva
+        }
+
         GlobalFunctions.deleteElementKonva(elementKonva);
     }
 }
