@@ -201,11 +201,17 @@ export function removeHighlightText(data){
     konva.removeHighlight(data.data)
 }
 
-export function typingShapeText(data){
+export function updateShapeText(data){
     if(data.user_id == globals.getCookie("ID-USER")) return;
 
-    
-    konva.textAreaUpdate(data.data)
+
+    if(data.data.updateCaret.state){
+        konva.updateCustomCaret(data.data.updateCaret)
+    }
+
+    if(data.data.updateText.state){
+        konva.textAreaUpdate(data.data.updateText)
+    }
 }
 
 export function typing(data) {

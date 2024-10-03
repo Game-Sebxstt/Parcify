@@ -69,8 +69,8 @@ export function removeHighlightText(data) {
     send('removeHighlightText', { data });
 }
 
-export function typingShapeText(data) {
-    send('typingShapeText', { data });
+export function updateShapeText(data) {
+    send('updateShapeText', { data });
 }
 
 export function sendTypingCollaborators(user_id) {

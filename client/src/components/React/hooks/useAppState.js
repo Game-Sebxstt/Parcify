@@ -57,6 +57,7 @@ const useGlobalStore = create((set) => {
         preview: '',
         template_id: '',
         isVisibleCreateParceller: false,
+        nodeSelected: null,
         ProjectsUpdate: (projects) => set({ projects }),
         TemplatesUpdate: (templates) => set({ templates }),
         FavoritesUpdate: (favorites) => set({ favorites }),
@@ -66,7 +67,8 @@ const useGlobalStore = create((set) => {
         AuthorUpdate: (author) => set({ author }),
         PreviewUpdate: (preview) => set({ preview }),
         TemplateIdUpdate: (template_id) => set({ template_id }),
-        IsVisibleCreateParcellerUpdate: (isVisibleCreateParceller) => set({ isVisibleCreateParceller })
+        IsVisibleCreateParcellerUpdate: (isVisibleCreateParceller) => set({ isVisibleCreateParceller }),
+        nodeSelectedUpdate: (nodeSelected) => set({ nodeSelected }),
     };
 });
 
@@ -94,6 +96,8 @@ const useAppState = () => {
         TemplateIdUpdate: state.TemplateIdUpdate,
         isVisibleCreateParceller: state.isVisibleCreateParceller,
         IsVisibleCreateParcellerUpdate: state.IsVisibleCreateParcellerUpdate,
+        nodeSelected: state.nodeSelected,
+        nodeSelectedUpdate: state.nodeSelectedUpdate,
     };
 };
 

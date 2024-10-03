@@ -535,6 +535,86 @@ function updateToolBarState(attrsNode){
     document.dispatchEvent(customEvent);
 }
 
+function updateContextMenuState(nodeElement){
+    const customEvent = new CustomEvent("updateContextMenu", {
+        detail: {node: nodeElement},
+    });
+
+    document.dispatchEvent(customEvent);
+}
+
+const UMBRAL_SEPARATION = 10;
+let NODE_SELECTION_CONTEXT_MENU = null;
+let updatePending = false;
+
+let contextMenu = document.querySelector("#contextMenu");
+
+function performUpdate(element) {
+    if(!contextMenu) {
+        contextMenu = document.querySelector("#contextMenu");
+    }
+
+    if (!element || !contextMenu) return;
+
+    if (element instanceof Konva.Group) {
+        element = element.findOne('Rect');
+    }
+
+    NODE_SELECTION_CONTEXT_MENU = element;
+
+    const { x, y, width, height } = element.getClientRect();
+    const { width: menuWidth } = contextMenu.getBoundingClientRect();
+    const stageWidth = konva.stage.width();
+
+    const position = {
+        x: x + width + menuWidth + UMBRAL_SEPARATION >= stageWidth
+            ? x - menuWidth - UMBRAL_SEPARATION
+            : x + width + UMBRAL_SEPARATION,
+        y: y + height / 2
+    };
+
+    Object.assign(contextMenu.style, {
+        top: `${position.y}px`,
+        left: `${position.x}px`
+    });
+
+    updatePending = false;
+}
+
+export function updateDimensionContextMenu(element) {
+    if (!updatePending) {
+        updatePending = true;
+        requestAnimationFrame(() => performUpdate(element || NODE_SELECTION_CONTEXT_MENU));
+    }
+}
+
+export function hiddenContextMenu() {
+    if(!contextMenu) {
+        contextMenu = document.querySelector("#contextMenu");
+    }
+
+    if(!contextMenu) return;
+
+    contextMenu.style.display = "none";
+}
+
+export function showContextMenu(element) {
+    if(!contextMenu) {
+        contextMenu = document.querySelector("#contextMenu");
+    }
+
+    if(!contextMenu) return;
+
+    contextMenu.style.display = "flex";
+
+    konva.stage.on("wheel dragmove", () => {
+        updateDimensionContextMenu();
+    });
+
+    updateContextMenuState(element);
+    updateDimensionContextMenu(element || NODE_SELECTION_CONTEXT_MENU);
+}
+
 export function showBarTool(nodes) {
     const barTool = document.querySelector("#BarTool");
     const dropdown = barTool.querySelector(".dropdown-tool-bar")

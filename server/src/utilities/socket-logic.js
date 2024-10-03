@@ -83,12 +83,12 @@ export function initSocket(data, ws, clients) {
         })
     }
 
-    if (data.type === 'typingShapeText') {
+    if (data.type === 'updateShapeText') {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
             client.ws.send(JSON.stringify({
-                type: 'typingShapeText',
+                type: 'updateShapeText',
                 user_id: senderId,
                 data: data.data
             }))

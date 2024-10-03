@@ -84,7 +84,6 @@ konva.layer.on('dragend', function (e) {
 
 konva.tr?.on('transform', function (e) {
     if (config.list_id_ignore.includes(e.target.id())) {
-        console.log('ignore', e.target.id());
         return;
     }
 
@@ -161,6 +160,8 @@ konva.tr?.on("transform", (e) => {
     if (!e.target) {
         return;
     }
+
+    GlobalFunctions.updateDimensionContextMenu(e.target);
 
     if(e.target instanceof Konva.Rect){
         if (e.target.parent instanceof Konva.Group) {
@@ -353,17 +354,7 @@ konva.stage.on('click tap', function (e) {
 
         if (e.target instanceof Konva.Node){
             if(!e.target.getAttr("block")){
-                const transformer = new TransformerPoints(konva.stage, konva.layer, konva.layerUtilities, {
-                    arrowColor: 'white',
-                    borderArrowColor: '#80D0FF',
-                    anchorColor: 'white',
-                    borderColor: '#80D0FF',
-                    anchorSize: 6,
-                    enabledAnchors: ["left", "right", "top", "bottom"],
-                    proximityThreshold: 20,
-                });
-    
-                transformer.attachTo(e.target);
+                konva.transformer.attachTo(e.target);
                 konva.layer.draw();
                 websocket.selectElementKonva(e.target)
                 config.setNodeSelected(e.target)

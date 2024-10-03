@@ -350,8 +350,6 @@ export var tr = layerUtilities.getChildren().find(item => item.attrs.id == "tran
     id: "transformer"
 });
 
-
-
 if(!layerUtilities.getChildren().find(item => item.attrs.id == "transformer")){
     layerUtilities.add(tr);
 }
@@ -660,11 +658,14 @@ export function updateElementsEvent() {
 
         element.on("dragmove", (e) => {
             let updatedAttrs;
+
+            GlobalFunctions.updateDimensionContextMenu(e.target);
         
             if (element instanceof Konva.Group || e.target.parent instanceof Konva.Group) {
                 const childAttrs = [];
 
-                element.getChildren().forEach(item => {
+                const group = element instanceof Konva.Group ? element : e.target.parent;
+                group.getChildren().forEach(item => {
                     childAttrs.push({
                         x: item.x(),
                         y: item.y(),
@@ -730,6 +731,17 @@ export function updateElementsEvent() {
 
             throttledWebsocketUpdate(updatedAttrs);
         });
+
+        element.on("contextmenu", (e) => {
+            e.evt.preventDefault();
+            GlobalFunctions.showContextMenu(e.target);
+
+            stage.on("click", (eStage) => {
+                if (eStage.target != element) {
+                    GlobalFunctions.hiddenContextMenu();
+                }
+            })
+        })
     });
 }
 
@@ -775,7 +787,7 @@ export function createHighlight(data) {
         }
 
         const highlightSpan = document.createElement('span');
-        highlightSpan.style.backgroundColor = data.collaboratorData.color.hex;
+        highlightSpan.style.backgroundColor = data.collaborator.color.hex;
         highlightSpan.style.opacity = '0.5';
         highlightSpan.style.color = 'inherit';
         highlightSpan.textContent = text.slice(data.start, data.end);
@@ -799,18 +811,78 @@ export function removeHighlight(data) {
     textContainer.innerHTML = data.completeText;
 }
 
-export function textAreaUpdate(data){
+export function textAreaUpdate(data) {
     const textarea = document.querySelector(`#${data.id}`);
+    const customCaret = textarea.querySelector('#custom-caret');
     
-    var textContainer = document.createElement('div');
-    textContainer.id = 'inner-div'
+    if (customCaret) {
+        customCaret.remove();
+    }
+
+    var textContainer = textarea.querySelector('#inner-div');
+    if (!textContainer) {
+        textContainer = document.createElement('div');
+        textContainer.id = 'inner-div';
+        textarea.appendChild(textContainer);
+    }
+
     textContainer.style.width = '100%';
     textContainer.style.textAlign = data.textAlign;
-    textarea.appendChild(textContainer);
-
     textContainer.innerHTML = data.newText;
-    textarea.innerHTML = '';
-    textarea.appendChild(textContainer);
+
+    if (customCaret) {
+        textarea.appendChild(customCaret);
+    }
+
+    updateCustomCaret(data);
+}
+
+function createCustomCaret(data, textarea) {
+    const customCaret = document.createElement('span');
+    customCaret.id = 'custom-caret';
+    customCaret.style.position = 'absolute';
+    customCaret.style.width = '3px';
+    customCaret.style.backgroundColor = data.collaborator.color.hex;
+    customCaret.style.display = 'none';
+    textarea.appendChild(customCaret);
+    return customCaret;
+}
+
+export function updateCustomCaret(data) {
+    const textarea = document.querySelector(`#${data.id}`);
+    const customCaret = textarea.querySelector('#custom-caret');
+    const textContainer = textarea.querySelector('#inner-div');
+    
+    if (!customCaret || !textContainer) return;
+
+    const selection = window.getSelection();
+    if (selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(textContainer);
+    preCaretRange.setEnd(range.endContainer, range.endOffset);
+    
+    const caretOffset = preCaretRange.toString().length;
+    
+    const tempSpan = document.createElement('span');
+    tempSpan.textContent = '\u200B';
+    
+    if (textContainer.childNodes.length > caretOffset) {
+        textContainer.insertBefore(tempSpan, textContainer.childNodes[caretOffset]);
+    } else {
+        textContainer.appendChild(tempSpan);
+    }
+    
+    const caretRect = tempSpan.getBoundingClientRect();
+    const textareaRect = textarea.getBoundingClientRect();
+    
+    customCaret.style.left = `${caretRect.left - textareaRect.left}px`;
+    customCaret.style.top = `${caretRect.top - textareaRect.top}px`;
+    customCaret.style.height = `${caretRect.height}px`;
+    customCaret.style.display = 'block';
+    
+    tempSpan.remove();
 }
 
 export function createTextArea(textAlign, areaPosition, elementDrag, textNode, value, textarea_edit, collaborator) {
@@ -825,10 +897,9 @@ export function createTextArea(textAlign, areaPosition, elementDrag, textNode, v
     }
 
     var textarea = document.createElement('div');
-    textarea.contentEditable = textarea_edit.value;
+    textarea.contentEditable = true;
     textarea.id = textarea_edit.id_collaborator_textarea;
     document.body.appendChild(textarea);
-    textarea.innerText = value || "‎";
     textarea.style.position = 'absolute';
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
@@ -861,11 +932,10 @@ export function createTextArea(textAlign, areaPosition, elementDrag, textNode, v
     textContainer.id = 'inner-div'
     textContainer.style.width = '100%';
     textContainer.style.textAlign = textAlign;
+    textContainer.innerHTML = value || "‎";
     textarea.appendChild(textContainer);
 
-    textContainer.innerHTML = textarea.innerHTML;
-    textarea.innerHTML = '';
-    textarea.appendChild(textContainer);
+    const customCaret = createCustomCaret({collaborator}, textarea);
 
     setTextareaWidth(elementDrag.width() * elementDrag.getAbsoluteScale().x, textarea, textNode);
     textarea.focus();
@@ -893,7 +963,7 @@ export function createTextArea(textAlign, areaPosition, elementDrag, textNode, v
                     completeText: textContainer.innerText,
                     text: selectedText,
                     id: 'edit-text-collaborator',
-                    collaboratorData: collaborator
+                    collaborator: collaborator
                 });
             }
         }
@@ -910,15 +980,52 @@ export function createTextArea(textAlign, areaPosition, elementDrag, textNode, v
             id: 'edit-text-collaborator',
             completeText: textContainer.innerText,
         })
-    })
+    });
 
     textarea.addEventListener("input", () => {
-        websocket.typingShapeText({
-            newText: textarea.innerText,
-            id: 'edit-text-collaborator',
-            textAlign: textAlign,
-        })
-    })
+        websocket.updateShapeText({
+            updateText: {
+                state: true,
+                id: 'edit-text-collaborator',
+                collaborator: collaborator,
+                textAlign: textAlign,
+                newText: textarea.innerText,
+            },
+            updateCaret: {
+                state: true,
+                id: 'edit-text-collaborator',
+                collaborator: collaborator,
+            }
+        });
+    });
+
+    textarea.addEventListener("click", () => {
+        websocket.updateShapeText({
+            updateText: {
+                state: false,
+            },
+            updateCaret: {
+                state: true,
+                id: 'edit-text-collaborator',
+                collaborator: collaborator,
+            }
+        });
+    });
+
+    textarea.addEventListener("keyup", (e) => {
+        if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) {
+            websocket.updateShapeText({
+                updateText: {
+                    state: false,
+                },
+                updateCaret: {
+                    state: true,
+                    id: 'edit-text-collaborator',
+                    collaborator: collaborator,
+                }
+            });
+        }
+    });
 
     return textarea;
 }

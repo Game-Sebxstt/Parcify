@@ -1,5 +1,6 @@
 ---
 import { Toolbar } from "../components/React/components/Canvas/Toolbar.jsx";
+import ContextMenu from "../components/React/components/Canvas/ContextMenu.jsx";
 import DesplegableMenu from "../components/Konva/DesplegableMenu.astro";
 import LayoutKonva from "../layouts/LayoutKonva.astro";
 import Chat from "../components/Konva/Chat.astro";
@@ -86,6 +87,7 @@ if(project.state){
 </LayoutKonva>
 
 <Toolbar client:only="rect"/>
+<ContextMenu client:only="rect"/>
 <Cursor id_user={id_user}/>
 
 <script src="../konva/js/KonvaLogic.js"></script>
