@@ -7,7 +7,12 @@ let list_box_groups: Node<NodeConfig>[] = []
 let list_groups: Node<NodeConfig>[] = []
 let node_selected: Node;
 let nodes_selected: Node[] = [];
+let nodes_selection_rectangle: Node[] = [];
 let bar_element_selected: Node;
+
+export function setNodesSelectionRectangle(node: Node){
+    nodes_selection_rectangle.push(node)
+}
 
 export function setNodesSelected(nodes: Node[]){
     nodes_selected = nodes
@@ -31,6 +36,10 @@ export function setGroup(group: Konva.Node){
 
 export function setGroups(groups: Konva.Node[]){
     list_groups = groups
+}
+
+export function getNodesSelectionRectangle(): Konva.Node[]{
+    return nodes_selection_rectangle
 }
 
 export function getNodesSelected(): Konva.Node[]{

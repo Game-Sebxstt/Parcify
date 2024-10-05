@@ -7,6 +7,7 @@ import { addShape } from "../ts/CreationShapes";
 import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import * as config from '../config'
 import * as globals from "../../js/frontend/utilities/globals";
+import { getCollaboratorOfProject } from "../../js/globals/environment-utils";
 
 konva.layer.on('dragmove', function (e) {
     if (config.list_id_ignore.includes(e.target.id() )) {
@@ -235,21 +236,21 @@ konva.tr?.on("transformend", (e) => {
 konva.stage.on('dragmove', (e) => {
     konva.bg.absolutePosition({ x: 0, y: 0 });
 
-    if(States.StatesCursor.textEditing){
-        var textPosition = States.StatesCursor.textEditing.absolutePosition();
-        var stageBox = konva.stage.container().getBoundingClientRect();
-        var areaPosition = {
-          x: stageBox.left + textPosition.x,
-          y: stageBox.top + textPosition.y,
-        };
+    // if(States.StatesCursor.textEditing){
+    //     var textPosition = States.StatesCursor.textEditing.absolutePosition();
+    //     var stageBox = konva.stage.container().getBoundingClientRect();
+    //     var areaPosition = {
+    //       x: stageBox.left + textPosition.x,
+    //       y: stageBox.top + textPosition.y,
+    //     };
 
-        let textarea = document.querySelector("#edit-text")
+    //     let textarea = document.querySelector("#edit-text")
 
-        textarea.style.top = areaPosition.y + 'px';
-        textarea.style.left = areaPosition.x + 'px';
-        textarea.style.width = States.StatesCursor.textEditing.width() * States.StatesCursor.textEditing.scaleX() + 'px';
-        textarea.style.height = States.StatesCursor.textEditing.height() * States.StatesCursor.textEditing.scaleY() + 'px';
-    }
+    //     textarea.style.top = areaPosition.y + 'px';
+    //     textarea.style.left = areaPosition.x + 'px';
+    //     textarea.style.width = States.StatesCursor.textEditing.width() * States.StatesCursor.textEditing.scaleX() + 'px';
+    //     textarea.style.height = States.StatesCursor.textEditing.height() * States.StatesCursor.textEditing.scaleY() + 'px';
+    // }
 });
 
 konva.stage.on('mousemove', () => {
@@ -300,6 +301,7 @@ konva.stage.on('mousedown touchstart', (e) => {
     konva.selectionRectangle?.height(0);
     konva.selectionRectangle?.moveUp();
     konva.setSelecting(true);
+    websocket.startSelectionRectangle(getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER")))
 });
 
 konva.stage.on('mousemove touchmove', (e) => {
@@ -324,6 +326,8 @@ konva.stage.on('mousemove touchmove', (e) => {
         width: Math.abs(X2 - X1),
         height: Math.abs(Y2 - Y1),
     });
+
+    websocket.updateSelectionRectangle(konva.selectionRectangle.attrs)
 });
 
 konva.stage.on('mouseup touchend', (e) => {
@@ -339,6 +343,7 @@ konva.stage.on('mouseup touchend', (e) => {
         Konva.Util.haveIntersection(box, shape.getClientRect())
     );
     konva.tr?.nodes(selected);
+    websocket.stopSelectionRectangle()
 });
 
 konva.stage.on('click tap', function (e) {
@@ -465,6 +470,7 @@ konva.stage.on('click tap', function (e) {
 });
 
 konva.stage.on('dblclick dbltap', (e) => {
+    if(e.evt.button != 0) return;
     konva.dbClickElement(e);
 });
 

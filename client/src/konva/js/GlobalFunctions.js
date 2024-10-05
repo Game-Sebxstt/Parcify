@@ -291,6 +291,7 @@ export function deleteElement(element){
     const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
     collaborator.elements_deleted += 1;
     environment_utils.setCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"), collaborator);
+    konva.transformer.remove();
 }
 
 export function createElementKonva(elementKonva, attrs){
@@ -319,10 +320,13 @@ export function createElementKonva(elementKonva, attrs){
 }
 
 export function deleteElementKonva(elementKonva){
-    const element = konva.getElements().find(item => item.attrs.id_unique === elementKonva.attrs.id_unique);
+    const element = elementKonva instanceof Konva.Node ? elementKonva : konva.getElements().find(item => item.attrs.id_unique == elementKonva.attrs.id_unique);
 
     if(element){
         element.remove();
+        hiddenToolBarShape();
+        hiddenContextMenu();
+        konva.transformer.destroy();
         konva.layer.draw();
     }
 }
@@ -342,6 +346,54 @@ export function moveDownElementKonva(elementKonva){
     if(element){
         element.moveDown();
         konva.layer.draw();
+    }
+}
+
+export function createSelectionRectangleCollaborator(collaborator){
+    const selectionRectangleFind = config.getNodesSelectionRectangle().find(item => item.attrs.id_user == collaborator.user_id);
+
+    if(selectionRectangleFind){
+        return;
+    }
+
+    const selectionRectangle = new Konva.Rect({
+        fill: collaborator.color.hex,
+        opacity: 0.4,
+        visible: false,
+        listening: false,
+        id: "selection",
+        id_user: collaborator.user_id,
+    });
+
+    konva.layer.add(selectionRectangle);
+    konva.layer.batchDraw();
+    config.setNodesSelectionRectangle(selectionRectangle);
+}
+
+export function updateSelectionRectangleCollaborator({x, y, width, height}, id_user){
+    const selectionRectangle = config.getNodesSelectionRectangle().find(item => item.attrs.id_user == id_user);
+
+    if(selectionRectangle.attrs.id_user == id_user){
+        selectionRectangle.setAttrs({
+            x,
+            y,
+            width,
+            height,
+            visible: true,
+        });
+
+        konva.layer.batchDraw();
+    }
+}
+
+export function removeSelectionRectangleCollaborator(id_user){
+    const selectionRectangle = config.getNodesSelectionRectangle().find(item => item.attrs.id_user == id_user);
+
+    if(selectionRectangle.attrs.id_user == id_user){
+        selectionRectangle.setAttrs({
+            visible: false,
+        })
+        konva.layer.batchDraw();
     }
 }
 

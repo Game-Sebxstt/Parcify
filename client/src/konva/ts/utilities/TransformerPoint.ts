@@ -286,6 +286,7 @@ export class TransformerPoints {
         })
     
         if (targetAnchor) {
+            console.log("targetAnchor", targetAnchor)
             this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => {
                 const startPos = {x: this.initialAnchorPosition.x, y: this.initialAnchorPosition.y}
                 const endPos = {x: targetAnchor.x(), y: targetAnchor.y()}
@@ -525,6 +526,8 @@ export class TransformerPoints {
         this.anchors = [];
         this.targetNode = null;
 
+        console.log("detach", this.arrowMap)
+
         konva.getElements().forEach((element: Konva.Node) => {
             if (element.attrs.id === "anchorPoint") {
                 element.destroy();
@@ -600,6 +603,22 @@ export class TransformerPoints {
 
     public destroy() {
         this.detach();
+    }
+
+    public remove(){
+        const idTarget = this.targetNode?.attrs.id_unique;
+
+        Object.keys(this.arrowMap).forEach((arrowType: string) => {
+            const arrows = this.arrowMap[arrowType];
+            arrows.forEach(arrow => {
+                if(arrow.getAttr("anchorIdA") === idTarget || arrow.getAttr("anchorIdB") === idTarget){
+                    arrow.destroy();
+                }
+            })
+        })
+
+        this.detach();
+        this.layer.batchDraw();
     }
 
 }

@@ -361,6 +361,8 @@ export var selectionRectangle = layer.getChildren().find(item => item.attrs.id =
     id: "selection"
 });
 
+config_konva.setNodesSelectionRectangle(selectionRectangle);
+
 if(!layer.getChildren().find(item => item.attrs.id == "selection")){
     layer.add(selectionRectangle);
 }

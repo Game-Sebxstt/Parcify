@@ -73,6 +73,18 @@ export function updateShapeText(data) {
     send('updateShapeText', { data });
 }
 
+export function startSelectionRectangle(data){
+    send('startSelectionRectangle', { data });
+}
+
+export function updateSelectionRectangle(data){
+    send('updateSelectionRectangle', { data });
+}
+
+export function stopSelectionRectangle(data){
+    send('stopSelectionRectangle', { data });
+}
+
 export function sendTypingCollaborators(user_id) {
     send('typing', { data: user_id });
 }

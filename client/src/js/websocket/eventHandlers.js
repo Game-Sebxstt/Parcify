@@ -35,7 +35,14 @@ export function createElementKonva(data) {
 
 export function deleteElementKonva(data) {
     if (data.user_id !== globals.getCookie("ID-USER")) {
-        const elementKonva = JSON.parse(data.elementKonva);
+        let elementKonva
+
+        if(typeof data.elementKonva == "string"){
+            elementKonva = JSON.parse(data.elementKonva);
+        }else{
+            elementKonva = data.elementKonva
+        }
+
         GlobalFunctions.deleteElementKonva(elementKonva);
     }
 }
@@ -102,6 +109,7 @@ export function enterCollaborator(data) {
     Render.updateCollaborators(data.collaborator);
     if (data.user_id !== globals.getCookie("ID-USER")) {
         GlobalFunctions.createCursorCollaborator(data.collaborator);
+        GlobalFunctions.createSelectionRectangleCollaborator(data.collaborator);
     }
 }
 
@@ -212,6 +220,24 @@ export function updateShapeText(data){
     if(data.data.updateText.state){
         konva.textAreaUpdate(data.data.updateText)
     }
+}
+
+export function startSelectionRectangle(data){
+    if(data.user_id == globals.getCookie("ID-USER")) return;
+
+    GlobalFunctions.createSelectionRectangleCollaborator(data.data)
+}
+
+export function updateSelectionRectangle(data){
+    if(data.user_id == globals.getCookie("ID-USER")) return;
+
+    GlobalFunctions.updateSelectionRectangleCollaborator(data.data, data.user_id)
+}
+
+export function stopSelectionRectangle(data){
+    if(data.user_id == globals.getCookie("ID-USER")) return;
+
+    GlobalFunctions.removeSelectionRectangleCollaborator(data.user_id)
 }
 
 export function typing(data) {

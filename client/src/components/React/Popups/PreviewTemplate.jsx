@@ -208,7 +208,7 @@ const PreviewTemplate = () => {
                                     </svg>
                                 </nav>
                             )}
-                            <button id="createTemplate" onClick={createTemplate} className="bg-blue-500 py-2 px-4 rounded">Create</button>
+                            <button id="createTemplate" onClick={createTemplate} className="bg-blue-500 text-white py-2 px-4 rounded">Create</button>
                         </article>
                     </section>
                 </main>

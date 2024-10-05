@@ -95,6 +95,42 @@ export function initSocket(data, ws, clients) {
         })
     }
 
+    if (data.type === 'startSelectionRectangle') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'startSelectionRectangle',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
+    if (data.type === 'updateSelectionRectangle') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'updateSelectionRectangle',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
+    if (data.type === 'stopSelectionRectangle') {
+        const senderId = data.user_id;
+
+        clients.forEach((client) => {
+            client.ws.send(JSON.stringify({
+                type: 'stopSelectionRectangle',
+                user_id: senderId,
+                data: data.data
+            }))
+        })
+    }
+
     if (data.type === 'ungroupElements') {
         const senderId = data.user_id;
 
