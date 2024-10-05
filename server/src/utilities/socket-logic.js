@@ -99,6 +99,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'startSelectionRectangle',
                 user_id: senderId,
@@ -111,6 +112,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'updateSelectionRectangle',
                 user_id: senderId,
@@ -123,6 +125,7 @@ export function initSocket(data, ws, clients) {
         const senderId = data.user_id;
 
         clients.forEach((client) => {
+            if(client.data.user_id === senderId) return;
             client.ws.send(JSON.stringify({
                 type: 'stopSelectionRectangle',
                 user_id: senderId,

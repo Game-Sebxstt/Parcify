@@ -11,7 +11,7 @@ const { collaborator } = Astro.props;
 <div id="typing-chat" data-id-user={collaborator.user_id} class="w-full h-fit p-1.5 hidden flex-col gap-y-2 mb-2">
     <header class="w-full h-fit flex flex-row gap-x-2 justify-start items-center">
         <ProfileInvite 
-            color={`bg-${collaborator.color ? collaborator.color.tailwind : "red-500"} -ml-2`}
+            color={`${collaborator.color ? collaborator.color.hex : "red"} -ml-2`}
             letter={collaborator.name[0]}
         />
 

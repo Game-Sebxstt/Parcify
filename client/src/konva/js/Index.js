@@ -51,15 +51,15 @@ export function initialCollaboration(){
     }
 
     let isFindColor = false;
-    environments.colors.forEach(color => {
-        if (isFindColor) return;
+    while(!isFindColor){
+        const colorSelected = environments.colors[globals.generateNumber(0, environments.colors.length - 1)]
 
-        if(!collaborators.find(c => c.color == color)){
-            sendCollaboration(id, data_invitation_project, color, collaborators);
+        if(collaborators.find(c => c.color == colorSelected.color) == undefined){
+            console.log("color",colorSelected)
+            sendCollaboration(id, data_invitation_project, colorSelected, collaborators);
             isFindColor = true;
-            return;
         }
-    })
+    }
 }
 
 function eventsListener(collaborators){

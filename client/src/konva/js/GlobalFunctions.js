@@ -254,6 +254,7 @@ export function getSvgString(svgElement){
 
 export function createCursorCustom(fill, stroke){
     const svgElement = konva.getCursorCustom();
+    svgElement.setAttribute("fill", fill);
     const svgDataUrl = getSvgString(svgElement);
 
     konva.stage.container().style.cursor = svgElement ? `url(${svgDataUrl}), auto` : "move";

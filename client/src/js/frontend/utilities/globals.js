@@ -178,6 +178,10 @@ export function generateID(){
     return Math.random().toString(36).substr(2, 9);
 }
 
+export function generateNumber(min = 0, max = Infinity){
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 export function generateString(length) {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';

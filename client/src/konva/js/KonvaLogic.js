@@ -354,11 +354,16 @@ if(!layerUtilities.getChildren().find(item => item.attrs.id == "transformer")){
     layerUtilities.add(tr);
 }
 
-export var selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection") ||  new Konva.Rect({
-    fill: 'rgba(252,127,83, .4)',
+const collaborator = environment_utils.getCollaboratorOfProject(id_stage, globals.getCookie("ID-USER"))
+const colorCollaborator = collaborator ? collaborator.color.hex : "black"
+
+export var selectionRectangle = layer.getChildren().find(item => item.attrs.id == "selection" && item.attrs.id_user == globals.getCookie("ID-USER")) ||  new Konva.Rect({
+    fill: colorCollaborator,
+    opacity: 0.4,
     visible: false,
     listening: false,
-    id: "selection"
+    id: "selection",
+    id_user: globals.getCookie("ID-USER"),
 });
 
 config_konva.setNodesSelectionRectangle(selectionRectangle);
@@ -379,7 +384,7 @@ export const transformer = new TransformerPoints(stage, layer, layerUtilities, {
 
 transformer.init();
 saveHistory(stage.toJSON());
-GlobalFunctions.createCursorCustom("#1E90FF", "white", globals.getCookie("ID-USER"));
+GlobalFunctions.createCursorCustom(colorCollaborator, "white", globals.getCookie("ID-USER"));
 
 // fitStageIntoParentContainer();
 

@@ -135,8 +135,6 @@ export async function saveCollaborators(project_id, collaborators) {
         collaborators: collaborators
     }
 
-    console.log(data);
-
     const response = await fetch(`${config.getApiUrl()}/project/collaborators`, {
         method: "POST",
         body: JSON.stringify(data),

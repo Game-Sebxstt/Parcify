@@ -327,6 +327,8 @@ konva.stage.on('mousemove touchmove', (e) => {
         height: Math.abs(Y2 - Y1),
     });
 
+    console.log(konva.selectionRectangle)
+
     websocket.updateSelectionRectangle(konva.selectionRectangle.attrs)
 });
 

@@ -14,14 +14,14 @@ const {collaborators} = Astro.props;
             collaborators.map((collaborator: any) => {
                 return (
                 <ProfileInvite 
-                    color={`bg-${collaborator.color ? collaborator.color.tailwind : "red-500"} -ml-2`}
+                    color={`${collaborator.color ? collaborator.color.hex : "red"} -ml-2`}
                     letter={collaborator.name[0]}
                     id_user={collaborator.user_id}
                 />
                 )
             })
         ) : (
-            <ProfileInvite color="bg-blue-500" letter="P"/>
+            <ProfileInvite color="#3b82f6" letter="P"/>
         )
     }
 </div>

@@ -106,6 +106,7 @@ export function enterCollaborator(data) {
         console.log('Collaborator not found:', data);
         req.saveCollaborators(data.collaborator.project_id, { user_id: data.user_id, state: true });
     }
+    
     Render.updateCollaborators(data.collaborator);
     if (data.user_id !== globals.getCookie("ID-USER")) {
         GlobalFunctions.createCursorCollaborator(data.collaborator);
@@ -212,7 +213,6 @@ export function removeHighlightText(data){
 export function updateShapeText(data){
     if(data.user_id == globals.getCookie("ID-USER")) return;
 
-
     if(data.data.updateCaret.state){
         konva.updateCustomCaret(data.data.updateCaret)
     }
@@ -224,19 +224,16 @@ export function updateShapeText(data){
 
 export function startSelectionRectangle(data){
     if(data.user_id == globals.getCookie("ID-USER")) return;
-
     GlobalFunctions.createSelectionRectangleCollaborator(data.data)
 }
 
 export function updateSelectionRectangle(data){
     if(data.user_id == globals.getCookie("ID-USER")) return;
-
     GlobalFunctions.updateSelectionRectangleCollaborator(data.data, data.user_id)
 }
 
 export function stopSelectionRectangle(data){
     if(data.user_id == globals.getCookie("ID-USER")) return;
-
     GlobalFunctions.removeSelectionRectangleCollaborator(data.user_id)
 }
 

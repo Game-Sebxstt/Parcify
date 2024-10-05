@@ -22,8 +22,6 @@ const ContextMenu = () => {
         konva.layer.batchDraw();
     }
 
-
-
     return (
         <div id='contextMenu' className="bg-[#2e2e2e] border border-[rgba(255,255,255,.2)] rounded-lg shadow-lg p-1 w-48 hidden flex-col absolute top-28 left-28">
         <MenuItem icon={<Copy size={20} />} text="Duplicate" />
