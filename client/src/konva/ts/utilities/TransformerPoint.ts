@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import * as GlobalFunctions from "../../js/GlobalFunctions";
 import * as konva from "../../js/KonvaLogic";
+import { generateID } from '../../../js/frontend/utilities/globals';
 import { CustomArrow } from '../shapes/CustomArrow';
 
 interface ConnectorOptions {
@@ -25,8 +26,13 @@ export class TransformerPoints {
     public separationOffset = 20;
     private initialAnchorPosition: { x: number, y: number } = { x: 0, y: 0 };
     private activeAnchorType: string | null = null;
-    private arrowMap: { [key: string]: Konva.Arrow[] } = {};
-    private arrowCustom: any;
+    private arrowMap: { [key: string]: CustomArrow[] } = {
+        left: [],
+        right: [],
+        top: [],
+        bottom: [],
+    };
+    private arrowCustom: CustomArrow;
     private scale: number = 1;
     private updateArrowsScheduled: boolean = false;
 
@@ -145,6 +151,12 @@ export class TransformerPoints {
         });
     }
 
+    private selectedArrow(e: Konva.KonvaEventObject<MouseEvent>) {
+        const arrowSelected = e.target;
+        GlobalFunctions.showBarTool([arrowSelected])
+        console.log("arrowSelected", arrowSelected)
+    }
+
     private onAnchorDragStart(e: Konva.KonvaEventObject<DragEvent>, anchor: Konva.Circle) {
         if (!this.targetNode) return;
     
@@ -160,7 +172,7 @@ export class TransformerPoints {
         if (!mousePos) return;
     
         this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroy());
-        this.arrowMap[this.activeAnchorType || ''] = [];
+        this.arrowMap[this.activeAnchorType || ''] = this.arrowMap[this.activeAnchorType || ''] ?? [];
 
         konva.getElements().forEach((element: Konva.Node) => {
             if (element === this.targetNode || (
@@ -195,46 +207,40 @@ export class TransformerPoints {
                 transformer.attachTo(element);
                 this.transforms.push(transformer);
             }
-    
-            const arrow = new Konva.Arrow({
-                points: [startX, startY, mousePos.x, mousePos.y],
-                pointerLength: 10 / this.scale,
-                pointerWidth: 10 / this.scale,
-                fill: this.options.arrowColor || 'white',
-                stroke: this.options.borderArrowColor || 'white',
-                strokeWidth: 2 / this.scale,
-                lineJoin: "round",
-                lineCap: "round",
-                draggable: false,
-                name: 'arrow',
-            });
-
-            // const options = {
-            //     points: [startX, startY, mousePos.x, mousePos.y],
-            //     fill: this.options.arrowColor || 'white',
-            //     stroke: this.options.borderArrowColor || 'white',
-            //     pointerLength: 10 / this.scale,
-            //     pointerWidth: 10 / this.scale,
-            //     strokeWidth: 2 / this.scale,
-            // }
-
-            // this.arrowCustom = new CustomArrow(options, this.layer, this.stage);
-
-            // const arrow = this.arrowCustom.getArrow();
-
-            arrow.on('dblclick', (e) => {
-                e.target.destroy();
-                delete this.arrowMap[this.activeAnchorType || ''];
-            })
-
-            arrow.setAttr('anchorA', this.targetNode)
-            arrow.setAttr("anchorIdA", this.targetNode?.attrs.id_unique)
-            arrow.setAttr('anchorTypeA', this.activeAnchorType)
-    
-            this.layer.add(arrow);
-            this.arrowMap[this.activeAnchorType || ''].push(arrow);
         });
 
+        const options = {
+            points: [startX, startY, mousePos.x, mousePos.y],
+            fill: this.options.arrowColor || 'white',
+            stroke: this.options.borderArrowColor || 'white',
+            pointerLength: 10 / this.scale,
+            pointerWidth: 10 / this.scale,
+            strokeWidth: 2 / this.scale,
+            separationOffset: this.separationOffset,
+            name: "arrow",
+        };
+
+        const arrow: CustomArrow = new CustomArrow(options);
+
+        arrow.on('dblclick', (e) => {
+            if(e.evt.button != 0) return;
+
+            arrow.destroyArrow();
+        });
+
+        arrow.on("click", (e) => {
+            this.selectedArrow(e);
+        });
+
+        arrow.setAttr('anchorA', this.targetNode);
+        arrow.setAttr("anchorIdA", this.targetNode?.attrs.id_unique);
+        arrow.setAttr('anchorTypeA', this.activeAnchorType);
+
+        anchor.setAttr('arrow', arrow);
+        this.arrowMap[this.activeAnchorType || ''].push(arrow);
+        arrow.initAnchors();
+
+        this.layer.add(arrow);
         this.layer.batchDraw();
     }
 
@@ -286,7 +292,6 @@ export class TransformerPoints {
         })
     
         if (targetAnchor) {
-            console.log("targetAnchor", targetAnchor)
             this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => {
                 const startPos = {x: this.initialAnchorPosition.x, y: this.initialAnchorPosition.y}
                 const endPos = {x: targetAnchor.x(), y: targetAnchor.y()}
@@ -297,16 +302,9 @@ export class TransformerPoints {
                 arrow.setAttr("anchorIdB", targetClosest?.attrs.id_unique)
                 arrow.setAttr('anchorTypeB', targetAnchor.name());
             });
-
-            if(this.arrowCustom){
-                this.arrowCustom.initAnchors();
-            }
         } else {
-            this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroy());
+            this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroyArrow());
             delete this.arrowMap[this.activeAnchorType || ''];
-            if(this.arrowCustom){
-                this.arrowCustom.destroyAnchors();
-            }
         }
 
         konva.getElements().forEach((element: Konva.Node) => {
@@ -384,75 +382,13 @@ export class TransformerPoints {
     
             Object.keys(this.arrowMap).forEach(anchorType => {
                 this.arrowMap[anchorType]?.forEach(arrow => {
-                    const anchorA = arrow.getAttr("anchorA");
-                    const anchorTypeA = arrow.getAttr("anchorTypeA");
-                    const anchorB = arrow.getAttr("anchorB");
-                    const anchorTypeB = arrow.getAttr("anchorTypeB");
-                    
-                    if (!anchorA || !anchorB) return;
-    
-                    const startPos = this.calculateArrowPosition(anchorA, anchorTypeA);
-                    const endPos = this.calculateArrowPosition(anchorB, anchorTypeB);
-                    const middlePos = this.calculateMiddlePosition(startPos, endPos, anchorTypeA);
-    
-                    arrow.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
-                    arrow.setAttrs({
-                        pointerLength: 10 / this.scale,
-                        pointerWidth: 10 / this.scale,
-                        strokeWidth: 2 / this.scale,
-                    });
+                    arrow.updateArrow();
                 });
             });
     
             this.updateArrowsScheduled = false;
             this.layer.batchDraw();
         });
-    }
-
-    private calculateArrowPosition(anchor: Konva.Node, anchorType: string) {
-        const { width, height } = this.getNodeDimensions(anchor);
-        let position: { x: number, y: number } = { x: anchor.x(), y: anchor.y() };
-
-        switch (anchorType) {
-            case 'left':
-                if (this.notIsRect(anchor)) {
-                    position.x -= width * anchor.scaleX() / 2 + this.separationOffset;
-                    position.y = anchor.y();
-                }else{
-                    position.x -= this.separationOffset;
-                    position.y += height * anchor.scaleY() / 2;
-                }
-                break;
-            case 'right':
-                if (this.notIsRect(anchor)) {
-                    position.x += width * anchor.scaleX() / 2 + this.separationOffset;
-                    position.y = anchor.y();
-                }else{
-                    position.x += width * anchor.scaleX() + this.separationOffset;
-                    position.y += height * anchor.scaleY() / 2;
-                }
-                break;
-            case 'top':
-                if(this.notIsRect(anchor)){
-                    position.x = anchor.x();
-                    position.y -= height * anchor.scaleY() / 2 + this.separationOffset;
-                }else{
-                    position.x += width * anchor.scaleX() / 2;
-                    position.y -= this.separationOffset;
-                }
-                break;
-            case 'bottom':
-                if(this.notIsRect(anchor)){
-                    position.x = anchor.x();
-                    position.y += height * anchor.scaleY() / 2 + this.separationOffset;
-                }else{
-                    position.x += width * anchor.scaleX() / 2;
-                    position.y += height * anchor.scaleY() + this.separationOffset;
-                }
-                break;
-        }
-
-        return position;
     }
     
     private calculateMiddlePosition(startPos: {x: number, y: number}, endPos: {x: number, y: number}, anchorTypeA: string): {x: number, y: number} {
@@ -538,6 +474,7 @@ export class TransformerPoints {
     }
 
     public init() {
+        console.log("arrowMap", this.layer.getChildren())
         var arrowMapClone: any = {};
 
         this.layer.find('.arrow').forEach(arrow => {
@@ -555,48 +492,18 @@ export class TransformerPoints {
         Object.keys(this.arrowMap).forEach((anchorType) => {
             this.arrowMap[anchorType].forEach(arrow => {
                 arrow.on('dblclick', (e) => {
+                    if(e.evt.button != 0) return;
+
                     e.target.destroy();
                     delete this.arrowMap[anchorType || ''];
                 })
 
-                if(arrow.getAttr("anchorA") || arrow.getAttr("anchorB")) return;
+                arrow.on("click", (e) => {
+                    this.selectedArrow(e);
+                })
 
-                let anchorA
-                let anchorB
-
-                this.layer.getChildren().forEach((element: Konva.Node) => {
-                    if(element.attrs.id_unique === arrow.getAttr("anchorIdA")){
-                        anchorA = element
-                    }
-
-                    if(element.attrs.id_unique === arrow.getAttr("anchorIdB")){
-                        anchorB = element
-                    }
-
-                    if(element instanceof Konva.Group){
-                        element.getChildren().forEach((child: Konva.Node) => {
-                            if(child.attrs.id_unique === arrow.getAttr("anchorIdA")){
-                                anchorA = child
-                            }
-
-                            if(child.attrs.id_unique === arrow.getAttr("anchorIdB")){
-                                anchorB = child
-                            }
-                        })
-                    }
-                });
-
-                if(anchorA && anchorB){
-                    arrow.setAttr("anchorA", anchorA)
-                    arrow.setAttr("anchorB", anchorB)
-
-                    this.attachTo(anchorA)
-                    this.attachTo(anchorB)
-
-                    this.detach()
-                }else{
-                    console.log("not found anchors")
-                }
+                console.log("arrow", arrow)
+                arrow.loadAnchors(konva.getElements());
             })
         });
     }

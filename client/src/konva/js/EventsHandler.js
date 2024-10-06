@@ -52,7 +52,6 @@ document.addEventListener('keydown', function (e) {
             const collaborator = environment_utils.getCollaboratorOfProject(konva.id_stage, globals.getCookie("ID-USER"));
             const dateCommit = new Date();
 
-            console.log(collaborator);
             const existingEntry = collaborator.commits.find(entry => entry.date.split("T")[0] === dateCommit.toISOString().split("T")[0]);
 
             if (existingEntry) {

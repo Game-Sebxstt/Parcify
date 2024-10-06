@@ -4,9 +4,9 @@ import * as konva from "./KonvaLogic";
 import * as GlobalFunctions from "./GlobalFunctions";
 import * as websocket from '../../js/websocket/actions'
 import { addShape } from "../ts/CreationShapes";
-import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import * as config from '../config'
 import * as globals from "../../js/frontend/utilities/globals";
+import { TransformerPoints } from "../ts/utilities/TransformerPoint";
 import { getCollaboratorOfProject } from "../../js/globals/environment-utils";
 
 konva.layer.on('dragmove', function (e) {
@@ -327,8 +327,6 @@ konva.stage.on('mousemove touchmove', (e) => {
         height: Math.abs(Y2 - Y1),
     });
 
-    console.log(konva.selectionRectangle)
-
     websocket.updateSelectionRectangle(konva.selectionRectangle.attrs)
 });
 
@@ -361,7 +359,18 @@ konva.stage.on('click tap', function (e) {
 
         if (e.target instanceof Konva.Node){
             if(!e.target.getAttr("block")){
-                konva.transformer.attachTo(e.target);
+
+                const transformer = new TransformerPoints(konva.stage, konva.layer, konva.layerUtilities, {
+                    arrowColor: 'white',
+                    borderArrowColor: '#80D0FF',
+                    anchorColor: 'white',
+                    borderColor: '#80D0FF',
+                    anchorSize: 5,
+                    enabledAnchors: ["left", "right", "top", "bottom"],
+                    proximityThreshold: 20,
+                });
+
+                transformer.attachTo(e.target);
                 konva.layer.draw();
                 websocket.selectElementKonva(e.target)
                 config.setNodeSelected(e.target)

@@ -26,7 +26,6 @@ export function initialCollaboration(){
     const data_invitation_project = JSON.parse(project.invitation || "[]");
     eventsListener(collaborators);
     resetCollaborators(collaborators);
-    console.log("collaborators index",collaborators)
 
     Render.utils.list_collaborators = document.querySelectorAll("#list-collaborators");
 
@@ -55,7 +54,6 @@ export function initialCollaboration(){
         const colorSelected = environments.colors[globals.generateNumber(0, environments.colors.length - 1)]
 
         if(collaborators.find(c => c.color == colorSelected.color) == undefined){
-            console.log("color",colorSelected)
             sendCollaboration(id, data_invitation_project, colorSelected, collaborators);
             isFindColor = true;
         }

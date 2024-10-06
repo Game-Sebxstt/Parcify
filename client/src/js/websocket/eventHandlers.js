@@ -103,7 +103,6 @@ export function updatePosElementKonva(data) {
 export function enterCollaborator(data) {
     const collaboratorFind = utils.getCollaboratorOfProject(data.collaborator.project_id, data.user_id);
     if (!collaboratorFind) {
-        console.log('Collaborator not found:', data);
         req.saveCollaborators(data.collaborator.project_id, { user_id: data.user_id, state: true });
     }
     

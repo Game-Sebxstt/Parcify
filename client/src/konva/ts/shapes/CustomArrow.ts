@@ -1,49 +1,37 @@
 import Konva from 'konva';
+import * as konva from '../../js/KonvaLogic.js'
 
-interface ConfigArrow {
-    points: number[];
-    fill: string;
-    stroke: string;
-    pointerLength: number;
-    pointerWidth: number;
-    strokeWidth: number;
+interface ConfigArrow extends Konva.ArrowConfig {
     circleColor?: string;
     circleRadius?: number;
+    separationOffset?: number;
 }
 
-export class CustomArrow {
-
-    private options: ConfigArrow;
-    private stage: Konva.Stage;
-    private layer: Konva.Layer;
-    private arrow: Konva.Arrow;
+export class CustomArrow extends Konva.Arrow {
     private circle: Konva.Circle;
     private start: { x: number, y: number };
     private end: { x: number, y: number };
+    private customScale: number = 1;
+    private separationOffset: number;
+    private stage: Konva.Stage;
+    private layer: Konva.Layer;
 
-    constructor(options: ConfigArrow, layer: Konva.Layer, stage: Konva.Stage) {
-        this.options = options;
-        this.stage = stage;
-        this.layer = layer;
-        this.start = { x: this.options.points[0], y: this.options.points[1] };
-        this.end = { x: this.options.points[2], y: this.options.points[3] };
+    constructor(config: ConfigArrow) {
+        super(config);
 
-        this.arrow = new Konva.Arrow({
-            points: this.calculateLinePoints({ x: (this.start.x + this.end.x) / 2, y: (this.start.y + this.end.y) / 2 }),
-            pointerLength: this.options.pointerLength,
-            pointerWidth: this.options.pointerWidth,
-            fill: this.options.fill,
-            stroke: this.options.stroke,
-            strokeWidth: this.options.strokeWidth,
-        });
+        this.stage = konva.stage as Konva.Stage;
+        this.layer = konva.layer as Konva.Layer;
+        this.separationOffset = config.separationOffset || 10;
+        this.start = { x: config.points[0], y: config.points[1] };
+        this.end = { x: config.points[2], y: config.points[3] };
 
         this.circle = new Konva.Circle({
             x: (this.start.x + this.end.x) / 2,
             y: (this.start.y + this.end.y) / 2,
-            radius: this.options.circleRadius || 7 * this.stage.scaleX(),
-            fill: this.options.circleColor || 'white',
-            stroke: this.options.stroke,
-            strokeWidth: this.options.strokeWidth * this.stage.scaleX(),
+            radius: config.circleRadius || 7 * this.stage.scaleX(),
+            fill: config.circleColor || 'white',
+            stroke: config.stroke,
+            strokeWidth: config.strokeWidth * this.stage.scaleX(),
             draggable: true,
         });
 
@@ -51,63 +39,154 @@ export class CustomArrow {
 
         this.circle.on('dragmove', () => {
             this.updateArrow();
-            this.layer.draw();
+            this.layer.batchDraw();
         });
 
         this.stage.on("wheel", () => {
             this.updateArrow();
-            this.layer.draw();
-        })
+            this.layer.batchDraw();
+        });
 
-        this.layer.add(this.arrow);
+        this.layer.add(this);
         this.layer.add(this.circle);
+
+        this.updateArrow();
     }
 
-    private calculateLinePoints(anchorPos: { x: number, y: number }): number[] {
-        const midX = anchorPos.x;
-        const midY = anchorPos.y;
-        let points: number[] = [];
+    private updateScale() {
+        this.customScale = this.stage.scaleX() > 0.3 ? this.stage.scaleX() : 0.3;
+        this.customScale = this.customScale < 5 ? this.customScale : 5;
+    }
+    
+    private notIsRect(node: Konva.Node): boolean {
+        return node.getClassName() === 'Circle' || node.getClassName() === 'RegularPolygon' || node.getClassName() === 'Diamond';
+    }
 
-        points.push(this.start.x, this.start.y);
-        points.push(midX, this.start.y);
-        points.push(midX, midY);
-        points.push(this.end.x, midY);
-        points.push(this.end.x, this.end.y);
+    private getNodeDimensions(node: Konva.Node): { width: number, height: number } {
+        if (this.notIsRect(node)) {
+            const circle = node as Konva.Circle;
+            const diameter = circle.radius() * 2;
+            return { width: diameter, height: diameter };
+        } else {
+            return { width: node.width(), height: node.height() };
+        }
+    }
 
-        return points;
+    private calculateArrowPosition(anchor: Konva.Node, anchorType: string) {
+        const { width, height } = this.getNodeDimensions(anchor);
+        let position: { x: number, y: number } = { x: anchor.x(), y: anchor.y() };
+
+        switch (anchorType) {
+            case 'left':
+                if (this.notIsRect(anchor)) {
+                    position.x -= width * anchor.scaleX() / 2 + this.separationOffset;
+                    position.y = anchor.y();
+                }else{
+                    position.x -= this.separationOffset;
+                    position.y += height * anchor.scaleY() / 2;
+                }
+                break;
+            case 'right':
+                if (this.notIsRect(anchor)) {
+                    position.x += width * anchor.scaleX() / 2 + this.separationOffset;
+                    position.y = anchor.y();
+                }else{
+                    position.x += width * anchor.scaleX() + this.separationOffset;
+                    position.y += height * anchor.scaleY() / 2;
+                }
+                break;
+            case 'top':
+                if(this.notIsRect(anchor)){
+                    position.x = anchor.x();
+                    position.y -= height * anchor.scaleY() / 2 + this.separationOffset;
+                }else{
+                    position.x += width * anchor.scaleX() / 2;
+                    position.y -= this.separationOffset;
+                }
+                break;
+            case 'bottom':
+                if(this.notIsRect(anchor)){
+                    position.x = anchor.x();
+                    position.y += height * anchor.scaleY() / 2 + this.separationOffset;
+                }else{
+                    position.x += width * anchor.scaleX() / 2;
+                    position.y += height * anchor.scaleY() + this.separationOffset;
+                }
+                break;
+        }
+
+        return position;
+    }
+    
+    private calculateMiddlePosition(startPos: {x: number, y: number}, endPos: {x: number, y: number}, anchorTypeA: string): {x: number, y: number} {
+        let middleX, middleY;
+        const heightDifference = endPos.y - startPos.y;
+        const widthDifference = endPos.x - startPos.x;
+    
+        if (anchorTypeA === 'left' || anchorTypeA === 'right') {
+            if (Math.abs(heightDifference) > Math.abs(widthDifference)) {
+                middleX = startPos.x + widthDifference ;
+                middleY = startPos.y;
+            } else {
+                middleX = startPos.x;
+                middleY = endPos.y;
+            }
+        } else {
+            if (Math.abs(widthDifference) > Math.abs(heightDifference)) {
+                middleX = startPos.x;
+                middleY = startPos.y + heightDifference ;
+            } else {
+                middleX = endPos.x;
+                middleY = startPos.y;
+            }
+        }
+    
+        return {x: middleX, y: middleY};
     }
 
     public updateArrow() {
-        const anchorPos = this.circle.position();
-        const newPoints = this.calculateLinePoints(anchorPos);
-        this.arrow.points(newPoints);
-        this.arrow.setAttrs({
-            pointerLength: 10 / this.stage.scaleX(),
-            pointerWidth: 10 / this.stage.scaleX(),
-            strokeWidth: 2 / this.stage.scaleX(),
-        });
-    }
+        const anchorA = this.getAttr("anchorA");
+        const anchorTypeA = this.getAttr("anchorTypeA");
+        const anchorB = this.getAttr("anchorB");
+        const anchorTypeB = this.getAttr("anchorTypeB");
+        
+        if (!anchorA || !anchorB) return;
 
-    public updateAnchors(middlePos: { x: number, y: number }, endPos: { x: number, y: number }, startPos: { x: number, y: number }) {
-        this.start = startPos;
-        this.end = endPos;
-        
-        if(middlePos){
-            this.circle.position({ x: middlePos.x, y: middlePos.y });
-        }
-        
-        this.updateArrow();
+        const startPos = this.calculateArrowPosition(anchorA, anchorTypeA);
+        const endPos = this.calculateArrowPosition(anchorB, anchorTypeB);
+        const middlePos = this.calculateMiddlePosition(startPos, endPos, anchorTypeA);
+
+        this.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
+        this.setAttrs({
+            pointerLength: 10 / this.customScale,
+            pointerWidth: 10 / this.customScale,
+            strokeWidth: 2 / this.customScale,
+        });
     }
 
     public initAnchors() {
         this.circle.show();
     }
 
-    public getArrow(): Konva.Arrow {
-        return this.arrow;
+    public loadAnchors(elements: Konva.Node[]) {
+        console.log(elements)
+        const anchorA = elements.find(element => element.attrs.id_unique == this.getAttr("anchorIdA"))
+        const anchorB = elements.find(element => element.attrs.id_unique == this.getAttr("anchorIdB"))
+
+        console.log(anchorA, anchorB)
+
+        this.setAttrs({
+            anchorA: anchorA,
+            anchorB: anchorB,
+        })
     }
 
     public destroyAnchors() {
         this.circle.destroy();
+    }
+
+    public destroyArrow() {
+        this.destroyAnchors();
+        this.destroy();
     }
 }
