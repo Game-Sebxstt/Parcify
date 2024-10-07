@@ -1,3 +1,4 @@
+import Konva from 'konva'
 import * as konva from '../../konva/js/KonvaLogic';
 import * as GlobalFunctions from '../../konva/js/GlobalFunctions';
 import * as Render from '../../konva/js/Render';
@@ -93,7 +94,18 @@ export function updatePosElementKonva(data) {
         const dataNode = data.data;
         const layerKonva = konva.stage.findOne('#layer');
         const elementKonvaOfLayer = GlobalFunctions.findElementRecursively(layerKonva, dataNode.data.id_unique);
+        const isGroup = elementKonvaOfLayer instanceof Konva.Group;
         if (elementKonvaOfLayer) {
+            const idRect = isGroup ? elementKonvaOfLayer.children.find(item => item instanceof Konva.Rect).getAttr("id_unique") : elementKonvaOfLayer.getAttr("id_unique");
+            const arrows = konva.layer.find(".arrow")
+            const arrowOfRect = arrows.filter(item => (item.getAttr("anchorIdA") == idRect || item.getAttr("anchorIdB") == idRect))
+
+            if(arrowOfRect){
+                arrowOfRect.forEach(item => {
+                    item.updateArrow();
+                })
+            }
+
             GlobalFunctions.updateAttrsElement(elementKonvaOfLayer, dataNode);
             GlobalFunctions.updateCursorCollaborator(data.data.data.posCursor, data.data.user_id);
         }

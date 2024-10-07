@@ -25,13 +25,17 @@ export class CustomArrow extends Konva.Arrow {
         this.start = { x: config.points[0], y: config.points[1] };
         this.end = { x: config.points[2], y: config.points[3] };
 
+        this.setAttrs({
+            separationOffset: this.separationOffset,
+        })
+
         this.circle = new Konva.Circle({
             x: (this.start.x + this.end.x) / 2,
             y: (this.start.y + this.end.y) / 2,
             radius: config.circleRadius || 7 * this.stage.scaleX(),
             fill: config.circleColor || 'white',
             stroke: config.stroke,
-            strokeWidth: config.strokeWidth * this.stage.scaleX(),
+            strokeWidth: (config.strokeWidth || 2) * this.stage.scaleX(),
             draggable: true,
         });
 
@@ -51,11 +55,6 @@ export class CustomArrow extends Konva.Arrow {
         this.layer.add(this.circle);
 
         this.updateArrow();
-    }
-
-    private updateScale() {
-        this.customScale = this.stage.scaleX() > 0.3 ? this.stage.scaleX() : 0.3;
-        this.customScale = this.customScale < 5 ? this.customScale : 5;
     }
     
     private notIsRect(node: Konva.Node): boolean {
@@ -168,16 +167,15 @@ export class CustomArrow extends Konva.Arrow {
         this.circle.show();
     }
 
-    public loadAnchors(elements: Konva.Node[]) {
-        console.log(elements)
-        const anchorA = elements.find(element => element.attrs.id_unique == this.getAttr("anchorIdA"))
-        const anchorB = elements.find(element => element.attrs.id_unique == this.getAttr("anchorIdB"))
+    public loadEvents() {
+        this.attrs.anchorA.on('transform dragmove', () => {
+            this.updateArrow();
+            this.layer.batchDraw();
+        })
 
-        console.log(anchorA, anchorB)
-
-        this.setAttrs({
-            anchorA: anchorA,
-            anchorB: anchorB,
+        this.attrs.anchorB.on('transform dragmove', () => {
+            this.updateArrow();
+            this.layer.batchDraw();
         })
     }
 

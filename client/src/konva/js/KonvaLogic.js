@@ -366,6 +366,9 @@ export var selectionRectangle = layer.getChildren().find(item => item.attrs.id =
     id_user: globals.getCookie("ID-USER"),
 });
 
+layer.add(selectionRectangle);
+layer.draw();
+
 config_konva.setNodesSelectionRectangle(selectionRectangle);
 
 if(!layer.getChildren().find(item => item.attrs.id == "selection")){

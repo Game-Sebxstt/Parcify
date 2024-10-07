@@ -32,7 +32,6 @@ export class TransformerPoints {
         top: [],
         bottom: [],
     };
-    private arrowCustom: CustomArrow;
     private scale: number = 1;
     private updateArrowsScheduled: boolean = false;
 
@@ -49,7 +48,6 @@ export class TransformerPoints {
         };
 
         this.addGlobalEvents();
-        this.addStageZoomListener();
         this.updateScale();
     }
 
@@ -64,32 +62,6 @@ export class TransformerPoints {
                 this.detach();
             }
         });
-    }
-
-    private addStageZoomListener() {
-        this.stage.on('transform', () => this.handleZoomOrTransform());
-        this.stage.on('wheel', () => this.handleZoomOrTransform());
-    }
-
-    private handleZoomOrTransform() {
-        if (!this.targetNode) {
-            konva.getElements().forEach((element: Konva.Node) => {
-                if(element instanceof Konva.Rect || element instanceof Konva.RegularPolygon){
-                    this.targetNode = element;
-                    this.updateScale();
-                    this.updateAnchors();
-                    this.updateArrows();
-                    this.layer.batchDraw();
-                }
-            });
-
-            return;
-        }
-        
-        this.updateScale();
-        this.updateAnchors();
-        this.updateArrows();
-        this.layer.batchDraw();
     }
 
     private updateScale() {
@@ -232,6 +204,7 @@ export class TransformerPoints {
             this.selectedArrow(e);
         });
 
+        console.log("anchorA", this.targetNode)
         arrow.setAttr('anchorA', this.targetNode);
         arrow.setAttr("anchorIdA", this.targetNode?.attrs.id_unique);
         arrow.setAttr('anchorTypeA', this.activeAnchorType);
@@ -254,11 +227,6 @@ export class TransformerPoints {
             const startPos: { x: number, y: number } = this.initialAnchorPosition
             const endPos = mousePos;
             const middlePos = this.calculateMiddlePosition(startPos, endPos, this.activeAnchorType || '');
-
-            if(this.arrowCustom){
-                this.arrowCustom.updateAnchors(middlePos, endPos, startPos);
-            }
-
             arrow.points([startPos.x, startPos.y, middlePos.x, middlePos.y, endPos.x, endPos.y]);
         });
     
@@ -474,7 +442,6 @@ export class TransformerPoints {
     }
 
     public init() {
-        console.log("arrowMap", this.layer.getChildren())
         var arrowMapClone: any = {};
 
         this.layer.find('.arrow').forEach(arrow => {
@@ -489,23 +456,44 @@ export class TransformerPoints {
 
         this.arrowMap = arrowMapClone;
 
+        const newArrowMap: { [key: string]: CustomArrow[] } = {
+            left: [],
+            right: [],
+            top: [],
+            bottom: [],
+        }
+
         Object.keys(this.arrowMap).forEach((anchorType) => {
             this.arrowMap[anchorType].forEach(arrow => {
-                arrow.on('dblclick', (e) => {
+                const newArrow = new CustomArrow(arrow.attrs)
+                newArrow.setAttrs({
+                    anchorA: GlobalFunctions.findElementRecursively(this.layer, arrow.getAttr("anchorIdA")),
+                    anchorB: GlobalFunctions.findElementRecursively(this.layer, arrow.getAttr("anchorIdB")),
+                    anchorIdA: arrow.getAttr("anchorIdA"),
+                    anchorIdB: arrow.getAttr("anchorIdB"),
+                    anchorTypeA: arrow.getAttr("anchorTypeA"),
+                    anchorTypeB: arrow.getAttr("anchorTypeB"),
+                });
+
+                newArrowMap[anchorType].push(newArrow);
+                newArrow.loadEvents();
+                arrow.destroy();
+                this.layer.add(newArrow);
+                
+                newArrow.on('dblclick', (e) => {
                     if(e.evt.button != 0) return;
 
-                    e.target.destroy();
+                    newArrow.destroyArrow();
                     delete this.arrowMap[anchorType || ''];
                 })
 
-                arrow.on("click", (e) => {
+                newArrow.on("click", (e) => {
                     this.selectedArrow(e);
                 })
-
-                console.log("arrow", arrow)
-                arrow.loadAnchors(konva.getElements());
             })
         });
+
+        this.arrowMap = newArrowMap;
     }
 
     public destroy() {
