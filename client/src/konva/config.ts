@@ -1,7 +1,7 @@
 import type Konva from "konva"
 import type { Node, NodeConfig } from "konva/lib/Node"
 
-export const list_id_ignore = ["transformer", "boxShape", "anchorPoint", "textNotAvailable"]
+export const list_id_ignore = ["transformer", "boxShape", "anchorPoint", "textNotAvailable", "anchorCircle", "arrow"]
 
 let list_box_groups: Node<NodeConfig>[] = []
 let list_groups: Node<NodeConfig>[] = []

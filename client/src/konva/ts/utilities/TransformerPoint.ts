@@ -211,7 +211,6 @@ export class TransformerPoints {
 
         anchor.setAttr('arrow', arrow);
         this.arrowMap[this.activeAnchorType || ''].push(arrow);
-        arrow.initAnchors();
 
         this.layer.add(arrow);
         this.layer.batchDraw();
@@ -269,6 +268,7 @@ export class TransformerPoints {
                 arrow.setAttr("anchorB", targetClosest)
                 arrow.setAttr("anchorIdB", targetClosest?.attrs.id_unique)
                 arrow.setAttr('anchorTypeB', targetAnchor.name());
+                arrow.initAnchors();
             });
         } else {
             this.arrowMap[this.activeAnchorType || '']?.forEach(arrow => arrow.destroyArrow());

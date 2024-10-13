@@ -8,9 +8,7 @@ interface ConfigArrow extends Konva.ArrowConfig {
 }
 
 export class CustomArrow extends Konva.Arrow {
-    private circle: Konva.Circle;
-    private start: { x: number, y: number };
-    private end: { x: number, y: number };
+    private anchorCircles: Konva.Circle[];
     private customScale: number = 1;
     private separationOffset: number;
     private stage: Konva.Stage;
@@ -22,29 +20,13 @@ export class CustomArrow extends Konva.Arrow {
         this.stage = konva.stage as Konva.Stage;
         this.layer = konva.layer as Konva.Layer;
         this.separationOffset = config.separationOffset || 10;
-        this.start = { x: config.points[0], y: config.points[1] };
-        this.end = { x: config.points[2], y: config.points[3] };
 
         this.setAttrs({
             separationOffset: this.separationOffset,
-        })
-
-        this.circle = new Konva.Circle({
-            x: (this.start.x + this.end.x) / 2,
-            y: (this.start.y + this.end.y) / 2,
-            radius: config.circleRadius || 7 * this.stage.scaleX(),
-            fill: config.circleColor || 'white',
-            stroke: config.stroke,
-            strokeWidth: (config.strokeWidth || 2) * this.stage.scaleX(),
-            draggable: true,
+            id: "arrow"
         });
 
-        this.circle.hide();
-
-        this.circle.on('dragmove', () => {
-            this.updateArrow();
-            this.layer.batchDraw();
-        });
+        this.anchorCircles = [];
 
         this.stage.on("wheel", () => {
             this.updateArrow();
@@ -52,11 +34,67 @@ export class CustomArrow extends Konva.Arrow {
         });
 
         this.layer.add(this);
-        this.layer.add(this.circle);
-
         this.updateArrow();
     }
-    
+
+    private createAnchorCircle(x: number, y: number, index: number): Konva.Circle {
+        const circle = new Konva.Circle({
+            x,
+            y,
+            radius: 7 * this.stage.scaleX(),
+            fill: 'white',
+            stroke: this.stroke(),
+            strokeWidth: 2 * this.stage.scaleX(),
+            draggable: true,
+            visible: true,
+        });
+
+        circle.on('dragmove', (e) => {
+            const points = this.points();
+            const newPos = this.stage.getPointerPosition();
+            if (!newPos) return;
+
+            if (index === 0) {
+                if (Math.abs(points[2] - points[0]) > Math.abs(points[3] - points[1])) {
+                    circle.y(newPos.y);
+                    circle.x(x);
+                } else {
+                    circle.x(newPos.x);
+                    circle.y(y);
+                }
+            } else {
+                if (Math.abs(points[4] - points[2]) > Math.abs(points[5] - points[3])) {
+                    circle.y(newPos.y);
+                    circle.x(x);
+                } else {
+                    circle.x(newPos.x);
+                    circle.y(y);
+                }
+            }
+
+            this.updateArrowFromCircles();
+            this.layer.batchDraw();
+        });
+
+        this.layer.add(circle);
+        return circle;
+    }
+
+    private updateArrowFromCircles() {
+        const points = this.points();
+        const startPoint = [points[0], points[1]];
+        const endPoint = [points[points.length - 2], points[points.length - 1]];
+        
+        const middlePoints = this.anchorCircles.flatMap(circle => [circle.x(), circle.y()]);
+        
+        this.points([...startPoint, ...middlePoints, ...endPoint]);
+        this.setAttrs({
+            pointerLength: 10 / this.customScale,
+            pointerWidth: 10 / this.customScale,
+            strokeWidth: 2 / this.customScale,
+        });
+    }
+
     private notIsRect(node: Konva.Node): boolean {
         return node.getClassName() === 'Circle' || node.getClassName() === 'RegularPolygon' || node.getClassName() === 'Diamond';
     }
@@ -80,7 +118,7 @@ export class CustomArrow extends Konva.Arrow {
                 if (this.notIsRect(anchor)) {
                     position.x -= width * anchor.scaleX() / 2 + this.separationOffset;
                     position.y = anchor.y();
-                }else{
+                } else {
                     position.x -= this.separationOffset;
                     position.y += height * anchor.scaleY() / 2;
                 }
@@ -89,25 +127,25 @@ export class CustomArrow extends Konva.Arrow {
                 if (this.notIsRect(anchor)) {
                     position.x += width * anchor.scaleX() / 2 + this.separationOffset;
                     position.y = anchor.y();
-                }else{
+                } else {
                     position.x += width * anchor.scaleX() + this.separationOffset;
                     position.y += height * anchor.scaleY() / 2;
                 }
                 break;
             case 'top':
-                if(this.notIsRect(anchor)){
+                if (this.notIsRect(anchor)) {
                     position.x = anchor.x();
                     position.y -= height * anchor.scaleY() / 2 + this.separationOffset;
-                }else{
+                } else {
                     position.x += width * anchor.scaleX() / 2;
                     position.y -= this.separationOffset;
                 }
                 break;
             case 'bottom':
-                if(this.notIsRect(anchor)){
+                if (this.notIsRect(anchor)) {
                     position.x = anchor.x();
                     position.y += height * anchor.scaleY() / 2 + this.separationOffset;
-                }else{
+                } else {
                     position.x += width * anchor.scaleX() / 2;
                     position.y += height * anchor.scaleY() + this.separationOffset;
                 }
@@ -124,7 +162,7 @@ export class CustomArrow extends Konva.Arrow {
     
         if (anchorTypeA === 'left' || anchorTypeA === 'right') {
             if (Math.abs(heightDifference) > Math.abs(widthDifference)) {
-                middleX = startPos.x + widthDifference ;
+                middleX = startPos.x + widthDifference;
                 middleY = startPos.y;
             } else {
                 middleX = startPos.x;
@@ -133,7 +171,7 @@ export class CustomArrow extends Konva.Arrow {
         } else {
             if (Math.abs(widthDifference) > Math.abs(heightDifference)) {
                 middleX = startPos.x;
-                middleY = startPos.y + heightDifference ;
+                middleY = startPos.y + heightDifference;
             } else {
                 middleX = endPos.x;
                 middleY = startPos.y;
@@ -161,26 +199,49 @@ export class CustomArrow extends Konva.Arrow {
             pointerWidth: 10 / this.customScale,
             strokeWidth: 2 / this.customScale,
         });
+
+        this.updateAnchorCircles();
+    }
+
+    private updateAnchorCircles() {
+        this.anchorCircles.forEach(circle => circle.destroy());
+        this.anchorCircles = [];
+
+        const points = this.points();
+
+        for (let i = 0; i < points.length - 2; i += 2) {
+            const x1 = points[i];
+            const y1 = points[i + 1];
+            const x2 = points[i + 2];
+            const y2 = points[i + 3];
+
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+
+            const anchorCircle = this.createAnchorCircle(midX, midY, i / 2);
+            this.anchorCircles.push(anchorCircle);
+        }
     }
 
     public initAnchors() {
-        this.circle.show();
+        this.updateAnchorCircles();
     }
 
     public loadEvents() {
         this.attrs.anchorA.on('transform dragmove', () => {
             this.updateArrow();
             this.layer.batchDraw();
-        })
+        });
 
         this.attrs.anchorB.on('transform dragmove', () => {
             this.updateArrow();
             this.layer.batchDraw();
-        })
+        });
     }
 
     public destroyAnchors() {
-        this.circle.destroy();
+        this.anchorCircles.forEach(circle => circle.destroy());
+        this.anchorCircles = [];
     }
 
     public destroyArrow() {
