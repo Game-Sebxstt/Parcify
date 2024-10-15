@@ -38,7 +38,7 @@ export class CustomArrow extends Konva.Arrow {
     }
 
     private createAnchorCircle(x: number, y: number, index: number): Konva.Circle {
-        const circle = new Konva.Circle({
+        const circle: Konva.Circle = new Konva.Circle({
             x,
             y,
             radius: 7 * this.stage.scaleX(),
