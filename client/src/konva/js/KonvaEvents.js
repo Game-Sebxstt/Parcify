@@ -385,7 +385,7 @@ konva.stage.on('click tap', function (e) {
             x: mousePos.x,
             y: mousePos.y,
             font_size: 20,
-            id_unique: GlobalFunctions.randomId()
+            id_unique: globals.generateID(),
         };
 
         let shape = addShape(shapeProperties);

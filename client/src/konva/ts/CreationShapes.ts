@@ -142,21 +142,21 @@ let Text: Text = {
 }
 
 
-function addShape(shapeProperties: PropertiesNecessary){
-    if(States.StatesShapes.circle){
+function addShape(shapeProperties: PropertiesNecessary, shapeType: string){
+    if(States.StatesShapes.circle || shapeType === "circle"){
         return new Konva.Circle({...Circle, ...shapeProperties});
-    }else if(States.StatesShapes.square){
+    }else if(States.StatesShapes.square || shapeType === "square" || shapeType === "rectangle"){
         shapeProperties.x -= 25;
         shapeProperties.y -= 25;
         return new Konva.Rect({...Square, ...shapeProperties})
-    }else if(States.StatesShapes.triangle){
+    }else if(States.StatesShapes.triangle || shapeType === "triangle"){
         return new Konva.RegularPolygon({...Triangle, ...shapeProperties});
-    }else if(States.StatesShapes.diamond){
+    }else if(States.StatesShapes.diamond || shapeType === "diamond"){
         return new Konva.RegularPolygon({...Diamond, ...shapeProperties});
-    }else if(States.StatesShapes.line){
+    }else if(States.StatesShapes.line || shapeType === "line"){
         PropertiesNecessary.strokeWidth = 1;
         return new Konva.Arrow({...Line, ...shapeProperties});
-    }else if(States.StatesShapes.text){
+    }else if(States.StatesShapes.text || shapeType === "text"){
         return new Konva.Text({...Text, ...shapeProperties});
     }
 

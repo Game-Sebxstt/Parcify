@@ -4,6 +4,7 @@ import templateRoutes from './templateRoutes.js';
 import userRoutes from './userRoutes.js';
 import chatRoutes from './chatRoutes.js';
 import preferencesRoutes from './preferencesRoutes.js';
+import generativeRoutes from './generativeRoutes.js';
 
 export {
   authRoutes,
@@ -11,5 +12,6 @@ export {
   templateRoutes,
   userRoutes,
   chatRoutes,
-  preferencesRoutes
+  preferencesRoutes,
+  generativeRoutes
 };

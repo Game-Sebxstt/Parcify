@@ -46,6 +46,7 @@ const setupRoutes = (app) => {
   app.use('/user', routes.userRoutes);
   app.use('/chat', routes.chatRoutes);
   app.use('/preferences', routes.preferencesRoutes);
+  app.use('/generative', routes.generativeRoutes);
 
   // Test route
   app.get("/", (req, res) => {

@@ -8,6 +8,7 @@ import Collaborators from "../components/Konva/Collaborators.astro";
 import BarToolLeft from "../components/Konva/BarToolLeft.astro";
 import * as req from '../js/backend/requests';
 import Cursor from "../components/Konva/Cursor.astro";
+import Chatbot from "../components/React/components/Chatbot";
 
 const logged = Astro.cookies.get("logged")?.value;
 const id_user = Astro.cookies.get("ID-USER")?.value;
@@ -77,7 +78,7 @@ if(project.state){
         </div>
 
         <div class="relative w-full h-full flex">
-            <div id="content-konva" class="w-full h-full">
+            <div id="content-konva" class="w-full h-full relative">
                 <div id="konva" class="bg-white w-full h-full"></div>
             </div>
             
@@ -89,6 +90,7 @@ if(project.state){
 <Toolbar client:only="rect"/>
 <ContextMenu client:only="rect"/>
 <Cursor id_user={id_user}/>
+
 
 <script src="../konva/js/KonvaLogic.js"></script>
 <script src="../konva/js/UpdateGUI.js"></script>
