@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, User, Bot, X } from 'lucide-react';
-import { generateCanvas } from '../../../konva/js/Generative';
+import { generateCanvas, toggleRecording } from '../../../konva/js/Generative.js';
 
 interface Message {
   text: string;
@@ -16,7 +16,6 @@ const Chatbot: React.FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -30,55 +29,6 @@ const Chatbot: React.FC = () => {
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [input]);
-
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'es-ES';
-
-      recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
-        }
-
-        setInput(prevInput => prevInput.replace('Estoy grabando...', '') + finalTranscript);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Error en el reconocimiento de voz:', event.error);
-        if (event.error === 'no-speech') {
-          setInput(prevInput => prevInput.replace('Estoy grabando...', '') + " (No se detectó voz, intente de nuevo)");
-        } else if (event.error === 'aborted') {
-          setInput(prevInput => prevInput.replace('Estoy grabando...', '') + " (Reconocimiento de voz interrumpido)");
-        }
-        setIsRecording(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        if (isRecording) {
-          recognitionRef.current.start();
-        }
-      };
-    } else {
-      console.log('El reconocimiento de voz no está soportado en este navegador.');
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, [isRecording]);
 
   const onClose = () => {
     setIsChatbotOpen(false);
@@ -105,17 +55,7 @@ const Chatbot: React.FC = () => {
 
   const handleRecordAudio = () => {
     setIsRecording(prevState => !prevState);
-    if (!isRecording) {
-      setInput('Estoy grabando...');
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-      }
-    } else {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setInput(prevInput => prevInput.replace('Estoy grabando...', ''));
-    }
+    toggleRecording();
   };
 
   const formatTimestamp = (date: Date) => {
@@ -132,12 +72,9 @@ const Chatbot: React.FC = () => {
   useEffect(() => {
     const handleUpdateStateChatbot = (e: Event) => {
       const customEvent = e as CustomEvent;
-      console.log("Custom event", customEvent.detail);
       if (customEvent.detail.opacity != "1") {
-        console.log("Opening chatbot");
         setIsChatbotOpen(true);
       } else {
-        console.log("Closing chatbot");
         setIsChatbotOpen(false);
       }
     };
@@ -148,6 +85,11 @@ const Chatbot: React.FC = () => {
       document.removeEventListener("updateStateChatbot", handleUpdateStateChatbot);
     };
   }, []);
+
+  document.addEventListener("updateRecording", (e: Event) => {
+    const customEvent = e as CustomEvent;
+    setInput(customEvent.detail.recording);
+  })
 
   return (
     <div id='chat-bot' className={`w-[350px] bg-[#1E1E1E] rounded-lg shadow-lg overflow-hidden absolute -top-6 right-1/2 translate-x-1/2 -translate-y-full transition-all duration-500 ease-in-out ${
@@ -212,6 +154,7 @@ const Chatbot: React.FC = () => {
         <div className="flex items-center space-x-2">
           <div className="relative">
             <button
+              id='record-audio'
               onClick={handleRecordAudio}
               className={`p-2 rounded-full ${isRecording ? 'bg-red-500' : 'bg-gray-700'} text-white focus:outline-none transition-colors duration-300 z-10 relative`}
             >
