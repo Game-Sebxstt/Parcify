@@ -1,0 +1,50 @@
+---
+import AuthLauncher from '../islands/AuthLauncher.svelte';
+import { m } from '../paraglide/messages.js';
+import Button from '../ui/Button.svelte';
+import Toast from '../ui/Toast.svelte';
+import BaseHead from './BaseHead.astro';
+
+// En la landing la única acción es la del hero: la barra lleva las secciones y «Entrar».
+type Props = { title: string; description?: string; noindex?: boolean; landing?: boolean };
+
+const { title, description, noindex, landing = false } = Astro.props;
+
+const SECTIONS = [
+  { href: '#colaboracion', label: m.landing_nav_live() },
+  { href: '#detalle', label: m.landing_nav_detail() },
+  { href: '#ia', label: m.landing_nav_ai() },
+  { href: '#espacios', label: m.landing_nav_spaces() },
+];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <BaseHead title={title} description={description} noindex={noindex} />
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <a href="#contenido" class="skip-link">{m.common_skip()}</a>
+    <header class:list={['mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-8', landing ? 'site-header' : 'max-w-7xl']}>
+      <a href="/" class="flex items-center gap-2.5 rounded-full pr-2 text-lg font-bold tracking-[-0.02em]">
+        <img src="/brand/Logo-no-background-no-text.png" alt="" width="32" height="32" class="size-8" />
+        {m.brand_name()}
+      </a>
+      {landing && (
+        <nav class="site-sections" aria-label={m.landing_nav_label()}>
+          {SECTIONS.map((section) => <a href={section.href}>{section.label}</a>)}
+        </nav>
+      )}
+      <nav class="flex items-center gap-2" aria-label={m.nav_label()}>
+        <Button href="/?acceso=entrar" variant="ghost" data-auth-open="entrar">{m.nav_sign_in()}</Button>
+        {!landing && <Button href="/?acceso=crear" variant="secondary" data-auth-open="crear">{m.nav_sign_up()}</Button>}
+      </nav>
+    </header>
+    <main id="contenido" tabindex="-1" class="flex flex-1 flex-col">
+      <slot />
+    </main>
+    <slot name="footer" />
+    <AuthLauncher client:load />
+    <Toast client:idle />
+  </body>
+</html>

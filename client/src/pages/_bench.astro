@@ -1,0 +1,19 @@
+---
+// Solo se construye con PARCIFY_BENCH=1 (integración parcify-bench en astro.config.ts).
+import BaseHead from '../layouts/BaseHead.astro';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <BaseHead title="Benchmark del lienzo" noindex />
+  </head>
+  <body class="h-dvh overflow-hidden">
+    <div id="bench-stage" class="relative h-dvh w-full touch-none outline-none" tabindex="0">
+      <canvas class="block h-full w-full"></canvas>
+    </div>
+    <script>
+      import '../../bench/harness.ts';
+    </script>
+  </body>
+</html>

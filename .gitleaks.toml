@@ -1,0 +1,17 @@
+title = "parcify"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ejemplos, pruebas, fixtures del benchmark y stacks locales de compose"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)test/''',
+  '''\.test\.ts$''',
+  '''^server/compose\.(dev|test|verify)\.yml$''',
+  '''^server/vitest\.int\.config\.ts$''',
+  '''^client/e2e/''',
+  '''^client/bench/fixtures/''',
+]
+regexes = ['''parcify_(dev|test|verify)''']

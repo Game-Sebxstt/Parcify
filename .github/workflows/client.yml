@@ -1,0 +1,82 @@
+name: Cliente
+
+on:
+  push:
+    branches: [main]
+    paths: ["client/**", "server/**", ".github/workflows/client.yml"]
+  pull_request:
+    paths: ["client/**", "server/**", ".github/workflows/client.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: client
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.11
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - name: Una sola copia de yjs
+        run: |
+          test "$(npm ls yjs --all --parseable | xargs -n1 realpath | sort -u | wc -l)" -eq 1
+      - name: src/shared igual que en server/
+        run: npm run shared:check
+      - run: npm run check
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Presupuesto de JS (landing, app y editor)
+        run: npm run budget
+      - name: Imagen Docker
+        run: docker build -t parcify-client:ci .
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.11
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+      - name: Servidor compilado y stack de pruebas
+        working-directory: server
+        run: |
+          npm ci
+          npm run build
+          npm run stack:test:up
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox
+      - run: npm run e2e
+      - name: Trabajo JS del benchmark frente a la referencia
+        run: npm run bench:ci
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright
+          path: |
+            client/test-results
+            client/bench/results
+          retention-days: 7
+      - name: Apagar el stack
+        if: always()
+        working-directory: server
+        run: npm run stack:test:down

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-meta/
+.astro/
+src/paraglide/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+*.log

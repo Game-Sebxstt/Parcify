@@ -1,0 +1,177 @@
+name: parcify-local
+# Despliegue local con las imágenes de producción, storage S3 (SeaweedFS) y Caddy con TLS interno.
+# Los secretos se leen de .env.local-deploy (se genera con local-deploy/new-secrets.ps1).
+x-server-env: &server-env
+  NODE_ENV: production
+  LOG_LEVEL: info
+  API_ORIGIN: https://api.parcify.localhost
+  COLLAB_ORIGIN: https://collab.parcify.localhost
+  CLIENT_ORIGINS: https://parcify.localhost
+  TRUST_PROXY_HOPS: "1"
+  MAIL_DRIVER: smtp
+  MAIL_FROM: Parcify <no-reply@parcify.localhost>
+  SMTP_URL: smtp://mailpit:1025
+  STORAGE_DRIVER: s3
+  S3_ENDPOINT: https://s3.parcify.localhost
+  S3_REGION: us-east-1
+  S3_BUCKET: parcify
+  S3_FORCE_PATH_STYLE: "true"
+  # La CA interna de Caddy, para hablar con s3.parcify.localhost por https desde dentro de la red.
+  NODE_EXTRA_CA_CERTS: /caddy-ca/root.crt
+x-server-health: &server-health
+  interval: 5s
+  timeout: 3s
+  start_period: 20s
+  retries: 10
+services:
+  proxy:
+    image: caddy:2.10.2-alpine
+    ports: ["127.0.0.1:443:443"]
+    volumes:
+      - ./local-deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    networks:
+      default:
+        # La API firma y usa las URLs de S3 con este host, así que tiene que resolverlo dentro de la red.
+        aliases: [s3.parcify.localhost]
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /data/caddy/pki/authorities/local/root.crt"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  ca-export:
+    image: caddy:2.10.2-alpine
+    command:
+      - sh
+      - -c
+      - cp /data/caddy/pki/authorities/local/root.crt /caddy-ca/root.crt && chmod 644 /caddy-ca/root.crt && cp /caddy-ca/root.crt /export/caddy-root.crt
+    volumes:
+      - caddydata:/data:ro
+      - caddyca:/caddy-ca
+      - ./local-deploy:/export
+    depends_on:
+      proxy: { condition: service_healthy }
+  postgres:
+    image: postgres:18.1-alpine
+    env_file: .env.local-deploy
+    volumes: [pgdata:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:8.2.2-alpine
+    env_file: .env.local-deploy
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  s3:
+    image: chrislusf/seaweedfs:4.00
+    env_file: .env.local-deploy
+    entrypoint: ["sh", "-c"]
+    # Con una identidad configurada, SeaweedFS comprueba las firmas igual que S3 y el bucket es privado.
+    command:
+      - >-
+        printf '{"identities":[{"name":"parcify","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY" > /tmp/s3.json
+        && exec weed server -s3 -s3.config=/tmp/s3.json -dir=/data
+    volumes: [s3data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+  bucket-init:
+    image: parcify-server:local
+    build: .
+    command: ["node", "/local-deploy/init-bucket.cjs"]
+    env_file: .env.local-deploy
+    environment:
+      NODE_PATH: /app/node_modules
+      S3_REGION: us-east-1
+      S3_BUCKET: parcify
+      BUCKET_INIT_ENDPOINT: http://s3:8333
+      BUCKET_CORS_ORIGIN: https://parcify.localhost
+    volumes: ["./local-deploy/init-bucket.cjs:/local-deploy/init-bucket.cjs:ro"]
+    depends_on:
+      s3: { condition: service_healthy }
+  migrate:
+    image: parcify-server:local
+    command: ["npx", "prisma", "migrate", "deploy"]
+    env_file: .env.local-deploy
+    environment: *server-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      bucket-init: { condition: service_completed_successfully }
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    ports: ["127.0.0.1:8025:8025"]
+    volumes: [mailpitdata:/data]
+    restart: unless-stopped
+  api:
+    image: parcify-server:local
+    env_file: .env.local-deploy
+    environment:
+      <<: *server-env
+      PORT: "3000"
+    volumes: ["caddyca:/caddy-ca:ro"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      <<: *server-health
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      ca-export: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      mailpit: { condition: service_started }
+    restart: unless-stopped
+  collab:
+    image: parcify-server:local
+    command: ["node", "dist/collab/main.js"]
+    env_file: .env.local-deploy
+    environment:
+      <<: *server-env
+      PORT: "3001"
+    volumes: ["caddyca:/caddy-ca:ro"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      <<: *server-health
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      ca-export: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+  web:
+    image: parcify-client:local
+    build:
+      context: ../client
+      args:
+        PUBLIC_API_ORIGIN: https://api.parcify.localhost
+        PUBLIC_COLLAB_ORIGIN: https://collab.parcify.localhost
+        PUBLIC_SITE_ORIGIN: https://parcify.localhost
+        PUBLIC_STORAGE_ORIGIN: https://s3.parcify.localhost
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  pgdata: {}
+  redisdata: {}
+  s3data: {}
+  mailpitdata: {}
+  caddydata: {}
+  caddyconfig: {}
+  caddyca: {}

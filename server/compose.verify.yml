@@ -1,0 +1,80 @@
+name: parcify-verify
+# Solo para comprobar las imágenes en local con NODE_ENV=production. Credenciales y secretos de usar y tirar.
+x-server-env: &server-env
+  NODE_ENV: production
+  LOG_LEVEL: info
+  API_ORIGIN: https://api.parcify.example.com
+  COLLAB_ORIGIN: https://collab.parcify.example.com
+  CLIENT_ORIGINS: https://parcify.example.com
+  TRUST_PROXY_HOPS: "1"
+  DATABASE_URL: postgresql://parcify:parcify_verify@postgres:5432/parcify
+  REDIS_URL: redis://:parcify_verify@redis:6379/0
+  BETTER_AUTH_SECRET: verify-better-auth-secret-0123456789abcdef
+  COLLAB_TOKEN_SECRET: verify-collab-token-secret-0123456789abcdef
+  MAIL_DRIVER: resend
+  MAIL_FROM: Parcify <no-reply@parcify.example.com>
+  RESEND_API_KEY: re_verify_not_a_real_key
+  STORAGE_DRIVER: local
+  STORAGE_LOCAL_PATH: /tmp/parcify-storage
+  STORAGE_URL_SECRET: verify-storage-url-secret-0123456789abcdef
+  METRICS_TOKEN: verify-metrics-token-0123456789
+services:
+  postgres:
+    image: postgres:18.1-alpine
+    environment:
+      POSTGRES_USER: parcify
+      POSTGRES_PASSWORD: parcify_verify
+      POSTGRES_DB: parcify
+    ports: ["127.0.0.1:55441:5432"]
+    tmpfs: [/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parcify -d parcify"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:8.2.2-alpine
+    command: ["redis-server", "--requirepass", "parcify_verify", "--save", "", "--appendonly", "no"]
+    ports: ["127.0.0.1:56391:6379"]
+    tmpfs: [/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "parcify_verify", "--no-auth-warning", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  migrate:
+    image: parcify-server:verify
+    build: .
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment: *server-env
+    depends_on:
+      postgres: { condition: service_healthy }
+  api:
+    image: parcify-server:verify
+    environment:
+      <<: *server-env
+      PORT: "3000"
+    ports: ["127.0.0.1:53000:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+  collab:
+    image: parcify-server:verify
+    command: ["node", "dist/collab/main.js"]
+    environment:
+      <<: *server-env
+      PORT: "3001"
+    ports: ["127.0.0.1:53001:3001"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+  web:
+    image: parcify-client:verify
+    build:
+      context: ../client
+      args:
+        PUBLIC_API_ORIGIN: https://api.parcify.example.com
+        PUBLIC_COLLAB_ORIGIN: https://collab.parcify.example.com
+        PUBLIC_SITE_ORIGIN: https://parcify.example.com
+        PUBLIC_STORAGE_ORIGIN: https://api.parcify.example.com
+    ports: ["127.0.0.1:58080:8080"]

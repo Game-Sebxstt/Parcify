@@ -1,0 +1,53 @@
+---
+import { m } from '../../paraglide/messages.js';
+
+const TABS = [
+  { id: 'cursores', label: m.landing_live_tab_cursors(), body: m.landing_live_body_cursors() },
+  { id: 'presencia', label: m.landing_live_tab_presence(), body: m.landing_live_body_presence() },
+  { id: 'deshacer', label: m.landing_live_tab_undo(), body: m.landing_live_body_undo() },
+];
+---
+
+<section id="colaboracion" class="showcase" aria-labelledby="live-title" data-index>
+  <div class="showcase-plate" data-reveal>
+    <div class="plate is-on" data-preview="cursores" data-ui>
+      <img src="/landing/en-vivo-cursores.png" alt={m.landing_shot_cursors()} width="520" height="340" loading="lazy" decoding="async" />
+    </div>
+    <div class="plate" data-preview="presencia" data-ui hidden>
+      <img src="/landing/en-vivo-presencia.png" alt={m.landing_shot_presence()} width="602" height="52" loading="lazy" decoding="async" />
+      <img src="/landing/detalle-sin-conexion.png" alt={m.landing_shot_offline()} width="332" height="40" loading="lazy" decoding="async" />
+    </div>
+    <div class="plate" data-preview="deshacer" data-ui hidden>
+      <img class="shot-small" src="/landing/en-vivo-deshacer.png" alt={m.landing_shot_undo()} width="80" height="40" loading="lazy" decoding="async" />
+    </div>
+  </div>
+  <div class="showcase-text">
+    <div class="showcase-tabs" role="tablist" aria-label={m.landing_live_tabs_label()} data-reveal>
+      {TABS.map((tab, index) => (
+        <button
+          type="button"
+          role="tab"
+          id={`tab-${tab.id}`}
+          aria-selected={index === 0 ? 'true' : 'false'}
+          aria-controls={`panel-${tab.id}`}
+          tabindex={index === 0 ? 0 : -1}
+          data-tab={tab.id}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+    <div>
+      <h2 id="live-title" class="section-title" data-reveal>{m.landing_live_title()}</h2>
+      {TABS.map((tab, index) => (
+        <p id={`panel-${tab.id}`} role="tabpanel" aria-labelledby={`tab-${tab.id}`} class="showcase-body" hidden={index !== 0} data-reveal>
+          {tab.body}
+        </p>
+      ))}
+    </div>
+    <div class="showcase-cells" data-reveal>
+      <a href="/?acceso=crear" data-auth-open="crear" class="cell cell-ink">{m.home_cta()}</a>
+      <a href="#detalle" class="cell cell-tone">{m.landing_live_more()}</a>
+    </div>
+  </div>
+</section>

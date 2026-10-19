@@ -1,0 +1,35 @@
+---
+import AppShell from '../islands/AppShell.svelte';
+import VersionGate from '../islands/VersionGate.svelte';
+import Toast from '../ui/Toast.svelte';
+import { m } from '../paraglide/messages.js';
+import BaseHead from './BaseHead.astro';
+
+type Props = { title: string; current: 'home' | 'workspace' | 'settings' };
+const { title, current } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <BaseHead title={title} noindex />
+  </head>
+  <body class="min-h-dvh">
+    <a href="#contenido" class="skip-link">{m.common_skip()}</a>
+    <div class="md:flex">
+      <AppShell client:load current={current} />
+      <main id="contenido" tabindex="-1" class="min-w-0 flex-1 pb-24">
+        <slot />
+      </main>
+    </div>
+    <VersionGate client:load />
+    <Toast client:idle />
+    <script>
+      import { applyReduceMotion } from '../lib/motion.ts';
+      import { loadSession } from '../lib/session.svelte.ts';
+      applyReduceMotion();
+      // Sin sesión, GET /v1/me responde 401 y apiFetch lleva al overlay con «volver» a esta página.
+      void loadSession();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	reverse_proxy web:8080
+}
+
+api.{$DOMAIN} {
+	reverse_proxy api:3000
+}
+
+collab.{$DOMAIN} {
+	reverse_proxy collab:3001
+}
+
+# s3.caddy con el S3 incluido; s3-external.caddy (vacío) cuando el bucket está fuera (R2, S3...).
+import s3{$S3_SITE_SUFFIX}.caddy

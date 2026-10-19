@@ -1,0 +1,28 @@
+---
+import Board from '../components/landing/Board.astro';
+import Closing from '../components/landing/Closing.astro';
+import Footer from '../components/landing/Footer.astro';
+import Hero from '../components/landing/Hero.astro';
+import Showcase from '../components/landing/Showcase.astro';
+import Spaces from '../components/landing/Spaces.astro';
+import Strip from '../components/landing/Strip.astro';
+import PublicLayout from '../layouts/PublicLayout.astro';
+import { m } from '../paraglide/messages.js';
+import '../styles/landing.css';
+---
+
+<PublicLayout title={m.home_meta_title()} description={m.home_meta_description()} landing>
+  <Hero />
+  <Showcase />
+  <Board />
+  <Strip />
+  <Spaces />
+  <Closing />
+  <Footer slot="footer" />
+</PublicLayout>
+
+<script>
+  import { bindIndexWithPreview, revealOnScroll } from '../landing/page.ts';
+  revealOnScroll();
+  bindIndexWithPreview();
+</script>

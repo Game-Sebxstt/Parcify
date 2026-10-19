@@ -1,0 +1,15 @@
+# Reglas por defecto de gitleaks. Las excepciones son valores de prueba, que no dan acceso a nada.
+title = "parcify-client"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ejemplos y pruebas"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)e2e/''',
+  '''(^|/)test/''',
+  '''\.test\.ts$''',
+  '''(^|/)bench/fixtures/''',
+]

@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+src/generated
+storage
+.env
+.env.*
+!.env.example
+*.log
+.git
+.vscode
+compose.*.yml
+Dockerfile
+.dockerignore

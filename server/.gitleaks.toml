@@ -1,0 +1,17 @@
+# Reglas por defecto de gitleaks. Las excepciones son valores de prueba y de desarrollo local, que no dan acceso a nada.
+title = "parcify-server (monorepo)"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ejemplos, pruebas y stack local"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)test/''',
+  '''\.test\.ts$''',
+  '''(^|/)compose\.(dev|test|verify)\.yml$''',
+  '''(^|/)vitest\.int\.config\.ts$''',
+]
+# Contraseñas del Postgres y el Redis de compose (solo en 127.0.0.1).
+regexes = ['''parcify_(dev|test|verify)''']

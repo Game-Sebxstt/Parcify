@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "parcify_test",
+      "credentials": [{ "accessKey": "parcify_test_key", "secretKey": "parcify_test_secret_0123456789" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

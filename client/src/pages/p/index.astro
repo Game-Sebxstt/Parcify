@@ -1,0 +1,12 @@
+---
+import Editor from '../../islands/Editor.svelte';
+import EditorLayout from '../../layouts/EditorLayout.astro';
+import { m } from '../../paraglide/messages.js';
+---
+
+<!-- /p/:id se reescribe a esta página (Caddyfile y middleware de Vite); el id se lee de la ruta en el cliente. -->
+<EditorLayout title={m.editor_meta_title()}>
+  <Editor client:only="svelte">
+    <p slot="fallback" class="grid h-dvh place-items-center text-sm text-ink-muted" role="status">{m.editor_loading()}</p>
+  </Editor>
+</EditorLayout>

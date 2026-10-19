@@ -1,0 +1,458 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  runtime             = "nodejs"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────── Better Auth ─────────
+
+model User {
+  id             String          @id
+  name           String
+  email          String          @unique
+  emailVerified  Boolean         @default(false)
+  // Foto de Google que guarda Better Auth; no se muestra: el avatar es avatarAssetId o las iniciales.
+  image          String?
+  avatarAssetId  String?         @db.Uuid
+  bio            String?         @db.VarChar(280)
+  locale         String          @default("es")
+  createdAt      DateTime        @default(now()) @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @db.Timestamptz
+  sessions       Session[]
+  accounts       Account[]
+  members        Member[]
+  invitations    Invitation[]
+  projectMembers ProjectMember[]
+
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id
+  userId               String
+  token                String   @unique
+  expiresAt            DateTime @db.Timestamptz
+  ipAddress            String?
+  userAgent            String?
+  activeOrganizationId String?
+  createdAt            DateTime @default(now()) @db.Timestamptz
+  updatedAt            DateTime @updatedAt @db.Timestamptz
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  userId                String
+  accountId             String
+  providerId            String
+  password              String?
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz
+  refreshTokenExpiresAt DateTime? @db.Timestamptz
+  scope                 String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @db.Timestamptz
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ───────── Espacios (organizaciones de Better Auth) ─────────
+
+model Organization {
+  id          String            @id
+  name        String
+  slug        String            @unique
+  // Campo de Better Auth sin uso: el logo es logoAssetId.
+  logo        String?
+  metadata    String?
+  personal    Boolean           @default(false)
+  logoAssetId String?           @db.Uuid
+  deletedAt   DateTime?         @db.Timestamptz
+  createdAt   DateTime          @default(now()) @db.Timestamptz
+  members     Member[]
+  invitations Invitation[]
+  projects    Project[]
+  templates   Template[]
+  aiQuota     WorkspaceAiQuota?
+
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  userId         String
+  role           String
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  email          String
+  role           String
+  status         String
+  expiresAt      DateTime     @db.Timestamptz
+  inviterId      String
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([inviterId])
+  @@map("invitation")
+}
+
+// ───────── Proyectos ─────────
+
+enum ProjectRole {
+  admin
+  editor
+  viewer
+}
+
+enum OrgAccess {
+  none
+  viewer
+  editor
+}
+
+model Project {
+  id             String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  organizationId String
+  name           String             @db.VarChar(80)
+  createdById    String
+  // Acceso por defecto de los miembros con rol member del espacio.
+  orgAccess      OrgAccess          @default(editor)
+  previewAssetId String?            @db.Uuid
+  templateId     String?            @db.Uuid
+  lastEditedAt   DateTime           @default(now()) @db.Timestamptz
+  // Sin FK, como createdById: borrar la cuenta no toca los proyectos de otros.
+  lastEditedById String?
+  deletedAt      DateTime?          @db.Timestamptz
+  createdAt      DateTime           @default(now()) @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @db.Timestamptz
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        ProjectMember[]
+  colors         ProjectColor[]
+  shareLinks     ProjectShareLink[]
+  document       ProjectDocument?
+  versions       ProjectVersion[]
+  assets         Asset[]
+  chat           ChatMessage[]
+
+  @@index([organizationId, deletedAt, lastEditedAt(sort: Desc)])
+  @@index([createdById])
+}
+
+model ProjectMember {
+  projectId String      @db.Uuid
+  userId    String
+  role      ProjectRole
+  addedById String?
+  createdAt DateTime    @default(now()) @db.Timestamptz
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([userId])
+}
+
+model ProjectColor {
+  projectId String   @db.Uuid
+  userId    String
+  color     String   @db.VarChar(7)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+}
+
+model ProjectShareLink {
+  id          String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  projectId   String      @db.Uuid
+  // sha256 hex del token; el token solo existe en el enlace.
+  tokenHash   String      @unique @db.Char(64)
+  role        ProjectRole
+  email       String?
+  maxUses     Int?
+  uses        Int         @default(0)
+  expiresAt   DateTime    @db.Timestamptz
+  revokedAt   DateTime?   @db.Timestamptz
+  createdById String
+  createdAt   DateTime    @default(now()) @db.Timestamptz
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Favorite {
+  userId     String
+  // "project" | "template"
+  targetType String   @db.VarChar(16)
+  targetId   String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  @@id([userId, targetType, targetId])
+}
+
+// ───────── Documento Yjs y versiones ─────────
+
+model ProjectDocument {
+  projectId       String   @id @db.Uuid
+  state           Bytes
+  schemaVersion   Int
+  epoch           Int      @default(1)
+  sizeBytes       Int
+  nodeCount       Int
+  nodeCountByType Json
+  assetRefs       String[] @db.Uuid
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+enum VersionKind {
+  auto
+  manual
+  restore_point
+}
+
+model ProjectVersion {
+  id            String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  projectId     String      @db.Uuid
+  kind          VersionKind
+  name          String?     @db.VarChar(80)
+  state         Bytes
+  schemaVersion Int
+  sizeBytes     Int
+  nodeCount     Int
+  createdById   String?
+  createdAt     DateTime    @default(now()) @db.Timestamptz
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Desc)])
+}
+
+// ───────── Assets ─────────
+
+enum AssetStatus {
+  pending
+  ready
+  failed
+}
+
+enum AssetSource {
+  upload
+  ai
+  import
+  preview
+  avatar
+  logo
+  template
+}
+
+model Asset {
+  id             String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  organizationId String?
+  projectId      String?     @db.Uuid
+  templateId     String?     @db.Uuid
+  ownerId        String
+  source         AssetSource
+  status         AssetStatus @default(pending)
+  storageKey     String      @unique
+  mime           String      @db.VarChar(64)
+  sizeBytes      Int
+  width          Int?
+  height         Int?
+  sha256         String?     @db.Char(64)
+  variants       Json        @default("{}")
+  name           String?     @db.VarChar(120)
+  aiPrompt       String?     @db.VarChar(2000)
+  inGallery      Boolean     @default(true)
+  deletedAt      DateTime?   @db.Timestamptz
+  createdAt      DateTime    @default(now()) @db.Timestamptz
+  project        Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template       Template?   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, inGallery, createdAt(sort: Desc)])
+  @@index([templateId])
+  @@index([ownerId, source])
+  @@index([organizationId])
+  @@index([status, createdAt])
+}
+
+// ───────── Chat del proyecto ─────────
+
+model ChatMessage {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  projectId   String    @db.Uuid
+  authorId    String
+  body        String    @db.VarChar(4000)
+  replyToId   String?   @db.Uuid
+  attachments String[]  @db.Uuid
+  mentions    String[]
+  editedAt    DateTime? @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Desc)])
+}
+
+// ───────── Actividad ─────────
+
+model ActivityDaily {
+  projectId       String   @db.Uuid
+  userId          String
+  // Día en UTC.
+  day             DateTime @db.Date
+  editOps         Int      @default(0)
+  nodesCreated    Int      @default(0)
+  nodesDeleted    Int      @default(0)
+  activeMinutes   Int      @default(0)
+  sessions        Int      @default(0)
+  chatMessages    Int      @default(0)
+  versionsCreated Int      @default(0)
+  aiActions       Int      @default(0)
+
+  @@id([projectId, userId, day])
+  @@index([projectId, day])
+}
+
+model ActivityEvent {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  // Nulo en los eventos security.* de la cuenta.
+  projectId String?  @db.Uuid
+  actorId   String?
+  type      String   @db.VarChar(48)
+  // Nunca tokens, códigos ni contraseñas.
+  data      Json     @default("{}")
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+}
+
+// ───────── IA ─────────
+
+enum AiFeature {
+  assistant
+  image
+  animation
+  chat
+}
+
+model AiUsage {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  organizationId String
+  projectId      String?   @db.Uuid
+  userId         String
+  feature        AiFeature
+  // "proveedor:modelo"
+  model          String    @db.VarChar(120)
+  inputTokens    Int       @default(0)
+  outputTokens   Int       @default(0)
+  images         Int       @default(0)
+  units          Int
+  // ok | error | rejected
+  status         String    @db.VarChar(16)
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model WorkspaceAiQuota {
+  organizationId    String       @id
+  monthlyUnits      Int?
+  perUserDailyUnits Int?
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model AiConversation {
+  id        String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  projectId String      @db.Uuid
+  userId    String
+  title     String?     @db.VarChar(120)
+  createdAt DateTime    @default(now()) @db.Timestamptz
+  updatedAt DateTime    @updatedAt @db.Timestamptz
+  messages  AiMessage[]
+
+  @@index([projectId, userId, updatedAt(sort: Desc)])
+}
+
+model AiMessage {
+  id             String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  conversationId String         @db.Uuid
+  // user | assistant
+  role           String         @db.VarChar(16)
+  parts          Json
+  createdAt      DateTime       @default(now()) @db.Timestamptz
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+// ───────── Plantillas ─────────
+
+model Template {
+  id             String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  // Nulo en las plantillas de Parcify.
+  organizationId String?
+  name           String         @db.VarChar(80)
+  description    String?        @db.VarChar(500)
+  createdById    String?
+  state          Bytes
+  schemaVersion  Int
+  previewAssetId String?        @db.Uuid
+  assetRefs      String[]       @db.Uuid
+  likesCount     Int            @default(0)
+  createdAt      DateTime       @default(now()) @db.Timestamptz
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  likes          TemplateLike[]
+  assets         Asset[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+}
+
+model TemplateLike {
+  templateId String   @db.Uuid
+  userId     String
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@id([templateId, userId])
+}

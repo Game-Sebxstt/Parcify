@@ -1,0 +1,33 @@
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode zstd gzip
+
+	@editor path_regexp ^/p/[0-9a-f-]{36}/?$
+	rewrite @editor /p/index.html
+	@workspace path_regexp ^/app/e/[a-z0-9-]{1,48}/?$
+	rewrite @workspace /app/e/index.html
+
+	@hashed path /_astro/* /fonts/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	@html not path /_astro/* /fonts/*
+	header @html Cache-Control "no-cache"
+	# Los workers llevan su propia CSP (generada en el build); el resto, solo frame-ancestors.
+	@worker path_regexp ^/_astro/[^/]+\.worker-[^/]+\.js$
+	import worker-csp.caddy
+	@notworker not path_regexp ^/_astro/[^/]+\.worker-[^/]+\.js$
+	header @notworker Content-Security-Policy "frame-ancestors 'none'"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+	header X-Content-Type-Options "nosniff"
+	header Permissions-Policy "microphone=(self), camera=(), geolocation=(), payment=()"
+
+	file_server
+	handle_errors 404 {
+		rewrite * /404.html
+		file_server
+	}
+}

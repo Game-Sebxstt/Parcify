@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+
+@theme {
+  --color-*: initial;
+  --color-ground: #000b1d;
+  --color-surface-1: #0a1628;
+  --color-surface-2: #122136;
+  --color-petrol: #244355;
+  --color-edge: #5d6e84;
+  --color-ink: #eef2f6;
+  --color-ink-muted: #a7b3c2;
+  --color-coral: #fb8f5a;
+  --color-coral-hover: #fca478;
+  --color-coral-ink: #000b1d;
+  --color-sage: #aad696;
+  --color-danger: #f07167;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-*: initial;
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --text-*: initial;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.35;
+  --text-xl: 1.75rem;
+  --text-xl--line-height: 1.2;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.55;
+  --text-display: clamp(2.75rem, 8vw, 7.5rem);
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.03em;
+
+  --radius-*: initial;
+  --radius-panel: 10px;
+  --radius-full: 9999px;
+
+  --shadow-*: initial;
+  --shadow-float: 0 16px 48px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.35);
+
+  --animate-toast-in: toast-in 160ms ease-out;
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+  a,
+  button,
+  [role='tab'],
+  [role='menuitem'] {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-coral);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-petrol);
+    color: var(--color-ink);
+  }
+
+  dialog::backdrop {
+    background-color: rgb(0 6 16 / 0.72);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  :root[data-reduce-motion] *,
+  :root[data-reduce-motion] *::before,
+  :root[data-reduce-motion] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  .skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 60;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    background: var(--color-ink);
+    color: var(--color-coral-ink);
+    font-weight: 600;
+    transform: translateY(-200%);
+  }
+  .skip-link:focus-visible {
+    transform: none;
+  }
+  main:focus {
+    outline: none;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

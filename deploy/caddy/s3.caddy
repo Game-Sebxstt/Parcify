@@ -1,0 +1,4 @@
+s3.{$DOMAIN} {
+	# El Host original llega intacto a SeaweedFS, que lo usa para comprobar la firma de las URLs.
+	reverse_proxy s3:8333
+}

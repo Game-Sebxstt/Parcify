@@ -1,0 +1,42 @@
+name: parcify-test
+
+services:
+  postgres:
+    image: postgres:18.1-alpine
+    environment:
+      POSTGRES_USER: parcify
+      POSTGRES_PASSWORD: parcify_test
+      POSTGRES_DB: parcify_test
+    ports: ["127.0.0.1:55433:5432"]
+    tmpfs: [/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parcify -d parcify_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:8.2.2-alpine
+    command: ["redis-server", "--requirepass", "parcify_test", "--save", "", "--appendonly", "no"]
+    ports: ["127.0.0.1:56380:6379"]
+    tmpfs: [/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "parcify_test", "--no-auth-warning", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  s3:
+    image: chrislusf/seaweedfs:4.00
+    profiles: ["s3"]
+    # Con identidades configuradas, SeaweedFS comprueba las firmas como S3.
+    command: ["server", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-dir=/data"]
+    ports: ["127.0.0.1:58334:8333"]
+    volumes: ["./test/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro"]
+    # La imagen no corre como root: el tmpfs tiene que admitir escritura de cualquier usuario.
+    tmpfs: ["/data:mode=1777"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30

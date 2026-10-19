@@ -1,0 +1,28 @@
+---
+import VersionGate from '../islands/VersionGate.svelte';
+import Toast from '../ui/Toast.svelte';
+import BaseHead from './BaseHead.astro';
+
+type Props = { title: string };
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <BaseHead title={title} noindex />
+  </head>
+  <body class="h-dvh overflow-hidden">
+    <slot />
+    <VersionGate client:load />
+    <Toast client:idle />
+    <script>
+      import { applyReduceMotion } from '../lib/motion.ts';
+      import { loadSession } from '../lib/session.svelte.ts';
+
+      applyReduceMotion();
+      void loadSession();
+    </script>
+  </body>
+</html>

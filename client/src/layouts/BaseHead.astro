@@ -1,0 +1,21 @@
+---
+import '../styles/app.css';
+
+type Props = { title: string; description?: string; noindex?: boolean };
+
+const { title, description, noindex = false } = Astro.props;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#000b1d" />
+<title>{title}</title>
+{description && <meta name="description" content={description} />}
+{noindex && <meta name="robots" content="noindex" />}
+<link rel="icon" type="image/png" href="/brand/Logo-no-background-no-text.png" />
+<script>
+  import { initSentry } from '../lib/sentry.ts';
+
+  void initSentry();
+</script>

@@ -1,0 +1,9 @@
+---
+import Settings from '../../islands/Settings.svelte';
+import AppLayout from '../../layouts/AppLayout.astro';
+import { m } from '../../paraglide/messages.js';
+---
+
+<AppLayout title={m.settings_meta_title()} current="settings">
+  <Settings client:load />
+</AppLayout>

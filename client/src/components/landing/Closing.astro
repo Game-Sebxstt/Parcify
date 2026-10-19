@@ -1,0 +1,19 @@
+---
+import { m } from '../../paraglide/messages.js';
+---
+
+<section id="empezar" class="closing" aria-labelledby="closing-title">
+  <h2 id="closing-title" class="sr-only">{m.landing_cta_heading()}</h2>
+  <!-- Sin JS, el formulario abre el overlay de registro con el email ya escrito. -->
+  <form action="/" method="get" class="closing-form" data-reveal>
+    <input type="hidden" name="acceso" value="crear" />
+    <p class="closing-sentence">
+      <span>{m.landing_cta_before()}</span>
+      <label for="closing-email" class="sr-only">{m.auth_field_email()}</label>
+      <input id="closing-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder={m.landing_cta_placeholder()} />
+      <span>{m.landing_cta_middle()}</span>
+      <button type="submit">{m.landing_cta_submit()}</button>
+    </p>
+  </form>
+  <p class="closing-note" data-reveal>{m.landing_cta_note()}</p>
+</section>

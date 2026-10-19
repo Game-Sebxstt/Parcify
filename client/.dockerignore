@@ -1,0 +1,14 @@
+node_modules
+dist
+.astro
+src/paraglide
+test-results
+playwright-report
+.env
+.env.*
+!.env.example
+*.log
+.git
+.vscode
+Dockerfile
+.dockerignore

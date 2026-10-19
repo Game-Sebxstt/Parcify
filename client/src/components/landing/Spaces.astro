@@ -1,0 +1,26 @@
+---
+import { m } from '../../paraglide/messages.js';
+---
+<section id="espacios" class="spaces" aria-labelledby="spaces-title">
+  <div class="spaces-panel">
+    <div class="spaces-left">
+      <h2 id="spaces-title" class="section-title" data-reveal>
+        <span class="block">{m.landing_spaces_title_1()}</span><span class="block">{m.landing_spaces_title_2()}</span>
+      </h2>
+      <div class="spaces-portrait" data-ui data-reveal>
+        <img src="/landing/espacios-miembros.png" alt={m.landing_shot_members()} width="480" height="181" loading="lazy" decoding="async" />
+      </div>
+    </div>
+    <div class="spaces-right">
+      <div data-reveal>
+        <h3>{m.landing_spaces_roles()}</h3>
+        <p>{m.landing_spaces_roles_body()}</p>
+      </div>
+      <div data-reveal>
+        <h3>{m.landing_spaces_access()}</h3>
+        <p>{m.landing_spaces_access_body()}</p>
+      </div>
+      <a href="/?acceso=crear" data-auth-open="crear" class="btn btn-primary" data-reveal>{m.home_cta()}</a>
+    </div>
+  </div>
+</section>

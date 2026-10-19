@@ -1,0 +1,9 @@
+---
+import Dashboard from '../../islands/Dashboard.svelte';
+import AppLayout from '../../layouts/AppLayout.astro';
+import { m } from '../../paraglide/messages.js';
+---
+
+<AppLayout title={m.app_meta_title()} current="home">
+  <Dashboard client:load />
+</AppLayout>

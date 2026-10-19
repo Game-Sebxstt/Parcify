@@ -1,0 +1,219 @@
+name: parcify
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+x-server-env: &server-env
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  API_ORIGIN: https://api.${DOMAIN:?Falta DOMAIN en deploy/.env}
+  COLLAB_ORIGIN: https://collab.${DOMAIN}
+  CLIENT_ORIGINS: https://${DOMAIN}
+  # Caddy es el único proxy delante de api y collab.
+  TRUST_PROXY_HOPS: "1"
+  DATABASE_URL: postgresql://parcify:${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en deploy/.env}@postgres:5432/parcify
+  DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?Falta REDIS_PASSWORD en deploy/.env}@redis:6379/0
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Falta BETTER_AUTH_SECRET en deploy/.env}
+  COLLAB_TOKEN_SECRET: ${COLLAB_TOKEN_SECRET:?Falta COLLAB_TOKEN_SECRET en deploy/.env}
+  MAIL_DRIVER: ${MAIL_DRIVER:?Falta MAIL_DRIVER en deploy/.env (resend o smtp)}
+  MAIL_FROM: ${MAIL_FROM:-Parcify <no-reply@${DOMAIN}>}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  SMTP_URL: ${SMTP_URL:-}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  STORAGE_DRIVER: s3
+  # Vacío = el S3 incluido en s3.<dominio>. Con R2 u otro S3, su endpoint.
+  S3_ENDPOINT: ${S3_ENDPOINT:-https://s3.${DOMAIN}}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:-parcify}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Falta S3_ACCESS_KEY_ID en deploy/.env}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Falta S3_SECRET_ACCESS_KEY en deploy/.env}
+  S3_FORCE_PATH_STYLE: "true"
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  # Sin valor: solo llega al contenedor si está definida en deploy/.env (vacía rompe el SDK de OpenAI al arrancar).
+  OPENAI_BASE_URL:
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+  AI_MODEL_ASSISTANT: ${AI_MODEL_ASSISTANT:-}
+  AI_MODEL_ANIMATION: ${AI_MODEL_ANIMATION:-}
+  AI_MODEL_CHAT: ${AI_MODEL_CHAT:-}
+  AI_MODEL_IMAGE: ${AI_MODEL_IMAGE:-}
+  AI_MODEL_VISION: ${AI_MODEL_VISION:-}
+  AI_QUOTA_WORKSPACE_MONTHLY_UNITS: ${AI_QUOTA_WORKSPACE_MONTHLY_UNITS:-}
+  AI_QUOTA_USER_DAILY_UNITS: ${AI_QUOTA_USER_DAILY_UNITS:-}
+  AI_IMAGE_DOWNLOAD_HOSTS: ${AI_IMAGE_DOWNLOAD_HOSTS:-}
+  COLLAB_MAX_CONN_PER_DOC: ${COLLAB_MAX_CONN_PER_DOC:-}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+x-server-health: &server-health
+  interval: 10s
+  timeout: 5s
+  start_period: 30s
+  retries: 10
+services:
+  proxy:
+    image: caddy:2.10.2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Falta ACME_EMAIL en deploy/.env}
+      S3_SITE_SUFFIX: ${S3_ENDPOINT:+-external}
+    volumes:
+      - ./caddy:/etc/caddy:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    networks:
+      default:
+        # api y collab firman y usan las URLs del bucket con este host: dentro de la red apunta a Caddy.
+        aliases: ["s3.${DOMAIN}"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+    restart: unless-stopped
+  postgres:
+    image: postgres:18.1-alpine
+    environment:
+      POSTGRES_USER: parcify
+      POSTGRES_DB: parcify
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parcify -d parcify"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+    restart: unless-stopped
+  redis:
+    image: redis:8.2.2-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+    restart: unless-stopped
+  s3:
+    image: chrislusf/seaweedfs:4.00
+    profiles: [s3]
+    environment:
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+    entrypoint: ["sh", "-c"]
+    # Con una identidad configurada, SeaweedFS comprueba las firmas igual que S3 y el bucket es privado.
+    command:
+      - >-
+        printf '{"identities":[{"name":"parcify","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY" > /tmp/s3.json
+        && exec weed server -s3 -s3.config=/tmp/s3.json -dir=/data
+    volumes: [s3data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging: *logging
+    restart: unless-stopped
+  bucket-init:
+    image: parcify-server:prod
+    profiles: [s3]
+    command: ["node", "/deploy/init-bucket.cjs"]
+    environment:
+      NODE_PATH: /app/node_modules
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-parcify}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      BUCKET_INIT_ENDPOINT: http://s3:8333
+      BUCKET_CORS_ORIGIN: https://${DOMAIN}
+    volumes: ["../server/local-deploy/init-bucket.cjs:/deploy/init-bucket.cjs:ro"]
+    depends_on:
+      s3: { condition: service_healthy }
+    restart: on-failure
+  migrate:
+    image: parcify-server:prod
+    build: ../server
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment: *server-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    logging: *logging
+    restart: on-failure
+  api:
+    image: parcify-server:prod
+    environment:
+      <<: *server-env
+      PORT: "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      <<: *server-health
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      bucket-init: { condition: service_completed_successfully, required: false }
+      redis: { condition: service_healthy }
+    logging: *logging
+    restart: unless-stopped
+  collab:
+    image: parcify-server:prod
+    command: ["node", "dist/collab/main.js"]
+    environment:
+      <<: *server-env
+      PORT: "3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      <<: *server-health
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      bucket-init: { condition: service_completed_successfully, required: false }
+      redis: { condition: service_healthy }
+    logging: *logging
+    restart: unless-stopped
+  web:
+    image: parcify-client:prod
+    build:
+      context: ../client
+      args:
+        PUBLIC_SITE_ORIGIN: https://${DOMAIN}
+        PUBLIC_API_ORIGIN: https://api.${DOMAIN}
+        PUBLIC_COLLAB_ORIGIN: https://collab.${DOMAIN}
+        PUBLIC_STORAGE_ORIGIN: ${S3_ENDPOINT:-https://s3.${DOMAIN}}
+        PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+    restart: unless-stopped
+  # Herramienta para las copias del bucket (deploy/scripts/backup.sh). No arranca con up.
+  rclone:
+    image: rclone/rclone:1.71.2
+    profiles: [tools]
+    environment:
+      RCLONE_CONFIG_BUCKET_TYPE: s3
+      RCLONE_CONFIG_BUCKET_PROVIDER: Other
+      RCLONE_CONFIG_BUCKET_ENDPOINT: ${S3_ENDPOINT:-http://s3:8333}
+      RCLONE_CONFIG_BUCKET_REGION: ${S3_REGION:-us-east-1}
+      RCLONE_CONFIG_BUCKET_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      RCLONE_CONFIG_BUCKET_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      RCLONE_CONFIG_BUCKET_FORCE_PATH_STYLE: "true"
+      RCLONE_CONFIG_BUCKET_NO_CHECK_BUCKET: "true"
+      S3_BUCKET: ${S3_BUCKET:-parcify}
+volumes:
+  pgdata: {}
+  redisdata: {}
+  s3data: {}
+  caddydata: {}
+  caddyconfig: {}

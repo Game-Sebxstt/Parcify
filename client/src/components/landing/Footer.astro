@@ -1,0 +1,31 @@
+---
+import { m } from '../../paraglide/messages.js';
+
+const year = 2026;
+---
+
+<footer class="footer" aria-labelledby="footer-mark">
+  <!-- El aro y las dos medias lunas del logo, construidos con círculos planos. -->
+  <div class="footer-band" data-reveal>
+    <svg class="footer-mark" viewBox="0 0 200 200" aria-hidden="true">
+      <circle cx="100" cy="100" r="96" fill="#FB8F5A"></circle>
+      <circle cx="100" cy="100" r="84" fill="#000B1D"></circle>
+      <path d="M100 30a70 70 0 0 0 0 140a52 52 0 0 1 0-140z" fill="#FB8F5A"></path>
+      <path d="M100 30a70 70 0 0 1 0 140a52 52 0 0 0 0-140z" fill="#AAD696"></path>
+      <path d="M100 82l5 13 13 5-13 5-5 13-5-13-13-5 13-5z" fill="#FB8F5A"></path>
+    </svg>
+    <p id="footer-mark" class="footer-word">{m.brand_name()}</p>
+  </div>
+  <div class="footer-links">
+    <nav aria-label={m.landing_footer_nav()}>
+      <ul>
+        <li><a href="/?acceso=entrar" data-auth-open="entrar">{m.nav_sign_in()}</a></li>
+        <li><a href="/?acceso=crear" data-auth-open="crear">{m.nav_sign_up()}</a></li>
+        <li><a href="/legal/privacidad">{m.legal_privacy_title()}</a></li>
+        <li><a href="/legal/terminos">{m.legal_terms_title()}</a></li>
+      </ul>
+    </nav>
+    <p class="footer-copy">© {year} {m.brand_name()}</p>
+    <a href="#inicio" class="btn btn-small">{m.landing_back_top()}</a>
+  </div>
+</footer>

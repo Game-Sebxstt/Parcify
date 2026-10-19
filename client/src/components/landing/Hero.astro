@@ -1,0 +1,27 @@
+---
+import LandingCanvas from '../../islands/LandingCanvas.svelte';
+import LandingControls from '../../islands/LandingControls.svelte';
+import { m } from '../../paraglide/messages.js';
+---
+
+<section id="inicio" class="hero" aria-labelledby="hero-title">
+  <!-- Las dos mitades del logo: el aro coral que encierra el lienzo y la media luna petróleo que lo encuentra. -->
+  <div class="hero-moon" aria-hidden="true"></div>
+  <div class="hero-ring">
+    <div class="hero-stage">
+      <LandingCanvas client:visible />
+    </div>
+  </div>
+  <div class="hero-copy">
+    <h1 id="hero-title" class="hero-title">
+      <span class="line"><span data-line style="--i:0">{m.landing_title_1()}</span></span>
+      <span class="line"><span data-line style="--i:1">{m.landing_title_2()}</span></span>
+    </h1>
+    <p class="hero-lead" data-rise style="--i:2">{m.landing_lead()}</p>
+    <div class="hero-actions" data-rise style="--i:3">
+      <a href="/?acceso=crear" data-auth-open="crear" class="btn btn-primary">{m.home_cta()}</a>
+      <p class="hero-note">{m.landing_hero_note()}</p>
+    </div>
+    <div data-rise style="--i:4"><LandingControls client:visible /></div>
+  </div>
+</section>

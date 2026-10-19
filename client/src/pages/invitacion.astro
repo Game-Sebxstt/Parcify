@@ -1,0 +1,11 @@
+---
+import InviteAccept from '../islands/InviteAccept.svelte';
+import PublicLayout from '../layouts/PublicLayout.astro';
+import { m } from '../paraglide/messages.js';
+---
+
+<PublicLayout title={m.invite_meta_title()} noindex>
+  <InviteAccept client:only="svelte">
+    <p slot="fallback" class="mx-auto w-full max-w-xl flex-1 px-4 py-16 text-ink-muted sm:px-8" role="status">{m.invite_loading()}</p>
+  </InviteAccept>
+</PublicLayout>

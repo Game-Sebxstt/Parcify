@@ -1,0 +1,50 @@
+---
+import { m } from '../../paraglide/messages.js';
+---
+<section id="detalle" class="board" aria-labelledby="board-title">
+  <div class="tile tile-heading" data-reveal>
+    <h2 id="board-title" class="section-title">{m.landing_board_title()}</h2>
+  </div>
+  <div class="tile tile-slider" data-reveal>
+    <div class="tile-ui" data-ui>
+      <img src="/landing/detalle-opacidad.png" alt={m.landing_shot_opacity()} width="354" height="104" loading="lazy" decoding="async" />
+    </div>
+    <p class="tile-caption"><strong>{m.landing_board_props()}</strong>{m.landing_board_props_body()}</p>
+  </div>
+  <div class="tile tile-keys" data-reveal>
+    <div class="tile-ui" data-ui>
+      <img src="/landing/detalle-herramientas.png" alt={m.landing_shot_tools()} width="81" height="294" loading="lazy" decoding="async" />
+    </div>
+    <p class="tile-caption"><strong>{m.landing_board_keys()}</strong>{m.landing_board_keys_body()}</p>
+  </div>
+  <div class="tile tile-offline" data-reveal>
+    <div class="tile-ui" data-ui>
+      <img src="/landing/detalle-sin-conexion.png" alt={m.landing_shot_offline()} width="332" height="40" loading="lazy" decoding="async" />
+    </div>
+    <p class="tile-caption"><strong>{m.landing_board_offline()}</strong>{m.landing_board_offline_body()}</p>
+  </div>
+  <div class="tile tile-presence" data-reveal>
+    <div class="tile-ui" data-ui>
+      <img src="/landing/detalle-presencia.png" alt={m.landing_shot_people()} width="124" height="92" loading="lazy" decoding="async" />
+    </div>
+    <p class="tile-caption"><strong>{m.landing_board_presence()}</strong>{m.landing_board_presence_body()}</p>
+  </div>
+  <div class="tile tile-readonly" data-reveal>
+    <div class="tile-ui" data-ui>
+      <img src="/landing/detalle-solo-lectura.png" alt={m.landing_shot_readonly()} width="282" height="52" loading="lazy" decoding="async" />
+    </div>
+    <p class="tile-caption"><strong>{m.landing_board_roles()}</strong>{m.landing_board_roles_body()}</p>
+  </div>
+  <div class="tile tile-zoom" data-reveal>
+    <div class="tile-ui" data-ui>
+      <img src="/landing/detalle-zoom.png" alt={m.landing_shot_zoom()} width="180" height="40" loading="lazy" decoding="async" />
+    </div>
+    <p class="tile-caption"><strong>{m.landing_board_zoom()}</strong>{m.landing_board_zoom_body()}</p>
+  </div>
+  <div class="tile tile-timeline" data-reveal>
+    <div class="tile-ui" data-ui>
+      <img src="/landing/detalle-timeline.png" alt={m.landing_shot_timeline()} width="928" height="256" loading="lazy" decoding="async" />
+    </div>
+    <p class="tile-caption"><strong>{m.landing_board_timeline()}</strong>{m.landing_board_timeline_body()}</p>
+  </div>
+</section>

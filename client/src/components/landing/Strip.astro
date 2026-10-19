@@ -1,0 +1,30 @@
+---
+import { m } from '../../paraglide/messages.js';
+---
+<section id="ia" class="strip" aria-labelledby="strip-title">
+  <div class="field field-1">
+    <h2 id="strip-title" class="strip-title" data-reveal>{m.landing_ai_title()}</h2>
+    <div class="ai-card" data-ui data-reveal>
+      <img src="/landing/ia-pedir.png" alt={m.landing_shot_ai_ask()} width="328" height="247" loading="lazy" decoding="async" />
+    </div>
+    <p class="field-clause" data-reveal>{m.landing_ai_step_1()}</p>
+  </div>
+  <div class="field field-2">
+    <div class="ai-card" data-ui data-reveal>
+      <img src="/landing/ia-vista-previa.png" alt={m.landing_shot_ai_preview()} width="320" height="235" loading="lazy" decoding="async" />
+    </div>
+    <p class="field-clause" data-reveal>{m.landing_ai_step_2()}</p>
+  </div>
+  <div class="field field-3">
+    <div class="ai-card" data-ui data-reveal>
+      <img src="/landing/ia-hecho.png" alt={m.landing_shot_ai_done()} width="520" height="340" loading="lazy" decoding="async" />
+    </div>
+    <p class="field-clause" data-reveal>{m.landing_ai_step_3()}</p>
+  </div>
+  <div class="field field-4">
+    <div class="ai-card ai-card-narrow" data-ui data-reveal>
+      <img src="/landing/en-vivo-deshacer.png" alt={m.landing_shot_undo()} width="80" height="40" loading="lazy" decoding="async" />
+    </div>
+    <p class="field-clause" data-reveal>{m.landing_ai_step_4()}</p>
+  </div>
+</section>

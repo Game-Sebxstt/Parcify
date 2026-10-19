@@ -1,0 +1,15 @@
+---
+import PublicLayout from '../layouts/PublicLayout.astro';
+import { m } from '../paraglide/messages.js';
+import Button from '../ui/Button.svelte';
+---
+
+<PublicLayout title={m.not_found_meta_title()} noindex>
+  <section class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-5 px-4 py-16 sm:px-8">
+    <h1 class="text-xl font-bold">{m.not_found_title()}</h1>
+    <p class="text-ink-muted">{m.not_found_body()}</p>
+    <div>
+      <Button href="/" variant="secondary">{m.not_found_action()}</Button>
+    </div>
+  </section>
+</PublicLayout>

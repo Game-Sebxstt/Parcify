@@ -1,0 +1,25 @@
+{
+	local_certs
+	skip_install_trust
+}
+
+parcify.localhost {
+	tls internal
+	reverse_proxy web:8080
+}
+
+api.parcify.localhost {
+	tls internal
+	reverse_proxy api:3000
+}
+
+collab.parcify.localhost {
+	tls internal
+	reverse_proxy collab:3001
+}
+
+s3.parcify.localhost {
+	tls internal
+	# El Host original llega intacto a SeaweedFS, que lo usa para comprobar la firma de las URLs.
+	reverse_proxy s3:8333
+}

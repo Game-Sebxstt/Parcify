@@ -1,0 +1,10 @@
+---
+import Workspace from '../../../islands/Workspace.svelte';
+import AppLayout from '../../../layouts/AppLayout.astro';
+import { m } from '../../../paraglide/messages.js';
+---
+
+<!-- /app/e/:slug se reescribe a esta página (Caddyfile y middleware de Vite); el slug se lee de la ruta en el cliente. -->
+<AppLayout title={m.workspace_meta_default()} current="workspace">
+  <Workspace client:load />
+</AppLayout>

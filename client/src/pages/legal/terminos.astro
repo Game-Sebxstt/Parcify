@@ -1,0 +1,15 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { m } from '../../paraglide/messages.js';
+import Button from '../../ui/Button.svelte';
+---
+
+<PublicLayout title={m.legal_terms_meta()}>
+  <section class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-16 sm:px-8">
+    <h1 class="text-xl font-bold">{m.legal_terms_title()}</h1>
+    <p>{m.legal_pending()}</p>
+    <div>
+      <Button href="/" variant="secondary">{m.legal_back()}</Button>
+    </div>
+  </section>
+</PublicLayout>
