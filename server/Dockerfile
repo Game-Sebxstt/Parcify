@@ -5,6 +5,10 @@ RUN npm ci
 
 FROM deps AS build
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+# Para invalidar la cache de build de Railway desde este punto, define la variable
+# CACHE_BUST en el servicio (Variables) y cambia su valor antes de redesplegar.
+# Railway la pasa como build arg a este ARG.
+ARG CACHE_BUST=1
 COPY . .
 RUN npm run build
 
