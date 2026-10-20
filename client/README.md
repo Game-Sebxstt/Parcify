@@ -2,6 +2,75 @@
 
 Cliente web de Parcify: una web estática hecha con Astro 7, islas de Svelte 5 y Tailwind v4. En producción la sirve Caddy (`Caddyfile`). Habla con el servidor (`../server`) por REST (cookie de sesión) y por WebSocket (colaboración).
 
+Para una visión de producto, el [README de la raíz](../README.md). Para el servidor, [`server/README.md`](../server/README.md). Para desplegar, [`DEPLOY.md`](../DEPLOY.md).
+
+## Arquitectura
+
+Este paquete es el «Cliente web» del diagrama. El navegador descarga la web estática que sirve el servicio `web` (Caddy) y después habla directamente con `api` por HTTPS y con `collab` por WebSocket. Con `STORAGE_DRIVER=local` las imágenes también las sirve `api`; con `s3`, el bucket.
+
+```mermaid
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 35, "rankSpacing": 40, "padding": 14, "wrappingWidth": 280}, "themeVariables": {"fontFamily": "Manrope, Segoe UI, Arial, sans-serif", "fontSize": "16px", "background": "#000B1D", "primaryColor": "#122136", "primaryTextColor": "#EEF2F6", "primaryBorderColor": "#244355", "secondaryColor": "#122136", "tertiaryColor": "#000B1D", "lineColor": "#A7B3C2", "textColor": "#EEF2F6", "clusterBkg": "#0A1628", "clusterBorder": "#244355", "titleColor": "#EEF2F6", "edgeLabelBackground": "#122136"}}}%%
+flowchart TB
+    subgraph NAV["Navegador"]
+        cliente["Cliente web<br/>Astro + Svelte 5 · Yjs"]
+    end
+
+    proxy["Proxy Caddy 2.10 · TLS<br/>web · api · collab · s3"]
+
+    subgraph SRV["Servidor (Docker Compose)"]
+        web["web<br/>Caddy · build estático de Astro"]
+        api["api<br/>Fastify 5 · REST /v1 y auth"]
+        collab["collab<br/>Hocuspocus + Yjs"]
+        pg[("PostgreSQL 18")]
+        redis[("Redis 8")]
+        s3[("Almacenamiento S3<br/>SeaweedFS en local")]
+        vol[("o volumen local<br/>STORAGE_DRIVER=local")]
+        mailpit["Mailpit<br/>correo en local"]
+    end
+
+    subgraph EXT["Servicios externos"]
+        ia["Proveedor de IA (opcional)<br/>OpenAI · Anthropic · Google"]
+        s3ext[("S3 externo<br/>R2 u otro S3")]
+        correo["Correo en producción<br/>Resend o SMTP"]
+    end
+
+    cliente -->|"HTTPS · WSS"| proxy
+    proxy -->|"HTTP :8080"| web
+    proxy -->|"HTTP :3000"| api
+    proxy -->|"WebSocket :3001"| collab
+    proxy -->|"S3 · URLs firmadas"| s3
+    api -->|"SQL"| pg
+    collab -->|"SQL"| pg
+    api <-->|"Redis pub/sub"| redis
+    collab <-->|"Redis pub/sub"| redis
+    api -->|"S3"| s3
+    api -.->|"archivos"| vol
+    api -->|"SMTP :1025"| mailpit
+    api -.->|"HTTPS"| ia
+    api -.->|"S3"| s3ext
+    api -->|"SMTP / HTTPS"| correo
+
+    classDef coral fill:#FB8F5A,stroke:#FB8F5A,color:#000B1D
+    classDef salvia fill:#AAD696,stroke:#AAD696,color:#000B1D
+    classDef petroleo fill:#244355,stroke:#AAD696,color:#EEF2F6
+    classDef ambar fill:#F4C76A,stroke:#F4C76A,color:#000B1D
+    classDef lila fill:#B9A6F5,stroke:#B9A6F5,color:#000B1D
+    classDef superficie fill:#122136,stroke:#244355,color:#EEF2F6
+
+    class cliente,proxy coral
+    class collab salvia
+    class pg,redis,s3,vol,s3ext petroleo
+    class mailpit,correo ambar
+    class ia lila
+    class web,api superficie
+```
+
+<p align="center">
+  <img src="../docs/media/20-arquitectura.png" alt="Diagrama de arquitectura de Parcify: navegador, proxy con TLS, web, api, colaboración en tiempo real, PostgreSQL, Redis, almacenamiento S3 o volumen local, correo y proveedor de IA opcional" width="640" />
+</p>
+
+La explicación de producto de cada pieza está en «[Cómo está hecho](../README.md#cómo-está-hecho)» del README de la raíz.
+
 ## Requisitos
 
 - Node.js 24.11 o posterior.
