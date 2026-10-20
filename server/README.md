@@ -5,6 +5,75 @@ Servidor de Parcify: la API REST (Fastify) y el servidor de colaboración en tie
 - `api`: `node dist/api/main.js`, puerto 3000 en desarrollo.
 - `collab`: `node dist/collab/main.js`, puerto 3001 en desarrollo.
 
+Para una visión de producto, el [README de la raíz](../README.md). Para el cliente web, [`client/README.md`](../client/README.md). Para desplegar, [`DEPLOY.md`](../DEPLOY.md).
+
+## Arquitectura
+
+Este paquete produce dos cajas del diagrama, `api` y `collab`, que comparten PostgreSQL y Redis y se avisan entre sí por Redis. Las imágenes van a un bucket S3 o, con `STORAGE_DRIVER=local`, a una carpeta en disco (un volumen) que solo monta y sirve la API. El correo y la IA los usa solo la API.
+
+```mermaid
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 35, "rankSpacing": 40, "padding": 14, "wrappingWidth": 280}, "themeVariables": {"fontFamily": "Manrope, Segoe UI, Arial, sans-serif", "fontSize": "16px", "background": "#000B1D", "primaryColor": "#122136", "primaryTextColor": "#EEF2F6", "primaryBorderColor": "#244355", "secondaryColor": "#122136", "tertiaryColor": "#000B1D", "lineColor": "#A7B3C2", "textColor": "#EEF2F6", "clusterBkg": "#0A1628", "clusterBorder": "#244355", "titleColor": "#EEF2F6", "edgeLabelBackground": "#122136"}}}%%
+flowchart TB
+    subgraph NAV["Navegador"]
+        cliente["Cliente web<br/>Astro + Svelte 5 · Yjs"]
+    end
+
+    proxy["Proxy Caddy 2.10 · TLS<br/>web · api · collab · s3"]
+
+    subgraph SRV["Servidor (Docker Compose)"]
+        web["web<br/>Caddy · build estático de Astro"]
+        api["api<br/>Fastify 5 · REST /v1 y auth"]
+        collab["collab<br/>Hocuspocus + Yjs"]
+        pg[("PostgreSQL 18")]
+        redis[("Redis 8")]
+        s3[("Almacenamiento S3<br/>SeaweedFS en local")]
+        vol[("o volumen local<br/>STORAGE_DRIVER=local")]
+        mailpit["Mailpit<br/>correo en local"]
+    end
+
+    subgraph EXT["Servicios externos"]
+        ia["Proveedor de IA (opcional)<br/>OpenAI · Anthropic · Google"]
+        s3ext[("S3 externo<br/>R2 u otro S3")]
+        correo["Correo en producción<br/>Resend o SMTP"]
+    end
+
+    cliente -->|"HTTPS · WSS"| proxy
+    proxy -->|"HTTP :8080"| web
+    proxy -->|"HTTP :3000"| api
+    proxy -->|"WebSocket :3001"| collab
+    proxy -->|"S3 · URLs firmadas"| s3
+    api -->|"SQL"| pg
+    collab -->|"SQL"| pg
+    api <-->|"Redis pub/sub"| redis
+    collab <-->|"Redis pub/sub"| redis
+    api -->|"S3"| s3
+    api -.->|"archivos"| vol
+    api -->|"SMTP :1025"| mailpit
+    api -.->|"HTTPS"| ia
+    api -.->|"S3"| s3ext
+    api -->|"SMTP / HTTPS"| correo
+
+    classDef coral fill:#FB8F5A,stroke:#FB8F5A,color:#000B1D
+    classDef salvia fill:#AAD696,stroke:#AAD696,color:#000B1D
+    classDef petroleo fill:#244355,stroke:#AAD696,color:#EEF2F6
+    classDef ambar fill:#F4C76A,stroke:#F4C76A,color:#000B1D
+    classDef lila fill:#B9A6F5,stroke:#B9A6F5,color:#000B1D
+    classDef superficie fill:#122136,stroke:#244355,color:#EEF2F6
+
+    class cliente,proxy coral
+    class collab salvia
+    class pg,redis,s3,vol,s3ext petroleo
+    class mailpit,correo ambar
+    class ia lila
+    class web,api superficie
+```
+
+<p align="center">
+  <img src="../docs/media/20-arquitectura.png" alt="Diagrama de arquitectura de Parcify: navegador, proxy con TLS, web, api, colaboración en tiempo real, PostgreSQL, Redis, almacenamiento S3 o volumen local, correo y proveedor de IA opcional" width="640" />
+</p>
+
+La explicación de producto de cada pieza está en «[Cómo está hecho](../README.md#cómo-está-hecho)» del README de la raíz.
+
 ## Requisitos
 
 - Node.js 24.11 o posterior.
@@ -353,7 +422,7 @@ Para empezar de cero: `docker compose -f compose.local.yml down -v`. Borra todo:
 
 ## Producción en Railway
 
-Esta guía deja Parcify funcionando en Railway con dominio propio. Para un VPS propio con Docker, la vía más sencilla es [`DEPLOY.md`](../DEPLOY.md) en la raíz del monorepo. Lo que hay en el repo ya está preparado (imágenes, `railway.api.json`, `railway.collab.json` y la validación de la configuración); lo que falta son las cuentas, los dominios y los secretos, que pones tú.
+Esta sección resume lo propio del servidor en Railway. La guía paso a paso, con disco local (volumen) y todas las variables de cada servicio, está en [`DEPLOY.md`](../DEPLOY.md) en la raíz del monorepo. Lo que hay en el repo ya está preparado (imágenes, `railway.api.json`, `railway.collab.json` y la validación de la configuración); lo que falta son las cuentas, los dominios y los secretos, que pones tú.
 
 ### 1. Servicios
 
