@@ -7,5 +7,5 @@ src/generated/
 !.env.example
 .env.local-deploy
 local-deploy/caddy-root.crt
-storage/
+/storage/
 *.log
