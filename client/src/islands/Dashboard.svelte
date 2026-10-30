@@ -19,6 +19,7 @@
   import Dialog from '../ui/Dialog.svelte';
   import Field from '../ui/Field.svelte';
   import type { MenuItem } from '../ui/Menu.svelte';
+  import Select from '../ui/Select.svelte';
   import Skeleton from '../ui/Skeleton.svelte';
   import { showToast } from '../ui/toast.svelte.ts';
   import ProjectCard from './dashboard/ProjectCard.svelte';
@@ -279,15 +280,13 @@
     {#if spaces.length > 1}
       <div class="flex flex-col gap-1.5">
         <label for="import-project-space" class="text-sm font-medium">{m.dashboard_project_space()}</label>
-        <select
+        <Select
           id="import-project-space"
+          items={spaces.map((workspace) => ({ value: workspace.slug, label: workspace.name }))}
           bind:value={importWorkspace}
-          class="h-11 cursor-pointer rounded-panel border border-edge bg-surface-2 px-3 text-base text-ink hover:border-ink-muted focus-visible:border-coral"
-        >
-          {#each spaces as workspace (workspace.id)}
-            <option value={workspace.slug}>{workspace.name}</option>
-          {/each}
-        </select>
+          label={m.dashboard_project_space()}
+          size="lg"
+        />
       </div>
     {/if}
     <div class="flex justify-end gap-2">

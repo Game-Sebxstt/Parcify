@@ -49,19 +49,110 @@ describe('ids', () => {
   });
 });
 
+function v1Document(): Y.Doc {
+  const doc = new Y.Doc();
+  initDocument(doc);
+  doc.getMap(ROOT_KEYS.meta).set('schemaVersion', 1);
+  return doc;
+}
+
+function seedV1Content(doc: Y.Doc) {
+  const pageId = [...doc.getMap(ROOT_KEYS.pages).keys()][0]!;
+  const base = { pageId, parentId: null, index: 'a0', x: 10, y: 20, w: 100, h: 50, rotation: 0, opacity: 1, visible: true, locked: false, createdBy: 'user_1' };
+  const style = { fill: '#FF6B4AFF', stroke: null, strokeWidth: 1, strokeDash: 'solid', shadow: null };
+  const rectId = newNodeId();
+  const connectorId = newNodeId();
+  const textId = newNodeId();
+  const nodes: Record<string, Record<string, unknown>> = {
+    [rectId]: { ...base, ...style, id: rectId, type: 'rect', cornerRadius: 4 },
+    [connectorId]: {
+      ...base,
+      ...style,
+      id: connectorId,
+      type: 'connector',
+      from: { nodeId: rectId, anchor: 'right' },
+      to: { x: 300, y: 40 },
+      route: 'elbow',
+      startCap: 'none',
+      endCap: 'arrow',
+    },
+    [textId]: {
+      ...base,
+      id: textId,
+      type: 'text',
+      fontFamily: 'Manrope',
+      fontSize: 16,
+      fontWeight: 400,
+      italic: false,
+      underline: false,
+      strike: false,
+      color: '#FFFFFFFF',
+      align: 'left',
+      lineHeight: 1.2,
+      autoWidth: false,
+    },
+  };
+  const animation = {
+    duration: 800,
+    delay: 0,
+    loop: 1,
+    direction: 'normal',
+    autoplay: 'present',
+    tracks: {
+      scale: { a: { t: 0, v: 0, e: 'easeOutBack' }, b: { t: 1, v: 1, e: 'linear' } },
+      opacity: { c: { t: 0, v: 0, e: 'linear' }, d: { t: 1, v: 1.2, e: 'linear' } },
+    },
+  };
+  doc.transact(() => {
+    for (const [id, props] of Object.entries(nodes)) {
+      const map = new Y.Map<unknown>();
+      for (const [key, value] of Object.entries(props)) map.set(key, value);
+      doc.getMap(ROOT_KEYS.nodes).set(id, map);
+    }
+    const anim = new Y.Map<unknown>();
+    for (const [key, value] of Object.entries(animation)) anim.set(key, value);
+    doc.getMap(ROOT_KEYS.animations).set(rectId, anim);
+  });
+}
+
 describe('migrate', () => {
-  it('el registro de la versión 1 está vacío y migrar es un no-op', () => {
-    expect(Object.keys(MIGRATIONS)).toEqual([]);
+  it('un documento nuevo ya está en la v2 y migrarlo es un no-op', () => {
+    expect(DOCUMENT_SCHEMA_VERSION).toBe(2);
+    expect(Object.keys(MIGRATIONS)).toEqual(['1']);
     const doc = new Y.Doc();
     initDocument(doc);
     const before = Y.encodeStateVector(doc);
-    expect(migrate(doc)).toEqual({ from: 1, to: 1, applied: [] });
+    expect(migrate(doc)).toEqual({ from: 2, to: 2, applied: [] });
+    expect(Y.encodeStateVector(doc)).toEqual(before);
+  });
+
+  it('migrar de v1 a v2 deja nodos y animaciones idénticos', () => {
+    const doc = v1Document();
+    seedV1Content(doc);
+    const nodes = JSON.stringify(doc.getMap(ROOT_KEYS.nodes).toJSON());
+    const animations = JSON.stringify(doc.getMap(ROOT_KEYS.animations).toJSON());
+    const pages = JSON.stringify(doc.getMap(ROOT_KEYS.pages).toJSON());
+
+    expect(migrate(doc)).toEqual({ from: 1, to: 2, applied: [1] });
+    expect(documentSchemaVersion(doc)).toBe(2);
+    expect(JSON.stringify(doc.getMap(ROOT_KEYS.nodes).toJSON())).toBe(nodes);
+    expect(JSON.stringify(doc.getMap(ROOT_KEYS.animations).toJSON())).toBe(animations);
+    expect(JSON.stringify(doc.getMap(ROOT_KEYS.pages).toJSON())).toBe(pages);
+    expect(migrate(doc)).toEqual({ from: 2, to: 2, applied: [] });
+  });
+
+  it('un documento v3 lanza DocumentTooNewError sin tocarlo', () => {
+    const doc = new Y.Doc();
+    initDocument(doc);
+    doc.getMap(ROOT_KEYS.meta).set('schemaVersion', 3);
+    const before = Y.encodeStateVector(doc);
+    expect(() => migrate(doc)).toThrow(DocumentTooNewError);
+    expect(documentSchemaVersion(doc)).toBe(3);
     expect(Y.encodeStateVector(doc)).toEqual(before);
   });
 
   it('aplica migraciones en orden, en una transacción, y es idempotente', () => {
-    const doc = new Y.Doc();
-    initDocument(doc);
+    const doc = v1Document();
     const migrations = {
       1: (d: Y.Doc) => d.getMap(ROOT_KEYS.meta).set('migratedTo2', true),
       2: (d: Y.Doc) => d.getMap(ROOT_KEYS.meta).set('migratedTo3', true),
@@ -76,8 +167,7 @@ describe('migrate', () => {
   });
 
   it('no toca el documento si falta un paso y rechaza documentos más nuevos', () => {
-    const doc = new Y.Doc();
-    initDocument(doc);
+    const doc = v1Document();
     expect(() => migrate(doc, { migrations: {}, target: 2 })).toThrow('Falta la migración 1 → 2');
     expect(documentSchemaVersion(doc)).toBe(1);
     doc.getMap(ROOT_KEYS.meta).set('schemaVersion', DOCUMENT_SCHEMA_VERSION + 1);
@@ -85,8 +175,7 @@ describe('migrate', () => {
   });
 
   it('dos réplicas que migran a la vez convergen', () => {
-    const a = new Y.Doc();
-    initDocument(a);
+    const a = v1Document();
     const b = new Y.Doc();
     Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
     const migrations = { 1: (d: Y.Doc) => d.getMap(ROOT_KEYS.meta).set('flag', 'v2') };

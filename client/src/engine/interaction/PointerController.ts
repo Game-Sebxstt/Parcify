@@ -5,10 +5,12 @@ import { localMatrix } from '../geometry/bounds.ts';
 import { anchorAt, routeEnd, routeStart, type ConnectorEnd } from '../geometry/connectors.ts';
 import { apply, compose, invert, rotateAround, rotation, scaling, translation, type Mat, type Point } from '../geometry/matrix.ts';
 import { snapBox, type SnapCandidates } from '../geometry/snapping.ts';
-import { HANDLE_HIT_PX, HANDLE_SIDES, hitHandle, resizeCursor, type SelectionFrame } from '../overlay/handles.ts';
+import { snapRotation, toDeg, toRad } from '../geometry/angles.ts';
+import { expandQuad, HANDLE_SIDES, hitHandle, insideQuad, resizeCursor, type SelectionFrame } from '../overlay/handles.ts';
 import type { HandleKind } from '../render/sink.ts';
 import { Store } from '../store.ts';
-import type { AABB, BasicShapeType, LineRecord } from '../types.ts';
+import { containsAABB, type AABB, type BasicShapeType, type LineRecord } from '../types.ts';
+import type { InputProfile, PointerKind } from './input/profile.ts';
 import { findShortcut, type KeyInput } from './shortcuts.ts';
 
 export type PointerInput = {
@@ -19,14 +21,15 @@ export type PointerInput = {
   alt: boolean;
   ctrl: boolean;
   pointerId: number;
+  pointerType: PointerKind;
+  pressure: number;
 };
-
-export type WheelInput = { x: number; y: number; deltaX: number; deltaY: number; ctrl: boolean };
 
 export type PointerState = 'idle' | 'pressing' | 'dragging' | 'marquee' | 'resizing' | 'rotating' | 'creating' | 'panning' | 'point';
 
+// viaBox: se pulsó en un hueco dentro de la caja de la selección; arrastrar mueve la selección y un clic es un clic en vacío.
 type PressTarget =
-  | { kind: 'node'; id: string; wasSelected: boolean }
+  | { kind: 'node'; id: string; wasSelected: boolean; viaBox?: boolean }
   | { kind: 'empty'; base: readonly string[] }
   | { kind: 'handle'; handle: HandleKind; frame: SelectionFrame }
   | { kind: 'rotate'; frame: SelectionFrame }
@@ -34,11 +37,10 @@ type PressTarget =
   | { kind: 'create'; tool: Tool }
   | { kind: 'pan' };
 
-export const DRAG_THRESHOLD_PX = 3;
-export const DOUBLE_CLICK_MS = 400;
+export type PressKind = PressTarget['kind'];
+
 // A menos de esta distancia de pantalla, el extremo de un conector se pega al ancla con nombre más cercana.
 export const ANCHOR_SNAP_PX = 12;
-const ROTATE_STEP = Math.PI / 12;
 const SHAPE_TOOLS = new Set<Tool>(['rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc']);
 
 // Máquina de estados del puntero: idle → pressing → (dragging | marquee | resizing | rotating | creating | panning | point) → idle.
@@ -60,12 +62,24 @@ export class PointerController {
   private pointPreview: Array<[number, number]> | null = null;
   private endPreview: { which: 'from' | 'to'; end: ConnectorEnd } | null = null;
   private startAngle = 0;
-  private lastClick: { id: string; time: number } | null = null;
+  // id null: el clic fue en vacío (o en el hueco de la selección).
+  private lastClick: { id: string | null; x: number; y: number; time: number } | null = null;
+  // Con el dedo, la selección que dejaría la pulsación se aplica al pasar el umbral o al soltar, no al tocar.
+  private pendingSelect: string[] | null = null;
 
   constructor(private readonly core: EditorCore) {}
 
   private get tool(): Tool {
     return this.core.tool.get();
+  }
+
+  private get profile(): Readonly<InputProfile> {
+    return this.core.inputProfile.get();
+  }
+
+  // Qué se ha pulsado en el gesto en curso (null sin gesto).
+  get pressKind(): PressKind | null {
+    return this.target?.kind ?? null;
   }
 
   private get readOnly(): boolean {
@@ -86,6 +100,7 @@ export class PointerController {
 
     if (input.button === 1 || this.spaceHeld || this.tool === 'hand') {
       this.core.stopFollowing();
+      this.core.markUserCamera();
       this.target = { kind: 'pan' };
       this.state = 'panning';
       this.lastPan = { x: input.x, y: input.y };
@@ -113,19 +128,50 @@ export class PointerController {
 
     const hit = this.core.pick(input.x, input.y, { includeLocked: input.alt });
     const selection = this.core.selection.get();
-    if (hit) {
+    const gap = !input.shift && !input.ctrl && (!hit || this.isBackdrop(hit, selection)) && this.insideSelectionBox(input.x, input.y, selection);
+    if (gap) {
+      this.target = { kind: 'node', id: selection[0]!, wasSelected: true, viaBox: true };
+    } else if (hit) {
       const wasSelected = selection.includes(hit);
       if (input.shift) {
-        this.core.setSelection(wasSelected ? selection.filter((id) => id !== hit) : [...selection, hit]);
+        this.select(wasSelected ? selection.filter((id) => id !== hit) : [...selection, hit]);
       } else if (!wasSelected) {
-        this.core.setSelection([hit]);
+        this.select([hit]);
       }
       this.target = { kind: 'node', id: hit, wasSelected };
     } else {
-      if (!input.shift) this.core.setSelection([]);
+      if (!input.shift) this.select([]);
       this.target = { kind: 'empty', base: input.shift ? selection : [] };
     }
     this.state = 'pressing';
+  }
+
+  private select(ids: string[]): void {
+    if (this.profile.deferSelection) this.pendingSelect = ids;
+    else this.core.setSelection(ids);
+  }
+
+  private applyPendingSelection(): void {
+    const ids = this.pendingSelect;
+    this.pendingSelect = null;
+    if (ids) this.core.setSelection(ids);
+  }
+
+  // Un frame no seleccionado que envuelve la selección (la contiene o es padre de alguno de sus nodos) hace de fondo:
+  // tocarlo dentro de la caja de la selección cuenta como tocar un hueco.
+  private isBackdrop(id: string, selection: readonly string[]): boolean {
+    if (selection.includes(id) || this.core.record(id)?.type !== 'frame') return false;
+    if (selection.some((selected) => this.core.tree.isDescendant(selected, id))) return true;
+    return containsAABB(this.core.boundsOf([id]), this.core.boundsOf(selection));
+  }
+
+  // Varios nodos (o un grupo): un hueco dentro de su caja, más un margen, cuenta como la selección.
+  private insideSelectionBox(x: number, y: number, selection: readonly string[]): boolean {
+    const multiple = selection.length >= 2 || (selection.length === 1 && this.core.record(selection[0]!)?.type === 'group');
+    if (!multiple) return false;
+    const frame = this.core.selectionFrame(selection);
+    if (!frame) return false;
+    return insideQuad(expandQuad(this.core.screenCorners(frame), this.profile.boxSlop), x, y);
   }
 
   pointerMove(input: PointerInput): void {
@@ -143,6 +189,7 @@ export class PointerController {
     const target = this.target;
     switch (this.state) {
       case 'pressing':
+        this.applyPendingSelection();
         this.click(target, input);
         break;
       case 'dragging':
@@ -169,6 +216,16 @@ export class PointerController {
     this.reset();
   }
 
+  // El puntero sale del lienzo sin botones: se descarta el último movimiento pendiente, que si no volvería a marcar
+  // el hover en el frame siguiente.
+  pointerLeave(): void {
+    if (this.state !== 'idle') return;
+    this.moved = false;
+    this.latest = null;
+    this.core.setHover(null);
+  }
+
+  // Quita las vistas previas del gesto sin escribir nada en el documento.
   cancel(): void {
     if (this.state === 'dragging' || this.state === 'resizing' || this.state === 'rotating') this.core.setGesture(null);
     if (this.state === 'marquee') this.core.setMarquee(null);
@@ -188,6 +245,7 @@ export class PointerController {
     this.pointPreview = null;
     this.endPreview = null;
     this.lastPan = null;
+    this.pendingSelect = null;
     this.cursor.set(this.idleCursor());
   }
 
@@ -202,17 +260,6 @@ export class PointerController {
     if (!hit) this.core.setSelection([]);
     else if (!selection.includes(hit)) this.core.setSelection([hit]);
     return world;
-  }
-
-  wheel(input: WheelInput): void {
-    this.core.stopFollowing();
-    const camera = this.core.camera;
-    if (input.ctrl || input.deltaX === 0) {
-      camera.zoomAt(input.x, input.y, Math.exp(-input.deltaY * (input.ctrl ? 0.006 : 0.0015)));
-    } else {
-      camera.panBy(-input.deltaX, -input.deltaY);
-    }
-    this.core.requestFrame();
   }
 
   // Devuelve true si la tecla se ha usado (para evitar la acción por defecto del navegador).
@@ -271,7 +318,8 @@ export class PointerController {
         this.updateHover(input);
         return;
       case 'pressing':
-        if (!this.down || Math.hypot(input.x - this.down.x, input.y - this.down.y) < DRAG_THRESHOLD_PX) return;
+        if (!this.down || Math.hypot(input.x - this.down.x, input.y - this.down.y) < this.profile.dragThreshold) return;
+        this.applyPendingSelection();
         this.start();
         this.continue(input);
         return;
@@ -297,6 +345,8 @@ export class PointerController {
   private handleAt(x: number, y: number): PressTarget | null {
     const ids = this.core.selection.get();
     if (!ids.length || this.readOnly || this.core.anyLocked(ids)) return null;
+    const profile = this.profile;
+    const half = profile.handleHit / 2;
     if (ids.length === 1) {
       const record = this.core.renderable(ids[0]!);
       if (record?.type === 'line') {
@@ -305,7 +355,7 @@ export class PointerController {
           const [px, py] = record.points[i]!;
           const p = apply(world, px, py);
           const s = this.core.camera.worldToScreen(p.x, p.y);
-          if (Math.abs(s.x - x) <= HANDLE_HIT_PX && Math.abs(s.y - y) <= HANDLE_HIT_PX) return { kind: 'point', id: record.id, index: i };
+          if (Math.abs(s.x - x) <= half && Math.abs(s.y - y) <= half) return { kind: 'point', id: record.id, index: i };
         }
         return null;
       }
@@ -315,14 +365,14 @@ export class PointerController {
         const ends = [routeStart(route), routeEnd(route)];
         for (let i = 0; i < ends.length; i++) {
           const s = this.core.camera.worldToScreen(ends[i]!.x, ends[i]!.y);
-          if (Math.abs(s.x - x) <= HANDLE_HIT_PX && Math.abs(s.y - y) <= HANDLE_HIT_PX) return { kind: 'point', id: record.id, index: i };
+          if (Math.abs(s.x - x) <= half && Math.abs(s.y - y) <= half) return { kind: 'point', id: record.id, index: i };
         }
         return null;
       }
     }
     const frame = this.core.selectionFrame(ids);
     if (!frame) return null;
-    const hit = hitHandle(this.core.screenCorners(frame), x, y);
+    const hit = hitHandle(this.core.screenCorners(frame), x, y, profile);
     if (!hit) return null;
     if (hit.kind === 'rotate') return { kind: 'rotate', frame };
     return { kind: 'handle', handle: hit.kind, frame };
@@ -492,8 +542,10 @@ export class PointerController {
     const target = this.target;
     if (target?.kind !== 'rotate') return;
     const { frame } = target;
-    let delta = this.angleFrom(frame, this.world(input)) - this.startAngle;
-    if (input.shift) delta = Math.round((frame.angle + delta) / ROTATE_STEP) * ROTATE_STEP - frame.angle;
+    const raw = this.angleFrom(frame, this.world(input)) - this.startAngle;
+    const snap = snapRotation(toDeg(frame.angle + raw), { shift: input.shift, ctrl: input.ctrl, thresholdDeg: this.profile.rotateSnapDeg });
+    // Se gira por el camino corto hasta el ángulo imantado, que viene normalizado a (−180°, 180°].
+    const delta = Math.atan2(Math.sin(toRad(snap.angle) - frame.angle), Math.cos(toRad(snap.angle) - frame.angle));
     const center = this.frameCenter(frame);
     this.matrix = rotateAround(center.x, center.y, delta);
     this.core.setGesture({ ids: this.moveIds, matrix: this.matrix });
@@ -584,19 +636,27 @@ export class PointerController {
 
   private click(target: PressTarget | null, input: PointerInput): void {
     if (!target) return;
+    const now = performance.now();
+    if (target.kind === 'node' && target.viaBox) {
+      this.core.setSelection([]);
+      // Cuenta como clic en vacío: el segundo clic de un doble clic llega ya sin selección, por la rama de vacío.
+      this.lastClick = { id: null, x: input.x, y: input.y, time: now };
+      return;
+    }
     if (target.kind === 'node' && !input.shift && target.wasSelected && this.core.selection.get().length > 1) {
       this.core.setSelection([target.id]);
     }
+    const last = this.lastClick;
     if (target.kind === 'node' && !input.shift) {
       // Doble clic: abre el texto del nodo (o el interior de la forma).
-      const now = performance.now();
-      const last = this.lastClick;
-      this.lastClick = { id: target.id, time: now };
-      if (last && last.id === target.id && now - last.time <= DOUBLE_CLICK_MS) {
+      this.lastClick = { id: target.id, x: input.x, y: input.y, time: now };
+      if (last?.id === target.id && this.isDoubleClick(last, input, now)) {
         this.lastClick = null;
         // En un grupo entra y selecciona lo que hay debajo; en un texto o una forma abre su texto.
         if (!this.core.enter(target.id, input.x, input.y)) this.core.startTextEdit(target.id);
       }
+    } else if (target.kind === 'empty' && !input.shift) {
+      this.lastClick = { id: null, x: input.x, y: input.y, time: now };
     } else {
       this.lastClick = null;
     }
@@ -618,6 +678,11 @@ export class PointerController {
       }
       this.core.commands.setTool('select');
     }
+  }
+
+  private isDoubleClick(last: { x: number; y: number; time: number }, input: PointerInput, now: number): boolean {
+    const { doubleMs, doublePx } = this.profile;
+    return now - last.time <= doubleMs && Math.hypot(input.x - last.x, input.y - last.y) <= doublePx;
   }
 
   // Extremo de conector bajo el puntero: anclado al nodo que haya debajo (sin contar conectores) o libre. Los

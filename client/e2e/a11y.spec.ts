@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { joinWorkspace } from './helpers/invite.ts';
 
 // WCAG 2.2 AA en lo que no es lienzo; el lienzo WebGL queda fuera porque axe no puede leerlo.
 async function audit(page: Page) {
@@ -13,6 +14,25 @@ async function audit(page: Page) {
     nodes: violation.nodes.map((node) => node.target.join(' ')).slice(0, 5),
   }));
 }
+
+// CA-3.3: ningún control nativo visible y ningún botón con `title`. Los `input` ocultos que bits-ui pone para los
+// formularios llevan `aria-hidden` y no cuentan.
+const NATIVE = 'select, input[type=checkbox], input[type=radio], input[type=range], input[type=color], input[type=number]';
+// `within` limita la búsqueda a un diálogo abierto, sin contar el panel de propiedades ni la línea de tiempo.
+const nativeControls = (page: Page, within?: string) =>
+  page.evaluate(
+    ([selector, scope]) => {
+      const root = scope ? document.querySelector(scope) : document;
+      if (!root) return { controls: ['sin raíz'], titled: [] };
+      const controls = [...root.querySelectorAll<HTMLElement>(selector)]
+        .filter((element) => element.getAttribute('aria-hidden') !== 'true' && element.checkVisibility())
+        .map((element) => element.outerHTML.slice(0, 120));
+      const titled = [...root.querySelectorAll<HTMLElement>('button[title]')].map((element) => element.outerHTML.slice(0, 120));
+      return { controls, titled };
+    },
+    [NATIVE, within ?? null] as const,
+  );
+const NO_NATIVE = { controls: [], titled: [] };
 
 test('axe sin violaciones en la landing y el overlay de acceso', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -109,26 +129,92 @@ test('axe sin violaciones en el editor, y el lienzo y las capas se usan con el t
   await expect(tree.getByRole('treeitem', { name: 'Grupo' })).toBeVisible();
 });
 
-test('axe sin violaciones en el inicio, el espacio y los ajustes', async ({ page }) => {
+// Abre un `Select` dentro de un diálogo o una región y comprueba que su lista sale por el portal sin recortes.
+async function openSelectList(page: Page, trigger: Locator, options: number) {
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  const list = page.getByRole('listbox');
+  await expect(list).toBeVisible();
+  await expect(list.getByRole('option')).toHaveCount(options);
+  expect(await floatingClips(page)).toEqual({ open: 1, clips: [] });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-floating]')).toHaveCount(0);
+}
+
+test('axe sin violaciones en el inicio, el espacio y los ajustes', async ({ page, browser }) => {
+  test.setTimeout(150_000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const account = await createVerifiedAccount(page.request, `a11y-${test.info().project.name}`);
   await createProject(page.request, account.workspaceSlug, 'Cartel accesible');
+  // Un segundo espacio y otra persona en el personal: así existen el `Select` de espacio y el del rol de un miembro.
+  const space = await page.request.post('http://localhost:3000/v1/workspaces', {
+    headers: { origin: 'http://localhost:4321' },
+    data: { name: 'Estudio accesible' },
+  });
+  expect(space.ok(), await space.text()).toBe(true);
+  const context = await browser.newContext();
+  const bea = await createVerifiedAccount(context.request, `a11y-bea-${test.info().project.name}`, 'Bea Accesible');
+  await joinWorkspace(page.request, account.workspaceSlug, context.request, bea.email);
+  await context.close();
 
   await page.goto('/app');
   await expect(page.getByRole('list', { name: 'Recientes' }).getByRole('listitem')).toHaveCount(1);
   expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+
+  // «Nuevo proyecto» e «Importar» con dos espacios: el `Select` de espacio existe y su lista no se recorta.
+  await page.getByRole('button', { name: 'Nuevo proyecto' }).click();
+  const create = page.getByRole('dialog', { name: 'Crear un proyecto' });
+  await expect(create).toBeVisible();
+  expect(await nativeControls(page, '[role=dialog]')).toEqual(NO_NATIVE);
+  await openSelectList(page, create.getByRole('combobox', { name: /^Espacio: / }), 2);
+  await expect(create).toBeVisible();
+  expect(await audit(page)).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(create).toBeHidden();
+
+  await page.getByRole('button', { name: 'Importar .parcify' }).click();
+  const importing = page.getByRole('dialog', { name: 'Importar un proyecto' });
+  await expect(importing).toBeVisible();
+  await openSelectList(page, importing.getByRole('combobox', { name: /^Espacio: / }), 2);
+  await expect(importing).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(importing).toBeHidden();
 
   await page.goto(`/app/e/${account.workspaceSlug}`);
   await expect(page.getByRole('list', { name: 'Proyectos' }).getByRole('listitem')).toHaveCount(1);
   expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+
+  // «Ordenar por» abre su lista en el portal, sin ancestros que la recorten.
+  await page.getByLabel('Ordenar por').click();
+  await expect(page.getByRole('listbox')).toBeVisible();
+  expect(await floatingClips(page)).toEqual({ open: 1, clips: [] });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-floating]')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Nuevo proyecto' }).click();
+  await expect(page.getByRole('dialog', { name: 'Crear un proyecto' })).toBeVisible();
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+  await page.keyboard.press('Escape');
+
   await page.getByRole('tab', { name: 'Miembros' }).click();
   await expect(page.getByRole('list', { name: 'Miembros' })).toBeVisible();
   expect(await audit(page)).toEqual([]);
+  // La invitación al espacio con su selector de rol.
+  await expect(page.getByRole('region', { name: 'Invitar al espacio' })).toBeVisible();
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+  // El rol de la otra persona se cambia con un `Select` propio; quien es propietario ve los tres roles.
+  await openSelectList(page, page.getByRole('list', { name: 'Miembros' }).getByRole('combobox', { name: 'Rol de Bea Accesible: Miembro' }), 3);
 
   await page.goto('/app/ajustes');
   await expect(page.getByRole('region', { name: 'Sesiones activas' }).getByRole('listitem')).toHaveCount(1);
   await expect(page.getByRole('region', { name: 'Historial de seguridad' }).getByRole('listitem').first()).toBeVisible();
   expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+  const wheel = page.getByRole('radiogroup', { name: 'Rueda del ratón' });
+  await expect(wheel).toBeVisible();
+  await expect(wheel).toHaveAccessibleDescription(/^Con Ctrl o ⌘ la rueda siempre hace zoom/);
 });
 
 async function openEditor(page: Page, projectId: string) {
@@ -137,7 +223,8 @@ async function openEditor(page: Page, projectId: string) {
 }
 
 test('axe sin violaciones en los paneles del editor: IA, chat, versiones, timeline, compartir y exportar', async ({ page }) => {
-  test.setTimeout(150_000);
+  // Doce auditorías de axe sobre el editor: en Firefox cada una tarda varios segundos.
+  test.setTimeout(240_000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const account = await createVerifiedAccount(page.request, `a11y-panels-${test.info().project.name}`);
   const projectId = await createProject(page.request, account.workspaceSlug, 'Cartel accesible');
@@ -187,6 +274,14 @@ test('axe sin violaciones en los paneles del editor: IA, chat, versiones, timeli
   const share = page.getByRole('dialog', { name: 'Compartir «Cartel accesible»' });
   await expect(share.getByTestId('share-person')).toHaveCount(1);
   expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page, '[role=dialog]')).toEqual(NO_NATIVE);
+  // La lista del rol sale del diálogo por el portal y queda por encima.
+  await share.getByLabel('Rol del enlace').click();
+  await expect(page.getByRole('listbox')).toBeVisible();
+  expect(await floatingClips(page)).toEqual({ open: 1, clips: [] });
+  expect(await audit(page)).toEqual([]);
+  await page.getByRole('listbox').getByRole('option', { name: 'Puede editar', exact: true }).click();
+  await expect(share.getByLabel('Rol del enlace')).toHaveAccessibleName('Rol del enlace: Puede editar');
   await share.getByRole('button', { name: 'Crear enlace' }).click();
   await expect(share.getByTestId('share-link-url')).toBeVisible();
   expect(await audit(page)).toEqual([]);
@@ -196,9 +291,66 @@ test('axe sin violaciones en los paneles del editor: IA, chat, versiones, timeli
   await canvas.focus();
   await page.keyboard.press('Shift+F10');
   await page.getByRole('menu', { name: 'Acciones del lienzo' }).getByRole('menuitem', { name: 'Exportar selección' }).click();
-  await expect(page.getByRole('dialog', { name: 'Exportar imagen' })).toBeVisible();
+  const exporting = page.getByRole('dialog', { name: 'Exportar imagen' });
+  await expect(exporting).toBeVisible();
+  expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page, '[role=dialog]')).toEqual(NO_NATIVE);
+  await page.keyboard.press('Escape');
+});
+
+// Contenidos flotantes abiertos y, de cada uno, los ancestros (sin contar body) que podrían recortarlo.
+const floatingClips = (page: Page) =>
+  page.evaluate(() => {
+    const open = [...document.querySelectorAll<HTMLElement>('[data-floating]')];
+    const clips: string[] = [];
+    for (const element of open) {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
+          clips.push(`${element.getAttribute('role') ?? element.tagName} dentro de ${node.tagName.toLowerCase()}.${node.className}`);
+        }
+      }
+    }
+    return { open: open.length, clips };
+  });
+
+test('los menús, submenús y tooltips abiertos no tienen ancestros que los recorten', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const account = await createVerifiedAccount(page.request, `a11y-flotantes-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Cartel accesible');
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 60, y: box.y + box.height / 2 - 40 };
+  await canvas.focus();
+  await page.keyboard.press('r');
+  await drag(page, origin, { x: origin.x + 120, y: origin.y + 80 });
+  await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection().length)).toBe(1);
+
+  // Tooltip de un botón del panel de páginas.
+  await page.getByRole('button', { name: 'Añadir página' }).hover();
+  await expect(page.getByRole('tooltip')).toBeVisible();
+  expect(await floatingClips(page)).toEqual({ open: 1, clips: [] });
+  await page.mouse.move(origin.x + 60, origin.y + 40);
+  await expect(page.locator('[data-floating]')).toHaveCount(0);
+
+  // Menú de una página, dentro de una lista con scroll.
+  await page.getByRole('button', { name: 'Acciones de Página 1' }).click();
+  await expect(page.getByRole('menu', { name: 'Acciones de Página 1' })).toBeVisible();
+  expect(await floatingClips(page)).toEqual({ open: 1, clips: [] });
   expect(await audit(page)).toEqual([]);
   await page.keyboard.press('Escape');
+
+  // Menú contextual del lienzo con el submenú «Ordenar» abierto.
+  await canvas.focus();
+  await page.keyboard.press('Shift+F10');
+  const menu = page.getByRole('menu', { name: 'Acciones del lienzo' });
+  await menu.getByRole('menuitem', { name: 'Ordenar' }).hover();
+  await expect(page.getByRole('menuitem', { name: 'Traer al frente' })).toBeVisible();
+  expect(await floatingClips(page)).toEqual({ open: 2, clips: [] });
+  expect(await audit(page)).toEqual([]);
+  await page.getByRole('menuitem', { name: 'Traer al frente' }).click();
+  await expect(page.locator('[data-floating]')).toHaveCount(0);
 });
 
 test('axe sin violaciones en las plantillas, la actividad y los ajustes del espacio', async ({ page }) => {
@@ -209,15 +361,23 @@ test('axe sin violaciones en las plantillas, la actividad y los ajustes del espa
   await page.goto(`/app/e/${account.workspaceSlug}?vista=plantillas`);
   await expect(page.getByText('Este espacio aún no tiene plantillas.')).toBeVisible();
   expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
 
   await page.goto(`/app/e/${account.workspaceSlug}?vista=actividad`);
   // Cuenta nueva sin ediciones: el informe sale en su estado vacío.
   await expect(page.getByText('No hubo actividad en este periodo.')).toBeVisible();
   expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+  await page.getByLabel('Periodo').click();
+  await expect(page.getByRole('listbox')).toBeVisible();
+  expect(await floatingClips(page)).toEqual({ open: 1, clips: [] });
+  expect(await audit(page)).toEqual([]);
+  await page.keyboard.press('Escape');
 
   await page.goto(`/app/e/${account.workspaceSlug}?vista=ajustes`);
   await expect(page.getByRole('heading', { name: 'Nombre' })).toBeVisible();
   expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
 });
 
 test('axe sin violaciones en /invitacion: sin invitación, con un enlace y con un error', async ({ page, browser }) => {

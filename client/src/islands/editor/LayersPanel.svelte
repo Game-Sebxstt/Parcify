@@ -9,6 +9,7 @@
   import { ancestorsOf, LAYER_ROW_HEIGHT, layerRows, rowWindow, type LayerRow } from '../../engine/a11y/layers.ts';
   import type { Engine } from '../../engine/index.ts';
   import { m } from '../../paraglide/messages.js';
+  import Tooltip from '../../ui/Tooltip.svelte';
   import { kindLabel } from './kinds.ts';
 
   type Props = { engine: Engine; readOnly: boolean };
@@ -102,6 +103,16 @@
   function startRename(id: string) {
     if (readOnly) return;
     renaming = id;
+  }
+
+  // «Renombrar» desde el lienzo: la fila puede estar plegada o fuera de la parte pintada de la lista.
+  export async function rename(id: string) {
+    if (readOnly || !engine.core.store.get(id)) return;
+    const missing = ancestorsOf(engine.core.tree, id).filter((other) => !expanded.has(other));
+    if (missing.length) expanded = new Set([...expanded, ...missing]);
+    focused = id;
+    await reveal(id, false);
+    startRename(id);
   }
 
   async function finishRename(id: string, value: string | null) {
@@ -254,34 +265,42 @@
               <span class="min-w-0 flex-1 truncate">{nameOf(row)}</span>
             {/if}
             {#if !readOnly}
-              <button
-                type="button"
-                tabindex="-1"
-                aria-hidden="true"
-                title={row.record.visible ? m.editor_layer_hide() : m.editor_layer_show()}
-                aria-label={row.record.visible ? m.editor_layer_hide() : m.editor_layer_show()}
-                onclick={(event) => {
-                  event.stopPropagation();
-                  engine.commands.setFlagFor([row.id], 'visible', !row.record.visible);
-                }}
-                class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2"
-              >
-                {#if row.record.visible}<Eye size={14} />{:else}<EyeOff size={14} />{/if}
-              </button>
-              <button
-                type="button"
-                tabindex="-1"
-                aria-hidden="true"
-                title={row.record.locked ? m.editor_layer_unlock() : m.editor_layer_lock()}
-                aria-label={row.record.locked ? m.editor_layer_unlock() : m.editor_layer_lock()}
-                onclick={(event) => {
-                  event.stopPropagation();
-                  engine.commands.setFlagFor([row.id], 'locked', !row.record.locked);
-                }}
-                class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2"
-              >
-                {#if row.record.locked}<Lock size={14} />{:else}<LockOpen size={14} />{/if}
-              </button>
+              <Tooltip text={row.record.visible ? m.editor_layer_hide() : m.editor_layer_show()} kbd="H">
+                {#snippet children(props)}
+                  <button
+                    {...props}
+                    type="button"
+                    tabindex="-1"
+                    aria-hidden="true"
+                    aria-label={row.record.visible ? m.editor_layer_hide() : m.editor_layer_show()}
+                    onclick={(event) => {
+                      event.stopPropagation();
+                      engine.commands.setFlagFor([row.id], 'visible', !row.record.visible);
+                    }}
+                    class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2"
+                  >
+                    {#if row.record.visible}<Eye size={14} />{:else}<EyeOff size={14} />{/if}
+                  </button>
+                {/snippet}
+              </Tooltip>
+              <Tooltip text={row.record.locked ? m.editor_layer_unlock() : m.editor_layer_lock()} kbd="L">
+                {#snippet children(props)}
+                  <button
+                    {...props}
+                    type="button"
+                    tabindex="-1"
+                    aria-hidden="true"
+                    aria-label={row.record.locked ? m.editor_layer_unlock() : m.editor_layer_lock()}
+                    onclick={(event) => {
+                      event.stopPropagation();
+                      engine.commands.setFlagFor([row.id], 'locked', !row.record.locked);
+                    }}
+                    class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2"
+                  >
+                    {#if row.record.locked}<Lock size={14} />{:else}<LockOpen size={14} />{/if}
+                  </button>
+                {/snippet}
+              </Tooltip>
             {/if}
           </div>
         {/each}

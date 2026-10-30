@@ -41,7 +41,15 @@ describe('document.json', () => {
     expect(nodes(doc).get(nodeId('img'))!.get('assetId')).toBe(NEW_ASSET);
     expect(nodes(doc).get(nodeId('rect'))!.get('createdBy')).toBe(USER);
     expect((doc.getMap(ROOT_KEYS.texts).get(nodeId('text')) as Y.Text).toString()).toBe('Hola');
-    expect(doc.getMap(ROOT_KEYS.meta).get('schemaVersion')).toBe(1);
+    expect(doc.getMap(ROOT_KEYS.meta).get('schemaVersion')).toBe(2);
+  });
+
+  it('al migrar un v1 conserva el fondo del documento', () => {
+    const data = documentJson([rectNode()]);
+    data.meta.background = '#FFFFFFFF';
+    const { doc } = build(data);
+    expect(doc.getMap(ROOT_KEYS.meta).get('background')).toBe('#FFFFFFFF');
+    expect(doc.getMap(ROOT_KEYS.meta).get('schemaVersion')).toBe(2);
   });
 
   it('descarta y cuenta los nodos inválidos, de otra página o con un asset que no se importó', () => {

@@ -6,6 +6,8 @@
   import { SHARE_LINK_MAX_USES, SHARE_LINK_ROLES } from '../../shared/api/share-links.js';
   import Button from '../../ui/Button.svelte';
   import Input from '../../ui/Input.svelte';
+  import SegmentedControl from '../../ui/SegmentedControl.svelte';
+  import Select from '../../ui/Select.svelte';
   import Skeleton from '../../ui/Skeleton.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import { PROJECT_ROLE_LABEL, SELECT_CLASS } from './roles.ts';
@@ -115,28 +117,27 @@
     <div class="flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1.5">
         <label class="text-xs font-medium" for="{uid}-role">{m.share_link_role()}</label>
-        <select id="{uid}-role" bind:value={role} class={SELECT_CLASS}>
-          {#each SHARE_LINK_ROLES as option (option)}
-            <option value={option}>{PROJECT_ROLE_LABEL[option]()}</option>
-          {/each}
-        </select>
+        <Select
+          id="{uid}-role"
+          items={SHARE_LINK_ROLES.map((option) => ({ value: option, label: PROJECT_ROLE_LABEL[option]() }))}
+          bind:value={() => role, (next) => (role = next as ShareLinkRole)}
+          label={m.share_link_role()}
+          size="lg"
+          class={SELECT_CLASS}
+        />
       </div>
-      <fieldset class="flex flex-col gap-1.5">
-        <legend class="mb-1.5 text-xs font-medium">{m.share_link_expires()}</legend>
-        <div class="flex rounded-full bg-surface-2 p-0.5">
-          {#each DAYS as option (option)}
-            <label
-              class={[
-                'cursor-pointer rounded-full px-3 py-1.5 text-sm has-focus-visible:outline-2 has-focus-visible:outline-coral',
-                days === option ? 'bg-petrol font-semibold text-ink' : 'text-ink-muted hover:text-ink',
-              ].join(' ')}
-            >
-              <input type="radio" name="{uid}-days" value={option} bind:group={days} class="sr-only" />
-              {option === 1 ? m.share_link_day() : m.share_link_days({ count: option })}
-            </label>
-          {/each}
-        </div>
-      </fieldset>
+      <div class="flex flex-col gap-1.5">
+        <span aria-hidden="true" class="text-xs font-medium">{m.share_link_expires()}</span>
+        <SegmentedControl
+          items={DAYS.map((option) => ({
+            value: String(option),
+            label: option === 1 ? m.share_link_day() : m.share_link_days({ count: option }),
+          }))}
+          bind:value={() => String(days), (next) => (days = Number(next) as (typeof DAYS)[number])}
+          label={m.share_link_expires()}
+          class="h-9"
+        />
+      </div>
       <div class="flex w-40 flex-col gap-1.5">
         <label class="text-xs font-medium" for="{uid}-uses">{m.share_link_uses()}</label>
         <Input

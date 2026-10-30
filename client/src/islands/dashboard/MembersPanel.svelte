@@ -9,6 +9,7 @@
   import type { OrgRole } from '../../shared/permissions.js';
   import Avatar from '../../ui/Avatar.svelte';
   import Button from '../../ui/Button.svelte';
+  import Select from '../../ui/Select.svelte';
   import Skeleton from '../../ui/Skeleton.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import type { z } from 'zod';
@@ -143,17 +144,13 @@
             </p>
           </div>
           {#if canEdit(member)}
-            <label class="sr-only" for="role-{member.id}">{m.members_role_label({ name: member.name })}</label>
-            <select
-              id="role-{member.id}"
-              value={member.role}
-              onchange={(event) => void changeRole(member, event.currentTarget.value as OrgRole)}
-              class="h-8 cursor-pointer rounded-panel border border-edge bg-surface-2 px-2 text-sm text-ink hover:border-ink-muted focus-visible:border-coral"
-            >
-              {#each roleOptions() as role (role)}
-                <option value={role}>{ROLE_LABEL[role]()}</option>
-              {/each}
-            </select>
+            <Select
+              items={roleOptions().map((role) => ({ value: role, label: ROLE_LABEL[role]() }))}
+              bind:value={() => member.role, (role) => void changeRole(member, role as OrgRole)}
+              label={m.members_role_label({ name: member.name })}
+              size="lg"
+              class="h-8 px-2 text-sm"
+            />
             <Button size="sm" variant="danger-ghost" onclick={() => ask(member)}>{m.members_remove()}</Button>
           {:else}
             <span class="text-sm text-ink-muted">{ROLE_LABEL[member.role]()}</span>

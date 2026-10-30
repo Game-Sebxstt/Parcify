@@ -4,7 +4,7 @@ import { createProject, createVerifiedAccount } from './helpers/account.ts';
 const card = (page: Page, name: string) =>
   page.getByRole('list', { name: 'Proyectos' }).getByRole('listitem').filter({ has: page.getByRole('link', { name, exact: true }) });
 
-const filter = (page: Page, name: string) => page.getByRole('group', { name: 'Mostrar' }).getByText(name, { exact: true }).click();
+const filter = (page: Page, name: string) => page.getByRole('radiogroup', { name: 'Mostrar' }).getByRole('radio', { name, exact: true }).click();
 
 async function openMenu(page: Page, name: string) {
   await page.getByRole('button', { name: `Acciones de ${name}` }).click();

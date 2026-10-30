@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { NodeSchema } from '../../shared/document/schema.js';
 import { rect } from '../test-utils.ts';
 import type { NodeRecord } from '../types.ts';
+import { INPUT_PROFILES } from '../interaction/input/profile.ts';
+import { normalizeDeg, snapRotation, toDeg, toRad } from './angles.ts';
 import { geometryAABB, localMatrix, paintedAABB, paintPadding, translatedPlacement } from './bounds.ts';
 import { hitRecord } from './hit.ts';
 import { apply, compose, invert, multiply, rotateAround, scaleAround, translation } from './matrix.ts';
@@ -201,5 +203,33 @@ describe('snapping', () => {
     // El centro de la caja 1230–1235 (1232,5) queda a 0,5 del borde izquierdo: gana a los demás.
     const result = snapBox({ minX: 1233, minY: 1000, maxX: 1236, maxY: 1003 }, candidates, 3);
     expect(1233 + result.dx).toBe(1232.5);
+  });
+});
+
+describe('imán de rotación', () => {
+  const mouse = { shift: false, ctrl: false, thresholdDeg: INPUT_PROFILES.mouse.rotateSnapDeg };
+  const touch = { shift: false, ctrl: false, thresholdDeg: INPUT_PROFILES.touch.rotateSnapDeg };
+
+  it('se imanta a 45° cerca de un múltiplo y no lejos', () => {
+    expect(snapRotation(43.5, mouse)).toEqual({ angle: 45, snapped: true });
+    expect(snapRotation(41, mouse)).toEqual({ angle: 41, snapped: false });
+    expect(snapRotation(47, touch)).toEqual({ angle: 45, snapped: true });
+    expect(snapRotation(-2, mouse)).toEqual({ angle: 0, snapped: true });
+  });
+
+  it('Shift va en pasos de 15° y Ctrl desactiva el imán', () => {
+    expect(snapRotation(41, { ...mouse, shift: true })).toEqual({ angle: 45, snapped: true });
+    expect(snapRotation(44, { ...mouse, ctrl: true })).toEqual({ angle: 44, snapped: false });
+  });
+
+  it('normaliza a (−180°, 180°] y redondea a 0,1°', () => {
+    expect(snapRotation(182, { ...mouse, ctrl: true })).toEqual({ angle: -178, snapped: false });
+    expect(snapRotation(190, mouse)).toEqual({ angle: -170, snapped: false });
+    expect(snapRotation(-180, mouse)).toEqual({ angle: 180, snapped: true });
+    expect(snapRotation(12.345, mouse)).toEqual({ angle: 12.3, snapped: false });
+    expect(normalizeDeg(540)).toBe(180);
+    expect(normalizeDeg(-190)).toBe(170);
+    expect(Object.is(normalizeDeg(-360), 0)).toBe(true);
+    expect(toDeg(toRad(37))).toBeCloseTo(37, 9);
   });
 });

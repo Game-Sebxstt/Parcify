@@ -44,6 +44,39 @@ function rect(id: string, pageId: string, overrides: Record<string, unknown> = {
   };
 }
 
+function connectorProps(id: string, pageId: string, overrides: Record<string, unknown> = {}) {
+  const { cornerRadius: _cornerRadius, ...shape } = rect(id, pageId);
+  return {
+    ...shape,
+    type: 'connector',
+    from: { x: 0, y: 0 },
+    to: { x: 100, y: 50 },
+    route: 'straight',
+    startCap: 'none',
+    endCap: 'arrow',
+    ...overrides,
+  };
+}
+
+function textProps(id: string, pageId: string, overrides: Record<string, unknown> = {}) {
+  const { fill: _fill, stroke: _stroke, strokeWidth: _sw, strokeDash: _sd, shadow: _sh, cornerRadius: _cr, ...base } = rect(id, pageId);
+  return {
+    ...base,
+    type: 'text',
+    fontFamily: 'Manrope',
+    fontSize: 16,
+    fontWeight: 400,
+    italic: false,
+    underline: false,
+    strike: false,
+    color: '#FFFFFFFF',
+    align: 'left',
+    lineHeight: 1.2,
+    autoWidth: true,
+    ...overrides,
+  };
+}
+
 function toMap(props: Record<string, unknown>) {
   const map = new Y.Map<unknown>();
   for (const [key, value] of Object.entries(props)) map.set(key, value);
@@ -261,6 +294,88 @@ describe('normalización', () => {
     normalizeDocument(ctx.doc, ctx.take(), ORIGIN);
     expect(ctx.node(connector)!.from).toEqual({ x: 0, y: 0 });
     expect(ctx.node(connector)!.to).toEqual({ x: 50, y: 10 });
+  });
+
+  it('recorta los waypoints del conector y quita los que no son una lista o quedan vacíos', () => {
+    const ctx = setup();
+    const long = newNodeId();
+    const empty = newNodeId();
+    const broken = newNodeId();
+    const mixed = newNodeId();
+    const allBad = newNodeId();
+    const waypoints = Array.from({ length: 70 }, (_, i) => [i, i]);
+    waypoints[3] = [5e6, -Infinity];
+    ctx.client(() => {
+      ctx.nodes.set(long, toMap(connectorProps(long, ctx.pageId, { waypoints })));
+      ctx.nodes.set(empty, toMap(connectorProps(empty, ctx.pageId, { waypoints: [] })));
+      ctx.nodes.set(broken, toMap(connectorProps(broken, ctx.pageId, { waypoints: 'codo' })));
+      ctx.nodes.set(mixed, toMap(connectorProps(mixed, ctx.pageId, { waypoints: [[1, 2], 'codo', [3, '4'], [5], [5, 6]] })));
+      ctx.nodes.set(allBad, toMap(connectorProps(allBad, ctx.pageId, { waypoints: [['a', 'b'], null] })));
+    });
+    const touches = ctx.take();
+    const result = normalizeDocument(ctx.doc, touches, ORIGIN);
+
+    const kept = ctx.node(long)!.waypoints as number[][];
+    expect(kept).toHaveLength(64);
+    expect(kept[3]).toEqual([1e6, 0]);
+    expect(kept[63]).toEqual([63, 63]);
+    expect(ctx.node(mixed)!.waypoints).toEqual([
+      [1, 2],
+      [5, 6],
+    ]);
+    for (const id of [empty, broken, allBad]) {
+      expect(ctx.node(id)).toBeDefined();
+      expect('waypoints' in ctx.node(id)!).toBe(false);
+    }
+    for (const id of [long, empty, broken, mixed, allBad]) expect(NodeSchema.safeParse(ctx.node(id)).success).toBe(true);
+    expect(result.corrections.filter((c) => c.reason === 'connector_waypoints')).toEqual([
+      expect.objectContaining({ op: 'unset', target: 'node', key: 'waypoints', actor: ACTOR }),
+      expect.objectContaining({ op: 'unset', target: 'node', key: 'waypoints', actor: ACTOR }),
+      expect.objectContaining({ op: 'unset', target: 'node', key: 'waypoints', actor: ACTOR }),
+    ]);
+    expect(planNormalization(ctx.doc, touches).corrections).toEqual([]);
+  });
+
+  it('quita un fixedHeight que no es booleano y conserva el texto', () => {
+    const ctx = setup();
+    const id = newNodeId();
+    const fixed = newNodeId();
+    ctx.client(() => {
+      ctx.nodes.set(id, toMap(textProps(id, ctx.pageId, { autoWidth: false, fixedHeight: 'sí' })));
+      ctx.nodes.set(fixed, toMap(textProps(fixed, ctx.pageId, { autoWidth: false, fixedHeight: true })));
+    });
+    const result = normalizeDocument(ctx.doc, ctx.take(), ORIGIN);
+    expect(result.corrections).toEqual([
+      expect.objectContaining({ op: 'unset', id, key: 'fixedHeight', reason: 'text_fixed_height' }),
+    ]);
+    expect('fixedHeight' in ctx.node(id)!).toBe(false);
+    expect(NodeSchema.safeParse(ctx.node(id)).success).toBe(true);
+    expect(ctx.node(fixed)!.fixedHeight).toBe(true);
+  });
+
+  it('una animación con scale: 0 y opacidad fuera de rango sale sin correcciones', () => {
+    const ctx = setup();
+    const id = newNodeId();
+    seedValid(ctx, id);
+    ctx.client(() =>
+      ctx.animations.set(
+        id,
+        toMap({
+          duration: 1000,
+          delay: 0,
+          loop: 1,
+          direction: 'normal',
+          autoplay: 'present',
+          tracks: {
+            scale: { a: { t: 0, v: 0, e: 'easeOutBack' }, b: { t: 1, v: 1, e: 'linear' } },
+            opacity: { c: { t: 0, v: 0, e: 'linear' }, d: { t: 1, v: 1.2, e: 'linear' } },
+            scaleX: { e: { t: 0.5, v: 2, e: 'linear' } },
+          },
+        }),
+      ),
+    );
+    expect(normalizeDocument(ctx.doc, ctx.take(), ORIGIN).corrections).toEqual([]);
+    expect(ctx.animations.has(id)).toBe(true);
   });
 
   it('borra lo irrecuperable: tipo desconocido, claves requeridas ausentes y entradas que no son mapas', () => {

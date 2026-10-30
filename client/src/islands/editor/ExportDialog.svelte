@@ -13,8 +13,11 @@
   import { ApiError } from '../../lib/api.ts';
   import { exportProjectArchive } from '../../lib/projects.ts';
   import { m } from '../../paraglide/messages.js';
+  import { RadioGroup } from 'bits-ui';
   import Button from '../../ui/Button.svelte';
+  import Checkbox from '../../ui/Checkbox.svelte';
   import Dialog from '../../ui/Dialog.svelte';
+  import SegmentedControl from '../../ui/SegmentedControl.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
 
   type Props = { open: boolean; engine: Engine; projectId: string; projectName: string };
@@ -152,49 +155,58 @@
 
 <Dialog bind:open title={m.export_title()}>
   <form onsubmit={submit} class="flex flex-col gap-5 text-sm" novalidate>
-    <fieldset class="flex flex-col gap-2" disabled={format === 'parcify'}>
-      <legend class="mb-2 font-semibold {format === 'parcify' ? 'text-ink-muted' : ''}">{m.export_target()}</legend>
-      {#each choices as item (item.kind)}
-        <label class="flex min-h-6 items-center gap-2 {format === 'parcify' ? 'cursor-not-allowed text-ink-muted' : 'cursor-pointer'}">
-          <input type="radio" name="{uid}-target" value={item.kind} bind:group={kind} class="size-4 accent-coral" />
-          <span class="truncate">{item.label}</span>
-        </label>
-      {/each}
-    </fieldset>
-
-    <fieldset class="flex flex-col gap-2">
-      <legend class="mb-2 font-semibold">{m.export_format()}</legend>
-      <div class="flex flex-wrap gap-x-4 gap-y-2">
-        {#each FORMATS as item (item.value)}
-          <label class="flex min-h-6 cursor-pointer items-center gap-2">
-            <input type="radio" name="{uid}-format" value={item.value} bind:group={format} class="size-4 accent-coral" />{item.label}
-          </label>
+    <div class="flex flex-col gap-2">
+      <p id="{uid}-target" class="font-semibold {format === 'parcify' ? 'text-ink-muted' : ''}">{m.export_target()}</p>
+      <RadioGroup.Root
+        bind:value={() => kind, (next) => (kind = next as TargetKind)}
+        disabled={format === 'parcify'}
+        aria-labelledby="{uid}-target"
+        class="flex flex-col gap-1"
+      >
+        {#each choices as item (item.kind)}
+          <RadioGroup.Item
+            value={item.kind}
+            class="group flex min-h-7 min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left outline-none focus-visible:outline-1 focus-visible:outline-coral data-disabled:cursor-not-allowed data-disabled:text-ink-muted"
+          >
+            <span
+              aria-hidden="true"
+              class="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-edge bg-surface-2 group-aria-checked:border-coral"
+            >
+              <span class="size-2 rounded-full bg-coral opacity-0 group-aria-checked:opacity-100"></span>
+            </span>
+            <span class="truncate">{item.label}</span>
+          </RadioGroup.Item>
         {/each}
-      </div>
-    </fieldset>
+      </RadioGroup.Root>
+    </div>
 
-    <fieldset class="flex flex-col gap-2" disabled={!raster}>
-      <legend class="mb-2 font-semibold {raster ? '' : 'text-ink-muted'}">{m.export_scale()}</legend>
-      <div class="flex gap-4">
-        {#each EXPORT_SCALES as value (value)}
-          <label class="flex min-h-6 items-center gap-2 tabular {raster ? 'cursor-pointer' : 'cursor-not-allowed text-ink-muted'}">
-            <input type="radio" name="{uid}-scale" {value} bind:group={scale} class="size-4 accent-coral" />{value}×
-          </label>
-        {/each}
-      </div>
-    </fieldset>
-
-    <label class="flex min-h-6 items-center gap-2 {format === 'png' || format === 'svg' ? 'cursor-pointer' : 'cursor-not-allowed text-ink-muted'}">
-      <input
-        type="checkbox"
-        bind:checked={transparent}
-        disabled={format !== 'png' && format !== 'svg'}
-        aria-describedby="{uid}-transparent"
-        class="size-4 accent-coral"
+    <div class="flex flex-col gap-2">
+      <p aria-hidden="true" class="font-semibold">{m.export_format()}</p>
+      <SegmentedControl
+        items={FORMATS}
+        bind:value={() => format, (next) => (format = next as FileFormat)}
+        label={m.export_format()}
+        class="flex-wrap self-start"
       />
-      {m.export_transparent()}
-      <span id="{uid}-transparent" class="text-xs text-ink-muted">{m.export_transparent_hint()}</span>
-    </label>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <p aria-hidden="true" class="font-semibold {raster ? '' : 'text-ink-muted'}">{m.export_scale()}</p>
+      <SegmentedControl
+        items={EXPORT_SCALES.map((value) => ({ value: String(value), label: `${value}×` }))}
+        bind:value={() => String(scale), (next) => (scale = Number(next))}
+        label={m.export_scale()}
+        disabled={!raster}
+        class="self-start tabular"
+      />
+    </div>
+
+    <Checkbox
+      bind:checked={transparent}
+      label={m.export_transparent()}
+      description={m.export_transparent_hint()}
+      disabled={format !== 'png' && format !== 'svg'}
+    />
 
     {#if format === 'svg'}
       <p class="text-xs text-ink-muted">{m.export_svg_hint()}</p>

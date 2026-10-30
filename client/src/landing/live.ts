@@ -81,6 +81,7 @@ export async function mountLandingDemo(input: {
     permissions: { canEdit: true },
     pageId: DEMO_PAGE,
     embedded: true,
+    wheel: 'page',
   });
 
   // El escenario es un círculo: el cartel se encaja con margen para que las esquinas no queden cortadas.

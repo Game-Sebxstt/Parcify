@@ -7,6 +7,7 @@
   import { m } from '../../paraglide/messages.js';
   import type { TemplateSummary } from '../../shared/api/templates.js';
   import Button from '../../ui/Button.svelte';
+  import SegmentedControl from '../../ui/SegmentedControl.svelte';
   import Skeleton from '../../ui/Skeleton.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import { SEARCH_DEBOUNCE_MS } from '../dashboard/ProjectFilters.svelte';
@@ -170,24 +171,11 @@
       />
     </div>
 
-    <fieldset class="flex flex-wrap gap-1 rounded-full bg-surface-1 p-1">
-      <legend class="sr-only">{m.dashboard_filter_label()}</legend>
-      {#each FILTERS as option (option.value)}
-        <label
-          class="relative inline-flex h-8 cursor-pointer items-center rounded-full px-3.5 text-sm font-medium text-ink-muted hover:text-ink has-checked:bg-surface-2 has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral"
-        >
-          <input
-            type="radio"
-            name="{uid}-filter"
-            value={option.value}
-            checked={filter === option.value}
-            onchange={() => setFilter(option.value)}
-            class="sr-only"
-          />
-          {option.label()}
-        </label>
-      {/each}
-    </fieldset>
+    <SegmentedControl
+      items={FILTERS.map((option) => ({ value: option.value, label: option.label() }))}
+      bind:value={() => filter, (next) => setFilter(next as Filter)}
+      label={m.dashboard_filter_label()}
+    />
   </div>
 
   {#if status === 'loading'}

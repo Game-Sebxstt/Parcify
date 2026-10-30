@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { chooseOption } from './helpers/select.ts';
 
 const PASSWORD = 'clave-de-prueba-1';
 
@@ -10,7 +11,7 @@ async function openEditor(page: Page, projectId: string) {
 
 async function createLink(page: Page, projectName: string, options: { role: 'Puede editar' | 'Solo puede ver'; days: string; uses?: string }) {
   const panel = page.getByRole('dialog', { name: `Compartir «${projectName}»` });
-  await panel.getByLabel('Rol del enlace').selectOption({ label: options.role });
+  await chooseOption(page, panel.getByLabel('Rol del enlace'), options.role);
   await panel.getByText(options.days, { exact: true }).click();
   await panel.getByLabel('Usos máximos (opcional)').fill(options.uses ?? '');
   await panel.getByRole('button', { name: 'Crear enlace' }).click();

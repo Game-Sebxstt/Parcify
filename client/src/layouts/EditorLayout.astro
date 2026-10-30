@@ -6,14 +6,15 @@ import BaseHead from './BaseHead.astro';
 type Props = { title: string };
 
 const { title } = Astro.props;
+// overscroll-none en html y body: el gesto «atrás» con dos dedos de Chrome y Safari no saca del editor.
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang="es" class="overscroll-none">
   <head>
-    <BaseHead title={title} noindex />
+    <BaseHead title={title} noindex viewportFit="cover" />
   </head>
-  <body class="h-dvh overflow-hidden">
+  <body class="h-dvh overflow-hidden overscroll-none">
     <slot />
     <VersionGate client:load />
     <Toast client:idle />

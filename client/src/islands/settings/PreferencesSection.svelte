@@ -1,11 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { WheelPreference } from '../../engine/index.ts';
   import { ApiError, apiFetch, invalidateCache } from '../../lib/api.ts';
+  import { setWheelPreference, wheelPreference } from '../../lib/input-prefs.ts';
   import { clearLocalCopies, localCopyEnabled, setLocalCopyEnabled } from '../../lib/local-copies.ts';
   import { reduceMotionPreferred, setReduceMotion } from '../../lib/motion.ts';
   import { session } from '../../lib/session.svelte.ts';
   import { m } from '../../paraglide/messages.js';
   import { MeResponseSchema, type MeResponse } from '../../shared/api/me.js';
+  import SegmentedControl from '../../ui/SegmentedControl.svelte';
+  import Select from '../../ui/Select.svelte';
+  import Switch from '../../ui/Switch.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
 
   type Props = { me: MeResponse };
@@ -13,11 +18,19 @@
 
   let localCopy = $state(true);
   let reduceMotion = $state(false);
+  let wheel = $state<WheelPreference>('pan');
 
   onMount(() => {
     localCopy = localCopyEnabled();
     reduceMotion = reduceMotionPreferred();
+    wheel = wheelPreference();
   });
+
+  // El editor la lee en cada evento de rueda: los que ya estén abiertos en otras pestañas la usan sin recargar.
+  function changeWheel(next: WheelPreference) {
+    wheel = next;
+    setWheelPreference(next);
+  }
 
   async function changeLocale(locale: string) {
     try {
@@ -49,43 +62,48 @@
   <div class="mt-4 flex flex-col gap-5">
     <div class="flex flex-col gap-1.5">
       <label for="pref-locale" class="text-sm font-medium">{m.settings_language()}</label>
-      <select
+      <Select
         id="pref-locale"
-        value={me.user.locale}
-        aria-describedby="pref-locale-hint"
-        onchange={(event) => void changeLocale(event.currentTarget.value)}
-        class="h-11 w-full max-w-xs cursor-pointer rounded-panel border border-edge bg-surface-2 px-3 text-base text-ink hover:border-ink-muted focus-visible:border-coral"
-      >
-        <option value="es">Español</option>
-        <option value="en" disabled>{m.settings_language_en_soon()}</option>
-      </select>
+        items={[
+          { value: 'es', label: 'Español' },
+          { value: 'en', label: m.settings_language_en_soon(), disabled: true },
+        ]}
+        bind:value={() => me.user.locale, (locale) => void changeLocale(locale)}
+        label={m.settings_language()}
+        describedBy="pref-locale-hint"
+        size="lg"
+        class="w-full max-w-xs"
+      />
       <p id="pref-locale-hint" class="text-xs text-ink-muted">{m.settings_language_hint()}</p>
     </div>
 
-    <label class="flex cursor-pointer items-start gap-3">
-      <input
-        type="checkbox"
-        checked={localCopy}
-        onchange={(event) => void toggleLocalCopy(event.currentTarget.checked)}
-        class="mt-0.5 size-4 cursor-pointer accent-coral"
-      />
-      <span>
-        <span class="block text-sm font-medium">{m.settings_local_copy()}</span>
-        <span class="block text-xs text-ink-muted">{m.settings_local_copy_hint()}</span>
-      </span>
-    </label>
+    <Switch
+      bind:checked={() => localCopy, (enabled) => void toggleLocalCopy(enabled)}
+      label={m.settings_local_copy()}
+      description={m.settings_local_copy_hint()}
+      class="max-w-xl"
+    />
 
-    <label class="flex cursor-pointer items-start gap-3">
-      <input
-        type="checkbox"
-        checked={reduceMotion}
-        onchange={(event) => toggleMotion(event.currentTarget.checked)}
-        class="mt-0.5 size-4 cursor-pointer accent-coral"
+    <Switch
+      bind:checked={() => reduceMotion, toggleMotion}
+      label={m.settings_reduce_motion()}
+      description={m.settings_reduce_motion_hint()}
+      class="max-w-xl"
+    />
+
+    <div class="flex flex-col gap-1.5">
+      <p aria-hidden="true" class="text-sm font-medium">{m.settings_wheel()}</p>
+      <SegmentedControl
+        items={[
+          { value: 'pan', label: m.settings_wheel_pan() },
+          { value: 'zoom', label: m.settings_wheel_zoom() },
+        ]}
+        bind:value={() => wheel, (next) => changeWheel(next as WheelPreference)}
+        label={m.settings_wheel()}
+        describedBy="pref-wheel-hint"
+        class="self-start"
       />
-      <span>
-        <span class="block text-sm font-medium">{m.settings_reduce_motion()}</span>
-        <span class="block text-xs text-ink-muted">{m.settings_reduce_motion_hint()}</span>
-      </span>
-    </label>
+      <p id="pref-wheel-hint" class="text-xs text-ink-muted">{m.settings_wheel_hint()}</p>
+    </div>
   </div>
 </section>

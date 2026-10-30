@@ -1,0 +1,13 @@
+/* Orden de apilamiento de toda la app. Las capas del editor son hijas directas de su raíz, así que estos valores se
+   comparan en un mismo contexto de apilamiento. Se usan con z-(--z-popover). */
+:root {
+  --z-hud: 10;
+  --z-panel: 20;
+  --z-toolbar: 30;
+  --z-window: 40;
+  --z-sheet: 45;
+  --z-stage: 48;
+  --z-popover: 50;
+  --z-dialog: 60;
+  --z-toast: 70;
+}

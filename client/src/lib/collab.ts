@@ -300,6 +300,8 @@ export class CollabSession {
   private readonly snapshots = new Map<number, (data: DocumentJson | null) => void>();
   private readonly fetchToken: (projectId: string) => Promise<CollabToken>;
   private readonly listeners: { [K in keyof CollabEvents]: Set<CollabEvents[K]> } = { reset: new Set(), stateless: new Set() };
+  // Solo en builds de prueba: un cambio de epoch no se puede provocar con el editor abierto, y este recorre el mismo camino.
+  declare readonly testReset?: () => Promise<void>;
 
   private constructor(
     readonly projectId: string,
@@ -322,6 +324,7 @@ export class CollabSession {
     });
     link.onMessage((message) => this.handleMessage(message));
     link.onCrash((message) => this.crashed(message));
+    if (import.meta.env.PUBLIC_TEST_HOOKS === '1') this.testReset = () => this.resetDocument();
   }
 
   // Pide el primer token (rol, usuario y epoch), arranca el host y abre el documento. No resuelve hasta que el

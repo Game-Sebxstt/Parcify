@@ -12,7 +12,7 @@
   import { tick, untrack } from 'svelte';
   import { displayName, kindOf } from '../../../engine/a11y/describe.ts';
   import { rowWindow } from '../../../engine/a11y/layers.ts';
-  import { AI_PREVIEW_COLOR, type AnimationState, type Engine } from '../../../engine/index.ts';
+  import { AI_PREVIEW_COLOR, OWN_WHEEL_ATTR, type AnimationState, type Engine } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import { ANIMATION_LIMITS } from '../../../shared/document/limits.js';
   import type { Animation, AnimProp, Keyframe } from '../../../shared/document/schema.js';
@@ -361,7 +361,11 @@
       }
     };
     node.addEventListener('wheel', onWheel, { passive: false });
-    return () => node.removeEventListener('wheel', onWheel);
+    node.setAttribute(OWN_WHEEL_ATTR, '');
+    return () => {
+      node.removeEventListener('wheel', onWheel);
+      node.removeAttribute(OWN_WHEEL_ATTR);
+    };
   };
 
   function timeAt(clientX: number): number {

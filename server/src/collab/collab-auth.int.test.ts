@@ -60,10 +60,12 @@ describe('autenticación de la conexión', () => {
 
     const outdated = track(connect(collab.url, project.id, () => tokenFor(owner, project.id), { schemaVersion: '0' }));
     expect(await outdated.failed()).toBe('client_outdated');
+    const v1Client = track(connect(collab.url, project.id, () => tokenFor(owner, project.id), { schemaVersion: '1' }));
+    expect(await v1Client.failed()).toBe('client_outdated');
     const withoutVersion = track(connect(collab.url, project.id, () => tokenFor(owner, project.id), { schemaVersion: null }));
     expect(await withoutVersion.failed()).toBe('client_outdated');
 
-    for (const client of [expired, forged, wrongDoc, outdated, withoutVersion]) expect(client.scopes).toEqual([]);
+    for (const client of [expired, forged, wrongDoc, outdated, v1Client, withoutVersion]) expect(client.scopes).toEqual([]);
 
     const ok = track(connect(collab.url, project.id, () => tokenFor(owner, project.id)));
     expect(await ok.authenticated()).toBe('read-write');

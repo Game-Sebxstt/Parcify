@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinProjectByLink } from './helpers/invite.ts';
+import { chooseOption } from './helpers/select.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number };
 
@@ -77,7 +78,7 @@ test('dos personas en el mismo proyecto: cambios, cursores, deshacer propio y de
   // Ana degrada a Bea a lectora desde el panel Compartir con el proyecto abierto: pasa a solo lectura sin recargar.
   await page.getByTestId('share').click();
   const panel = page.getByRole('dialog', { name: 'Compartir «Cartel compartido»' });
-  await panel.getByLabel(`Rol de ${beaAccount.name}`).selectOption('viewer');
+  await chooseOption(page, panel.getByLabel(`Rol de ${beaAccount.name}`), 'Solo puede ver');
   await expect(page.getByText(`${beaAccount.name}: Solo puede ver.`)).toBeVisible();
   await panel.getByRole('button', { name: 'Cerrar' }).click();
   await expect.poll(() => bea.evaluate(() => window.__parcifyTest!.readOnly()), { timeout: 15_000 }).toBe(true);

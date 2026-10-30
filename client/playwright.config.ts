@@ -7,6 +7,8 @@ const API = 'http://localhost:3000';
 
 export default defineConfig({
   testDir: './e2e',
+  // Los guiones de diagnóstico se ejecutan a mano y una sola vez: DIAG=1 npx playwright test e2e/diagnostics.
+  testIgnore: process.env.DIAG === '1' ? [] : ['**/diagnostics/**'],
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
@@ -20,8 +22,11 @@ export default defineConfig({
   },
   projects: [
     // El benchmark tiene su propia configuración (bench/playwright.config.ts): no necesita el servidor.
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@touch/ },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] }, grepInvert: /@touch/ },
+    // Los gestos táctiles se simulan con CDP (Input.dispatchTouchEvent), así que los dos van en Chromium.
+    { name: 'mobile', use: { ...devices['Pixel 7'], defaultBrowserType: 'chromium' }, grep: /@touch/ },
+    { name: 'tablet', use: { ...devices['iPad Pro 11'], defaultBrowserType: 'chromium' }, grep: /@touch/ },
   ],
   webServer: [
     {

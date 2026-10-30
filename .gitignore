@@ -2,6 +2,7 @@ node_modules/
 dist/
 dist-meta/
 .astro/
+.agents/
 coverage/
 test-results/
 playwright-report/

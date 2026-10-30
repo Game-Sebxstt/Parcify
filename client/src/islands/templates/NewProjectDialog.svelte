@@ -9,6 +9,7 @@
   import Dialog from '../../ui/Dialog.svelte';
   import Field from '../../ui/Field.svelte';
   import Input from '../../ui/Input.svelte';
+  import Select from '../../ui/Select.svelte';
   import TemplateThumb from './TemplateThumb.svelte';
 
   type Space = { slug: string; name: string };
@@ -108,15 +109,13 @@
     {#if spaces.length > 1}
       <div class="flex flex-col gap-1.5">
         <label for="{uid}-space" class="text-sm font-medium">{m.dashboard_project_space()}</label>
-        <select
+        <Select
           id="{uid}-space"
+          items={spaces.map((space) => ({ value: space.slug, label: space.name }))}
           bind:value={slug}
-          class="h-11 cursor-pointer rounded-panel border border-edge bg-surface-2 px-3 text-base text-ink hover:border-ink-muted focus-visible:border-coral"
-        >
-          {#each spaces as space (space.slug)}
-            <option value={space.slug}>{space.name}</option>
-          {/each}
-        </select>
+          label={m.dashboard_project_space()}
+          size="lg"
+        />
       </div>
     {/if}
 

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@fontsource-variable/manrope";
+@import "../ui/layers.css";
 
 @theme {
   --color-*: initial;
@@ -22,8 +23,12 @@
   --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
 
   --text-*: initial;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.35;
   --text-xs: 0.75rem;
   --text-xs--line-height: 1.4;
+  --text-ui: 0.8125rem;
+  --text-ui--line-height: 1.4;
   --text-sm: 0.875rem;
   --text-sm--line-height: 1.5;
   --text-base: 1rem;
@@ -39,13 +44,45 @@
   --text-display--letter-spacing: -0.03em;
 
   --radius-*: initial;
+  --radius-xs: 4px;
+  --radius-control: 6px;
+  --radius-card: 8px;
   --radius-panel: 10px;
+  --radius-sheet: 16px;
   --radius-full: 9999px;
 
   --shadow-*: initial;
   --shadow-float: 0 16px 48px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.35);
+  --shadow-panel: 0 8px 24px rgb(0 0 0 / 0.32);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
 
   --animate-toast-in: toast-in 160ms ease-out;
+  --animate-float-in: float-in var(--dur-base) var(--ease-out);
+  --animate-float-out: float-out var(--dur-fast) var(--ease-in) forwards;
+
+  @keyframes float-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes float-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+  }
 
   @keyframes toast-in {
     from {
@@ -62,6 +99,9 @@
 @layer base {
   :root {
     color-scheme: dark;
+    --dur-fast: 120ms;
+    --dur-base: 180ms;
+    --dur-slow: 280ms;
   }
 
   html {
@@ -137,4 +177,22 @@
 
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+
+@utility scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(93 110 132 / 0.5) transparent;
+}
+
+/* Menús y popovers: entran desde el lado del ancla y salen más deprisa. */
+@layer components {
+  /* Los tooltips de bits-ui abren con data-state «delayed-open» o «instant-open». */
+  [data-floating][data-state$='open'] {
+    transform-origin: var(--bits-floating-transform-origin, center);
+    animation: var(--animate-float-in);
+  }
+  [data-floating][data-state='closed'] {
+    transform-origin: var(--bits-floating-transform-origin, center);
+    animation: var(--animate-float-out);
+  }
 }

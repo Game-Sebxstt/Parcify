@@ -5,6 +5,11 @@ export const MAX_ZOOM = 64;
 
 export type CameraState = { x: number; y: number; zoom: number };
 
+// Lo que tapan los paneles flotantes en cada borde, en px de pantalla.
+export type ViewInsets = { top: number; right: number; bottom: number; left: number };
+
+export const NO_INSETS: ViewInsets = Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 });
+
 const clampZoom = (zoom: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
 
 // (x, y) es el punto de mundo que queda en la esquina superior izquierda de la pantalla.
@@ -72,14 +77,35 @@ export class Camera {
     this.version++;
   }
 
-  fit(box: AABB, padding = 48, maxZoom = 1): void {
+  // Rectángulo de pantalla que no tapan los paneles: [left, top, width − right, height − bottom]. Si los márgenes no
+  // dejan sitio en un eje, en ese eje cuenta la pantalla entera.
+  visibleRect(insets: ViewInsets = NO_INSETS): { x: number; y: number; width: number; height: number } {
+    const width = this.width - insets.left - insets.right;
+    const height = this.height - insets.top - insets.bottom;
+    return {
+      x: width >= 1 ? insets.left : 0,
+      y: height >= 1 ? insets.top : 0,
+      width: width >= 1 ? width : this.width,
+      height: height >= 1 ? height : this.height,
+    };
+  }
+
+  // Encaja la caja en el área visible. El margen no pasa del 10 % de ese área: en un móvil, 2 × 64 px de margen
+  // dejaban un ancho útil negativo y el zoom caía al mínimo. Sin tamaño todavía no hace nada y devuelve false.
+  fit(box: AABB, padding = 48, maxZoom = 1, insets: ViewInsets = NO_INSETS): boolean {
+    if (this.width <= 0 || this.height <= 0) return false;
+    const view = this.visibleRect(insets);
+    const padX = Math.min(padding, Math.max(0, view.width * 0.1));
+    const padY = Math.min(padding, Math.max(0, view.height * 0.1));
+    const availW = Math.max(1, view.width - padX * 2);
+    const availH = Math.max(1, view.height - padY * 2);
     const w = Math.max(1, box.maxX - box.minX);
     const h = Math.max(1, box.maxY - box.minY);
-    const zoom = clampZoom(Math.min((this.width - padding * 2) / w, (this.height - padding * 2) / h, maxZoom));
-    this.zoom = zoom > 0 ? zoom : 1;
-    this.x = (box.minX + box.maxX) / 2 - this.width / 2 / this.zoom;
-    this.y = (box.minY + box.maxY) / 2 - this.height / 2 / this.zoom;
+    this.zoom = clampZoom(Math.min(availW / w, availH / h, maxZoom));
+    this.x = (box.minX + box.maxX) / 2 - (view.x + view.width / 2) / this.zoom;
+    this.y = (box.minY + box.maxY) / 2 - (view.y + view.height / 2) / this.zoom;
     this.version++;
+    return true;
   }
 
   zoomTo(zoom: number): void {

@@ -7,5 +7,5 @@ export const PROJECT_ROLE_LABEL: Record<ProjectRole, () => string> = {
   viewer: m.share_role_viewer,
 };
 
-export const SELECT_CLASS =
-  'h-9 cursor-pointer rounded-panel border border-edge bg-surface-2 px-2 text-sm text-ink hover:border-ink-muted focus-visible:border-coral';
+// Clases del `Select` de rol (tamaño `lg`) para que mida lo mismo que el campo y el botón de al lado.
+export const SELECT_CLASS = 'h-9 px-2.5 text-sm';

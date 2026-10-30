@@ -140,7 +140,7 @@ describe('plantillas del espacio', () => {
     expect(row.templateId).toBe(template.id);
 
     const document = await app.db.projectDocument.findUniqueOrThrow({ where: { projectId: fromTemplate.id } });
-    expect(document).toMatchObject({ epoch: 1, schemaVersion: 1, nodeCount: 4 });
+    expect(document).toMatchObject({ epoch: 1, schemaVersion: 2, nodeCount: 4 });
     expect(document.assetRefs).toHaveLength(2);
     for (const id of document.assetRefs) expect(template.assetRefs).not.toContain(id);
     expect(refsOf(document.state)).toEqual([...document.assetRefs].sort());

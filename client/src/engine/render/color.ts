@@ -1,5 +1,9 @@
 export type RgbaColor = { color: number; alpha: number };
 
+// DEFAULT_BACKGROUND de shared/document/init.ts, que no se importa aquí porque arrastra Yjs al motor.
+// core-backend.test.ts comprueba que siguen siendo iguales.
+export const DEFAULT_DOCUMENT_BACKGROUND = '#141416FF';
+
 const cache = new Map<string, RgbaColor>();
 
 // #RRGGBBAA (o #RRGGBB) → número RGB y alfa 0..1, como lo espera Pixi.

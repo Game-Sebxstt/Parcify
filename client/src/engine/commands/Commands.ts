@@ -1293,11 +1293,13 @@ export class Commands {
 
   zoomToSelection(): void {
     this.core.stopFollowing();
+    this.core.markUserCamera();
     this.core.zoomToSelection();
   }
 
   zoomTo(zoom: number): void {
     this.core.stopFollowing();
+    this.core.markUserCamera();
     this.core.zoomTo(zoom);
   }
 

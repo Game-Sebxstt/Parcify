@@ -4,7 +4,9 @@ import type { DocBatch, MainToHost } from './doc/protocol.ts';
 import { ACK_TIMEOUT_MS, EditorCore, PONG_TIMEOUT_MS } from './EditorCore.ts';
 import { routeStart } from './geometry/connectors.ts';
 import type { Timers } from './presence/throttle.ts';
+import { DEFAULT_DOCUMENT_BACKGROUND } from './render/color.ts';
 import { NullSink } from './render/sink.ts';
+import { DEFAULT_BACKGROUND } from '../shared/document/init.js';
 import { connectorNode, makeCore, newDoc, PAGE_ID, putNode, rect, TEST_USER } from './test-utils.ts';
 import type { ConnectorRecord, NodeRecord } from './types.ts';
 
@@ -75,6 +77,19 @@ describe('motor sobre el backend del documento', () => {
     const { core } = linked();
     expect(core.pages.get().map((page) => page.id)).toEqual([PAGE_ID]);
     expect(core.pageId.get()).toBe(PAGE_ID);
+  });
+
+  it('el constructor pinta el fondo que trae el primer lote (caché o vista previa)', () => {
+    const backend = new LinkBackend(1, () => {}, {});
+    backend.receive({ ...full(), meta: { schemaVersion: 2, createdAt: 0, background: '#224466FF' } });
+    const sink = new NullSink();
+    const core = new EditorCore({ backend, sink, user: TEST_USER, screen: { width: 1000, height: 800 }, raf: () => 1, caf: () => {} });
+    expect(sink.backgrounds).toEqual(['#224466FF']);
+    core.destroy();
+  });
+
+  it('el color inicial del renderer es el fondo por defecto del documento', () => {
+    expect(DEFAULT_DOCUMENT_BACKGROUND).toBe(DEFAULT_BACKGROUND);
   });
 
   it('synced llega después de llevar al árbol los registros del mismo lote', () => {

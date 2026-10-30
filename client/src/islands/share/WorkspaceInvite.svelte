@@ -13,6 +13,7 @@
   import { WORKSPACE_INVITE_ROLES } from '../../shared/api/workspaces.js';
   import Button from '../../ui/Button.svelte';
   import Input from '../../ui/Input.svelte';
+  import Select from '../../ui/Select.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import { emailError } from '../auth/validate.ts';
   import { SELECT_CLASS } from './roles.ts';
@@ -105,12 +106,13 @@
         describedBy="{uid}-hint {uid}-error"
         class="h-9 min-w-0 flex-1 text-sm sm:max-w-sm"
       />
-      <label class="sr-only" for="{uid}-role">{m.members_invite_role()}</label>
-      <select id="{uid}-role" bind:value={role} class={SELECT_CLASS}>
-        {#each WORKSPACE_INVITE_ROLES as option (option)}
-          <option value={option}>{ROLE_LABEL[option]()}</option>
-        {/each}
-      </select>
+      <Select
+        items={WORKSPACE_INVITE_ROLES.map((option) => ({ value: option, label: ROLE_LABEL[option]() }))}
+        bind:value={() => role, (next) => (role = next as WorkspaceInviteRole)}
+        label={m.members_invite_role()}
+        size="lg"
+        class={SELECT_CLASS}
+      />
       <Button type="submit" size="sm" variant="primary" class="h-9" loading={busy}>{m.members_invite_submit()}</Button>
     </div>
     <p id="{uid}-error" aria-live="polite" class="text-sm text-danger empty:hidden">{error ?? ''}</p>

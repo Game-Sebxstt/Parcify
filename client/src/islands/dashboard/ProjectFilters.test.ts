@@ -36,16 +36,19 @@ describe('ProjectFilters', () => {
   it('los filtros son un grupo de opciones con la actual marcada', async () => {
     const onchange = vi.fn();
     render(ProjectFilters, { value: { ...INITIAL, filter: 'mine' }, onchange });
-    expect((screen.getByRole('radio', { name: 'Míos' }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole('radiogroup', { name: 'Mostrar' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'Míos' }).getAttribute('aria-checked')).toBe('true');
     await fireEvent.click(screen.getByRole('radio', { name: 'Papelera' }));
     expect(onchange).toHaveBeenCalledWith({ ...INITIAL, filter: 'trash' });
   });
 
-  it('el orden se elige con un desplegable con nombre', async () => {
+  it('el orden se elige con un desplegable con nombre que anuncia el valor', () => {
     const onchange = vi.fn();
     render(ProjectFilters, { value: INITIAL, onchange });
-    await fireEvent.change(screen.getByRole('combobox', { name: 'Ordenar por' }), { target: { value: 'name' } });
-    expect(onchange).toHaveBeenCalledWith({ ...INITIAL, sort: 'name' });
+    const trigger = screen.getByRole('combobox', { name: 'Ordenar por: Última edición' });
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('listbox');
+    expect(document.querySelector('select')).toBeNull();
   });
 });
 

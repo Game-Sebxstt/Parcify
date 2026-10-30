@@ -5,7 +5,10 @@ import { DOCUMENT_SCHEMA_VERSION } from './schema.js';
 // Cada entrada lleva el documento de la versión N a la N + 1. Debe ser pura, determinista e idempotente.
 export type Migration = (doc: Y.Doc) => void;
 
-export const MIGRATIONS: Readonly<Record<number, Migration>> = {};
+export const MIGRATIONS: Readonly<Record<number, Migration>> = {
+  // La v2 solo añade campos opcionales cuya ausencia equivale a la v1.
+  1: () => {},
+};
 
 export type MigrationResult = { from: number; to: number; applied: number[] };
 

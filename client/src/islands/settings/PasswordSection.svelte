@@ -3,6 +3,7 @@
   import type { AccountActions } from '../../lib/auth.ts';
   import { m } from '../../paraglide/messages.js';
   import Button from '../../ui/Button.svelte';
+  import Checkbox from '../../ui/Checkbox.svelte';
   import Field from '../../ui/Field.svelte';
   import Input from '../../ui/Input.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
@@ -83,10 +84,7 @@
       {/snippet}
     </Field>
     {#if hasPassword}
-      <label class="flex min-h-6 cursor-pointer items-center gap-2.5 text-sm">
-        <input type="checkbox" bind:checked={revokeOthers} class="size-4 cursor-pointer accent-coral" />
-        {m.settings_password_revoke_others()}
-      </label>
+      <Checkbox bind:checked={revokeOthers} label={m.settings_password_revoke_others()} class="self-start" />
     {/if}
     <FormError message={errors.form} />
     <div>

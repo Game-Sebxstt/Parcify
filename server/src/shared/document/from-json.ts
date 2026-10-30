@@ -105,7 +105,12 @@ function migrated(data: DocumentJson): DocumentJson {
       }
     });
     migrate(raw);
-    return documentToJson(raw);
+    const result = documentToJson(raw);
+    // El Y.Doc provisional solo lleva la versión; el resto del meta (el fondo, por ejemplo) viene del archivo.
+    result.meta = { ...data.meta, ...result.meta };
+    // Las entradas que no son objetos no caben en el Y.Doc, pero se cuentan como nodos descartados.
+    for (const [id, value] of Object.entries(data.nodes)) if (!isRecord(value)) result.nodes[id] = value;
+    return result;
   } catch (error) {
     if (error instanceof DocumentTooNewError) throw new InvalidDocumentError('schema_too_new');
     throw new InvalidDocumentError('migration');

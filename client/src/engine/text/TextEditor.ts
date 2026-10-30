@@ -102,6 +102,9 @@ class Session {
       minWidth: '1px',
       cursor: 'text',
       zIndex: '2',
+      // El lienzo anula la selección de texto para que el dedo no seleccione la página; aquí hay que poder seleccionar.
+      userSelect: 'text',
+      webkitUserSelect: 'text',
     } satisfies Partial<CSSStyleDeclaration>);
     this.textNode = document.createTextNode(this.rendered);
     // El <br> final deja ver la última línea vacía; no cuenta en el texto.

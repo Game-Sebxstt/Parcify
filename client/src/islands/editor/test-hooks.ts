@@ -1,4 +1,5 @@
 import type { AnimationState, Engine, NodeRecord } from '../../engine/index.ts';
+import type { OverlayModel } from '../../engine/render/sink.ts';
 import type { Animation } from '../../shared/document/schema.js';
 import type { CollabSession } from '../../lib/collab.ts';
 
@@ -24,6 +25,19 @@ export type ParcifyTestHooks = {
   player(): AnimationState | null;
   // Posición (traslación de la matriz de mundo) y opacidad con que se pinta la vista de un nodo.
   view(id: string): { x: number; y: number; opacity: number } | null;
+  // Último modelo del overlay dibujado (selección, tiradores, guías).
+  overlayModel(): OverlayModel | null;
+  // Tamaño en CSS px con que trabaja la cámara.
+  cameraSize(): { width: number; height: number } | null;
+  // RGBA del búfer de dibujo del canvas en un punto de la página (CSS px × resolución del renderer).
+  // Vuelve a presentar el escenario tal cual está y lee ese búfer, así que refleja el tamaño real del canvas y su contexto,
+  // pero no lo que lo tapa en el DOM: para eso hace falta una captura de pantalla.
+  // null sin motor, con un renderer que no es WebGL, con el contexto perdido, con el canvas fuera del DOM o con el punto fuera del búfer.
+  pixelAt(x: number, y: number): [number, number, number, number] | null;
+  // Contenedores que ahora se pintan desde su textura cacheada.
+  cachedContainers(): number;
+  // Reabre el documento como un cambio de epoch: el editor desmonta y vuelve a montar el motor.
+  forceCollabReset(): Promise<void>;
 };
 
 declare global {
@@ -88,6 +102,39 @@ export function installTestHooks(getEngine: () => Engine | null, getCollab: () =
     view: (id) => {
       const view = getEngine()?.renderer.viewOf(id);
       return view ? { x: view.world[4], y: view.world[5], opacity: view.record.opacity } : null;
+    },
+    overlayModel: () => getEngine()?.renderer.lastOverlay ?? null,
+    cameraSize: () => {
+      const camera = getEngine()?.core.camera;
+      return camera ? { width: camera.width, height: camera.height } : null;
+    },
+    pixelAt: (x, y) => {
+      const engine = getEngine();
+      if (!engine) return null;
+      const pixi = engine.renderer.app.renderer;
+      const canvas = engine.renderer.app.canvas;
+      if (!('gl' in pixi) || !canvas.isConnected) return null;
+      const gl = pixi.gl;
+      if (gl.isContextLost()) return null;
+      const rect = canvas.getBoundingClientRect();
+      const px = Math.floor((x - rect.left) * pixi.resolution);
+      const py = gl.drawingBufferHeight - 1 - Math.floor((y - rect.top) * pixi.resolution);
+      if (px < 0 || py < 0 || px >= gl.drawingBufferWidth || py >= gl.drawingBufferHeight) return null;
+      try {
+        // Sin preserveDrawingBuffer el búfer solo es legible en el mismo turno en que se pinta.
+        pixi.render(engine.renderer.app.stage);
+        const pixel = new Uint8Array(4);
+        gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        return [pixel[0]!, pixel[1]!, pixel[2]!, pixel[3]!];
+      } catch {
+        return null;
+      }
+    },
+    cachedContainers: () => getEngine()?.renderer.cachedContainers ?? 0,
+    forceCollabReset: async () => {
+      const reset = getCollab()?.testReset;
+      if (!reset) throw new Error('La sesión no admite reinicios de prueba');
+      await reset();
     },
   };
 }

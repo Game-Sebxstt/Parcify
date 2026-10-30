@@ -31,7 +31,8 @@
     <Dialog.Overlay class="fixed inset-0 z-40 bg-ground/70" />
     <Dialog.Content
       class={[
-        'fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-panel bg-surface-1 p-6 text-ink shadow-float',
+        // En móvil ocupa el ancho con 16 px de margen; si no cabe en alto, el contenido hace scroll dentro.
+        'fixed top-1/2 left-1/2 z-50 max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 overflow-x-hidden overflow-y-auto scroll-thin rounded-panel bg-surface-1 p-5 text-ink shadow-float sm:p-6',
         size === 'lg' ? 'w-[min(56rem,calc(100vw-2rem))]' : 'w-[min(28rem,calc(100vw-2rem))]',
       ].join(' ')}
     >

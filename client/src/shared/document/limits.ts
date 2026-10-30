@@ -8,6 +8,7 @@ export const DOCUMENT_LIMITS = {
   maxPages: 100,
   maxTextLength: 20_000,
   maxPoints: 512,
+  maxWaypoints: 64,
   maxPolygonVertices: 512,
   sizeWarnBytes: 15 * MiB,
   sizeReadOnlyBytes: 25 * MiB,

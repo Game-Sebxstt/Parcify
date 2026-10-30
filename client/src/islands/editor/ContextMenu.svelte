@@ -1,13 +1,27 @@
-<script lang="ts" module>
-  type Entry =
-    | { kind: 'item'; id: string; label: string; keys?: string; aria?: string; disabled?: boolean; reason?: string; danger?: boolean; run?: () => void }
-    | { kind: 'separator'; id: string };
-</script>
-
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import ArrowDown from '@lucide/svelte/icons/arrow-down';
+  import ArrowUp from '@lucide/svelte/icons/arrow-up';
+  import BringToFront from '@lucide/svelte/icons/bring-to-front';
+  import ClipboardPaste from '@lucide/svelte/icons/clipboard-paste';
+  import Copy from '@lucide/svelte/icons/copy';
+  import CopyPlus from '@lucide/svelte/icons/copy-plus';
+  import Download from '@lucide/svelte/icons/download';
+  import EyeOff from '@lucide/svelte/icons/eye-off';
+  import Film from '@lucide/svelte/icons/film';
+  import Group from '@lucide/svelte/icons/group';
+  import ImageIcon from '@lucide/svelte/icons/image';
+  import Layers from '@lucide/svelte/icons/layers';
+  import Lock from '@lucide/svelte/icons/lock';
+  import LockOpen from '@lucide/svelte/icons/lock-open';
+  import PencilLine from '@lucide/svelte/icons/pencil-line';
+  import Scissors from '@lucide/svelte/icons/scissors';
+  import SendToBack from '@lucide/svelte/icons/send-to-back';
+  import Trash from '@lucide/svelte/icons/trash';
+  import Ungroup from '@lucide/svelte/icons/ungroup';
   import type { ContextMenuRequest, Engine } from '../../engine/index.ts';
   import { m } from '../../paraglide/messages.js';
+  import type { MenuEntry } from '../../ui/DropdownMenu.svelte';
+  import PointMenu from '../../ui/PointMenu.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
 
   type Props = {
@@ -18,173 +32,97 @@
     onanimate: () => void;
     oncopypng: () => void;
     onexport: () => void;
+    onrename: (id: string) => void;
   };
 
-  let { engine, request, readOnly, onclose, onanimate, oncopypng, onexport }: Props = $props();
-
-  const uid = $props.id();
-  const MARGIN = 8;
-  let list = $state<HTMLElement | null>(null);
-  let left = $state(0);
-  let top = $state(0);
+  let { engine, request, readOnly, onclose, onanimate, oncopypng, onexport, onrename }: Props = $props();
 
   const pasteFailed = () => showToast({ message: m.editor_paste_error(), tone: 'error' });
 
-  // Lo que hay seleccionado al abrir (el clic derecho ya la ajustó).
-  const entries = $derived.by((): Entry[] => {
+  // Lo que hay seleccionado al abrir (el clic derecho o la pulsación larga ya la ajustaron).
+  const entries = $derived.by((): MenuEntry[] => {
     const records = engine.state.selectionRecords.get();
     const selected = records.length > 0;
     const editable = !readOnly;
     const containers = records.some((record) => record.type === 'group' || record.type === 'frame');
     const allLocked = selected && records.every((record) => record.locked);
+    const single = records.length === 1 ? records[0]! : null;
     const commands = engine.commands;
     const at = request.at;
+    const off = !selected || !editable;
     return [
-    { kind: 'item', id: 'cut', label: m.editor_menu_cut(), keys: 'Ctrl+X', aria: 'Control+X', disabled: !selected || !editable, run: () => void engine.clipboard.cut() },
-    { kind: 'item', id: 'copy', label: m.editor_menu_copy(), keys: 'Ctrl+C', aria: 'Control+C', disabled: !selected, run: () => void engine.clipboard.copy() },
-    {
-      kind: 'item',
-      id: 'paste',
-      label: m.editor_menu_paste(),
-      keys: 'Ctrl+V',
-      aria: 'Control+V',
-      disabled: !editable,
-      run: () =>
-        void engine.clipboard.pasteFromSystem(at).then(
-          (pasted) => {
-            if (!pasted) pasteFailed();
-          },
-          pasteFailed,
-        ),
-    },
-    { kind: 'item', id: 'duplicate', label: m.editor_menu_duplicate(), keys: 'Ctrl+D', aria: 'Control+D', disabled: !selected || !editable, run: () => commands.duplicateSelection() },
-    { kind: 'item', id: 'delete', label: m.editor_menu_delete(), keys: 'Supr', aria: 'Delete', danger: true, disabled: !selected || !editable, run: () => commands.deleteSelection() },
-    { kind: 'separator', id: 'sep-order' },
-    { kind: 'item', id: 'front', label: m.editor_order_front(), keys: 'Ctrl+Shift+]', aria: 'Control+Shift+]', disabled: !selected || !editable, run: () => commands.zOrder('front') },
-    { kind: 'item', id: 'forward', label: m.editor_order_forward(), keys: 'Ctrl+]', aria: 'Control+]', disabled: !selected || !editable, run: () => commands.zOrder('forward') },
-    { kind: 'item', id: 'backward', label: m.editor_order_backward(), keys: 'Ctrl+[', aria: 'Control+[', disabled: !selected || !editable, run: () => commands.zOrder('backward') },
-    { kind: 'item', id: 'back', label: m.editor_order_back(), keys: 'Ctrl+Shift+[', aria: 'Control+Shift+[', disabled: !selected || !editable, run: () => commands.zOrder('back') },
-    { kind: 'separator', id: 'sep-group' },
-    { kind: 'item', id: 'group', label: m.editor_menu_group(), keys: 'Ctrl+G', aria: 'Control+G', disabled: !selected || !editable, run: () => void commands.groupSelection() },
-    { kind: 'item', id: 'ungroup', label: m.editor_menu_ungroup(), keys: 'Ctrl+Shift+G', aria: 'Control+Shift+G', disabled: !containers || !editable, run: () => void commands.ungroupSelection() },
-    {
-      kind: 'item',
-      id: 'lock',
-      label: allLocked ? m.editor_menu_unlock() : m.editor_menu_lock(),
-      keys: 'Ctrl+Shift+L',
-      aria: 'Control+Shift+L',
-      disabled: !selected || !editable,
-      run: () => commands.setLocked(!allLocked),
-    },
-    { kind: 'item', id: 'hide', label: m.editor_menu_hide(), disabled: !selected || !editable, run: () => commands.setVisible(false) },
-    { kind: 'separator', id: 'sep-export' },
-    { kind: 'item', id: 'copy-png', label: m.editor_menu_copy_png(), disabled: !selected, run: oncopypng },
-    { kind: 'item', id: 'export', label: m.editor_menu_export(), disabled: !selected, run: onexport },
-    { kind: 'item', id: 'animate', label: m.editor_menu_animate(), disabled: !selected || !editable, run: onanimate },
+      { kind: 'item', id: 'cut', label: m.editor_menu_cut(), icon: Scissors, keys: 'Ctrl+X', ariaKeys: 'Control+X', disabled: off, onSelect: () => void engine.clipboard.cut() },
+      { kind: 'item', id: 'copy', label: m.editor_menu_copy(), icon: Copy, keys: 'Ctrl+C', ariaKeys: 'Control+C', disabled: !selected, onSelect: () => void engine.clipboard.copy() },
+      {
+        kind: 'item',
+        id: 'paste',
+        label: m.editor_menu_paste(),
+        icon: ClipboardPaste,
+        keys: 'Ctrl+V',
+        ariaKeys: 'Control+V',
+        disabled: !editable,
+        onSelect: () =>
+          void engine.clipboard.pasteFromSystem(at).then(
+            (pasted) => {
+              if (!pasted) pasteFailed();
+            },
+            pasteFailed,
+          ),
+      },
+      { kind: 'item', id: 'duplicate', label: m.editor_menu_duplicate(), icon: CopyPlus, keys: 'Ctrl+D', ariaKeys: 'Control+D', disabled: off, onSelect: () => commands.duplicateSelection() },
+      ...(single
+        ? [{ kind: 'item', id: 'rename', label: m.editor_menu_rename(), icon: PencilLine, disabled: !editable, onSelect: () => onrename(single.id) } satisfies MenuEntry]
+        : []),
+      { kind: 'item', id: 'delete', label: m.editor_menu_delete(), icon: Trash, keys: 'Supr', ariaKeys: 'Delete', danger: true, disabled: off, onSelect: () => commands.deleteSelection() },
+      { kind: 'separator', id: 'sep-order' },
+      {
+        kind: 'sub',
+        id: 'order',
+        label: m.editor_menu_order(),
+        icon: Layers,
+        disabled: off,
+        items: [
+          { kind: 'item', id: 'front', label: m.editor_order_front(), icon: BringToFront, keys: 'Ctrl+Shift+]', ariaKeys: 'Control+Shift+]', onSelect: () => commands.zOrder('front') },
+          { kind: 'item', id: 'forward', label: m.editor_order_forward(), icon: ArrowUp, keys: 'Ctrl+]', ariaKeys: 'Control+]', onSelect: () => commands.zOrder('forward') },
+          { kind: 'item', id: 'backward', label: m.editor_order_backward(), icon: ArrowDown, keys: 'Ctrl+[', ariaKeys: 'Control+[', onSelect: () => commands.zOrder('backward') },
+          { kind: 'item', id: 'back', label: m.editor_order_back(), icon: SendToBack, keys: 'Ctrl+Shift+[', ariaKeys: 'Control+Shift+[', onSelect: () => commands.zOrder('back') },
+        ],
+      },
+      { kind: 'item', id: 'group', label: m.editor_menu_group(), icon: Group, keys: 'Ctrl+G', ariaKeys: 'Control+G', disabled: off, onSelect: () => void commands.groupSelection() },
+      {
+        kind: 'item',
+        id: 'ungroup',
+        label: m.editor_menu_ungroup(),
+        icon: Ungroup,
+        keys: 'Ctrl+Shift+G',
+        ariaKeys: 'Control+Shift+G',
+        disabled: !containers || !editable,
+        onSelect: () => void commands.ungroupSelection(),
+      },
+      {
+        kind: 'item',
+        id: 'lock',
+        label: allLocked ? m.editor_menu_unlock() : m.editor_menu_lock(),
+        icon: allLocked ? LockOpen : Lock,
+        keys: 'Ctrl+Shift+L',
+        ariaKeys: 'Control+Shift+L',
+        disabled: off,
+        onSelect: () => commands.setLocked(!allLocked),
+      },
+      { kind: 'item', id: 'hide', label: m.editor_menu_hide(), icon: EyeOff, disabled: off, onSelect: () => commands.setVisible(false) },
+      { kind: 'separator', id: 'sep-export' },
+      { kind: 'item', id: 'copy-png', label: m.editor_menu_copy_png(), icon: ImageIcon, disabled: !selected, onSelect: oncopypng },
+      { kind: 'item', id: 'export', label: m.editor_menu_export(), icon: Download, disabled: !selected, onSelect: onexport },
+      { kind: 'item', id: 'animate', label: m.editor_menu_animate(), icon: Film, disabled: off, onSelect: onanimate },
     ];
   });
-
-  const items = () => [...(list?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
-
-  onMount(() => {
-    void place();
-  });
-
-  // Se abre en el puntero y se recoloca dentro de la ventana; el foco va a la primera entrada que se puede usar.
-  async function place() {
-    left = request.clientX;
-    top = request.clientY;
-    await tick();
-    if (!list) return;
-    const box = list.getBoundingClientRect();
-    left = Math.max(MARGIN, Math.min(request.clientX, window.innerWidth - box.width - MARGIN));
-    top = Math.max(MARGIN, Math.min(request.clientY, window.innerHeight - box.height - MARGIN));
-    const all = items();
-    (all.find((item) => item.getAttribute('aria-disabled') !== 'true') ?? all[0])?.focus();
-  }
-
-  function choose(entry: Entry) {
-    if (entry.kind !== 'item' || entry.disabled || !entry.run) return;
-    onclose(true);
-    entry.run();
-  }
-
-  function onKey(event: KeyboardEvent) {
-    const all = items();
-    const index = all.indexOf(document.activeElement as HTMLElement);
-    const move = (next: number) => {
-      event.preventDefault();
-      all[(next + all.length) % all.length]?.focus();
-    };
-    if (event.key === 'ArrowDown') move(index + 1);
-    else if (event.key === 'ArrowUp') move(index - 1);
-    else if (event.key === 'Home') move(0);
-    else if (event.key === 'End') move(all.length - 1);
-    else if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      onclose(true);
-    } else if (event.key === 'Tab') {
-      event.preventDefault();
-      onclose(true);
-    }
-  }
 </script>
 
-<svelte:window
-  onpointerdown={(event) => {
-    if (list && !list.contains(event.target as Node)) onclose(false);
-  }}
-  onblur={() => onclose(false)}
-  onresize={() => onclose(false)}
+<PointMenu
+  items={entries}
+  at={{ x: request.clientX, y: request.clientY }}
+  {onclose}
+  label={m.editor_menu_label()}
+  testid="context-menu"
+  class="w-64"
 />
-
-<div
-  bind:this={list}
-  role="menu"
-  tabindex="-1"
-  aria-label={m.editor_menu_label()}
-  data-own-keys
-  onkeydown={onKey}
-  oncontextmenu={(event) => event.preventDefault()}
-  style:left="{left}px"
-  style:top="{top}px"
-  class="fixed z-50 w-64 rounded-panel bg-surface-2 p-1 text-sm text-ink shadow-float"
-  data-testid="context-menu"
->
-  {#each entries as entry (entry.id)}
-    {#if entry.kind === 'separator'}
-      <div role="separator" class="mx-2 my-1 h-px bg-petrol"></div>
-    {:else}
-      <div
-        role="menuitem"
-        tabindex="-1"
-        aria-disabled={entry.disabled || undefined}
-        aria-keyshortcuts={entry.aria}
-        aria-describedby={entry.reason ? `${uid}-${entry.id}-reason` : undefined}
-        onclick={() => choose(entry)}
-        onkeydown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            choose(entry);
-          }
-        }}
-        class={[
-          'flex min-h-9 cursor-pointer items-center gap-3 rounded-[6px] px-3 py-1.5 outline-none select-none hover:bg-petrol focus:bg-petrol',
-          'aria-disabled:cursor-not-allowed',
-          entry.danger && !entry.disabled ? 'text-danger' : '',
-        ].join(' ')}
-      >
-        <span class="flex min-w-0 flex-1 flex-col">
-          <span class={entry.disabled ? 'text-ink-muted' : ''}>{entry.label}</span>
-          {#if entry.reason}
-            <span id="{uid}-{entry.id}-reason" class="text-xs text-ink-muted">{entry.reason}</span>
-          {/if}
-        </span>
-        {#if entry.keys}
-          <span aria-hidden="true" class="shrink-0 text-xs text-ink-muted tabular">{entry.keys}</span>
-        {/if}
-      </div>
-    {/if}
-  {/each}
-</div>

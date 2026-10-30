@@ -14,7 +14,7 @@
     "check": "npm run i18n && astro check && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "lint": "eslint .",
     "test": "npm run i18n && vitest run",
-    "e2e": "playwright test --project=chromium --project=firefox",
+    "e2e": "playwright test --project=chromium --project=firefox --project=mobile --project=tablet",
     "shared:sync": "node scripts/shared-sync.ts",
     "shared:check": "node scripts/shared-check.ts",
     "contrast": "node scripts/contrast.ts",
@@ -28,6 +28,7 @@
   "dependencies": {
     "@ai-sdk/svelte": "5.0.141",
     "@astrojs/svelte": "9.1.0",
+    "@floating-ui/dom": "1.8.0",
     "@fontsource-variable/manrope": "5.3.0",
     "@hocuspocus/provider": "4.7.1",
     "@inlang/paraglide-js": "2.28.0",

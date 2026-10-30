@@ -3,11 +3,41 @@ import type { PointerInput } from './PointerController.ts';
 import type { KeyInput } from './shortcuts.ts';
 import { readTransfer, type ClipboardController } from './clipboard.ts';
 import { TEXT_EDITOR_ATTR } from '../text/TextEditor.ts';
+import { classifyWheel, type WheelAction, type WheelPreference, type WheelSample } from './input/wheel.ts';
+import { GestureRouter } from './input/GestureRouter.ts';
+import { toPointerKind, type PointerKind } from './input/profile.ts';
+import { bindSafariGestures } from './input/safari-gestures.ts';
 
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
+export function toWheelSample(event: WheelEvent, rect: { left: number; top: number }): WheelSample {
+  return {
+    deltaX: event.deltaX,
+    deltaY: event.deltaY,
+    deltaMode: event.deltaMode === 1 ? 1 : event.deltaMode === 2 ? 2 : 0,
+    ctrl: event.ctrlKey,
+    meta: event.metaKey,
+    shift: event.shiftKey,
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+  };
+}
+
+// Los gestos de cámara nunca tocan el documento; cualquiera de ellos deja de seguir a otro y anula el encuadre pendiente.
+export function applyWheel(core: EditorCore, action: WheelAction): void {
+  if (action.kind === 'ignore') return;
+  core.stopFollowing();
+  core.markUserCamera();
+  if (action.kind === 'zoom') core.camera.zoomAt(action.x, action.y, action.factor);
+  else core.camera.panBy(action.dx, action.dy);
+  core.requestFrame();
+}
+
 // Los widgets con teclado propio (el árbol de capas, la lista de páginas) llevan este atributo.
 export const OWN_KEYS_ATTR = 'data-own-keys';
+// Las zonas que gestionan su propia rueda (cada lienzo, las pistas de la línea de tiempo) llevan este atributo: fuera de
+// ellas, el editor anula Ctrl/⌘+rueda para que el pellizco no haga zoom de la página.
+export const OWN_WHEEL_ATTR = 'data-own-wheel';
 
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -15,11 +45,18 @@ function isEditable(target: EventTarget | null): boolean {
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
-// Dónde se abrió el menú contextual: en la ventana (para colocarlo) y en la página (para pegar ahí).
-export type ContextMenuRequest = { clientX: number; clientY: number; at: { x: number; y: number } };
+// Dónde se abrió el menú contextual: en la ventana (para colocarlo) y en la página (para pegar ahí). pointerType dice
+// si llegó del ratón (o del teclado), del lápiz o de una pulsación larga con el dedo.
+export type ContextMenuRequest = { clientX: number; clientY: number; at: { x: number; y: number }; pointerType: PointerKind };
 
 export type DomOptions = {
   embedded?: boolean;
+  // 'page': la rueda sin Ctrl/⌘ se deja al navegador para que desplace la página. 'canvas': toda rueda es del lienzo.
+  wheel?: 'canvas' | 'page';
+  // El motor no lee localStorage: la preferencia de la rueda del ratón llega desde fuera.
+  wheelPref?: () => WheelPreference;
+  // Movimiento reducido (sistema o cuenta): sin inercia tras los gestos de dos dedos.
+  reducedMotion?: () => boolean;
   onDropFiles?: (files: File[], at: { x: number; y: number }) => void;
   onContextMenu?: (request: ContextMenuRequest) => void;
 };
@@ -41,6 +78,8 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
     alt: event.altKey,
     ctrl: MAC ? event.metaKey : event.ctrlKey,
     pointerId: event.pointerId,
+    pointerType: toPointerKind(event.pointerType),
+    pressure: event.pressure,
   });
 
   const toKey = (event: KeyboardEvent): KeyInput => ({
@@ -52,44 +91,78 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
     repeat: event.repeat,
   });
 
+  // Tipo y botón del último pointerdown: tras uno con el dedo o con la punta del lápiz, el contextmenu nativo de la
+  // pulsación larga se descarta. El botón lateral del lápiz (2) sigue abriendo el menú por la vía nativa.
+  let lastDownKind: PointerKind = 'mouse';
+  let lastDownButton = 0;
+
+  const router = new GestureRouter(core, {
+    embedded: options.embedded === true,
+    ...(options.reducedMotion ? { reducedMotion: options.reducedMotion } : {}),
+    stopTextEdit: () => {
+      if (!core.editingText.get()) return;
+      core.stopTextEdit();
+      // Con el dedo el contenedor no tomó el foco al tocar, para no cerrar el teclado: lo toma ahora.
+      if (document.activeElement !== container) container.focus({ preventScroll: true });
+    },
+    ...(options.onContextMenu
+      ? {
+          onLongPress: (input: PointerInput) => {
+            const at = core.controller.contextMenu({ x: input.x, y: input.y });
+            options.onContextMenu?.({ clientX: rect.left + input.x, clientY: rect.top + input.y, at, pointerType: input.pointerType });
+          },
+        }
+      : {}),
+  });
+
   const onPointerDown = (event: PointerEvent) => {
-    // Dentro del editor de texto, el puntero mueve el caret; fuera, confirma la edición.
+    // Dentro del editor de texto, el puntero mueve el caret; fuera, confirma la edición (lo decide el enrutador).
     if (event.target instanceof Element && event.target.closest(`[${TEXT_EDITOR_ATTR}]`)) return;
-    if (core.editingText.get()) core.stopTextEdit();
+    lastDownKind = toPointerKind(event.pointerType);
+    lastDownButton = event.button;
     refreshRect();
-    if (document.activeElement !== container) container.focus({ preventScroll: true });
+    // Mientras se edita un texto con el dedo, el foco se queda en el texto para no esconder el teclado.
+    const keepTextFocus = lastDownKind === 'touch' && core.editingText.get() !== null;
     try {
       container.setPointerCapture(event.pointerId);
     } catch {
       // Los eventos sintéticos no tienen un puntero activo que capturar.
     }
     if (event.button === 1) event.preventDefault();
-    core.controller.pointerDown(toInput(event));
+    router.down(toInput(event));
+    if (!keepTextFocus && document.activeElement !== container) container.focus({ preventScroll: true });
   };
   const inEditor = (event: Event) => event.target instanceof Element && event.target.closest(`[${TEXT_EDITOR_ATTR}]`) !== null;
-  const onPointerMove = (event: PointerEvent) => core.controller.pointerMove(toInput(event));
-  const onPointerUp = (event: PointerEvent) => {
-    if (inEditor(event) && core.controller.state === 'idle') return;
+  const onPointerMove = (event: PointerEvent) => router.move(toInput(event));
+  const releaseCapture = (event: PointerEvent) => {
     try {
       if (container.hasPointerCapture(event.pointerId)) container.releasePointerCapture(event.pointerId);
     } catch {
       // Sin captura que soltar.
     }
-    core.controller.pointerUp(toInput(event));
   };
-  const onPointerCancel = () => core.controller.cancel();
+  const onPointerUp = (event: PointerEvent) => {
+    if (inEditor(event) && core.controller.state === 'idle') return;
+    releaseCapture(event);
+    router.up(toInput(event));
+  };
+  const onPointerCancel = (event: PointerEvent) => {
+    releaseCapture(event);
+    router.cancel(toInput(event));
+  };
+  const onPointerLeave = (event: PointerEvent) => router.leave(event.buttons);
   const onWheel = (event: WheelEvent) => {
-    // Incrustado en una página, la rueda desplaza la página; solo el pellizco (Ctrl) hace zoom.
-    if (options.embedded && !event.ctrlKey) return;
+    if (options.wheel === 'page' && !(event.ctrlKey || event.metaKey)) return;
+    // También con `ignore`: un pellizco sobre el lienzo nunca hace zoom de la página.
     event.preventDefault();
-    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rect.height : 1;
-    core.controller.wheel({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-      deltaX: event.deltaX * scale,
-      deltaY: event.deltaY * scale,
-      ctrl: event.ctrlKey || event.metaKey,
+    router.stopInertia();
+    const action = classifyWheel(toWheelSample(event, rect), {
+      isMac: MAC,
+      pref: options.wheelPref?.() ?? 'pan',
+      gestureActive: router.gestureActive,
+      viewportHeight: rect.height,
     });
+    applyWheel(core, action);
   };
 
   // Los atajos se escuchan en la ventana, salvo con el foco en un campo de texto o al pulsar un botón.
@@ -111,7 +184,10 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
     if (core.controller.keyDown(toKey(event))) event.preventDefault();
   };
   const onKeyUp = (event: KeyboardEvent) => core.controller.keyUp(toKey(event));
-  const onBlur = () => core.controller.blur();
+  const onBlur = () => {
+    core.controller.blur();
+    router.reset();
+  };
 
   // Copiar y cortar escriben el bloque de Parcify en text/html y el texto de los nodos en text/plain.
   const onCopy = (event: ClipboardEvent) => {
@@ -134,10 +210,12 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
   const onContextMenu = (event: MouseEvent) => {
     if (inEditor(event) || !options.onContextMenu) return;
     event.preventDefault();
+    // Android y Windows Ink lanzan contextmenu en su propia pulsación larga: el menú ya lo abre el enrutador.
+    if (lastDownKind === 'touch' || (lastDownKind === 'pen' && lastDownButton === 0)) return;
     if (core.editingText.get()) core.stopTextEdit();
     refreshRect();
     const at = core.controller.contextMenu({ x: event.clientX - rect.left, y: event.clientY - rect.top });
-    options.onContextMenu({ clientX: event.clientX, clientY: event.clientY, at });
+    options.onContextMenu({ clientX: event.clientX, clientY: event.clientY, at, pointerType: lastDownKind });
   };
   // Con el teclado (tecla de menú o Shift+F10) el menú se abre sobre la selección o en el centro de la vista.
   const openMenuFromKeyboard = () => {
@@ -148,7 +226,7 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
     const screen = core.camera.worldToScreen(at.x, at.y);
     const clientX = Math.min(rect.right, Math.max(rect.left, rect.left + screen.x));
     const clientY = Math.min(rect.bottom, Math.max(rect.top, rect.top + screen.y));
-    options.onContextMenu?.({ clientX, clientY, at });
+    options.onContextMenu?.({ clientX, clientY, at, pointerType: 'mouse' });
   };
 
   // Archivos de imagen soltados sobre el lienzo: se suben y se colocan donde cayeron.
@@ -174,11 +252,14 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
   });
   const observer = new ResizeObserver(refreshRect);
   observer.observe(container);
+  container.setAttribute(OWN_WHEEL_ATTR, '');
+  const unbindSafari = options.embedded ? () => {} : bindSafariGestures(container, core, router);
 
   container.addEventListener('pointerdown', onPointerDown);
   container.addEventListener('pointermove', onPointerMove);
   container.addEventListener('pointerup', onPointerUp);
   container.addEventListener('pointercancel', onPointerCancel);
+  container.addEventListener('pointerleave', onPointerLeave);
   container.addEventListener('wheel', onWheel, { passive: false });
   container.addEventListener('dragover', onDragOver);
   container.addEventListener('drop', onDrop);
@@ -194,10 +275,14 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
   return () => {
     unsubscribeCursor();
     observer.disconnect();
+    unbindSafari();
+    router.reset();
+    container.removeAttribute(OWN_WHEEL_ATTR);
     container.removeEventListener('pointerdown', onPointerDown);
     container.removeEventListener('pointermove', onPointerMove);
     container.removeEventListener('pointerup', onPointerUp);
     container.removeEventListener('pointercancel', onPointerCancel);
+    container.removeEventListener('pointerleave', onPointerLeave);
     container.removeEventListener('wheel', onWheel);
     container.removeEventListener('dragover', onDragOver);
     container.removeEventListener('drop', onDrop);

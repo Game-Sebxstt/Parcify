@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createVerifiedAccount } from './helpers/account.ts';
 import { readWorkspaceInviteLink } from './helpers/invite.ts';
+import { chooseOption } from './helpers/select.ts';
 
 test('invitación al espacio de principio a fin desde la pestaña de miembros', async ({ page, browser }) => {
   test.setTimeout(120_000);
@@ -16,7 +17,7 @@ test('invitación al espacio de principio a fin desde la pestaña de miembros', 
   await page.goto(`/app/e/${ana.workspaceSlug}?vista=miembros`);
   const invite = page.getByRole('region', { name: 'Invitar al espacio' });
   await invite.getByLabel('Email').fill(beaAccount.email);
-  await invite.getByLabel('Rol').selectOption({ label: 'Miembro' });
+  await chooseOption(page, invite.getByLabel('Rol'), 'Miembro');
   await invite.getByRole('button', { name: 'Enviar invitación' }).click();
   await expect(page.getByText(`Invitación enviada a ${beaAccount.email}.`)).toBeVisible();
   await expect(invite.getByTestId('pending-invitation')).toContainText(beaAccount.email);

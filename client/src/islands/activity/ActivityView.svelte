@@ -9,6 +9,7 @@
     type WorkspaceActivityResponse,
   } from '../../shared/api/activity.js';
   import Button from '../../ui/Button.svelte';
+  import Select from '../../ui/Select.svelte';
   import Skeleton from '../../ui/Skeleton.svelte';
   import ActivityReport from './ActivityReport.svelte';
   import { rangeFor } from './chart.ts';
@@ -19,6 +20,9 @@
 
   const RANGES = [7, 30, 90] as const;
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  // Valor de la opción «Todo el espacio»: la lista no admite una opción con valor vacío.
+  const WORKSPACE = 'workspace';
+  const uid = $props.id();
 
   let days = $state<number>(30);
   let projectId = $state('');
@@ -29,6 +33,11 @@
 
   const report = $derived(projectId ? projectReport : workspaceReport);
   const projectName = $derived(workspaceReport?.projects.find((project) => project.id === projectId)?.name ?? '');
+  const scopes = $derived([
+    { value: WORKSPACE, label: m.activity_scope_workspace() },
+    ...(workspaceReport?.projects ?? []).map((project) => ({ value: project.id, label: project.name })),
+    ...(projectId && !projectName ? [{ value: projectId, label: projectId }] : []),
+  ]);
 
   onMount(() => {
     const requested = new URL(window.location.href).searchParams.get('proyecto');
@@ -66,33 +75,34 @@
 
 <div class="flex flex-col gap-6">
   <div class="flex flex-wrap items-end gap-4">
-    <label class="flex flex-col gap-1 text-sm">
-      <span class="text-ink-muted">{m.activity_scope()}</span>
-      <select
-        class="h-10 min-w-56 cursor-pointer rounded-panel border border-edge bg-surface-2 px-3 text-ink hover:border-ink-muted focus-visible:border-coral"
-        value={projectId}
-        onchange={(event) => selectProject(event.currentTarget.value)}
-      >
-        <option value="">{m.activity_scope_workspace()}</option>
-        {#each workspaceReport?.projects ?? [] as project (project.id)}
-          <option value={project.id}>{project.name}</option>
-        {/each}
-        {#if projectId && !projectName}<option value={projectId}>{projectId}</option>{/if}
-      </select>
-    </label>
-    <label class="flex flex-col gap-1 text-sm">
-      <span class="text-ink-muted">{m.activity_range()}</span>
-      <select
-        class="h-10 cursor-pointer rounded-panel border border-edge bg-surface-2 px-3 text-ink hover:border-ink-muted focus-visible:border-coral"
-        value={days}
-        onchange={(event) => {
-          days = Number(event.currentTarget.value);
-          void load();
-        }}
-      >
-        {#each RANGES as range (range)}<option value={range}>{m.activity_range_days({ days: range })}</option>{/each}
-      </select>
-    </label>
+    <div class="flex flex-col gap-1 text-sm">
+      <label for="{uid}-scope" class="text-ink-muted">{m.activity_scope()}</label>
+      <Select
+        id="{uid}-scope"
+        items={scopes}
+        bind:value={() => projectId || WORKSPACE, (next) => selectProject(next === WORKSPACE ? '' : next)}
+        label={m.activity_scope()}
+        size="lg"
+        class="h-10 min-w-56 px-3 text-sm"
+      />
+    </div>
+    <div class="flex flex-col gap-1 text-sm">
+      <label for="{uid}-range" class="text-ink-muted">{m.activity_range()}</label>
+      <Select
+        id="{uid}-range"
+        items={RANGES.map((range) => ({ value: String(range), label: m.activity_range_days({ days: range }) }))}
+        bind:value={
+          () => String(days),
+          (next) => {
+            days = Number(next);
+            void load();
+          }
+        }
+        label={m.activity_range()}
+        size="lg"
+        class="h-10 px-3 text-sm"
+      />
+    </div>
   </div>
 
   {#if status === 'loading'}

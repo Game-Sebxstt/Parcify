@@ -20,6 +20,52 @@ async function drag(page: Page, from: { x: number; y: number }, to: { x: number;
   await page.mouse.up();
 }
 
+test('Presentar: la diapositiva sigue centrada al pasar de 1440×900 a 1920×1080', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // En pantalla completa el navegador no deja cambiar el tamaño de la ventana: se presenta en el hueco del lienzo,
+  // que es lo que pasa cuando el navegador niega el permiso.
+  await page.addInitScript(() => {
+    Element.prototype.requestFullscreen = () => Promise.reject(new DOMException('Sin permiso', 'NotAllowedError'));
+  });
+  const ana = await createVerifiedAccount(page.request, `present-size-${test.info().project.name}`, 'Ana Presenta');
+  const projectId = await createProject(page.request, ana.workspaceSlug, 'Charla centrada');
+  await openEditor(page, projectId);
+
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  await canvas.focus();
+  await page.keyboard.press('f');
+  await drag(page, { x: box.x + 60, y: box.y + 80 }, { x: box.x + 300, y: box.y + 220 });
+  await expect.poll(async () => (await nodes(page)).filter((node) => node.type === 'frame').length).toBe(1);
+  const frame = (await nodes(page)).find((node) => node.type === 'frame')!;
+
+  await page.getByRole('button', { name: 'Presentar', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Presentación' });
+  await expect(dialog).toBeVisible();
+
+  // Márgenes de la diapositiva dentro del área de la presentación: iguales a cada lado (±1 px).
+  const expectCentered = async () => {
+    await expect(async () => {
+      const area = (await dialog.boundingBox())!;
+      const from = await toPage(page, frame.x, frame.y);
+      const to = await toPage(page, frame.x + frame.w, frame.y + frame.h);
+      const left = from.x - area.x;
+      const right = area.x + area.width - to.x;
+      const top = from.y - area.y;
+      const bottom = area.y + area.height - to.y;
+      expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(top - bottom)).toBeLessThanOrEqual(1);
+    }).toPass({ timeout: 5_000 });
+  };
+
+  await expectCentered();
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await expectCentered();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});
+
 test('Presentar: frames en orden, teclado para avanzar, atajos del editor bloqueados y cámara restaurada', async ({ page }) => {
   test.setTimeout(120_000);
   const ana = await createVerifiedAccount(page.request, `present-${test.info().project.name}`, 'Ana Presenta');

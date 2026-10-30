@@ -139,5 +139,7 @@ export const pointer = (x: number, y: number, extra: Partial<{ shift: boolean; a
   alt: false,
   ctrl: false,
   pointerId: 1,
+  pointerType: 'mouse' as const,
+  pressure: 0.5,
   ...extra,
 });

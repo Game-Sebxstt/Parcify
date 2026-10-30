@@ -17,7 +17,9 @@ import {
   type TestCollab,
 } from '../../test/helpers/collab.js';
 import { publishOrgEvent, publishProjectEvent } from '../core/events.js';
-import { documentNameFor } from '../shared/document/keys.js';
+import { initDocument } from '../shared/document/init.js';
+import { documentNameFor, ROOT_KEYS } from '../shared/document/keys.js';
+import { DOCUMENT_SCHEMA_VERSION } from '../shared/document/schema.js';
 import { initialPageId } from './extensions/normalize.js';
 
 let a: TestCollab;
@@ -69,7 +71,7 @@ describe('persistencia', () => {
       const stored = await a.db.projectDocument.findUnique({ where: { projectId: project.id } });
       return stored && stored.nodeCount === 2 ? stored : null;
     }, 'guardado con dos nodos');
-    expect(row).toMatchObject({ epoch: 1, schemaVersion: 1, nodeCountByType: { rect: 1, image: 1 }, assetRefs: [assetId] });
+    expect(row).toMatchObject({ epoch: 1, schemaVersion: 2, nodeCountByType: { rect: 1, image: 1 }, assetRefs: [assetId] });
     expect(row.sizeBytes).toBe(row.state.byteLength);
     const after = await a.db.project.findUniqueOrThrow({ where: { id: project.id } });
     expect(after.lastEditedAt.getTime()).toBeGreaterThan(before.lastEditedAt.getTime());
@@ -86,6 +88,42 @@ describe('persistencia', () => {
     expect(nodesOf(again.doc)[rect]).toMatchObject({ type: 'rect', x: 10, createdBy: owner.id });
     expect(nodesOf(again.doc)[image]).toMatchObject({ type: 'image', assetId });
     expect(again.doc.getMap('pages').size).toBe(1);
+  });
+
+  it('un documento guardado en la v1 se migra al cargarlo sin cambiar su contenido', async () => {
+    const { owner, project } = await setup();
+    const seed = new Y.Doc();
+    initDocument(seed);
+    seed.getMap(ROOT_KEYS.meta).set('schemaVersion', 1);
+    const pageId = firstPageId(seed);
+    addNode(seed, rectProps(pageId, owner.id));
+    const before = JSON.stringify(nodesOf(seed));
+    const state = new Uint8Array(Y.encodeStateAsUpdate(seed));
+    await a.db.projectDocument.create({
+      data: {
+        projectId: project.id,
+        state,
+        schemaVersion: 1,
+        epoch: 1,
+        sizeBytes: state.byteLength,
+        nodeCount: 1,
+        nodeCountByType: { rect: 1 },
+        assetRefs: [],
+      },
+    });
+
+    const client = track(connect(a.url, project.id, () => tokenFor(owner, project.id)));
+    await client.authenticated();
+    await client.synced();
+    await waitFor(() => client.doc.getMap(ROOT_KEYS.meta).get('schemaVersion') === DOCUMENT_SCHEMA_VERSION, 'documento migrado');
+    expect(JSON.stringify(nodesOf(client.doc))).toBe(before);
+
+    addNode(client.doc, rectProps(pageId, owner.id));
+    const row = await waitFor(async () => {
+      const stored = await a.db.projectDocument.findUnique({ where: { projectId: project.id } });
+      return stored && stored.nodeCount === 2 ? stored : null;
+    }, 'guardado tras migrar');
+    expect(row.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
   });
 });
 

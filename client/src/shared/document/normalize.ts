@@ -171,13 +171,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isPointPair(point: unknown): point is [number, number] {
+  return Array.isArray(point) && point.length === 2 && point.every((n) => typeof n === 'number');
+}
+
 function clampPoints(value: unknown, max: number, range: Range): unknown {
   if (!Array.isArray(value)) return value;
-  return value.slice(0, max).map((point) =>
-    Array.isArray(point) && point.length === 2 && point.every((n) => typeof n === 'number')
-      ? [clampValue(point[0] as number, range), clampValue(point[1] as number, range)]
-      : point,
-  );
+  return value.slice(0, max).map((point) => (isPointPair(point) ? [clampValue(point[0], range), clampValue(point[1], range)] : point));
 }
 
 function clampShadow(value: unknown): unknown {
@@ -225,6 +225,13 @@ class Overlay {
     pending.set(key, value);
   }
 
+  unset(id: string, key: string) {
+    this.pending.get(id)?.delete(key);
+    let removed = this.removedKeys.get(id);
+    if (!removed) this.removedKeys.set(id, (removed = new Set()));
+    removed.add(key);
+  }
+
   json(id: string): Record<string, unknown> | null {
     const map = this.nodeMap(id);
     if (!map) return null;
@@ -265,6 +272,12 @@ class Planner {
     if (sameJson(this.overlay.get(id, key), value)) return;
     this.overlay.set(id, key, value);
     this.corrections.push({ op: 'set', target: 'node', id, key, value, actor, reason });
+  }
+
+  unsetNode(id: string, key: string, actor: string | null, reason: string) {
+    if (this.overlay.removedKeys.get(id)?.has(key) || !this.overlay.nodeMap(id)?.has(key)) return;
+    this.overlay.unset(id, key);
+    this.corrections.push({ op: 'unset', target: 'node', id, key, actor, reason });
   }
 
   deleteNode(id: string, actor: string | null, reason: string) {
@@ -414,6 +427,17 @@ class Planner {
           this.setNode(id, end, this.freeEnd(id, end), actor, 'connector');
         }
       }
+      if (map.has('waypoints')) {
+        // Un codo mal formado se descarta solo: si llegara al safeParse final borraría el conector entero.
+        const waypoints = map.get('waypoints');
+        const wellFormed = Array.isArray(waypoints) ? waypoints.filter(isPointPair) : waypoints;
+        const clamped = clampPoints(wellFormed, DOCUMENT_LIMITS.maxWaypoints, [-C, C, 0]);
+        if (!Array.isArray(clamped) || clamped.length === 0) this.unsetNode(id, 'waypoints', actor, 'connector_waypoints');
+        else this.setNode(id, 'waypoints', clamped, actor, 'points');
+      }
+    }
+    if (type === 'text' && map.has('fixedHeight') && typeof map.get('fixedHeight') !== 'boolean') {
+      this.unsetNode(id, 'fixedHeight', actor, 'text_fixed_height');
     }
 
     this.repairCreatedBy(id, map, touch);

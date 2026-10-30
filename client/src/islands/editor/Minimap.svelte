@@ -83,6 +83,7 @@
 
   function moveTo(event: PointerEvent) {
     const rect = canvas!.getBoundingClientRect();
+    engine.core.markUserCamera();
     engine.core.centerOn(originX + (event.clientX - rect.left) / scale, originY + (event.clientY - rect.top) / scale);
   }
 </script>

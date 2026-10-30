@@ -1,11 +1,10 @@
 import { apply, compose, rotation, translation, type Mat, type Point } from '../geometry/matrix.ts';
+import type { InputProfile } from '../interaction/input/profile.ts';
 import type { HandleKind } from '../render/sink.ts';
 
 // Caja de la selección: origen en mundo (esquina superior izquierda antes de girar), ángulo y tamaño.
 export type SelectionFrame = { x: number; y: number; w: number; h: number; angle: number };
 
-export const HANDLE_HIT_PX = 7;
-export const ROTATE_ZONE_PX = 22;
 const MIN_EDGE_HANDLES_PX = 28;
 
 export const HANDLE_SIDES: Record<HandleKind, [number, number]> = {
@@ -48,16 +47,41 @@ export function handlePositions(corners: readonly [Point, Point, Point, Point]):
 
 export type HandleHit = { kind: HandleKind } | { kind: 'rotate' } | null;
 
-// Primero los handles de escala; después la zona de giro, fuera de las esquinas.
-export function hitHandle(corners: readonly [Point, Point, Point, Point], x: number, y: number): HandleHit {
+export type HandleProfile = Pick<InputProfile, 'handleHit' | 'rotateZone'>;
+
+// Primero los handles de escala (zona cuadrada de lado handleHit); después la zona de giro, fuera de las esquinas, entre
+// rotateZone[0] y rotateZone[1] px de la esquina.
+export function hitHandle(corners: readonly [Point, Point, Point, Point], x: number, y: number, profile: HandleProfile): HandleHit {
+  const half = profile.handleHit / 2;
   for (const handle of handlePositions(corners)) {
-    if (Math.abs(handle.x - x) <= HANDLE_HIT_PX && Math.abs(handle.y - y) <= HANDLE_HIT_PX) return { kind: handle.kind };
+    if (Math.abs(handle.x - x) <= half && Math.abs(handle.y - y) <= half) return { kind: handle.kind };
   }
   if (insideQuad(corners, x, y)) return null;
+  const [min, max] = profile.rotateZone;
   for (const corner of corners) {
-    if (Math.hypot(corner.x - x, corner.y - y) <= ROTATE_ZONE_PX) return { kind: 'rotate' };
+    const distance = Math.hypot(corner.x - x, corner.y - y);
+    if (distance >= min && distance <= max) return { kind: 'rotate' };
   }
   return null;
+}
+
+// Cuadrilátero de la caja ampliado `margin` px hacia fuera por cada lado, siguiendo los ejes de la caja (también girada).
+export function expandQuad(corners: readonly [Point, Point, Point, Point], margin: number): [Point, Point, Point, Point] {
+  const [nw, ne, , sw] = corners;
+  let u = unit(ne.x - nw.x, ne.y - nw.y);
+  let v = unit(sw.x - nw.x, sw.y - nw.y);
+  // Una caja de lado 0 (una línea recta) no tiene uno de los ejes: se toma la perpendicular del otro.
+  if (!u && v) u = { x: -v.y, y: v.x };
+  if (!v && u) v = { x: -u.y, y: u.x };
+  const a = u ?? { x: 1, y: 0 };
+  const b = v ?? { x: 0, y: 1 };
+  const move = (p: Point, su: number, sv: number): Point => ({ x: p.x + (a.x * su + b.x * sv) * margin, y: p.y + (a.y * su + b.y * sv) * margin });
+  return [move(corners[0], -1, -1), move(corners[1], 1, -1), move(corners[2], 1, 1), move(corners[3], -1, 1)];
+}
+
+function unit(x: number, y: number): Point | null {
+  const length = Math.hypot(x, y);
+  return length > 1e-9 ? { x: x / length, y: y / length } : null;
 }
 
 export function insideQuad(corners: readonly Point[], x: number, y: number): boolean {

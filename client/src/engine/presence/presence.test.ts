@@ -3,6 +3,7 @@ import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import { ROOT_KEYS, type PresenceState } from '../../shared/document/keys.js';
 import { DocHost } from '../doc/host/DocHost.ts';
+import { applyWheel } from '../interaction/dom.ts';
 import { makeCore, newDoc, PAGE_ID, putNode, rect } from '../test-utils.ts';
 import { CursorInterpolator, CURSOR_SMOOTHING_MS } from './cursors.ts';
 import { gestureIds, Presence, PRESENCE_INTERVAL_MS, selectionFields } from './Presence.ts';
@@ -158,7 +159,7 @@ describe('seguir a un colaborador', () => {
     }
     expect(core.camera.state()).toEqual({ x: 500, y: 300, zoom: 2 });
     expect(frame.hasFrame).toBe(false);
-    core.controller.wheel({ x: 10, y: 10, deltaX: 0, deltaY: 100, ctrl: false });
+    applyWheel(core, { kind: 'pan', dx: 0, dy: -100 });
     expect(core.following.get()).toBeNull();
     core.follow(3000);
     awareness.states.delete(3000);

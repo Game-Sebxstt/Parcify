@@ -6,11 +6,13 @@ import type { Commands } from './commands/Commands.ts';
 import { EditorCore, type EngineUser, type FrameStats, type TextEditing, type Tool } from './EditorCore.ts';
 import { ClipboardController, type ClipboardSource } from './interaction/clipboard.ts';
 import { bindDom, type ContextMenuRequest } from './interaction/dom.ts';
-import type { CameraState } from './render/Camera.ts';
-import { Renderer } from './render/Renderer.ts';
+import type { CameraState, ViewInsets } from './render/Camera.ts';
+import { Renderer, type ContextState } from './render/Renderer.ts';
 import type { PageRecord } from './model/DocumentStore.ts';
 import type { DocumentBackend } from './doc/backend.ts';
 import type { Readable } from './store.ts';
+import type { WheelPreference } from './interaction/input/wheel.ts';
+import type { InputProfile } from './interaction/input/profile.ts';
 import { TextEditor } from './text/TextEditor.ts';
 import type { NodeRecord } from './types.ts';
 
@@ -28,7 +30,11 @@ export { AssetResolver } from './assets/AssetResolver.ts';
 export { LOCAL_ORIGIN, AI_ORIGIN } from './origins.ts';
 export { AI_PREVIEW_COLOR } from './ai/preview.ts';
 export type { ClipboardSource } from './interaction/clipboard.ts';
-export type { ContextMenuRequest } from './interaction/dom.ts';
+export { OWN_WHEEL_ATTR, type ContextMenuRequest } from './interaction/dom.ts';
+export type { WheelPreference } from './interaction/input/wheel.ts';
+export type { InputProfile, PointerKind } from './interaction/input/profile.ts';
+export type { ViewInsets } from './render/Camera.ts';
+export { RendererUnavailableError, type ContextState } from './render/Renderer.ts';
 
 export type EngineOptions = {
   canvas: HTMLCanvasElement;
@@ -46,13 +52,19 @@ export type EngineOptions = {
   camera?: CameraState;
   renderer?: 'webgl' | 'webgpu';
   onFatal?: () => void;
-  // En una página (la landing): la rueda desplaza la página y el teclado solo actúa con el foco en el lienzo.
+  // Incrustado (la landing, la vista previa de versiones): el teclado y el portapapeles solo actúan con el foco dentro.
   embedded?: boolean;
+  // 'page' (la landing): la rueda sin Ctrl/⌘ desplaza la página. Por defecto 'canvas'.
+  wheel?: 'canvas' | 'page';
+  // Preferencia de la rueda del ratón; se consulta en cada evento. Sin ella, la rueda desplaza.
+  wheelPref?: () => WheelPreference;
+  // Movimiento reducido; se consulta al soltar cada gesto. Sin ella, solo cuenta la preferencia del sistema.
+  reducedMotion?: () => boolean;
   // Nombre accesible del editor de texto.
   labels?: { textEditor: string };
   // Origen de lo que se copia y copia de imágenes entre espacios (POST /v1/assets/copy).
   clipboard?: { source: ClipboardSource | null; copyAssets?: (ids: string[]) => Promise<Record<string, string>> };
-  // Clic derecho o tecla de menú sobre el lienzo.
+  // Clic derecho, tecla de menú o pulsación larga sobre el lienzo.
   onContextMenu?: (request: ContextMenuRequest) => void;
 };
 
@@ -96,6 +108,10 @@ export type Engine = {
   state: EngineState;
   core: EditorCore;
   renderer: Renderer;
+  // Estado del contexto WebGL del lienzo: el editor avisa mientras se restaura.
+  contextState: Readable<ContextState>;
+  // Perfil del puntero en uso (ratón, lápiz o dedo): umbrales, tiradores y lo que depende del hover.
+  inputProfile: Readable<Readonly<InputProfile>>;
   setReadOnly(readOnly: boolean): void;
   clipboard: ClipboardController;
   // asset.ready: el servidor terminó de procesar el asset; las imágenes que no cargaron lo intentan de nuevo.
@@ -106,6 +122,8 @@ export type Engine = {
   follow(clientId: number | null): void;
   // Centro de la vista en coordenadas de la página (donde se insertan las imágenes de la barra).
   viewCenter(): { x: number; y: number };
+  // Lo que tapan los paneles flotantes: los encuadres y el centro de la vista usan el resto del lienzo.
+  setViewInsets(insets: ViewInsets): void;
   camera(): CameraState;
   onFrame(listener: (stats: FrameStats) => void): () => void;
   destroy(): void;
@@ -139,7 +157,8 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
     ...(options.pageId ? { pageId: options.pageId } : {}),
     ...(options.camera ? { camera: options.camera } : {}),
   });
-  if (!options.camera) core.fitAll();
+  // Antes del primer frame pageBounds() aún no conoce la página: el encuadre lo hace el frame.
+  if (!options.camera) core.fitWhenReady();
   renderer.onNeedsRender = () => core.invalidate();
   renderer.onNeedsFrame = () => core.requestFrame();
   const textEditor = new TextEditor(core, options.container, { label: options.labels?.textEditor ?? 'Texto' });
@@ -150,6 +169,9 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
   });
   const unbind = bindDom(core, options.container, clipboard, {
     embedded: options.embedded ?? false,
+    wheel: options.wheel ?? 'canvas',
+    ...(options.wheelPref ? { wheelPref: options.wheelPref } : {}),
+    reducedMotion: options.reducedMotion ?? systemReducedMotion,
     ...(options.onDropFiles ? { onDropFiles: options.onDropFiles } : {}),
     ...(options.onContextMenu ? { onContextMenu: options.onContextMenu } : {}),
   });
@@ -177,6 +199,8 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
     clipboard,
     core,
     renderer,
+    contextState: renderer.contextState.readonly(),
+    inputProfile: core.inputProfile.readonly(),
     state: {
       tool: core.tool.readonly(),
       selection: core.selection.readonly(),
@@ -202,6 +226,7 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
     },
     follow: (clientId) => core.follow(clientId),
     viewCenter: () => core.viewCenter(),
+    setViewInsets: (insets) => core.setViewInsets(insets),
     camera: () => core.camera.state(),
     onFrame: (listener) => core.onFrame(listener),
     destroy() {
@@ -217,19 +242,36 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
   };
 }
 
+function systemReducedMotion(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 // WebGL2 por defecto; ?renderer=webgpu permite probar WebGPU.
 function preferredRenderer(): 'webgl' | 'webgpu' {
   if (typeof location === 'undefined') return 'webgl';
   return new URLSearchParams(location.search).get('renderer') === 'webgpu' ? 'webgpu' : 'webgl';
 }
 
-// El ResizePlugin de Pixi solo escucha la ventana: un cambio de tamaño del contenedor también tiene que llegar.
+// El canvas y la cámara siguen al contenedor. Se compara con los dos cada vez (no solo con el canvas), porque si uno
+// se queda atrás el encuadre, el culling y Presentar trabajan con un tamaño que no es el de la pantalla.
 function observeRenderer(renderer: Renderer, container: HTMLElement, core: EditorCore): () => void {
-  const observer = new ResizeObserver(() => {
-    if (!renderer.resize()) return;
-    const { width, height } = renderer.screenSize;
-    core.resize(width, height);
-  });
+  const check = () => {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    // Un canvas de 0 px deja a Pixi sin búfer de dibujo: se queda en 1 px y la cámara sabe que no hay sitio.
+    const resized = renderer.resize(Math.max(1, width), Math.max(1, height));
+    if (core.camera.width !== width || core.camera.height !== height) core.resize(width, height);
+    if (resized) core.invalidate();
+  };
+  check();
+  const observer = new ResizeObserver(check);
   observer.observe(container);
-  return () => observer.disconnect();
+  // Al entrar o salir de pantalla completa y con el zoom del teclado virtual, el ResizeObserver puede no llegar.
+  document.addEventListener('fullscreenchange', check);
+  window.visualViewport?.addEventListener('resize', check);
+  return () => {
+    observer.disconnect();
+    document.removeEventListener('fullscreenchange', check);
+    window.visualViewport?.removeEventListener('resize', check);
+  };
 }

@@ -7,9 +7,10 @@ import { defaultBudget, TextureManager, type LoadedTexture } from '../assets/Tex
 import type { Mat } from '../geometry/matrix.ts';
 import { OverlayLayer } from '../overlay/OverlayLayer.ts';
 import { RemoteLayer } from '../overlay/RemoteLayer.ts';
+import { Store } from '../store.ts';
 import { isContainer, type ContainerRecord, type RenderableRecord, type SceneRecord } from '../types.ts';
 import type { CameraState } from './Camera.ts';
-import { parseColor } from './color.ts';
+import { DEFAULT_DOCUMENT_BACKGROUND, parseColor } from './color.ts';
 import type { OverlayModel, RemoteModel, RenderSink, TextRefresh, ViewOverride } from './sink.ts';
 import type { PreviewModel } from '../ai/preview.ts';
 import { PreviewLayer } from './PreviewLayer.ts';
@@ -32,6 +33,17 @@ export type RendererOptions = {
   onContextFailed?: () => void;
   onContextRestored?: () => void;
 };
+
+// 'lost' mientras el navegador no devuelve el contexto WebGL; 'failed' si no lo devuelve en 5 s.
+export type ContextState = 'ok' | 'lost' | 'failed';
+
+// El navegador no dio un contexto gráfico para el lienzo (WebGL desactivado o sin GPU disponible).
+export class RendererUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super('No se pudo crear el renderer del lienzo', { cause });
+    this.name = 'RendererUnavailableError';
+  }
+}
 
 // Textura de una imagen cargada con createImageBitmap, que se decodifica fuera del hilo principal.
 export type LoadedImage = LoadedTexture & { readonly texture: Texture };
@@ -108,7 +120,11 @@ const CONTEXT_TIMEOUT_MS = 5_000;
 const scratch = new Matrix();
 
 export class Renderer implements RenderSink {
+  // Instancias vivas (el editor, una vista previa de versión, la landing). Los pools globales de Pixi son de todas.
+  static live = 0;
   readonly app: Application;
+  readonly contextState = new Store<ContextState>('ok');
+  private destroyed = false;
   readonly world = new Container({ isRenderGroup: true });
   readonly pageBackground = new Container();
   readonly content = new Container();
@@ -145,6 +161,8 @@ export class Renderer implements RenderSink {
   private readonly imagesByAsset = new Map<string, Set<string>>();
   private readonly imagesDirty = new Set<string>();
   private camera: CameraState = { x: 0, y: 0, zoom: 1 };
+  // Último modelo del overlay que se dibujó (lo leen los e2e).
+  lastOverlay: OverlayModel | null = null;
 
   private constructor(
     app: Application,
@@ -180,24 +198,40 @@ export class Renderer implements RenderSink {
 
   static async create(options: RendererOptions): Promise<Renderer> {
     const app = new Application();
+    // Cuenta desde antes de init: si otra instancia se destruye mientras tanto, no debe vaciar los pools de esta.
+    Renderer.live++;
+    try {
+      await Renderer.init(app, options);
+    } catch (error) {
+      Renderer.live--;
+      console.warn('[lienzo] no se pudo crear el renderer', error);
+      throw new RendererUnavailableError(error);
+    }
+    app.ticker.stop();
+    const renderer = new Renderer(app, options);
+    renderer.warmGraphicsShader();
+    return renderer;
+  }
+
+  private static async init(app: Application, options: RendererOptions): Promise<void> {
+    // Sin resizeTo: el ResizePlugin redimensionaba el canvas antes que el ResizeObserver de createEngine, que veía el
+    // tamaño ya igualado y nunca avisaba a la cámara. El tamaño lo lleva solo resize().
     await app.init({
       canvas: options.canvas,
       preference: options.preference ?? 'webgl',
-      resizeTo: options.container,
+      width: options.container.clientWidth || 1,
+      height: options.container.clientHeight || 1,
       // Con densidad 2 o más el dentado no se aprecia y el MSAA es lo que más cuesta en la GPU.
       antialias: (window.devicePixelRatio || 1) < 2,
       resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
       autoStart: false,
       backgroundAlpha: 1,
-      background: '#0B1220',
+      // Hasta el primer frame se ve el fondo por defecto del documento, no un color propio del renderer.
+      background: parseColor(DEFAULT_DOCUMENT_BACKGROUND).color,
       eventFeatures: { move: false, globalMove: false, click: false, wheel: false },
       gcMaxUnusedTime: 60_000,
     });
-    app.ticker.stop();
-    const renderer = new Renderer(app, options);
-    renderer.warmGraphicsShader();
-    return renderer;
   }
 
   // Un Graphics que no entra en un batch (la selección de muchos nodos, por ejemplo) usa otro shader, que se compila
@@ -221,10 +255,9 @@ export class Renderer implements RenderSink {
   }
 
   // Reasignar el tamaño del canvas, aunque sea el mismo, recrea el búfer de dibujo: solo si cambia.
-  resize(): boolean {
-    const { clientWidth, clientHeight } = this.options.container;
-    if (clientWidth === this.app.screen.width && clientHeight === this.app.screen.height) return false;
-    this.app.resize();
+  resize(width: number, height: number): boolean {
+    if (width === this.app.screen.width && height === this.app.screen.height) return false;
+    this.app.renderer.resize(width, height);
     this.resizes++;
     return true;
   }
@@ -888,6 +921,7 @@ export class Renderer implements RenderSink {
   }
 
   drawOverlay(model: OverlayModel): void {
+    this.lastOverlay = model;
     this.overlay.draw(model);
   }
 
@@ -956,14 +990,23 @@ export class Renderer implements RenderSink {
 
   private readonly onContextLost = (event: Event) => {
     event.preventDefault();
+    if (this.contextLost) return;
     this.contextLost = true;
-    this.contextTimer = setTimeout(() => this.options.onContextFailed?.(), CONTEXT_TIMEOUT_MS);
+    console.warn('[lienzo] se perdió el contexto WebGL');
+    this.contextState.set('lost');
+    this.contextTimer = setTimeout(() => {
+      this.contextTimer = null;
+      console.error('[lienzo] el contexto WebGL no se recuperó en 5 s');
+      this.contextState.set('failed');
+      this.options.onContextFailed?.();
+    }, CONTEXT_TIMEOUT_MS);
   };
 
   private readonly onContextRestored = () => {
     this.contextLost = false;
     if (this.contextTimer) clearTimeout(this.contextTimer);
     this.contextTimer = null;
+    this.contextState.set('ok');
     // Las texturas de la GPU se perdieron con el contexto: se descartan y se vuelven a cargar las que se ven.
     this.textures.invalidateAll();
     this.invalidateAll();
@@ -971,7 +1014,10 @@ export class Renderer implements RenderSink {
     this.onNeedsRender?.();
   };
 
+  // Pixi pierde el contexto del canvas al destruirse (loseContext): ese canvas ya no sirve para otro renderer.
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     if (this.contextTimer) clearTimeout(this.contextTimer);
     if (this.cacheTimer) clearTimeout(this.cacheTimer);
     if (this.imageTimer) clearTimeout(this.imageTimer);
@@ -986,6 +1032,8 @@ export class Renderer implements RenderSink {
     this.remote.destroy();
     this.overlay.destroy();
     this.preview.destroy();
-    this.app.destroy({ removeView: false, releaseGlobalResources: true }, { children: true });
+    // Vaciar los pools globales con otra instancia viva le quitaría texturas y objetos que está usando.
+    this.app.destroy({ removeView: false, releaseGlobalResources: Renderer.live === 1 }, { children: true });
+    Renderer.live--;
   }
 }

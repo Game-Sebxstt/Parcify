@@ -13,6 +13,7 @@
   import { ASSISTANT_LIMITS } from '../../../shared/ai/assistant.js';
   import { AI_CHAT_LIMITS } from '../../../shared/api/ai.js';
   import Button from '../../../ui/Button.svelte';
+  import Select from '../../../ui/Select.svelte';
 
   type Props = {
     engine: Engine;
@@ -63,6 +64,12 @@
     });
 
   const busy = $derived(chat.status === 'submitted' || chat.status === 'streaming');
+  // Valor de la opción «Nueva conversación»: la lista no admite una opción con valor vacío.
+  const NEW = 'new';
+  const history = $derived([
+    { value: NEW, label: m.editor_ai_chat_new() },
+    ...conversations.map((item) => ({ value: item.id, label: item.title ?? m.editor_ai_chat_untitled() })),
+  ]);
   const lastAssistant = $derived(chat.messages.findLast((message) => message.role === 'assistant'));
 
   onMount(() => {
@@ -108,9 +115,8 @@
     chat.clearError();
   }
 
-  async function onPick(event: Event & { currentTarget: HTMLSelectElement }) {
-    const id = event.currentTarget.value;
-    if (!id) await startNew();
+  async function onPick(id: string) {
+    if (id === NEW) await startNew();
     else {
       try {
         await open(id);
@@ -155,19 +161,13 @@
 
 <div class="flex min-h-0 flex-1 flex-col" data-testid="ai-chat">
   <div class="flex items-center gap-2 px-3 pb-2">
-    <label for="{uid}-history" class="sr-only">{m.editor_ai_chat_history()}</label>
-    <select
-      id="{uid}-history"
-      value={conversationId ?? ''}
-      onchange={onPick}
+    <Select
+      items={history}
+      bind:value={() => conversationId ?? NEW, (next) => void onPick(next)}
+      label={m.editor_ai_chat_history()}
       disabled={busy}
-      class="h-8 min-w-0 flex-1 cursor-pointer rounded-full bg-surface-2 px-3 text-xs text-ink focus-visible:outline-2 focus-visible:outline-coral"
-    >
-      <option value="">{m.editor_ai_chat_new()}</option>
-      {#each conversations as item (item.id)}
-        <option value={item.id}>{item.title ?? m.editor_ai_chat_untitled()}</option>
-      {/each}
-    </select>
+      class="min-w-0 flex-1 text-xs"
+    />
     <Button variant="ghost" size="sm" iconOnly label={m.editor_ai_chat_new()} disabled={busy} onclick={() => void startNew()}>
       <Plus size={16} aria-hidden="true" />
     </Button>

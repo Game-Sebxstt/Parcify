@@ -4,6 +4,7 @@
   import { SHARE_LINK_ROLES } from '../../shared/api/share-links.js';
   import Button from '../../ui/Button.svelte';
   import Input from '../../ui/Input.svelte';
+  import Select from '../../ui/Select.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import { emailError } from '../auth/validate.ts';
   import { PROJECT_ROLE_LABEL, SELECT_CLASS } from './roles.ts';
@@ -55,12 +56,13 @@
         describedBy="{uid}-hint {uid}-error"
         class="h-9 min-w-0 flex-1 text-sm"
       />
-      <label class="sr-only" for="{uid}-role">{m.share_invite_role()}</label>
-      <select id="{uid}-role" bind:value={role} class={SELECT_CLASS}>
-        {#each SHARE_LINK_ROLES as option (option)}
-          <option value={option}>{PROJECT_ROLE_LABEL[option]()}</option>
-        {/each}
-      </select>
+      <Select
+        items={SHARE_LINK_ROLES.map((option) => ({ value: option, label: PROJECT_ROLE_LABEL[option]() }))}
+        bind:value={() => role, (next) => (role = next as ShareLinkRole)}
+        label={m.share_invite_role()}
+        size="lg"
+        class={SELECT_CLASS}
+      />
       <Button type="submit" size="sm" variant="primary" class="h-9" loading={busy}>{m.share_invite_submit()}</Button>
     </div>
     <p id="{uid}-error" aria-live="polite" class="text-sm text-danger empty:hidden">{error ?? ''}</p>

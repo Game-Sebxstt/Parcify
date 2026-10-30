@@ -67,7 +67,7 @@ describe('CollabSession con el host del documento', () => {
   it('abre la generación 1 con la url del esquema y responde siempre a las peticiones de token', async () => {
     const { session, link } = await open([token(), token({ token: 'otro' }), new Error('red'), token({ epoch: 2 })]);
     expect(link.starts[0]!.kind).toBe('open');
-    expect(link.starts[0]!.params).toMatchObject({ gen: 1, url: 'ws://localhost:3001/?schemaVersion=1', documentName: 'project:p1', epoch: 1 });
+    expect(link.starts[0]!.params).toMatchObject({ gen: 1, url: 'ws://localhost:3001/?schemaVersion=2', documentName: 'project:p1', epoch: 1 });
     link.emit({ t: 'token-request', id: 1 });
     link.emit({ t: 'token-request', id: 2 });
     await settle();

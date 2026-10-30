@@ -128,7 +128,10 @@ export class NullSink implements RenderSink {
   flushAssets(): boolean {
     return false;
   }
-  setBackground(): void {}
+  readonly backgrounds: string[] = [];
+  setBackground(color: string): void {
+    this.backgrounds.push(color);
+  }
   drawOverlay(model: OverlayModel): void {
     this.overlay = model;
   }

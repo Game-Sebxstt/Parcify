@@ -8,6 +8,7 @@
   import Avatar from '../../ui/Avatar.svelte';
   import Button from '../../ui/Button.svelte';
   import Dialog from '../../ui/Dialog.svelte';
+  import Select from '../../ui/Select.svelte';
   import Skeleton from '../../ui/Skeleton.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import { PROJECT_ROLE_LABEL, SELECT_CLASS } from './roles.ts';
@@ -58,15 +59,16 @@
     return person.userId !== meId && person.origin === 'direct' && roleAtLeast(myRole, person.role);
   }
 
-  async function changeRole(person: ProjectMember, select: HTMLSelectElement) {
-    const role = select.value as ProjectRole;
+  // El rol cambia en la lista al momento y vuelve al anterior si el servidor lo rechaza.
+  async function changeRole(person: ProjectMember, role: ProjectRole) {
     busy = person.userId;
+    people = people.map((item) => (item.userId === person.userId ? { ...item, role } : item));
     try {
       const updated = await setProjectMemberRole(projectId, person.userId, role);
       people = people.map((item) => (item.userId === person.userId ? updated : item));
       showToast({ message: m.share_role_changed({ name: person.name, role: PROJECT_ROLE_LABEL[updated.role]() }), tone: 'success' });
     } catch (error) {
-      select.value = person.role;
+      people = people.map((item) => (item.userId === person.userId ? { ...item, role: person.role } : item));
       fail(error);
     } finally {
       busy = null;
@@ -123,18 +125,14 @@
                 </p>
               </div>
               {#if editable(person)}
-                <label class="sr-only" for="share-role-{person.userId}">{m.share_role_label({ name: person.name })}</label>
-                <select
-                  id="share-role-{person.userId}"
-                  value={person.role}
+                <Select
+                  items={roleOptions.map((role) => ({ value: role, label: PROJECT_ROLE_LABEL[role]() }))}
+                  bind:value={() => person.role, (role) => void changeRole(person, role as ProjectRole)}
+                  label={m.share_role_label({ name: person.name })}
                   disabled={busy === person.userId}
-                  onchange={(event) => void changeRole(person, event.currentTarget)}
+                  size="lg"
                   class={SELECT_CLASS}
-                >
-                  {#each roleOptions as role (role)}
-                    <option value={role}>{PROJECT_ROLE_LABEL[role]()}</option>
-                  {/each}
-                </select>
+                />
                 <Button
                   size="sm"
                   variant="danger-ghost"

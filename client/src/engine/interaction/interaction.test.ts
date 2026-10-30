@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type * as Y from 'yjs';
 import { ROOT_KEYS } from '../../shared/document/keys.js';
 import { LOCAL_ORIGIN } from '../origins.ts';
-import { makeCore, newDoc, nodeMap, pointer, putNode, rect } from '../test-utils.ts';
+import { frame, makeCore, newDoc, nodeMap, pointer, putNode, rect } from '../test-utils.ts';
+import { applyWheel } from './dom.ts';
 
 function countLocalTransactions(doc: Y.Doc) {
   let count = 0;
@@ -70,6 +71,33 @@ describe('máquina de estados del puntero', () => {
     c.pointerUp(pointer(222, 325));
     expect(nodeMap(doc, moving).get('x')).toBe(200);
     expect(core.snapGuides).toEqual([]);
+  });
+
+  it('dentro de un frame, el hueco de la selección arrastra la selección y no el frame', () => {
+    const doc = newDoc();
+    const f = putNode(doc, frame({ x: 0, y: 0, w: 600, h: 400 }));
+    const a = putNode(doc, rect({ parentId: f, x: 50, y: 100, w: 100, h: 50 }));
+    const b = putNode(doc, rect({ parentId: f, x: 300, y: 100, w: 100, h: 50, index: 'a1' }));
+    const { core, tick } = makeCore(doc);
+    tick();
+    core.setSelection([a, b]);
+    const c = core.controller;
+    c.pointerDown(pointer(225, 125));
+    c.pointerMove(pointer(262, 148));
+    tick();
+    expect(c.state).toBe('dragging');
+    c.pointerUp(pointer(262, 148));
+    tick();
+    expect(core.selection.get()).toEqual([a, b]);
+    expect(nodeMap(doc, a).get('x')).toBe(87);
+    expect(nodeMap(doc, b).get('x')).toBe(337);
+    expect(nodeMap(doc, a).get('y')).toBe(123);
+    expect(nodeMap(doc, f).get('x')).toBe(0);
+    expect(nodeMap(doc, a).get('parentId')).toBe(f);
+
+    c.pointerDown(pointer(262, 148));
+    c.pointerUp(pointer(262, 148));
+    expect(core.selection.get()).toEqual([]);
   });
 
   it('el marquee selecciona lo que toca, sin los bloqueados', () => {
@@ -165,7 +193,7 @@ describe('máquina de estados del puntero', () => {
     tick();
     expect(core.camera.x).toBe(-50);
     core.controller.pointerUp(pointer(150, 130));
-    core.controller.wheel({ x: 0, y: 0, deltaX: 0, deltaY: -100, ctrl: true });
+    applyWheel(core, { kind: 'zoom', factor: 1.1, x: 0, y: 0 });
     expect(core.camera.zoom).toBeGreaterThan(1);
   });
 

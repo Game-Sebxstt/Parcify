@@ -72,6 +72,8 @@ function writeFit(w: OpBuilder, id: string, fit: Fitted): void {
 export function restValue(record: NodeRecord, prop: AnimProp): number | string | null {
   switch (prop) {
     case 'scale':
+    case 'scaleX':
+    case 'scaleY':
       return 1;
     case 'opacity':
       return record.opacity;
@@ -92,6 +94,9 @@ export function poseValue(pose: Pose, prop: AnimProp): number | string | null {
       return pose.dx;
     case 'offsetY':
       return pose.dy;
+    case 'scaleX':
+    case 'scaleY':
+      return null;
     default:
       return pose[prop] ?? null;
   }

@@ -4,14 +4,16 @@
 
   type Props = {
     text: string;
+    // Atajo que se muestra a la derecha del texto, p. ej. «R» o «Ctrl+Shift+K».
+    kbd?: string;
     side?: 'top' | 'right' | 'bottom' | 'left';
     children: Snippet<[Record<string, unknown>]>;
   };
 
-  let { text, side = 'top', children }: Props = $props();
+  let { text, kbd, side = 'top', children }: Props = $props();
 </script>
 
-<Tooltip.Provider delayDuration={400}>
+<Tooltip.Provider delayDuration={500}>
   <Tooltip.Root>
     <Tooltip.Trigger>
       {#snippet child({ props })}
@@ -22,9 +24,15 @@
       <Tooltip.Content
         {side}
         sideOffset={6}
-        class="z-50 rounded-[6px] bg-surface-2 px-2.5 py-1.5 text-xs text-ink shadow-float"
+        collisionPadding={8}
+        role="tooltip"
+        data-floating=""
+        class="z-(--z-popover) flex max-w-64 items-center gap-2 rounded-control border border-edge/40 bg-surface-2 px-2 py-1 text-2xs text-ink shadow-float"
       >
-        {text}
+        <span>{text}</span>
+        {#if kbd}
+          <kbd class="font-sans text-ink-muted tabular">{kbd}</kbd>
+        {/if}
       </Tooltip.Content>
     </Tooltip.Portal>
   </Tooltip.Root>

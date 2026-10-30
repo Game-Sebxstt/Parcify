@@ -5,6 +5,7 @@
   import { formatRelative } from '../../lib/format.ts';
   import { m } from '../../paraglide/messages.js';
   import type { ProjectSummary } from '../../shared/api/projects.js';
+  import Checkbox from '../../ui/Checkbox.svelte';
   import Menu, { type MenuItem } from '../../ui/Menu.svelte';
 
   type Props = {
@@ -74,15 +75,15 @@
         selecting || selected ? '' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
       ].join(' ')}
     >
-      <input
-        type="checkbox"
+      <!-- La selección la lleva el padre: el clic no cambia la casilla por su cuenta y Shift selecciona un rango. -->
+      <Checkbox
         checked={selected}
-        aria-label={m.dashboard_select_project({ name: project.name })}
+        ariaLabel={m.dashboard_select_project({ name: project.name })}
         onclick={(event) => {
           event.preventDefault();
           onselect(event.shiftKey);
         }}
-        class="size-4 cursor-pointer accent-coral"
+        onCheckedChange={() => onselect(false)}
       />
     </label>
   {/if}

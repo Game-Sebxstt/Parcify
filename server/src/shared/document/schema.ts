@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { ANIMATION_LIMITS, DOCUMENT_LIMITS } from './limits.js';
 
-export const DOCUMENT_SCHEMA_VERSION = 1;
-export const MIN_CLIENT_SCHEMA_VERSION = 1;
+export const DOCUMENT_SCHEMA_VERSION = 2;
+export const MIN_CLIENT_SCHEMA_VERSION = 2;
 
 export const NODE_TYPES = [
   'rect',
@@ -42,7 +42,7 @@ const point = z.tuple([coordinate, coordinate]);
 const unitPoint = z.tuple([unit, unit]);
 
 export const StrokeDashSchema = z.enum(['solid', 'dashed', 'dotted']);
-export const CapSchema = z.enum(['none', 'arrow', 'triangle', 'circle', 'bar']);
+export const CapSchema = z.enum(['none', 'arrow', 'triangle', 'circle', 'diamond', 'bar']);
 export const AlignSchema = z.enum(['left', 'center', 'right']);
 export const VAlignSchema = z.enum(['top', 'middle', 'bottom']);
 
@@ -158,6 +158,8 @@ export const ConnectorNodeSchema = z.object({
   route: z.enum(['straight', 'elbow', 'curved']),
   startCap: CapSchema,
   endCap: CapSchema,
+  // Puntos intermedios en el sistema del padre, como los extremos libres.
+  waypoints: z.array(point).min(1).max(DOCUMENT_LIMITS.maxWaypoints).optional(),
 });
 
 export const TextNodeSchema = z.object({
@@ -173,6 +175,8 @@ export const TextNodeSchema = z.object({
   align: AlignSchema,
   lineHeight: z.number().finite().min(0.8).max(3),
   autoWidth: z.boolean(),
+  // Solo cuenta con autoWidth false: sin él la caja crece en alto con el texto.
+  fixedHeight: z.boolean().optional(),
 });
 
 export const ImageNodeSchema = z
@@ -242,7 +246,9 @@ export const MetaSchema = z.object({
 
 export type Meta = z.infer<typeof MetaSchema>;
 
-export const ANIM_PROPS = ['offsetX', 'offsetY', 'rotation', 'scale', 'opacity', 'fill', 'stroke'] as const;
+// Las escalas son multiplicadores sin rango en el esquema: la IA genera `scale: 0` y una animación inválida se borra
+// entera al normalizar.
+export const ANIM_PROPS = ['offsetX', 'offsetY', 'rotation', 'scale', 'scaleX', 'scaleY', 'opacity', 'fill', 'stroke'] as const;
 export type AnimProp = (typeof ANIM_PROPS)[number];
 
 export const EASINGS = ['linear', 'easeIn', 'easeOut', 'easeInOut', 'easeOutBack', 'step'] as const;

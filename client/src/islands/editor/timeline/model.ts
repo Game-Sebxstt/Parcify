@@ -40,6 +40,8 @@ const PROP_LABELS: Record<AnimProp, () => string> = {
   offsetY: m.timeline_prop_offsetY,
   rotation: m.timeline_prop_rotation,
   scale: m.timeline_prop_scale,
+  scaleX: m.timeline_prop_scaleX,
+  scaleY: m.timeline_prop_scaleY,
   opacity: m.timeline_prop_opacity,
   fill: m.timeline_prop_fill,
   stroke: m.timeline_prop_stroke,
@@ -56,6 +58,8 @@ export function propsFor(record: NodeRecord, animation: Animation | undefined): 
     if (animation?.tracks[prop]) return true;
     if (prop === 'fill') return record.type !== 'line' && typeof (record as { fill?: unknown }).fill === 'string';
     if (prop === 'stroke') return typeof (record as { stroke?: unknown }).stroke === 'string';
+    // El reproductor todavía no aplica la escala por eje: no se ofrece una pista que no se vería.
+    if (prop === 'scaleX' || prop === 'scaleY') return false;
     return true;
   });
 }
@@ -127,7 +131,7 @@ export function fromDisplay(prop: AnimProp, value: number): number {
 export function unitOf(prop: AnimProp): string {
   if (prop === 'rotation') return m.timeline_unit_deg();
   if (prop === 'opacity') return m.timeline_unit_percent();
-  if (prop === 'scale') return m.timeline_unit_times();
+  if (prop === 'scale' || prop === 'scaleX' || prop === 'scaleY') return m.timeline_unit_times();
   return m.timeline_unit_px();
 }
 
@@ -136,7 +140,7 @@ export function formatValue(prop: AnimProp, value: number | string): string {
   const shown = formatNumber(toDisplay(prop, value), { maximumFractionDigits: 2 });
   if (prop === 'rotation') return `${shown}°`;
   if (prop === 'opacity') return `${shown} %`;
-  if (prop === 'scale') return `${shown}×`;
+  if (prop === 'scale' || prop === 'scaleX' || prop === 'scaleY') return `${shown}×`;
   return `${shown} px`;
 }
 

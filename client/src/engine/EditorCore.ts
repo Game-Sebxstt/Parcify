@@ -16,6 +16,7 @@ import { hitRecord, insideBox } from './geometry/hit.ts';
 import { apply, IDENTITY, invert, isRigid, isTranslation, multiply, rotation, transformPoints, type Mat, type Point } from './geometry/matrix.ts';
 import { SnapCandidates } from './geometry/snapping.ts';
 import { applyPatch, transformPatch } from './geometry/transform.ts';
+import { INPUT_PROFILES, initialKind, type InputProfile } from './interaction/input/profile.ts';
 import { PointerController } from './interaction/PointerController.ts';
 import { DocumentStore, type PageRecord } from './model/DocumentStore.ts';
 import { SceneTree } from './model/tree.ts';
@@ -23,7 +24,7 @@ import { frameCorners, handlePositions, type SelectionFrame } from './overlay/ha
 import { CursorInterpolator } from './presence/cursors.ts';
 import { Presence } from './presence/Presence.ts';
 import { realTimers, type Timers } from './presence/throttle.ts';
-import { Camera, type CameraState } from './render/Camera.ts';
+import { Camera, NO_INSETS, type CameraState, type ViewInsets } from './render/Camera.ts';
 import { FrameScheduler } from './render/FrameScheduler.ts';
 import type { OverlayModel, RemoteModel, RenderSink, ViewOverride } from './render/sink.ts';
 import { SpatialIndex } from './spatial/SpatialIndex.ts';
@@ -155,9 +156,18 @@ export class EditorCore {
   readonly framePreset = new Store<FramePresetId>(DEFAULT_FRAME_PRESET);
   // Colaborador (clientId de Awareness) cuya vista copia la cámara; null si no se sigue a nadie.
   readonly following = new Store<number | null>(null);
+  // Perfil del puntero con el que se está trabajando (el del último pointerdown o pointermove): umbrales y tiradores.
+  readonly inputProfile = new Store<Readonly<InputProfile>>(INPUT_PROFILES[initialKind()]);
 
   // Grupo en el que se ha entrado con doble clic: sus hijos se seleccionan directamente.
   scope: string | null = null;
+
+  // La persona movió la cámara (gesto, rueda, zoom, minimapa, seguir a alguien): los encuadres automáticos ya no la pisan.
+  userMovedCamera = false;
+  // Lo que tapan los paneles flotantes: los encuadres y el centro de la vista usan solo el resto.
+  viewInsets: ViewInsets = NO_INSETS;
+  // Encuadre pedido antes de tener contenido pintado o tamaño: lo hace el frame en cuanto puede.
+  private pendingFit = false;
 
   private readonly timers: Timers;
   private readonly dpr: number;
@@ -275,8 +285,11 @@ export class EditorCore {
     // El lote full se aplica antes de leer nada; createEngine espera backend.ready.
     this.detachBackend = this.backend.attach({ apply: (batch) => this.applyBatch(batch), wake: () => this.requestFrame(), pong: () => this.onPong() });
     if (this.drainBackend() === 0) throw new Error('El documento aún no está listo');
-    // Lo leído aquí se lleva a la capa de dibujo en el primer frame (pageDirty).
+    // Lo leído aquí se lleva a la capa de dibujo en el primer frame (pageDirty). El fondo se aplica ya: este flush
+    // consume el metaChanged del primer lote y syncModel no lo volvería a ver.
     this.store.flush();
+    const meta = this.store.meta();
+    if (meta) this.sink.setBackground(meta.background);
     const pages = this.store.pages();
     this.pages.set(pages);
     const initialPage = options.pageId && pages.some((p) => p.id === options.pageId) ? options.pageId : (pages[0]?.id ?? null);
@@ -537,6 +550,11 @@ export class EditorCore {
     this.syncTime = 0;
     this.changedSinceFrame = 0;
 
+    // Tras syncModel la página ya está en la capa de dibujo y pageBounds() la conoce.
+    if (this.pendingFit && this.camera.width > 0 && this.camera.height > 0) {
+      this.pendingFit = false;
+      this.fitAll();
+    }
     this.controller.flush();
     if (this.following.get() !== null) this.stepFollow(time);
     if (this.overridesDirty) {
@@ -1857,16 +1875,39 @@ export class EditorCore {
 
   fitAll(): void {
     const bounds = this.pageBounds();
-    if (bounds) this.camera.fit(bounds, 64, 1);
-    else this.camera.set({ x: -this.camera.width / 2, y: -this.camera.height / 2, zoom: 1 });
+    if (bounds) this.camera.fit(bounds, 64, 1, this.viewInsets);
+    else {
+      // Sin contenido, el origen de la página queda en el centro del área visible al 100 %.
+      const view = this.camera.visibleRect(this.viewInsets);
+      this.camera.set({ x: -(view.x + view.width / 2), y: -(view.y + view.height / 2), zoom: 1 });
+    }
     this.requestFrame();
+  }
+
+  // Encaja la página en cuanto haya un frame con su contenido y la cámara tenga tamaño. No hace nada si la persona
+  // ya movió la cámara.
+  fitWhenReady(): void {
+    if (this.userMovedCamera) return;
+    this.pendingFit = true;
+    this.requestFrame();
+  }
+
+  markUserCamera(): void {
+    this.userMovedCamera = true;
+    this.pendingFit = false;
+  }
+
+  setViewInsets(insets: ViewInsets): void {
+    const current = this.viewInsets;
+    if (current.top === insets.top && current.right === insets.right && current.bottom === insets.bottom && current.left === insets.left) return;
+    this.viewInsets = { top: insets.top, right: insets.right, bottom: insets.bottom, left: insets.left };
   }
 
   zoomToSelection(): void {
     const ids = this.selection.get();
     if (!ids.length) return this.fitAll();
     const bounds = this.boundsOf(ids);
-    if (!isEmptyAABB(bounds)) this.camera.fit(bounds, 96, 8);
+    if (!isEmptyAABB(bounds)) this.camera.fit(bounds, 96, 8, this.viewInsets);
     this.requestFrame();
   }
 
@@ -1882,15 +1923,16 @@ export class EditorCore {
 
   // Centro de la vista en coordenadas de la página.
   viewCenter(): Point {
-    const viewport = this.camera.viewport();
-    return { x: (viewport.minX + viewport.maxX) / 2, y: (viewport.minY + viewport.maxY) / 2 };
+    const view = this.camera.visibleRect(this.viewInsets);
+    return this.camera.screenToWorld(view.x + view.width / 2, view.y + view.height / 2);
   }
 
   // Centra la vista en un punto de la página sin cambiar el zoom (clic en el minimapa).
   centerOn(x: number, y: number): void {
     this.stopFollowing();
     const zoom = this.camera.zoom;
-    this.camera.set({ x: x - this.camera.width / zoom / 2, y: y - this.camera.height / zoom / 2 });
+    const view = this.camera.visibleRect(this.viewInsets);
+    this.camera.set({ x: x - (view.x + view.width / 2) / zoom, y: y - (view.y + view.height / 2) / zoom });
     this.requestFrame();
   }
 
@@ -1908,6 +1950,7 @@ export class EditorCore {
   follow(clientId: number | null): void {
     this.syncModel();
     if (clientId !== null && !this.presence.remote().has(clientId)) clientId = null;
+    if (clientId !== null) this.markUserCamera();
     this.following.set(clientId);
     this.lastFollowTime = 0;
     if (clientId === null) this.scheduler.keepAlive('follow', false);
@@ -1925,7 +1968,10 @@ export class EditorCore {
       return;
     }
     if (state.pageId && state.pageId !== this.pageId.get()) this.setPage(state.pageId);
-    const target = state.viewport;
+    // La esquina de la vista de la otra persona va a la esquina del área visible, no a la que tapan los paneles.
+    const view = this.camera.visibleRect(this.viewInsets);
+    const remote = state.viewport;
+    const target = view.x || view.y ? { x: remote.x - view.x / remote.zoom, y: remote.y - view.y / remote.zoom, zoom: remote.zoom } : remote;
     const dt = this.lastFollowTime ? Math.min(100, time - this.lastFollowTime) : FOLLOW_SMOOTHING_MS / 4;
     this.lastFollowTime = time;
     const k = 1 - Math.exp(-dt / FOLLOW_SMOOTHING_MS);

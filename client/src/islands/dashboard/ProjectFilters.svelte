@@ -10,6 +10,8 @@
   import Search from '@lucide/svelte/icons/search';
   import { onDestroy } from 'svelte';
   import { m } from '../../paraglide/messages.js';
+  import SegmentedControl from '../../ui/SegmentedControl.svelte';
+  import Select from '../../ui/Select.svelte';
 
   type Props = {
     value: ProjectQuery;
@@ -69,36 +71,22 @@
     />
   </div>
 
-  <fieldset class="flex flex-wrap gap-1 rounded-full bg-surface-1 p-1">
-    <legend class="sr-only">{m.dashboard_filter_label()}</legend>
-    {#each FILTERS as option (option.value)}
-      <label
-        class="relative inline-flex h-8 cursor-pointer items-center rounded-full px-3.5 text-sm font-medium text-ink-muted hover:text-ink has-checked:bg-surface-2 has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral"
-      >
-        <input
-          type="radio"
-          name="{uid}-filter"
-          value={option.value}
-          checked={value.filter === option.value}
-          onchange={() => onchange({ ...value, filter: option.value })}
-          class="sr-only"
-        />
-        {option.label()}
-      </label>
-    {/each}
-  </fieldset>
+  <SegmentedControl
+    items={FILTERS.map((option) => ({ value: option.value, label: option.label() }))}
+    bind:value={() => value.filter, (filter) => onchange({ ...value, filter: filter as ProjectFilter })}
+    label={m.dashboard_filter_label()}
+    class="flex-wrap"
+  />
 
   <div class="flex items-center gap-2">
     <label for="{uid}-sort" class="text-sm text-ink-muted">{m.dashboard_sort_label()}</label>
-    <select
+    <Select
       id="{uid}-sort"
-      value={value.sort}
-      onchange={(event) => onchange({ ...value, sort: event.currentTarget.value as ProjectSort })}
-      class="h-10 cursor-pointer rounded-panel border border-edge bg-surface-2 px-3 text-sm text-ink hover:border-ink-muted focus-visible:border-coral"
-    >
-      {#each SORTS as option (option.value)}
-        <option value={option.value}>{option.label()}</option>
-      {/each}
-    </select>
+      items={SORTS.map((option) => ({ value: option.value, label: option.label() }))}
+      bind:value={() => value.sort, (sort) => onchange({ ...value, sort: sort as ProjectSort })}
+      label={m.dashboard_sort_label()}
+      size="lg"
+      class="h-10 text-sm"
+    />
   </div>
 </div>

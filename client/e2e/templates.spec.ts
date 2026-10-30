@@ -59,7 +59,7 @@ test('publicar como plantilla, me gusta, favorita y crear proyectos desde la gal
   await expect(like).toHaveAccessibleName('Me gusta en Cartel base (0)');
 
   await gallery.getByRole('button', { name: 'Marcar Cartel base como favorita' }).click();
-  await page.getByRole('group', { name: 'Mostrar' }).getByText('Favoritas', { exact: true }).click();
+  await page.getByRole('radiogroup', { name: 'Mostrar' }).getByRole('radio', { name: 'Favoritas', exact: true }).click();
   await expect(title).toBeVisible();
 
   // Vista previa grande y «Usar plantilla».

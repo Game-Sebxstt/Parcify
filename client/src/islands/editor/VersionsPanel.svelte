@@ -45,7 +45,6 @@
   let previewOpen = $state(false);
   let previewPhase = $state<'loading' | 'ready' | 'error'>('loading');
   let previewContainer = $state<HTMLDivElement | null>(null);
-  let previewCanvas = $state<HTMLCanvasElement | null>(null);
   let preview: VersionPreview | null = null;
   let previewRun = 0;
 
@@ -156,9 +155,8 @@
     try {
       const [state, module] = await Promise.all([fetchVersionState(projectId, version.id), import('./version-preview.ts')]);
       await tick();
-      if (run !== previewRun || !previewCanvas || !previewContainer) return;
+      if (run !== previewRun || !previewContainer) return;
       const mounted = await module.mountVersionPreview({
-        canvas: previewCanvas,
         container: previewContainer,
         state,
         user,
@@ -327,13 +325,17 @@
         class="absolute inset-0"
         data-testid="version-preview"
         data-state={previewPhase}
-      >
-        <canvas bind:this={previewCanvas} class="block h-full w-full"></canvas>
-      </div>
-      {#if previewPhase !== 'ready'}
-        <p class="absolute inset-0 grid place-items-center text-ink-muted" role={previewPhase === 'error' ? 'alert' : 'status'}>
-          {previewPhase === 'error' ? m.editor_versions_preview_error() : m.editor_versions_preview_loading()}
-        </p>
+      ></div>
+      {#if previewPhase === 'loading'}
+        <p class="absolute inset-0 grid place-items-center text-ink-muted" role="status">{m.editor_versions_preview_loading()}</p>
+      {:else if previewPhase === 'error'}
+        <div class="absolute inset-0 flex flex-col items-center justify-center gap-3" role="alert">
+          <p class="text-ink-muted">{m.editor_versions_preview_error()}</p>
+          {#if previewing}
+            {@const version = previewing}
+            <Button variant="secondary" size="sm" onclick={() => void openPreview(version)}>{m.common_retry()}</Button>
+          {/if}
+        </div>
       {/if}
     </div>
     {#if previewing}

@@ -1,5 +1,6 @@
 import { expect, type APIRequestContext } from '@playwright/test';
 import { clientIpHeaders } from './account.ts';
+import { pollHeaders } from './mail.ts';
 
 const API = 'http://localhost:3000';
 const ORIGIN = { origin: 'http://localhost:4321' };
@@ -45,7 +46,7 @@ export async function readWorkspaceInviteLink(request: APIRequestContext, to: st
   await expect
     .poll(
       async () => {
-        const response = await request.get(`${API}/v1/__test/mail`, { params: { to } });
+        const response = await request.get(`${API}/v1/__test/mail`, { params: { to }, headers: pollHeaders() });
         const { messages } = (await response.json()) as { messages: Array<{ subject: string; text: string }> };
         const mail = messages.filter((item) => /te invitó a .+ en Parcify/.test(item.subject)).at(-1);
         link = mail?.text.match(/https?:\/\/\S+\/invitacion\?espacio=[A-Za-z0-9_-]+/)?.[0] ?? null;

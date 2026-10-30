@@ -8,10 +8,14 @@
   import ZoomIn from '@lucide/svelte/icons/zoom-in';
   import ZoomOut from '@lucide/svelte/icons/zoom-out';
   import { onMount, tick } from 'svelte';
+  import { on } from 'svelte/events';
   import { describeSelection } from '../engine/a11y/describe.ts';
   import {
     createEngine,
+    OWN_WHEEL_ATTR,
+    RendererUnavailableError,
     type ContextMenuRequest,
+    type ContextState,
     type Engine,
     type FramePresetId,
     type NodeRecord,
@@ -21,6 +25,8 @@
   import { ApiError, apiFetch, browser, signInUrl } from '../lib/api.ts';
   import { CANVAS_IMAGE_ACCEPT, canvasAssets, copyAssetsTo, uploadCanvasImage } from '../lib/canvas-images.ts';
   import { CollabSession, type CollabFailure, type CollabNotice, type CollabState } from '../lib/collab.ts';
+  import { wheelPreference } from '../lib/input-prefs.ts';
+  import { motionReduced } from '../lib/motion.ts';
   import { clientVersion, loadSession, session } from '../lib/session.svelte.ts';
   import { m } from '../paraglide/messages.js';
   import { ProjectDetailSchema } from '../shared/api/projects.js';
@@ -29,6 +35,8 @@
   import { collectScene, renderRaster } from '../engine/export/raster.ts';
   import { showToast } from '../ui/toast.svelte.ts';
   import BlockingScreen from './editor/BlockingScreen.svelte';
+  import CanvasHud from './editor/CanvasHud.svelte';
+  import { createEngineCanvas } from './editor/engine-canvas.ts';
   import ChatPanel from './editor/chat/ChatPanel.svelte';
   import ContextMenu from './editor/ContextMenu.svelte';
   import ExportDialog from './editor/ExportDialog.svelte';
@@ -55,6 +63,8 @@
   let phase = $state<'loading' | 'ready' | 'error'>('loading');
   let failure = $state<CollabFailure | null>(null);
   let crashed = $state(false);
+  let canvasUnavailable = $state(false);
+  let contextState = $state<ContextState>('ok');
   let projectName = $state('');
   let collabState = $state<CollabState | null>(null);
   let tool = $state<Tool>('select');
@@ -102,6 +112,7 @@
   let aiJobEvent = $state.raw<{ jobId: string; status: string; n: number } | null>(null);
   let versionsOpen = $state(false);
   let versionsPanel = $state<ReturnType<typeof VersionsPanel> | null>(null);
+  let layersPanel = $state<ReturnType<typeof LayersPanel> | null>(null);
   let typingNames = $state.raw<string[]>([]);
   let compacting = $state(false);
   let compactRequested = $state(false);
@@ -110,7 +121,8 @@
   const followed = $derived(following === null ? null : (people.find((person) => person.clientId === following) ?? null));
 
   let container = $state<HTMLDivElement | null>(null);
-  let canvas = $state<HTMLCanvasElement | null>(null);
+  // Canvas del motor montado (cada montaje crea el suyo, ver createEngineCanvas).
+  let engineCanvas: HTMLCanvasElement | null = null;
   let imageInput = $state<HTMLInputElement | null>(null);
   // Como mucho tantas imágenes por cada vez que se suelta o se elige.
   const MAX_IMAGES_AT_ONCE = 10;
@@ -141,6 +153,27 @@
       },
       textOf: (record) => (record.type === 'text' ? current.core.store.text(record.id) : ''),
     });
+  });
+
+  // Los paneles y barras no son descendientes del lienzo: sobre ellos, Ctrl/⌘+rueda o el pellizco del touchpad harían
+  // zoom de toda la página. Las zonas con rueda propia ya lo anulan y deciden qué hacer.
+  $effect(() => {
+    const offWheel = on(
+      window,
+      'wheel',
+      (event) => {
+        if (!(event.ctrlKey || event.metaKey)) return;
+        if (event.target instanceof Element && event.target.closest(`[${OWN_WHEEL_ATTR}]`)) return;
+        event.preventDefault();
+      },
+      { passive: false },
+    );
+    // En Safari de macOS el pellizco llega como gesture* y haría zoom de la página aunque se anule la rueda.
+    const offGesture = 'GestureEvent' in window ? on(document, 'gesturestart', (event: Event) => event.preventDefault()) : () => {};
+    return () => {
+      offWheel();
+      offGesture();
+    };
   });
 
   onMount(() => {
@@ -227,7 +260,7 @@
     engine?.setReadOnly(state.readOnly);
     if (state.synced && !fittedOnSync && engine) {
       fittedOnSync = true;
-      engine.commands.fitAll();
+      engine.core.fitWhenReady();
     }
     if (state.failure && state.failure !== failure) handleFailure(state.failure);
   }
@@ -246,9 +279,10 @@
   }
 
   async function mountEngine(camera?: ReturnType<Engine['camera']>, pageId?: string) {
-    if (!collab || !canvas || !container) return;
+    if (!collab || !container) return;
     const user = collab.user;
     const backend = collab.backend;
+    const canvas = createEngineCanvas(container);
     let created: Engine;
     try {
       created = await createEngine({
@@ -262,24 +296,30 @@
         clipboard: { source: { projectId, workspace: workspaceSlug }, copyAssets: (ids) => copyAssetsTo(projectId, ids) },
         onContextMenu: (request) => (menu = request),
         labels: { textEditor: m.editor_text_label() },
+        wheelPref: wheelPreference,
+        reducedMotion: motionReduced,
         onFatal: () => {
           crashed = true;
         },
         ...(camera ? { camera } : {}),
         ...(pageId ? { pageId } : {}),
       });
-    } catch {
-      // El documento no llegó a abrirse (worker caído o sustituido por otro epoch): lo cuenta collabState.
+    } catch (error) {
+      canvas.remove();
+      if (error instanceof RendererUnavailableError) canvasUnavailable = true;
+      // Si no, el documento no llegó a abrirse (worker caído o sustituido por otro epoch): lo cuenta collabState.
       return;
     }
     if (collab?.backend !== backend) {
       created.destroy();
+      canvas.remove();
       return;
     }
     engine = created;
+    engineCanvas = canvas;
     if (collabState?.synced && !camera) {
       fittedOnSync = true;
-      created.commands.fitAll();
+      created.core.fitWhenReady();
     }
     engineCleanups = [
       created.state.tool.subscribe((value) => (tool = value)),
@@ -291,6 +331,7 @@
       created.state.pageId.subscribe((value) => (activePage = value)),
       created.core.framePreset.subscribe((value) => (framePreset = value)),
       created.state.following.subscribe((value) => (following = value)),
+      created.contextState.subscribe((value) => (contextState = value)),
       created.core.presence.onRemoteChange(() => {
         people = collaborators(created, user.id);
         typingNames = typingPeople(created, user.id);
@@ -413,6 +454,9 @@
     engineCleanups = [];
     engine?.destroy();
     engine = null;
+    engineCanvas?.remove();
+    engineCanvas = null;
+    contextState = 'ok';
   }
 
   // La navegación al dashboard cancelaría la subida: se espera como mucho unos segundos.
@@ -554,6 +598,8 @@
 
 {#if crashed}
   <BlockingScreen title={m.editor_crashed_title()} body={m.editor_crashed_body()} reload />
+{:else if canvasUnavailable}
+  <BlockingScreen title={m.editor_canvas_unavailable_title()} body={m.editor_canvas_unavailable_body()} reload />
 {:else if screen}
   <BlockingScreen title={screen.title()} body={screen.body()} reload={screen.reload ?? false} />
 {:else if phase === 'error'}
@@ -600,7 +646,7 @@
       <aside aria-label={m.editor_side_label()} class="flex w-56 shrink-0 flex-col gap-4 overflow-hidden bg-surface-1 px-2 py-3 text-sm">
         {#if engine}
           <PagesPanel {engine} readOnly={engineReadOnly} />
-          <LayersPanel {engine} readOnly={engineReadOnly} />
+          <LayersPanel bind:this={layersPanel} {engine} readOnly={engineReadOnly} />
         {/if}
       </aside>
       <input bind:this={imageInput} type="file" accept={CANVAS_IMAGE_ACCEPT} multiple class="hidden" tabindex="-1" aria-hidden="true" onchange={onImagesPicked} data-testid="image-input" />
@@ -613,10 +659,9 @@
             tabindex="0"
             role="application"
             aria-label={m.editor_canvas_label()}
-            class="absolute inset-0 touch-none overflow-hidden outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
-          >
-            <canvas bind:this={canvas} class="block h-full w-full"></canvas>
-          </div>
+            class="absolute inset-0 touch-none overflow-hidden outline-none select-none [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
+          ></div>
+          <CanvasHud restoring={contextState === 'lost'} />
           <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
 
           {#if followed}
@@ -795,6 +840,7 @@
         onanimate={() => void openTimeline(true)}
         oncopypng={copyAsPng}
         onexport={() => (exportOpen = true)}
+        onrename={(id) => void layersPanel?.rename(id)}
       />
     {/key}
   {/if}

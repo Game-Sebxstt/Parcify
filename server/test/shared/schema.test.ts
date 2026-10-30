@@ -155,6 +155,22 @@ describe('NodeSchema', () => {
     expect(ok({ ...valid.frame, clip: 'sí' })).toBe(false);
   });
 
+  it('v2: waypoints del conector, fixedHeight del texto y punta en rombo', () => {
+    const waypoints = Array.from({ length: DOCUMENT_LIMITS.maxWaypoints }, (_, i) => [i * 10, -i]);
+    expect(ok({ ...valid.connector, waypoints })).toBe(true);
+    expect(ok({ ...valid.connector, waypoints: [[120, 40]] })).toBe(true);
+    expect(ok({ ...valid.connector, waypoints: [...waypoints, [0, 0]] })).toBe(false);
+    expect(ok({ ...valid.connector, waypoints: [] })).toBe(false);
+    expect(ok({ ...valid.connector, waypoints: [[DOCUMENT_LIMITS.maxCoordinate + 1, 0]] })).toBe(false);
+    expect(ok({ ...valid.connector, waypoints: [[0, Number.NaN]] })).toBe(false);
+    expect(ok({ ...valid.connector, waypoints: [[0]] })).toBe(false);
+    expect(ok({ ...valid.connector, startCap: 'diamond', endCap: 'diamond' })).toBe(true);
+    expect(ok({ ...valid.line, endCap: 'diamond' })).toBe(true);
+    expect(ok({ ...valid.text, autoWidth: false, fixedHeight: true })).toBe(true);
+    expect(ok({ ...valid.text, autoWidth: false, fixedHeight: false })).toBe(true);
+    expect(ok({ ...valid.text, fixedHeight: 'sí' })).toBe(false);
+  });
+
   it('rechaza nodos sin claves requeridas', () => {
     const { pageId: _pageId, ...missing } = valid.rect;
     expect(ok(missing)).toBe(false);
@@ -199,6 +215,28 @@ describe('AnimationSchema', () => {
         .success,
     ).toBe(true);
     expect(AnimationSchema.safeParse({ ...animation, duration: 100, loop: 0 }).success).toBe(true);
+  });
+
+  it('acepta pistas scaleX y scaleY numéricas y rechaza colores en ellas', () => {
+    const tracks = {
+      scaleX: { a: { t: 0, v: 1, e: 'linear' }, b: { t: 1, v: 2.5, e: 'easeOut' } },
+      scaleY: { c: { t: 0.5, v: 0.25, e: 'step' } },
+    };
+    expect(AnimationSchema.safeParse({ ...animation, tracks }).success).toBe(true);
+    expect(
+      AnimationSchema.safeParse({ ...animation, tracks: { scaleX: { k: { t: 0, v: '#FFFFFFFF', e: 'linear' } } } }).success,
+    ).toBe(false);
+  });
+
+  it('una animación v1 con scale: 0 y opacity: 1.2 sigue siendo válida', () => {
+    const v1 = {
+      ...animation,
+      tracks: {
+        scale: { a: { t: 0, v: 0, e: 'easeOutBack' }, b: { t: 1, v: 1, e: 'linear' } },
+        opacity: { c: { t: 0, v: 0, e: 'linear' }, d: { t: 1, v: 1.2, e: 'linear' } },
+      },
+    };
+    expect(AnimationSchema.safeParse(v1).success).toBe(true);
   });
 
   it('rechaza valores fuera de límite y tipos incorrectos', () => {

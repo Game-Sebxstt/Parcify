@@ -17,6 +17,7 @@
   import { AssetListResponseSchema, type AssetDto } from '../../shared/api/assets.js';
   import Button from '../../ui/Button.svelte';
   import Dialog from '../../ui/Dialog.svelte';
+  import Select from '../../ui/Select.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import ConfirmDialog from '../dashboard/ConfirmDialog.svelte';
 
@@ -39,6 +40,8 @@
 
   // Generaciones en curso de esta sesión; se consultan al llegar su ai.job y cada pocos segundos por si se pierde.
   const JOB_POLL_MS = 5_000;
+  const COUNTS = Array.from({ length: AI_IMAGE_LIMITS.countMax }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
+  const ASPECTS = AI_IMAGE_ASPECTS.map((aspect) => ({ value: aspect, label: aspect }));
   let genPrompt = $state('');
   let genCount = $state(1);
   let genAspect = $state<AiImageAspect>('1:1');
@@ -278,22 +281,28 @@
         data-testid="gallery-generate-prompt"
       ></textarea>
       <div class="flex items-center gap-2">
-        <label class="flex items-center gap-1 text-xs text-ink-muted">
-          {m.editor_gallery_generate_count()}
-          <select bind:value={genCount} class="h-7 cursor-pointer rounded-[6px] bg-surface-1 px-1 text-xs text-ink focus-visible:outline-2 focus-visible:outline-coral">
-            {#each Array.from({ length: AI_IMAGE_LIMITS.countMax }, (_, i) => i + 1) as option (option)}
-              <option value={option}>{option}</option>
-            {/each}
-          </select>
-        </label>
-        <label class="flex items-center gap-1 text-xs text-ink-muted">
-          {m.editor_gallery_generate_aspect()}
-          <select bind:value={genAspect} class="h-7 cursor-pointer rounded-[6px] bg-surface-1 px-1 text-xs text-ink tabular focus-visible:outline-2 focus-visible:outline-coral">
-            {#each AI_IMAGE_ASPECTS as option (option)}
-              <option value={option}>{option}</option>
-            {/each}
-          </select>
-        </label>
+        <div class="flex items-center gap-1 text-xs text-ink-muted">
+          <label for="{uid}-gen-count">{m.editor_gallery_generate_count()}</label>
+          <Select
+            id="{uid}-gen-count"
+            items={COUNTS}
+            bind:value={() => String(genCount), (next) => (genCount = Number(next))}
+            label={m.editor_gallery_generate_count()}
+            size="sm"
+            class="h-7 bg-surface-1 tabular"
+          />
+        </div>
+        <div class="flex items-center gap-1 text-xs text-ink-muted">
+          <label for="{uid}-gen-aspect">{m.editor_gallery_generate_aspect()}</label>
+          <Select
+            id="{uid}-gen-aspect"
+            items={ASPECTS}
+            bind:value={() => genAspect, (next) => (genAspect = next as AiImageAspect)}
+            label={m.editor_gallery_generate_aspect()}
+            size="sm"
+            class="h-7 bg-surface-1 tabular"
+          />
+        </div>
         <span class="flex-1"></span>
         <Button type="submit" size="sm" variant="primary" loading={submitting} disabled={!genPrompt.trim()} data-testid="gallery-generate-submit">
           <Sparkles size={14} aria-hidden="true" />
