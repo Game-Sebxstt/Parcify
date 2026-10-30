@@ -52,6 +52,16 @@ export function keyframeMs(animation: Pick<AnimationSettings, 'delay' | 'duratio
   return animation.delay + t * animation.duration;
 }
 
+// Id del keyframe de la pista que cae en el instante `time` (ms) de la primera iteración, o null si no hay ninguno.
+export function keyframeKeyAt(animation: Animation | undefined, prop: AnimProp, time: number): string | null {
+  const track = animation?.tracks[prop];
+  if (!animation || !track) return null;
+  const t = (time - animation.delay) / animation.duration;
+  if (t < -SAME_TIME || t > 1 + SAME_TIME) return null;
+  for (const [key, keyframe] of Object.entries(track)) if (Math.abs(keyframe.t - t) < SAME_TIME) return key;
+  return null;
+}
+
 // Los valores que no tienen sentido fuera de rango se recortan antes de validar: opacidad en [0, 1] y escalas ≥ 0.
 export function clampAnimValue(prop: AnimProp, value: number | string): number | string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return value;
@@ -400,6 +410,40 @@ export class AnimationCommands {
     return key;
   }
 
+  // Un keyframe en el instante `time` (ms) en cada pista de `targets` que aún no lo tenga, con el valor que se ve en
+  // ese instante (el del diseño si la pista no existe), todo en un paso de deshacer. Si `time` cae fuera de la primera
+  // iteración, la amplía. Devuelve los keyframes nuevos.
+  keyframesAtTime(targets: ReadonlyArray<{ nodeId: string; prop: AnimProp }>, time: number): KeyRef[] {
+    if (!this.canEdit || !Number.isFinite(time)) return [];
+    this.core.syncModel();
+    const at = Math.max(0, Math.round(time));
+    const drafts = new Map<string, TrackDraft>();
+    const refs: KeyRef[] = [];
+    let created = 0;
+    for (const { nodeId, prop } of targets) {
+      const record = this.core.record(nodeId);
+      if (!record || !this.target(nodeId) || refs.some((ref) => ref.nodeId === nodeId && ref.prop === prop)) continue;
+      const current = this.core.store.animation(nodeId);
+      if (keyframeKeyAt(current, prop, at)) continue;
+      const tracked = current && Object.keys(current.tracks[prop] ?? {}).length > 0;
+      const sampled = tracked ? poseValue(poseAtProgress(compileAnimation(current), keyframeTime(current, at)), prop) : null;
+      const value = sampled ?? restValue(record, prop);
+      if (value === null) continue;
+      let draft = drafts.get(nodeId);
+      if (!draft) {
+        if (!current && this.core.store.animationCount + created >= ANIMATION_LIMITS.maxAnimatedNodes) continue;
+        if (!current) created++;
+        draft = new TrackDraft(nodeId, current);
+        drafts.set(nodeId, draft);
+      }
+      const key = newNodeId();
+      draft.set(prop, key, { ms: at, v: value, e: 'linear' });
+      refs.push({ nodeId, prop, key });
+    }
+    if (!refs.length) return [];
+    return Array.isArray(this.writeDrafts(drafts.values())) ? refs : [];
+  }
+
   // Cambia el tiempo, el valor o el easing de un keyframe existente.
   updateKeyframe(nodeId: string, prop: AnimProp, key: string, patch: Partial<Keyframe>): boolean {
     if (!this.target(nodeId)) return false;
@@ -675,6 +719,24 @@ export class AnimationCommands {
     return this.transact((w) => {
       if (!current) w.ensureAnimation(nodeId, { ...DEFAULT_ANIMATION, ...settings });
       else w.patchAnimation(nodeId, settings);
+    });
+  }
+
+  // Los mismos ajustes en las animaciones que ya tienen los nodos de `ids`, en un paso de deshacer. Los nodos sin
+  // animación no cambian.
+  setAnimations(ids: readonly string[], settings: Partial<AnimationSettings>): boolean {
+    if (!this.canEdit) return false;
+    this.core.syncModel();
+    const targets: string[] = [];
+    for (const id of new Set(ids)) {
+      const current = this.core.store.animation(id);
+      if (!current || !this.target(id)) continue;
+      if (!AnimationSchema.safeParse({ ...current, ...settings }).success) return false;
+      targets.push(id);
+    }
+    if (!targets.length) return false;
+    return this.transact((w) => {
+      for (const id of targets) w.patchAnimation(id, settings);
     });
   }
 

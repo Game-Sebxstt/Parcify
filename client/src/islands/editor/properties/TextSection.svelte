@@ -20,13 +20,14 @@
   import SegmentedControl from '../../../ui/SegmentedControl.svelte';
   import Select from '../../../ui/Select.svelte';
   import ColorRow from './ColorRow.svelte';
+  import KeyframeToggle from './KeyframeToggle.svelte';
   import PanelButton from './PanelButton.svelte';
   import Section from './Section.svelte';
-  import { colorPatch, shared, sharedAlpha, type PanelEdits } from './panel.ts';
+  import { colorPatch, shared, sharedAlpha, type KeyframeContext, type PanelEdits } from './panel.ts';
 
-  type Props = { records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean; colors: () => string[] };
+  type Props = { records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean; colors: () => string[]; keyframes: KeyframeContext | null };
 
-  let { records, edits, readonly, colors }: Props = $props();
+  let { records, edits, readonly, colors, keyframes }: Props = $props();
 
   type TextNode = Extract<NodeRecord, { type: 'text' }>;
   type Weight = TextNode['fontWeight'];
@@ -146,18 +147,25 @@
         {/each}
       </div>
     {/if}
-    <ColorRow
-      value={color.value ?? '#EEF2F6FF'}
-      mixed={color.mixed}
-      alphaMixed={colorAlpha.mixed}
-      label={m.editor_props_text_color()}
-      {readonly}
-      {colors}
-      testid="props-text-color"
-      onpreview={(change) => edits.previewStyle(colorPatch('color', change, colorOf))}
-      oncommit={(change, meta) => edits.setStyle(colorPatch('color', change, colorOf), meta)}
-      oncancel={() => edits.cancel()}
-    />
+    <div class="flex min-w-0 items-center gap-1">
+      <div class="min-w-0 flex-1">
+        <ColorRow
+          value={color.value ?? '#EEF2F6FF'}
+          mixed={color.mixed}
+          alphaMixed={colorAlpha.mixed}
+          label={m.editor_props_text_color()}
+          {readonly}
+          {colors}
+          testid="props-text-color"
+          onpreview={(change) => edits.previewStyle(colorPatch('color', change, colorOf))}
+          oncommit={(change, meta) => edits.setStyle(colorPatch('color', change, colorOf), meta)}
+          oncancel={() => edits.cancel()}
+        />
+      </div>
+      {#if keyframes}
+        <KeyframeToggle context={keyframes} records={texts} prop="fill" label={m.editor_props_text_color()} testid="props-text-color-key" />
+      {/if}
+    </div>
     <div class="flex min-w-0 items-center justify-between gap-2">
       <span aria-hidden="true" class="min-w-0 truncate text-xs text-ink">{m.editor_props_text_mode()}</span>
       <SegmentedControl

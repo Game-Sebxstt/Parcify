@@ -1,4 +1,5 @@
 import type { Engine, FramePresetId, GeometryPatch, NodeRecord, StyleEach, StylePatch, TextSizeMode } from '../../../engine/index.ts';
+import type { AnimProp } from '../../../shared/document/schema.js';
 import { m } from '../../../paraglide/messages.js';
 import { parseHex, topColors } from '../../../ui/color.ts';
 
@@ -20,8 +21,31 @@ export type CommitMeta = { merge: boolean };
 // animaciones, para volver a leerla cuando cambian.
 export type Posed = { at: number | null; version: number };
 
+// Rombos de keyframe del panel: solo existen con la línea de tiempo abierta y el panel editable. `at` es el cabezal
+// (ms) y `version`, la de las animaciones, para volver a leer las pistas cuando cambian.
+export type KeyframeContext = { engine: Engine; at: number; version: number };
+
+// Lo que el panel deja animar a cada tipo con un rombo, igual que la grabación: un conector no se anima, una línea
+// no gira ni cambia de tamaño, y un texto o un grupo no cambian de tamaño (va al diseño con un aviso).
+export function animatable(record: NodeRecord, prop: AnimProp): boolean {
+  if (record.type === 'connector') return false;
+  switch (prop) {
+    case 'scaleX':
+    case 'scaleY':
+      return record.type !== 'line' && record.type !== 'text' && record.type !== 'group';
+    case 'rotation':
+      return record.type !== 'line';
+    case 'fill':
+      return record.type === 'text' || (record.type !== 'line' && typeof (record as { fill?: unknown }).fill === 'string');
+    case 'stroke':
+      return typeof (record as { stroke?: unknown }).stroke === 'string';
+    default:
+      return true;
+  }
+}
+
 // Valor compartido por los registros que tienen la propiedad: `mixed` si no coinciden.
-export function shared<R extends NodeRecord, T>(records: readonly R[], read: (record: R) => T | undefined): { value: T | undefined; mixed: boolean } {
+export function shared<R, T>(records: readonly R[], read: (record: R) => T | undefined): { value: T | undefined; mixed: boolean } {
   let value: T | undefined;
   let found = false;
   for (const record of records) {

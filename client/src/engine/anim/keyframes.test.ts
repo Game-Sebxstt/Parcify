@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 import { ROOT_KEYS } from '../../shared/document/keys.js';
 import { ANIMATION_LIMITS } from '../../shared/document/limits.js';
 import { AnimationSchema } from '../../shared/document/schema.js';
-import { AnimationCommands, clampAnimValue, restValue, type KeyRef } from '../commands/animation.ts';
+import { AnimationCommands, clampAnimValue, keyframeKeyAt, restValue, type KeyRef } from '../commands/animation.ts';
 import type { Recorder } from '../commands/Commands.ts';
 import { scaleAround } from '../geometry/matrix.ts';
 import type { NodeRecord } from '../types.ts';
@@ -558,6 +558,64 @@ describe('edición de keyframes en lote', () => {
       [0, 1],
       [0.5, 3],
     ]);
+  });
+
+  it('los rombos del panel añaden en un paso el keyframe que falta con el valor que se ve, y lo quitan', () => {
+    const { doc, core, tick, keyframes, id, track } = setup();
+    const other = putNode(doc, rect({ opacity: 0.4 }));
+    tick();
+    // offsetX ya tiene keyframe en 500; opacity se muestrea (0,8 → 0 da 0,5 en 500); el otro nodo no tenía animación.
+    expect(keyframeKeyAt(core.store.animation(id), 'offsetX', 500)).not.toBeNull();
+    expect(keyframeKeyAt(core.store.animation(id), 'opacity', 500)).toBeNull();
+    const targets = [
+      { nodeId: id, prop: 'offsetX' as const },
+      { nodeId: id, prop: 'opacity' as const },
+      { nodeId: other, prop: 'opacity' as const },
+    ];
+    let refs: KeyRef[] = [];
+    expect(countTransactions(doc, () => (refs = keyframes.keyframesAtTime(targets, 500)))).toBe(1);
+    tick();
+    expect(refs.map((ref) => `${ref.nodeId === id ? 'a' : 'b'}:${ref.prop}`)).toEqual(['a:opacity', 'b:opacity']);
+    expect(track('opacity')).toEqual([
+      [0, 1],
+      [500, 0.5],
+      [1000, 0],
+    ]);
+    expect(track('opacity', other)).toEqual([[500, 0.4]]);
+    core.commands.undo();
+    tick();
+    expect(track('opacity').map(([ms]) => ms)).toEqual([0, 1000]);
+    expect(core.store.animation(other)).toBeUndefined();
+    core.commands.redo();
+    tick();
+    expect(keyframes.deleteKeyframes(refs)).toBe(true);
+    tick();
+    expect(keyframeKeyAt(core.store.animation(id), 'opacity', 500)).toBeNull();
+    // Fuera de la iteración el keyframe la amplía.
+    expect(keyframes.keyframesAtTime([{ nodeId: id, prop: 'opacity' }], 1500)).toHaveLength(1);
+    tick();
+    expect(core.store.animation(id)!.duration).toBe(1500);
+    expect(track('offsetX').map(([ms]) => ms)).toEqual([0, 500, 1000]);
+  });
+
+  it('los ajustes de la sección Animación cambian varias animaciones en un paso y no crean ninguna', () => {
+    const { doc, core, tick, keyframes, id } = setup();
+    const other = putNode(doc, rect());
+    const plain = putNode(doc, rect());
+    tick();
+    expect(keyframes.applyPreset([other], 'aparecer')).toBe(true);
+    tick();
+    expect(countTransactions(doc, () => expect(keyframes.setAnimations([id, other, plain], { loop: 0, autoplay: 'present' })).toBe(true))).toBe(1);
+    tick();
+    expect(core.store.animation(id)).toMatchObject({ loop: 0, autoplay: 'present', duration: 1000 });
+    expect(core.store.animation(other)).toMatchObject({ loop: 0, autoplay: 'present', duration: 400 });
+    expect(core.store.animation(plain)).toBeUndefined();
+    // Un valor fuera del esquema no escribe nada.
+    expect(keyframes.setAnimations([id, other], { duration: 50 })).toBe(false);
+    core.commands.undo();
+    tick();
+    expect(core.store.animation(id)).toMatchObject({ loop: 1, autoplay: 'none' });
+    expect(core.store.animation(other)).toMatchObject({ loop: 1, autoplay: 'none' });
   });
 });
 

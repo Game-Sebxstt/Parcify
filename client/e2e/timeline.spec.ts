@@ -353,3 +353,99 @@ test('grabación: con Grabar, el color de un texto va a su pista fill sin cambia
   await page.keyboard.press('Home');
   await expect.poll(shown).toBe(color);
 });
+
+test('biblioteca: la pestaña Animaciones reproduce sin abrir la línea de tiempo y «Animar con keyframes» graba (CA-5.1, CA-5.12)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const account = await createVerifiedAccount(page.request, `biblioteca-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Biblioteca');
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 - 60 };
+  const properties = page.getByTestId('properties-panel');
+  const view = (id: string) => page.evaluate((nodeId) => window.__parcifyTest!.view(nodeId), id);
+  const player = () => page.evaluate(() => window.__parcifyTest!.player());
+
+  // Cuatro rectángulos; los tres primeros con «Aparecer» desde la sección Animación.
+  const ids: string[] = [];
+  for (const dx of [-280, -140, 0, 140]) {
+    const before = new Set((await nodes(page)).map((node) => node.id));
+    await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
+    await drag(page, { x: center.x + dx, y: center.y }, { x: center.x + dx + 80, y: center.y + 60 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(before.size + 1);
+    const id = (await nodes(page)).find((node) => !before.has(node.id))!.id;
+    await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection())).toEqual([id]);
+    ids.push(id);
+    if (ids.length > 3) break;
+    await properties.getByTestId('props-anim-presets').getByRole('button', { name: 'Aparecer' }).click();
+    await expect.poll(async () => Object.keys((await animation(page, id))?.tracks.opacity ?? {}).length).toBe(2);
+  }
+  const [a, b, c, plain] = ids as [string, string, string, string];
+  await expect.poll(async () => (await player())?.status, { timeout: 5000 }).toBe('stopped');
+
+  // La duración de A pasa a 5 s desde la sección, para que la vista previa dure lo bastante.
+  await page.mouse.click(center.x - 240, center.y + 30);
+  await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection())).toEqual([a]);
+  const duration = properties.getByTestId('props-anim-duration');
+  await duration.fill('5');
+  await duration.press('Enter');
+  await expect.poll(async () => (await animation(page, a))?.duration).toBe(5000);
+
+  // La pestaña lista las 3 animaciones de la página.
+  const left = page.getByTestId('left-panel');
+  await left.getByRole('tab', { name: 'Animaciones' }).click();
+  const rows = left.getByTestId('animation-row');
+  await expect(rows).toHaveCount(3);
+  await expect(left.getByText('5 s')).toBeVisible();
+  const rowOf = (id: string) => left.locator(`[data-testid="animation-row"][data-node-id="${id}"]`);
+
+  // ▶ en la fila de B reproduce solo B y al terminar el lienzo vuelve al estado base (CA-5.1).
+  await rowOf(b).getByRole('button', { name: /^Reproducir la animación de/ }).click();
+  await expect.poll(async () => (await player())?.previewIds).toEqual([b]);
+  await expect.poll(async () => (await view(b))?.opacity).toBeLessThan(1);
+  expect((await view(a))?.opacity).toBe(1);
+  expect((await view(c))?.opacity).toBe(1);
+  await expect(rowOf(b)).toHaveAttribute('data-playing', 'true');
+  await expect(page.getByTestId('timeline')).toHaveCount(0);
+  await expect.poll(async () => (await player())?.status, { timeout: 5000 }).toBe('stopped');
+  expect((await view(b))?.opacity).toBe(1);
+  await expect(rowOf(b)).toHaveAttribute('data-playing', 'false');
+
+  // Esc con el foco en el panel la detiene, y ■ también.
+  const playA = rowOf(a).getByRole('button', { name: /^Reproducir la animación de/ });
+  await playA.click();
+  await expect.poll(async () => (await player())?.preview).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await player())?.preview).toBe(false);
+  expect((await view(a))?.opacity).toBe(1);
+  await playA.click();
+  await expect(rowOf(a).getByRole('button', { name: /^Detener la animación de/ })).toBeVisible();
+  await rowOf(a).getByRole('button', { name: /^Detener la animación de/ }).click();
+  await expect.poll(async () => (await player())?.preview).toBe(false);
+
+  // Un clic en el lienzo también la detiene.
+  await left.getByRole('button', { name: 'Reproducir todas' }).click();
+  await expect.poll(async () => [...((await player())?.previewIds ?? [])].sort()).toEqual([a, b, c].sort());
+  await page.mouse.click(center.x, center.y + 200);
+  await expect.poll(async () => (await player())?.preview).toBe(false);
+  expect((await view(a))?.opacity).toBe(1);
+
+  // «Animar con keyframes» en un rectángulo sin animación abre la línea de tiempo con Grabar y el borde (CA-5.12).
+  await page.mouse.click(center.x + 180, center.y + 30);
+  await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection())).toEqual([plain]);
+  await properties.getByTestId('props-anim-keyframes').click();
+  await expect(page.getByTestId('timeline')).toBeVisible();
+  await expect(page.getByTestId('recording-frame')).toBeVisible();
+  await expect(page.getByTestId('timeline-record')).toHaveAttribute('aria-pressed', 'true');
+
+  // Con la línea de tiempo abierta, el rombo de Opacidad añade y quita el keyframe en el cabezal.
+  const key = properties.getByTestId('props-opacity-key');
+  await expect(key).toHaveAttribute('aria-pressed', 'false');
+  await key.click();
+  await expect.poll(async () => Object.keys((await animation(page, plain))?.tracks.opacity ?? {}).length).toBe(1);
+  await expect(key).toHaveAttribute('aria-pressed', 'true');
+  await key.click();
+  await expect.poll(async () => Object.keys((await animation(page, plain))?.tracks.opacity ?? {}).length).toBe(0);
+  await page.getByTestId('timeline').getByRole('button', { name: 'Ocultar la línea de tiempo' }).click();
+  await expect(key).toHaveCount(0);
+});

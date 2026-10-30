@@ -16,13 +16,14 @@
   import DashDashed from './icons/DashDashed.svelte';
   import DashDotted from './icons/DashDotted.svelte';
   import DashSolid from './icons/DashSolid.svelte';
+  import KeyframeToggle from './KeyframeToggle.svelte';
   import PanelButton from './PanelButton.svelte';
   import Section from './Section.svelte';
-  import { colorPatch, shared, sharedAlpha, type PanelEdits } from './panel.ts';
+  import { colorPatch, shared, sharedAlpha, type KeyframeContext, type PanelEdits } from './panel.ts';
 
-  type Props = { records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean; colors: () => string[] };
+  type Props = { records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean; colors: () => string[]; keyframes: KeyframeContext | null };
 
-  let { records, edits, readonly, colors }: Props = $props();
+  let { records, edits, readonly, colors, keyframes }: Props = $props();
 
   const DEFAULT_STROKE = '#EEF2F6FF';
   const MAX_WIDTH = 200;
@@ -92,20 +93,27 @@
       {/if}
     {/snippet}
     {#if !empty}
-      <ColorRow
-        value={stroke.value ?? DEFAULT_STROKE}
-        mixed={stroke.mixed}
-        alphaMixed={strokeAlpha.mixed}
-        label={m.editor_props_stroke()}
-        {readonly}
-        {colors}
-        removeLabel={m.editor_props_stroke_remove()}
-        testid="props-stroke-row"
-        onpreview={(change) => edits.previewStyle(colorPatch('stroke', change, strokeOf))}
-        oncommit={(change, meta) => edits.setStyle(colorPatch('stroke', change, strokeOf), meta)}
-        oncancel={() => edits.cancel()}
-        onremove={() => edits.setStyle({ stroke: null })}
-      />
+      <div class="flex min-w-0 items-center gap-1">
+        <div class="min-w-0 flex-1">
+          <ColorRow
+            value={stroke.value ?? DEFAULT_STROKE}
+            mixed={stroke.mixed}
+            alphaMixed={strokeAlpha.mixed}
+            label={m.editor_props_stroke()}
+            {readonly}
+            {colors}
+            removeLabel={m.editor_props_stroke_remove()}
+            testid="props-stroke-row"
+            onpreview={(change) => edits.previewStyle(colorPatch('stroke', change, strokeOf))}
+            oncommit={(change, meta) => edits.setStyle(colorPatch('stroke', change, strokeOf), meta)}
+            oncancel={() => edits.cancel()}
+            onremove={() => edits.setStyle({ stroke: null })}
+          />
+        </div>
+        {#if keyframes}
+          <KeyframeToggle context={keyframes} records={styled} prop="stroke" label={m.editor_props_stroke()} testid="props-stroke-key" />
+        {/if}
+      </div>
       <div class="grid min-w-0 grid-cols-2 items-center gap-2">
         <ScrubInput
           value={width.value ?? 0}

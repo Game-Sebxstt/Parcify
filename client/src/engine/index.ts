@@ -30,6 +30,7 @@ export {
   SAME_TIME,
   STRETCH_FACTOR,
   clampAnimValue,
+  keyframeKeyAt,
   keyframeMs,
   keyframeTime,
   poseValue,

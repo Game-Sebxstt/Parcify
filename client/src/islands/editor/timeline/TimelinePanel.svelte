@@ -75,7 +75,7 @@
   let layers = $state(0);
   let pageId = $state<string | null>(null);
   let selection = $state.raw<readonly string[]>([]);
-  let player = $state.raw<AnimationState>({ status: 'stopped', time: 0, duration: 0, preview: false });
+  let player = $state.raw<AnimationState>({ status: 'stopped', time: 0, duration: 0, preview: false, previewIds: null });
   // El cabezal y Grabar viven en la maqueta del editor, que los lleva al motor: desmontar el panel no los pierde.
   const layout = getEditorLayout();
   const head = $derived(layout.timeline.head);
@@ -95,6 +95,7 @@
   let drag = $state<Drag | null>(null);
   let scrubbing = false;
   let wasPlaying = false;
+  let wasPreview = false;
   let grid = $state<HTMLElement | null>(null);
   let ruler = $state<HTMLElement | null>(null);
 
@@ -113,17 +114,20 @@
     });
   });
 
-  // El cabezal es local; solo sigue al reproductor mientras reproduce y en el frame en que termina.
+  // El cabezal es local; solo sigue al reproductor mientras reproduce y en el frame en que termina. Una vista previa
+  // de la biblioteca o de la sección Animación no lo mueve: al terminar, el lienzo vuelve a la pose del cabezal.
   function onPlayer(state: AnimationState) {
     player = state;
-    if (state.status === 'playing' || wasPlaying) layout.timeline.head = state.time;
+    const endedPreview = wasPreview && !state.preview;
+    if (!state.preview && (state.status === 'playing' || (wasPlaying && !endedPreview))) layout.timeline.head = state.time;
     // Al parar o pausar, las vistas vuelven al documento: con la línea de tiempo abierta se vuelve a la pose del cabezal.
-    if (wasPlaying && state.status !== 'playing' && !state.preview) {
+    if ((wasPlaying || endedPreview) && state.status !== 'playing' && !state.preview) {
       queueMicrotask(() => {
         if (open && player.status !== 'playing') engine.anim.seek(layout.timeline.head);
       });
     }
-    wasPlaying = state.status === 'playing';
+    wasPlaying = state.status === 'playing' && !state.preview;
+    wasPreview = state.preview;
   }
 
   const playing = $derived(player.status === 'playing');

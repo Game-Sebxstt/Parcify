@@ -24,6 +24,8 @@
     decimals?: number;
     // Varios elementos con valores distintos: el campo se queda vacío con «Mixto».
     mixed?: boolean;
+    // Lo que muestra el campo vacío en lugar de «Mixto» (por ejemplo «∞» en las repeticiones sin fin).
+    emptyText?: string;
     disabled?: boolean;
     readonly?: boolean;
     // Imán opcional durante el arrastre (Rotación usa snapRotation).
@@ -47,6 +49,7 @@
     max = Infinity,
     decimals = 2,
     mixed = false,
+    emptyText,
     disabled = false,
     readonly = false,
     snap,
@@ -80,7 +83,8 @@
   const formatter = $derived(new Intl.NumberFormat('es', { maximumFractionDigits: decimals, useGrouping: false }));
   const format = (n: number) => formatter.format(Object.is(n, -0) ? 0 : n);
   const shown = $derived(scrubbing ? format(scrubValue) : (draft ?? (mixed ? '' : format(value))));
-  const valueText = $derived(mixed ? m.ui_mixed() : `${format(value)}${unit ?? ''}`);
+  const empty = $derived(emptyText ?? m.ui_mixed());
+  const valueText = $derived(mixed ? empty : `${format(value)}${unit ?? ''}`);
 
   function normalize(n: number): number {
     const factor = 10 ** decimals;
@@ -293,7 +297,7 @@
     aria-invalid={invalid || undefined}
     aria-readonly={readonly || undefined}
     data-testid={testid}
-    placeholder={mixed ? m.ui_mixed() : undefined}
+    placeholder={mixed ? empty : undefined}
     value={shown}
     {disabled}
     {readonly}

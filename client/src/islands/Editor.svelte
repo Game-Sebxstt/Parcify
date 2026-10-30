@@ -776,6 +776,10 @@
   // Ctrl+S guarda una versión en vez de abrir el «Guardar como» del navegador.
   // Ctrl/⌘+Shift+K inserta una imagen: es una acción del editor (selector de archivos), no un comando del documento.
   function onWindowKey(event: KeyboardEvent) {
+    if (event.key === 'Escape' && stopPreviewFrom(event.target)) {
+      event.preventDefault();
+      return;
+    }
     if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
     const key = event.key.toLowerCase();
     if (!event.shiftKey && key === 's') {
@@ -790,6 +794,14 @@
       event.preventDefault();
       if (!engineReadOnly) pickImages();
     }
+  }
+
+  // Esc con el foco en un panel lateral detiene la vista previa de una animación (en el lienzo la detiene el motor).
+  function stopPreviewFrom(target: EventTarget | null): boolean {
+    if (!engine?.anim.state.get().preview || !(target instanceof Element)) return false;
+    if (!target.closest('[data-testid="left-panel"], [data-testid="right-panel"]')) return false;
+    engine.anim.preview(null);
+    return true;
   }
 
   // Versiones es una vista del panel derecho: si está plegado, se abre en ella.
@@ -935,6 +947,7 @@
           pageName={pages.find((item) => item.id === activePage)?.name ?? ''}
           onpreset={(next) => engine?.core.framePreset.set(next)}
           onexport={() => (exportOpen = true)}
+          onkeyframes={() => void openTimeline(true, true)}
         />
       {/if}
     {/snippet}

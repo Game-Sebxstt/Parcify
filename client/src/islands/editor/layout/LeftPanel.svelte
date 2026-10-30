@@ -1,8 +1,10 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { tick, type Snippet } from 'svelte';
   import type { Engine } from '../../../engine/index.ts';
   import { getEditorLayout, LEFT_WIDTH } from '../../../lib/editor-layout.svelte.ts';
   import { m } from '../../../paraglide/messages.js';
+  import Tabs from '../../../ui/Tabs.svelte';
+  import AnimationsPanel from '../animations/AnimationsPanel.svelte';
   import LayersPanel from '../LayersPanel.svelte';
   import PagesPanel from '../PagesPanel.svelte';
   import PanelResizer from './PanelResizer.svelte';
@@ -26,9 +28,13 @@
   const layout = getEditorLayout();
   let layers = $state<ReturnType<typeof LayersPanel> | null>(null);
 
-  // «Renombrar» desde el lienzo: con el panel plegado, primero se abre.
+  // «Renombrar» desde el lienzo: con el panel plegado, primero se abre, y la pestaña pasa a Capas.
   export async function rename(id: string) {
     if (!open) layout.open('left');
+    if (layout.leftTab !== 'layers') {
+      layout.leftTab = 'layers';
+      await tick();
+    }
     await layers?.rename(id);
   }
 </script>
@@ -52,8 +58,27 @@
   {/if}
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-edge/25" style:padding-bottom={clearance ? `${clearance}px` : null}>
     {#if engine}
-      <PagesPanel {engine} {readOnly} />
-      <LayersPanel bind:this={layers} {engine} {readOnly} />
+      {@const current = engine}
+      <PagesPanel engine={current} {readOnly} />
+      {#snippet layersTab()}
+        <LayersPanel bind:this={layers} engine={current} {readOnly} titled={false} />
+      {/snippet}
+      {#snippet animationsTab()}
+        <AnimationsPanel engine={current} />
+      {/snippet}
+      <Tabs
+        value={layout.leftTab}
+        onValueChange={(next) => (layout.leftTab = next === 'animations' ? 'animations' : 'layers')}
+        label={m.editor_left_tabs()}
+        size="sm"
+        class="flex min-h-0 flex-1 flex-col"
+        contentClass="min-h-0 flex-1 flex-col data-[state=active]:flex"
+        contentTabindex={-1}
+        items={[
+          { value: 'layers', label: m.editor_layers_label(), content: layersTab },
+          { value: 'animations', label: m.editor_tab_animations(), content: animationsTab },
+        ]}
+      />
     {/if}
   </div>
   <PanelResizer

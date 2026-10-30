@@ -8,9 +8,10 @@
   import { m } from '../../../paraglide/messages.js';
   import ScrubInput from '../../../ui/ScrubInput.svelte';
   import { MOD_ARIA, MOD_KEY } from '../layout/ui-keys.ts';
+  import KeyframeToggle from './KeyframeToggle.svelte';
   import PanelButton from './PanelButton.svelte';
   import Section from './Section.svelte';
-  import { shared, type PanelEdits, type Posed } from './panel.ts';
+  import { shared, type KeyframeContext, type PanelEdits, type Posed } from './panel.ts';
 
   type Props = {
     engine: Engine;
@@ -21,9 +22,10 @@
     // Solo lectura por permisos: sin botones. Con todo bloqueado, el candado sigue para poder desbloquear.
     readOnly: boolean;
     locked: boolean;
+    keyframes: KeyframeContext | null;
   };
 
-  let { engine, records, edits, posed, readOnly, locked }: Props = $props();
+  let { engine, records, edits, posed, readOnly, locked, keyframes }: Props = $props();
 
   const opacity = $derived.by(() => {
     void posed.version;
@@ -60,20 +62,26 @@
     {/if}
   {/snippet}
   <div class="grid min-w-0 grid-cols-2 gap-2">
-    <ScrubInput
-      value={opacity.value ?? 100}
-      mixed={opacity.mixed}
-      label={m.editor_props_opacity()}
-      icon={Blend}
-      unit="%"
-      min={0}
-      max={100}
-      decimals={0}
-      readonly={readOnly || locked}
-      testid="props-opacity"
-      oninput={(value) => edits.previewStyle({ opacity: value / 100 })}
-      oncommit={(value, meta) => edits.setStyle({ opacity: value / 100 }, meta)}
-      oncancel={() => edits.cancel()}
-    />
+    <div class="flex min-w-0 items-center gap-1">
+      <ScrubInput
+        class="flex-1"
+        value={opacity.value ?? 100}
+        mixed={opacity.mixed}
+        label={m.editor_props_opacity()}
+        icon={Blend}
+        unit="%"
+        min={0}
+        max={100}
+        decimals={0}
+        readonly={readOnly || locked}
+        testid="props-opacity"
+        oninput={(value) => edits.previewStyle({ opacity: value / 100 })}
+        oncommit={(value, meta) => edits.setStyle({ opacity: value / 100 }, meta)}
+        oncancel={() => edits.cancel()}
+      />
+      {#if keyframes}
+        <KeyframeToggle context={keyframes} {records} prop="opacity" label={m.editor_props_opacity()} testid="props-opacity-key" />
+      {/if}
+    </div>
   </div>
 </Section>

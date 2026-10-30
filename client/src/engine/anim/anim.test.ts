@@ -341,6 +341,25 @@ describe('escalas por eje, color de texto y vista previa', () => {
     expect(core.anim.state.get().status).toBe('stopped');
   });
 
+  it('la vista previa publica sus nodos, y una sin nada que reproducir no para la reproducción normal', () => {
+    const { core, tick, ids } = animate((keyframes, [id]) => {
+      keyframes.addKeyframe(id!, 'offsetX', { t: 0, v: 0 });
+      keyframes.addKeyframe(id!, 'offsetX', { t: 1, v: 100 });
+    });
+    const id = ids[0]!;
+    core.anim.preview([id]);
+    expect(core.anim.state.get()).toMatchObject({ preview: true, previewIds: [id] });
+    core.anim.preview(null);
+    expect(core.anim.state.get()).toMatchObject({ status: 'stopped', preview: false, previewIds: null });
+    core.anim.play();
+    tick(0);
+    tick(300);
+    expect(core.anim.preview(['nada'])).toBe(false);
+    expect(core.anim.state.get()).toMatchObject({ status: 'playing', preview: false, previewIds: null });
+    tick(400);
+    expect(core.anim.state.get().time).toBeGreaterThan(0);
+  });
+
   it('Esc y preview(null) detienen la vista previa', () => {
     const { core, sink, tick, ids } = animate((keyframes, [id]) => {
       keyframes.addKeyframe(id!, 'offsetX', { t: 0, v: 0 });

@@ -12,9 +12,10 @@
   import Tooltip from '../../ui/Tooltip.svelte';
   import { kindLabel } from './kinds.ts';
 
-  type Props = { engine: Engine; readOnly: boolean };
+  // titled: false cuando una pestaña «Capas» ya lo nombra; el título queda solo para los lectores de pantalla.
+  type Props = { engine: Engine; readOnly: boolean; titled?: boolean };
 
-  let { engine, readOnly }: Props = $props();
+  let { engine, readOnly, titled = true }: Props = $props();
 
   const uid = $props.id();
   let version = $state(0);
@@ -188,8 +189,8 @@
   };
 </script>
 
-<section aria-labelledby="{uid}-title" class="flex min-h-0 flex-1 flex-col">
-  <h2 id="{uid}-title" class="flex h-8 shrink-0 items-center px-3 text-2xs font-semibold text-ink-muted">{m.editor_layers_label()}</h2>
+<section aria-labelledby="{uid}-title" class={['flex min-h-0 flex-1 flex-col', titled ? '' : 'pt-1.5']}>
+  <h2 id="{uid}-title" class={titled ? 'flex h-8 shrink-0 items-center px-3 text-2xs font-semibold text-ink-muted' : 'sr-only'}>{m.editor_layers_label()}</h2>
   <p id="{uid}-hint" class="sr-only">{m.editor_layers_hint()}</p>
   {#if rows.length === 0}
     <p class="px-3 text-xs text-ink-muted">{m.editor_layers_empty()}</p>

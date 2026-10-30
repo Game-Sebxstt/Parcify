@@ -14,7 +14,8 @@
   import Section from './Section.svelte';
   import StrokeSection from './StrokeSection.svelte';
   import TextSection from './TextSection.svelte';
-  import { PanelEdits, pageColors, PRESET_LABELS } from './panel.ts';
+  import AnimationSection from './AnimationSection.svelte';
+  import { PanelEdits, pageColors, PRESET_LABELS, type KeyframeContext } from './panel.ts';
   import { getEditorLayout } from '../../../lib/editor-layout.svelte.ts';
 
   type Props = {
@@ -26,9 +27,11 @@
     pageName: string;
     onpreset: (preset: FramePresetId) => void;
     onexport: () => void;
+    // Abre la línea de tiempo con la selección y Grabar encendido.
+    onkeyframes: () => void;
   };
 
-  let { engine, records, readOnly, tool, preset, pageName, onpreset, onexport }: Props = $props();
+  let { engine, records, readOnly, tool, preset, pageName, onpreset, onexport, onkeyframes }: Props = $props();
 
   const PRESETS = FRAME_PRESETS.map((item) => ({ id: item.id, label: PRESET_LABELS[item.id] }));
 
@@ -45,6 +48,10 @@
   // Todo bloqueado (también por un grupo o un marco): los campos se ven pero no se editan.
   const locked = $derived(records.length > 0 && records.every((record) => engine.core.isLocked(record.id)));
   const fieldsReadonly = $derived(readOnly || locked);
+  // Rombos de keyframe junto a las propiedades animables: solo con la línea de tiempo abierta y el panel editable.
+  const keyframes = $derived<KeyframeContext | null>(
+    posed.at !== null && !fieldsReadonly ? { engine, at: posed.at, version: posed.version } : null,
+  );
   const colors = () => pageColors(engine);
 </script>
 
@@ -81,15 +88,16 @@
     {#if !fieldsReadonly}
       <AlignSection {engine} {records} />
     {/if}
-    <LayoutSection {engine} {records} {edits} {posed} readonly={fieldsReadonly} />
-    <AppearanceSection {engine} {records} {edits} {posed} {readOnly} {locked} />
+    <LayoutSection {engine} {records} {edits} {posed} readonly={fieldsReadonly} {keyframes} />
+    <AppearanceSection {engine} {records} {edits} {posed} {readOnly} {locked} {keyframes} />
     <FrameSection {engine} {records} {edits} readonly={fieldsReadonly} />
     <ImageSection {records} {edits} readonly={fieldsReadonly} />
-    <FillSection {records} {edits} readonly={fieldsReadonly} {colors} />
-    <StrokeSection {records} {edits} readonly={fieldsReadonly} {colors} />
-    <TextSection {records} {edits} readonly={fieldsReadonly} {colors} />
+    <FillSection {records} {edits} readonly={fieldsReadonly} {colors} {keyframes} />
+    <StrokeSection {records} {edits} readonly={fieldsReadonly} {colors} {keyframes} />
+    <TextSection {records} {edits} readonly={fieldsReadonly} {colors} {keyframes} />
     <LabelSection {records} {edits} readonly={fieldsReadonly} {colors} />
     <EffectsSection {records} {edits} readonly={fieldsReadonly} {colors} />
+    <AnimationSection {engine} {records} readonly={fieldsReadonly} version={posed.version} {onkeyframes} />
     <ExportSection {onexport} />
   {/if}
 </div>

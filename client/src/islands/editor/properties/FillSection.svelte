@@ -3,13 +3,14 @@
   import type { NodeRecord } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import ColorRow from './ColorRow.svelte';
+  import KeyframeToggle from './KeyframeToggle.svelte';
   import PanelButton from './PanelButton.svelte';
   import Section from './Section.svelte';
-  import { colorPatch, shared, sharedAlpha, type PanelEdits } from './panel.ts';
+  import { colorPatch, shared, sharedAlpha, type KeyframeContext, type PanelEdits } from './panel.ts';
 
-  type Props = { records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean; colors: () => string[] };
+  type Props = { records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean; colors: () => string[]; keyframes: KeyframeContext | null };
 
-  let { records, edits, readonly, colors }: Props = $props();
+  let { records, edits, readonly, colors, keyframes }: Props = $props();
 
   const SHAPE_FILL = '#D9D9D9FF';
   const FRAME_FILL = '#FFFFFFFF';
@@ -34,20 +35,27 @@
       {/if}
     {/snippet}
     {#if !empty}
-      <ColorRow
-        value={fill.value ?? fallback}
-        mixed={fill.mixed}
-        alphaMixed={alpha.mixed}
-        label={m.editor_props_fill()}
-        {readonly}
-        {colors}
-        removeLabel={m.editor_props_fill_remove()}
-        testid="props-fill-row"
-        onpreview={(change) => edits.previewStyle(colorPatch('fill', change, fillOf))}
-        oncommit={(change, meta) => edits.setStyle(colorPatch('fill', change, fillOf), meta)}
-        oncancel={() => edits.cancel()}
-        onremove={() => edits.setStyle({ fill: null })}
-      />
+      <div class="flex min-w-0 items-center gap-1">
+        <div class="min-w-0 flex-1">
+          <ColorRow
+            value={fill.value ?? fallback}
+            mixed={fill.mixed}
+            alphaMixed={alpha.mixed}
+            label={m.editor_props_fill()}
+            {readonly}
+            {colors}
+            removeLabel={m.editor_props_fill_remove()}
+            testid="props-fill-row"
+            onpreview={(change) => edits.previewStyle(colorPatch('fill', change, fillOf))}
+            oncommit={(change, meta) => edits.setStyle(colorPatch('fill', change, fillOf), meta)}
+            oncancel={() => edits.cancel()}
+            onremove={() => edits.setStyle({ fill: null })}
+          />
+        </div>
+        {#if keyframes}
+          <KeyframeToggle context={keyframes} records={filled} prop="fill" label={m.editor_props_fill()} testid="props-fill-key" />
+        {/if}
+      </div>
     {/if}
   </Section>
 {/if}

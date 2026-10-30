@@ -9,8 +9,9 @@ import { compileAnimation, poseAt, type CompiledAnimation, type Pose } from './t
 export type AnimationStatus = 'stopped' | 'playing' | 'paused';
 
 // time y duration en ms; duration es Infinity si alguna animación se repite sin fin y 0 si no hay ninguna. preview:
-// se está reproduciendo una vista previa (`preview`), que al terminar vuelve al estado base.
-export type AnimationState = { status: AnimationStatus; time: number; duration: number; preview: boolean };
+// se está reproduciendo una vista previa (`preview`), que al terminar vuelve al estado base; previewIds son los nodos
+// que se pidieron para ella (null fuera de la vista previa).
+export type AnimationState = { status: AnimationStatus; time: number; duration: number; preview: boolean; previewIds: readonly string[] | null };
 
 // Lo que el reproductor necesita del motor. Las vistas se cambian con apply; el documento no se toca.
 export interface AnimationHost {
@@ -41,8 +42,8 @@ const isAnimatable = (record: NodeRecord | undefined): record is SceneRecord =>
 // documento.
 export class AnimationPlayer {
   readonly state = new Store<AnimationState>(
-    { status: 'stopped', time: 0, duration: 0, preview: false },
-    (a, b) => a.status === b.status && a.time === b.time && a.duration === b.duration && a.preview === b.preview,
+    { status: 'stopped', time: 0, duration: 0, preview: false, previewIds: null },
+    (a, b) => a.status === b.status && a.time === b.time && a.duration === b.duration && a.preview === b.preview && a.previewIds === b.previewIds,
   );
   private status: AnimationStatus = 'stopped';
   private time = 0;
@@ -65,6 +66,7 @@ export class AnimationPlayer {
   private only: ((id: string, animation: Animation) => boolean) | null = null;
   // Vista previa: solo estos nodos, una vez y sin repetir; al terminar, stop(). null fuera de la vista previa.
   private previewIds: ReadonlySet<string> | null = null;
+  private previewList: readonly string[] | null = null;
 
   constructor(private readonly host: AnimationHost) {}
 
@@ -78,16 +80,24 @@ export class AnimationPlayer {
   }
 
   // Reproduce desde 0 las animaciones de `ids` (las de la página activa) sin abrir la línea de tiempo, y al terminar
-  // devuelve el lienzo al estado base. null la detiene. Devuelve false si no hay nada que reproducir.
+  // devuelve el lienzo al estado base. null la detiene. Devuelve false si no hay nada que reproducir: entonces una
+  // vista previa en curso se detiene y una reproducción normal sigue como estaba.
   preview(ids: readonly string[] | null): boolean {
     if (ids === null) {
       if (this.previewIds) this.stop();
       return false;
     }
+    const wasPreview = this.previewIds !== null;
     this.previewIds = new Set(ids);
+    this.previewList = [...this.previewIds];
     this.collect();
     if (!this.animated.length) {
-      this.stop();
+      if (wasPreview) this.stop();
+      else {
+        this.previewIds = null;
+        this.previewList = null;
+        this.collect();
+      }
       return false;
     }
     this.time = 0;
@@ -108,6 +118,7 @@ export class AnimationPlayer {
   private endPreview(): void {
     if (!this.previewIds) return;
     this.previewIds = null;
+    this.previewList = null;
     this.collectPending = true;
   }
 
@@ -265,7 +276,7 @@ export class AnimationPlayer {
   }
 
   private publish(): void {
-    this.state.set({ status: this.status, time: this.time, duration: this.duration, preview: this.previewIds !== null });
+    this.state.set({ status: this.status, time: this.time, duration: this.duration, preview: this.previewIds !== null, previewIds: this.previewList });
   }
 
   // Nodos animados de la página activa, su duración total y lo que no se puede editar mientras se reproducen.

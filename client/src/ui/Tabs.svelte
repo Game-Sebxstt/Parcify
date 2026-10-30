@@ -13,16 +13,30 @@
     label: string;
     // sm: pestañas de 32 px de los paneles; md: las de una página.
     size?: 'sm' | 'md';
+    // Clases de la raíz y de cada panel (por ejemplo, para que el panel ocupe el alto que queda).
+    class?: string;
+    contentClass?: string;
+    // -1 cuando el contenido ya tiene su propio elemento enfocable (un árbol, una lista de botones).
+    contentTabindex?: number;
     onValueChange?: (value: string) => void;
   };
 
-  let { items, value = $bindable(items[0]?.value ?? ''), label, size = 'md', onValueChange }: Props = $props();
+  let {
+    items,
+    value = $bindable(items[0]?.value ?? ''),
+    label,
+    size = 'md',
+    class: className = '',
+    contentClass = '',
+    contentTabindex = 0,
+    onValueChange,
+  }: Props = $props();
 </script>
 
-<Tabs.Root bind:value {onValueChange}>
+<Tabs.Root bind:value {onValueChange} class={className}>
   <Tabs.List
     aria-label={label}
-    class={['scroll-thin flex gap-4 overflow-x-auto border-b border-edge/25', size === 'sm' ? 'px-3' : ''].join(' ')}
+    class={['scroll-thin flex shrink-0 gap-4 overflow-x-auto border-b border-edge/25', size === 'sm' ? 'px-3' : ''].join(' ')}
   >
     {#each items as item (item.value)}
       <Tabs.Trigger
@@ -39,7 +53,7 @@
     {/each}
   </Tabs.List>
   {#each items as item (item.value)}
-    <Tabs.Content value={item.value} class={size === 'sm' ? '' : 'mt-4'}>
+    <Tabs.Content value={item.value} tabindex={contentTabindex} class={[size === 'sm' ? '' : 'mt-4', contentClass].join(' ')}>
       {@render item.content()}
     </Tabs.Content>
   {/each}
