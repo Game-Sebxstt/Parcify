@@ -712,3 +712,43 @@ test('la barra contextual queda 12 px encima de la forma, baja si no cabe, no pi
     return Math.min(Math.abs(shape.top - 12 - now.bottom), Math.abs(now.top - shape.bottom - 12));
   }).toBeLessThanOrEqual(1);
 });
+
+test('Alt+A alinea a la izquierda los seleccionados en un solo paso de deshacer y Shift+H los voltea', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `alinear-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 150, y: box.y + box.height / 2 - 100 };
+  const createRect = async (from: { x: number; y: number }, to: { x: number; y: number }, count: number) => {
+    await canvas.focus();
+    await page.keyboard.press('r');
+    await drag(page, from, to);
+    await expect.poll(async () => (await nodes(page)).length).toBe(count);
+  };
+  await createRect(origin, { x: origin.x + 100, y: origin.y + 60 }, 1);
+  await createRect({ x: origin.x + 180, y: origin.y + 120 }, { x: origin.x + 300, y: origin.y + 200 }, 2);
+  const before = (await nodes(page)).sort((a, b) => a.x - b.x);
+  const left = before[0]!.x;
+  expect(before[1]!.x).toBeGreaterThan(left + 100);
+
+  await canvas.focus();
+  await page.keyboard.press('Control+a');
+  await expect.poll(async () => (await selection(page)).length).toBe(2);
+  await page.keyboard.press('Alt+a');
+  await expect.poll(async () => (await nodes(page)).map((node) => node.x)).toEqual([left, left]);
+  // Las y no cambian.
+  expect((await nodes(page)).map((node) => node.y).sort((a, b) => a - b)).toEqual(before.map((node) => node.y).sort((a, b) => a - b));
+
+  // Un solo Ctrl+Z devuelve las dos a su sitio.
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await nodes(page)).map((node) => node.x).sort((a, b) => a - b)).toEqual(before.map((node) => node.x));
+
+  // Shift+H refleja la selección respecto al centro de su caja: la de la izquierda pasa a la derecha.
+  const span = { min: before[0]!.x, max: before[1]!.x + before[1]!.w };
+  await page.keyboard.press('Shift+h');
+  await expect.poll(async () => (await byId(page, before[0]!.id)).x).toBeCloseTo(span.max - before[0]!.w, 0);
+  const flipped = (await nodes(page)) as Array<Node & { flipX?: boolean }>;
+  expect(flipped.every((node) => node.flipX === true)).toBe(true);
+  expect(flipped.every((node) => Math.abs(node.rotation) < 1e-6)).toBe(true);
+});

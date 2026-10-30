@@ -2,6 +2,7 @@ const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 
 export const MOD_KEY = MAC ? '⌘' : 'Ctrl';
 export const MOD_ARIA = MAC ? 'Meta' : 'Control';
+export const ALT_KEY = MAC ? '⌥' : 'Alt';
 
 export type UiKeys = { hide: string; minimize: string; hideAria: string; minimizeAria: string };
 

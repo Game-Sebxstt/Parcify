@@ -1,4 +1,12 @@
 <script lang="ts">
+  import AlignCenterHorizontal from '@lucide/svelte/icons/align-center-horizontal';
+  import AlignCenterVertical from '@lucide/svelte/icons/align-center-vertical';
+  import AlignEndHorizontal from '@lucide/svelte/icons/align-end-horizontal';
+  import AlignEndVertical from '@lucide/svelte/icons/align-end-vertical';
+  import AlignHorizontalSpaceBetween from '@lucide/svelte/icons/align-horizontal-space-between';
+  import AlignStartHorizontal from '@lucide/svelte/icons/align-start-horizontal';
+  import AlignStartVertical from '@lucide/svelte/icons/align-start-vertical';
+  import AlignVerticalSpaceBetween from '@lucide/svelte/icons/align-vertical-space-between';
   import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
   import ALargeSmall from '@lucide/svelte/icons/a-large-small';
   import Bold from '@lucide/svelte/icons/bold';
@@ -18,7 +26,7 @@
   import TextCursorInput from '@lucide/svelte/icons/text-cursor-input';
   import Ungroup from '@lucide/svelte/icons/ungroup';
   import type { Snippet } from 'svelte';
-  import { FRAME_PRESETS, type Engine, type FramePresetId, type NodeRecord, type ScreenRect, type StylePatch } from '../../../engine/index.ts';
+  import { FRAME_PRESETS, type AlignMode, type Engine, type FramePresetId, type NodeRecord, type ScreenRect, type StylePatch } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import { cssFamily } from '../../../engine/text/fonts.ts';
   import { FONT_FAMILIES, type FontFamily } from '../../../shared/document/schema.js';
@@ -29,7 +37,7 @@
   import ScrubInput from '../../../ui/ScrubInput.svelte';
   import Select from '../../../ui/Select.svelte';
   import Tooltip from '../../../ui/Tooltip.svelte';
-  import { MOD_ARIA, MOD_KEY } from '../layout/ui-keys.ts';
+  import { ALT_KEY, MOD_ARIA, MOD_KEY } from '../layout/ui-keys.ts';
   import ToolButton from '../ToolButton.svelte';
 
   export type Avoid = { top: number; right: number; bottom: number; left: number };
@@ -78,7 +86,7 @@
   const frame = $derived(single?.type === 'frame' ? single : null);
 
   const commands = $derived(engine.commands);
-  const preview = (patch: StylePatch) => commands.previewStyle(patch);
+  const preview = (patch: StylePatch) => commands.previewStyle(patch, { autoCommit: false });
   const commit = (patch: StylePatch) => commands.setStyle(patch);
   const cancel = () => commands.cancelPreview();
 
@@ -211,6 +219,35 @@
     });
     return [group('startCap', m.editor_props_start_cap()), { kind: 'separator', id: 'caps-sep' }, group('endCap', m.editor_props_end_cap())];
   });
+  const ARRANGE = [
+    { id: 'left', label: m.editor_arrange_left, icon: AlignStartVertical, key: 'A' },
+    { id: 'hcenter', label: m.editor_arrange_hcenter, icon: AlignCenterVertical, key: 'H' },
+    { id: 'right', label: m.editor_arrange_right, icon: AlignEndVertical, key: 'D' },
+    { id: 'top', label: m.editor_arrange_top, icon: AlignStartHorizontal, key: 'W' },
+    { id: 'vcenter', label: m.editor_arrange_vcenter, icon: AlignCenterHorizontal, key: 'V' },
+    { id: 'bottom', label: m.editor_arrange_bottom, icon: AlignEndHorizontal, key: 'S' },
+  ] as const satisfies ReadonlyArray<{ id: AlignMode; label: () => string; icon: MenuIcon; key: string }>;
+  const arrangeItems = $derived.by<MenuEntry[]>(() => {
+    const ids = records.map((record) => record.id);
+    const few = ids.length < 3;
+    return [
+      ...ARRANGE.map(
+        (item): MenuEntry => ({
+          kind: 'item',
+          id: `arrange-${item.id}`,
+          label: item.label(),
+          icon: item.icon,
+          keys: `${ALT_KEY}+${item.key}`,
+          ariaKeys: `Alt+${item.key}`,
+          onSelect: () => commands.align(ids, item.id),
+        }),
+      ),
+      { kind: 'separator', id: 'arrange-sep' },
+      { kind: 'item', id: 'distribute-h', label: m.editor_arrange_distribute_h(), icon: AlignHorizontalSpaceBetween, disabled: few, onSelect: () => commands.distribute(ids, 'h') },
+      { kind: 'item', id: 'distribute-v', label: m.editor_arrange_distribute_v(), icon: AlignVerticalSpaceBetween, disabled: few, onSelect: () => commands.distribute(ids, 'v') },
+    ];
+  });
+
   const route = $derived(line?.type === 'connector' ? line.route : null);
   const routeIcon = $derived(ROUTES.find((item) => item.id === route)?.icon ?? CornerDownRight);
   const routeItems = $derived.by<MenuEntry[]>(() =>
@@ -469,6 +506,14 @@
       <Ungroup size={16} aria-hidden="true" />
     </ToolButton>
   {:else if kind === 'multi'}
+    {#snippet arrangeMenu()}
+      <DropdownMenu items={arrangeItems} label={m.editor_arrange_align()} side="bottom" align="start" class="min-w-56">
+        {#snippet trigger(props)}
+          {@render menuTrigger(props, m.editor_arrange_align(), AlignStartVertical)}
+        {/snippet}
+      </DropdownMenu>
+    {/snippet}
+    {@render hint(m.editor_arrange_align(), arrangeMenu)}
     <ToolButton variant="tool" size="sm" side="top" label={m.editor_menu_group()} kbd={`${MOD_KEY}+G`} ariaKeys={`${MOD_ARIA}+G`} onclick={() => commands.groupSelection()}>
       <Group size={16} aria-hidden="true" />
     </ToolButton>

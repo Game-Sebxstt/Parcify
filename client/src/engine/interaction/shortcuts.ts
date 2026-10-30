@@ -5,7 +5,8 @@ export type KeyInput = { key: string; code: string; ctrl: boolean; shift: boolea
 
 type Action = (commands: Commands) => void;
 
-type Shortcut = { key: string; ctrl?: boolean; shift?: boolean; edit?: boolean; run: Action };
+// `alt`: solo responde con Alt (⌥) pulsada; los demás atajos no responden con Alt.
+type Shortcut = { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean; edit?: boolean; run: Action };
 
 const tool = (name: Tool): Action => (commands) => commands.setTool(name);
 
@@ -55,6 +56,15 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { key: '"', shift: true, run: (c) => c.zoomToSelection() },
   { key: '0', ctrl: true, run: (c) => c.zoomTo(1) },
   { key: 'escape', run: (c) => c.escape() },
+  // Alinear y voltear como en Figma. Con ⌥ en macOS la tecla escribe otro carácter: vale por `code`.
+  { key: 'a', alt: true, run: (c) => c.align(c.selection, 'left'), edit: true },
+  { key: 'd', alt: true, run: (c) => c.align(c.selection, 'right'), edit: true },
+  { key: 'w', alt: true, run: (c) => c.align(c.selection, 'top'), edit: true },
+  { key: 's', alt: true, run: (c) => c.align(c.selection, 'bottom'), edit: true },
+  { key: 'h', alt: true, run: (c) => c.align(c.selection, 'hcenter'), edit: true },
+  { key: 'v', alt: true, run: (c) => c.align(c.selection, 'vcenter'), edit: true },
+  { key: 'h', shift: true, run: (c) => c.flip(c.selection, 'h'), edit: true },
+  { key: 'v', shift: true, run: (c) => c.flip(c.selection, 'v'), edit: true },
 ];
 
 // Con Shift, `key` es el carácter resultante (p. ej. «!» en Shift+1); por eso también se mira `code`.
@@ -81,11 +91,14 @@ function isBackslash(input: KeyInput): boolean {
 
 export function findShortcut(input: KeyInput): Shortcut | null {
   if (input.ctrl && isBackslash(input)) return input.shift ? MINIMIZE_UI : HIDE_UI;
-  if (input.alt) return null;
   const keys = keyOf(input);
   return (
     SHORTCUTS.find(
-      (shortcut) => keys.includes(shortcut.key) && Boolean(shortcut.ctrl) === input.ctrl && Boolean(shortcut.shift) === input.shift,
+      (shortcut) =>
+        keys.includes(shortcut.key) &&
+        Boolean(shortcut.ctrl) === input.ctrl &&
+        Boolean(shortcut.shift) === input.shift &&
+        Boolean(shortcut.alt) === input.alt,
     ) ?? null
   );
 }

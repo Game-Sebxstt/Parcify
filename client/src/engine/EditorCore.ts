@@ -130,7 +130,9 @@ export type CoreOptions = {
   dpr?: number;
 };
 
-export type GesturePreview = { ids: readonly string[]; matrix: Mat; snapGuides?: OverlayModel['guides'] };
+// `matrices`: una matriz por raíz cuando no comparten la misma (el panel gira varias formas, cada una sobre su
+// centro); entonces `matrix` no se usa y la presencia no recibe el gesto.
+export type GesturePreview = { ids: readonly string[]; matrix: Mat; matrices?: ReadonlyMap<string, Mat>; snapGuides?: OverlayModel['guides'] };
 
 export type UiCommandName = 'hideUi' | 'minimizeUi';
 export type UiCommand = { name: UiCommandName; n: number };
@@ -1445,7 +1447,8 @@ export class EditorCore {
     this.snapGuides = gesture?.snapGuides ?? [];
     this.overridesDirty = true;
     this.overlayDirty = true;
-    this.presence.setGesture(gesture ? gesture.ids : null, gesture ? gesture.matrix : null);
+    const shared = gesture && !gesture.matrices ? gesture : null;
+    this.presence.setGesture(shared ? shared.ids : null, shared ? shared.matrix : null);
     this.requestFrame();
   }
 
@@ -1527,6 +1530,8 @@ export class EditorCore {
       this.gesture &&
       previous &&
       this.gesture.ids === previous.ids &&
+      !this.gesture.matrices &&
+      !previous.matrices &&
       isTranslation(this.gesture.matrix) &&
       isTranslation(previous.matrix) &&
       !this.stylePreview
@@ -1581,10 +1586,14 @@ export class EditorCore {
       }
     }
     if (this.gesture) {
-      this.gestureMatrices.set('local', this.gesture.matrix);
-      for (const id of this.gesture.ids) {
-        const record = collect(id, 'local', this.gesture.matrix);
-        if (record) desired.set(id, this.previewUnder(record, this.gesture.matrix, this.gesture.ids.length, 'local'));
+      // Con una matriz por raíz, cada raíz va en su propio grupo de dibujo.
+      const { ids, matrix, matrices } = this.gesture;
+      for (const id of ids) {
+        const own = matrices?.get(id) ?? matrix;
+        const key = matrices ? `local:${id}` : 'local';
+        this.gestureMatrices.set(key, own);
+        const record = collect(id, key, own);
+        if (record) desired.set(id, this.previewUnder(record, own, ids.length, key));
       }
     }
     for (const id of affected) {
