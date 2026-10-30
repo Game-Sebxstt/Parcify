@@ -4,6 +4,7 @@ import type { ProjectActivityResponse } from '../src/shared/api/activity.ts';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
+import { pickTool } from './helpers/tools.ts';
 
 const API = 'http://localhost:3000';
 
@@ -17,10 +18,11 @@ async function openEditor(page: Page, projectId: string) {
   await page.waitForTimeout(100);
 }
 
+// `tool` es el nombre de una forma del grupo Formas de la barra de herramientas.
 async function draw(page: Page, tool: string, dx: number) {
   const box = (await page.getByRole('application', { name: 'Lienzo del proyecto' }).boundingBox())!;
   const from = { x: box.x + box.width / 2 - 200 + dx, y: box.y + box.height / 2 - 100 };
-  await page.getByRole('button', { name: tool }).click();
+  await pickTool(page, 'Formas', tool);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x + 60, from.y + 40, { steps: 4 });
@@ -59,9 +61,9 @@ test('la pestaña de actividad muestra las ediciones que contó el servidor, sin
   await openEditor(page, projectId);
   await openEditor(anaTab2, projectId);
   await openEditor(bea, projectId);
-  await draw(page, 'Rectángulo (R)', 0);
+  await draw(page, 'Rectángulo', 0);
   await expect.poll(async () => (await nodes(anaTab2)).length).toBe(1);
-  await draw(bea, 'Elipse (O)', 220);
+  await draw(bea, 'Elipse', 220);
   await expect.poll(async () => (await nodes(page)).length).toBe(2);
   await expect.poll(async () => (await nodes(anaTab2)).length).toBe(2);
   // Cursor de la segunda pestaña: no abre otro minuto si cae en el mismo.

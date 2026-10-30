@@ -197,6 +197,25 @@ describe('máquina de estados del puntero', () => {
     expect(core.camera.zoom).toBeGreaterThan(1);
   });
 
+  it('con la herramienta bloqueada, un clic sin arrastre crea y la herramienta sigue activa', () => {
+    const doc = newDoc();
+    const { core, tick } = makeCore(doc);
+    tick();
+    core.commands.setTool('rect', { locked: true });
+    core.controller.pointerDown(pointer(200, 200));
+    core.controller.pointerUp(pointer(200, 200));
+    tick();
+    expect(doc.getMap(ROOT_KEYS.nodes).size).toBe(1);
+    expect(core.tool.get()).toBe('rect');
+    expect(core.toolLocked.get()).toBe(true);
+    core.commands.setTool('ellipse');
+    core.controller.pointerDown(pointer(400, 200));
+    core.controller.pointerUp(pointer(400, 200));
+    tick();
+    expect(doc.getMap(ROOT_KEYS.nodes).size).toBe(2);
+    expect(core.tool.get()).toBe('select');
+  });
+
   it('en solo lectura no se crean ni se mueven nodos', () => {
     const doc = newDoc();
     const id = putNode(doc, rect({ x: 100, y: 100 }));
@@ -256,6 +275,28 @@ describe('atajos', () => {
     core.controller.keyDown(key('{', 'BracketLeft', { ctrl: true, shift: true }));
     tick();
     expect((nodeMap(doc, a).get('index') as string) < (nodeMap(doc, b).get('index') as string)).toBe(true);
+  });
+
+  it('Ctrl++ del teclado español hace zoom sin reordenar, y Ctrl+− aleja', () => {
+    const doc = newDoc();
+    const a = putNode(doc, rect({ index: 'a0' }));
+    const b = putNode(doc, rect({ index: 'a1' }));
+    const { core, tick } = makeCore(doc);
+    tick();
+    core.setSelection([a]);
+    const start = core.camera.zoom;
+    expect(core.controller.keyDown(key('+', 'BracketRight', { ctrl: true }))).toBe(true);
+    tick();
+    expect(core.camera.zoom).toBeGreaterThan(start);
+    expect(nodeMap(doc, a).get('index')).toBe('a0');
+    expect(nodeMap(doc, b).get('index')).toBe('a1');
+    const zoomed = core.camera.zoom;
+    core.controller.keyDown(key('-', 'Slash', { ctrl: true }));
+    expect(core.camera.zoom).toBeLessThan(zoomed);
+    core.controller.keyDown(key('=', 'Equal', { ctrl: true }));
+    expect(core.camera.zoom).toBeCloseTo(zoomed);
+    core.controller.keyDown(key('+', 'NumpadAdd', { ctrl: true }));
+    expect(core.camera.zoom).toBeGreaterThan(zoomed);
   });
 
   it('bloquear con Ctrl+Shift+L y ocultar con el comando', () => {

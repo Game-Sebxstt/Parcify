@@ -70,6 +70,7 @@ export type EngineOptions = {
 
 export type EngineState = {
   tool: Readable<Tool>;
+  toolLocked: Readable<boolean>;
   selection: Readable<readonly string[]>;
   selectionRecords: Readable<readonly NodeRecord[]>;
   readOnly: Readable<boolean>;
@@ -203,6 +204,7 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
     inputProfile: core.inputProfile.readonly(),
     state: {
       tool: core.tool.readonly(),
+      toolLocked: core.toolLocked.readonly(),
       selection: core.selection.readonly(),
       selectionRecords: core.selectionRecords.readonly(),
       readOnly: core.readOnly.readonly(),

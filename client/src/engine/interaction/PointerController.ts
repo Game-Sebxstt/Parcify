@@ -613,7 +613,7 @@ export class PointerController {
     if (tool === 'connector') {
       const { from, to } = this.connectorEnds(input, down);
       this.core.commands.createConnector(from, to);
-      this.core.commands.setTool('select');
+      this.core.commands.finishTool();
       return;
     }
     if (tool === 'line' || tool === 'arrow') {
@@ -624,13 +624,13 @@ export class PointerController {
     } else if (SHAPE_TOOLS.has(tool)) {
       this.core.commands.createShape(tool as BasicShapeType, this.createBox(input, down));
     }
-    this.core.commands.setTool('select');
+    this.core.commands.finishTool();
   }
 
-  // Crea el texto, vuelve a la herramienta de selección y abre el editor.
+  // Crea el texto, vuelve a la herramienta de selección (salvo bloqueo) y abre el editor.
   private createText(at: Point, width: number | null): void {
     const id = this.core.commands.createText(at, width);
-    this.core.commands.setTool('select');
+    this.core.commands.finishTool();
     if (id) this.core.startTextEdit(id);
   }
 
@@ -676,7 +676,7 @@ export class PointerController {
       } else if (SHAPE_TOOLS.has(target.tool)) {
         this.core.commands.createShape(target.tool as BasicShapeType, { x: at.x - DEFAULT_SIZE / 2, y: at.y - DEFAULT_SIZE / 2, w: DEFAULT_SIZE, h: DEFAULT_SIZE });
       }
-      this.core.commands.setTool('select');
+      this.core.commands.finishTool();
     }
   }
 

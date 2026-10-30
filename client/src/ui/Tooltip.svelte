@@ -31,7 +31,7 @@
       >
         <span>{text}</span>
         {#if kbd}
-          <kbd class="font-sans text-ink-muted tabular">{kbd}</kbd>
+          <kbd class="rounded-xs bg-petrol px-1 font-sans text-2xs text-ink tabular">{kbd}</kbd>
         {/if}
       </Tooltip.Content>
     </Tooltip.Portal>

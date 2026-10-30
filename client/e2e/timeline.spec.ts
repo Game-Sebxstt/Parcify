@@ -139,7 +139,7 @@ test('timeline: dos keyframes con el teclado, reproducir hasta el final, sincron
   expect((await nodes(page)).find((node) => node.id === rect.id)!.x).toBeCloseTo(rect.x, 3);
 
   // Bea abre su línea de tiempo y cambia la duración a 2 s.
-  await bea.getByRole('button', { name: 'Mostrar la línea de tiempo' }).click();
+  await bea.getByRole('button', { name: 'Animar', exact: true }).click();
   const beaPanel = bea.getByTestId('timeline');
   const beaDuration = beaPanel.getByRole('spinbutton', { name: /^Duración de/ });
   await beaDuration.fill('2000');

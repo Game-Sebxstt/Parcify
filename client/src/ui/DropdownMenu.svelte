@@ -6,7 +6,15 @@
   type Shared = { id: string; label: string; icon?: MenuIcon | undefined; disabled?: boolean | undefined };
 
   export type MenuEntry =
-    | (Shared & { kind: 'item'; keys?: string | undefined; ariaKeys?: string | undefined; danger?: boolean | undefined; onSelect: () => void })
+    | (Shared & {
+        kind: 'item';
+        keys?: string | undefined;
+        ariaKeys?: string | undefined;
+        danger?: boolean | undefined;
+        // Deja vacía la columna de la marca para alinearse con las entradas `check` del mismo menú.
+        inset?: boolean | undefined;
+        onSelect: () => void;
+      })
     | (Shared & { kind: 'check'; checked: boolean; keys?: string | undefined; ariaKeys?: string | undefined; onSelect: () => void })
     | (Shared & { kind: 'sub'; items: MenuEntry[] })
     | { kind: 'label'; id: string; label: string; items: MenuEntry[] }
@@ -125,6 +133,7 @@
         onSelect={() => entry.onSelect()}
         class={[ITEM, entry.danger && !entry.disabled ? 'text-danger' : ''].join(' ')}
       >
+        {#if entry.inset}<span aria-hidden="true" class="size-4 shrink-0"></span>{/if}
         {@render leading(entry.icon)}
         <span class="min-w-0 flex-1 truncate">{entry.label}</span>
         {@render shortcut(entry.keys)}

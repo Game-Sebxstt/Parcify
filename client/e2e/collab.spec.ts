@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinProjectByLink } from './helpers/invite.ts';
 import { chooseOption } from './helpers/select.ts';
+import { pickTool } from './helpers/tools.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number };
 
@@ -66,7 +67,7 @@ test('dos personas en el mismo proyecto: cambios, cursores, deshacer propio y de
 
   // Bea crea una elipse; Ana deshace y solo se deshace su movimiento.
   const beaOrigin = await canvasOrigin(bea);
-  await bea.getByRole('button', { name: 'Elipse (O)' }).click();
+  await pickTool(bea, 'Formas', 'Elipse');
   await drag(bea, { x: beaOrigin.x + 260, y: beaOrigin.y }, { x: beaOrigin.x + 340, y: beaOrigin.y + 80 });
   await expect.poll(async () => (await nodes(page)).length).toBe(2);
   await page.getByRole('application', { name: 'Lienzo del proyecto' }).focus();

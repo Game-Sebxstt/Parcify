@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { toolbar } from './helpers/tools.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number; rotation: number };
 
@@ -365,4 +366,146 @@ test('crear, mover, redimensionar y girar formas, y que sigan ahí tras recargar
     expect(after[i]).toMatchObject({ id: node.id, type: node.type, x: node.x, y: node.y, w: node.w, h: node.h, rotation: node.rotation });
   }
   await fresh.close();
+});
+
+test('R activa Rectángulo en el grupo Formas, cuyo desplegable lleva 8 entradas con su atajo y la marca', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `formas-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const bar = toolbar(page);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+
+  // El botón del grupo muestra la última forma usada.
+  await canvas.focus();
+  await page.keyboard.press('o');
+  await expect(bar.getByRole('button', { name: 'Elipse (O)' })).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('r');
+  const rect = bar.getByRole('button', { name: 'Rectángulo (R)' });
+  await expect(rect).toHaveAttribute('aria-pressed', 'true');
+  await expect(bar.getByRole('button', { name: 'Elipse (O)' })).toHaveCount(0);
+
+  await bar.getByRole('button', { name: 'Formas', exact: true }).click();
+  const menu = page.getByRole('menu', { name: 'Formas' });
+  await expect(menu.getByRole('menuitemcheckbox')).toHaveCount(7);
+  await expect(menu.getByRole('menuitemcheckbox', { name: 'Rectángulo' })).toHaveAttribute('aria-checked', 'true');
+  await expect(menu.getByRole('menuitemcheckbox', { name: 'Rectángulo' })).toHaveAttribute('aria-keyshortcuts', 'R');
+  await expect(menu.getByRole('menuitemcheckbox', { name: 'Elipse' })).toHaveAttribute('aria-checked', 'false');
+  // Imagen es una acción: va al final, sin marca, y no cambia la herramienta.
+  const image = menu.getByRole('menuitem', { name: 'Imagen' });
+  await expect(image).toHaveAttribute('aria-keyshortcuts', 'Control+Shift+K');
+  const menuBox = (await menu.boundingBox())!;
+  const barBox = (await bar.boundingBox())!;
+  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(barBox.y);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+
+  // Doble clic bloquea la herramienta: sigue activa después de crear.
+  await rect.dblclick();
+  await expect(rect.locator('.lucide-lock')).toHaveCount(1);
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 200, y: box.y + box.height / 2 - 150 };
+  await drag(page, origin, { x: origin.x + 100, y: origin.y + 60 });
+  await drag(page, { x: origin.x + 200, y: origin.y }, { x: origin.x + 300, y: origin.y + 60 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(2);
+  await expect(rect).toHaveAttribute('aria-pressed', 'true');
+  // Un clic sin arrastre crea con el tamaño por defecto y tampoco quita el bloqueo.
+  await page.mouse.click(origin.x + 100, origin.y + 250);
+  await expect.poll(async () => (await nodes(page)).length).toBe(3);
+  await expect(rect).toHaveAttribute('aria-pressed', 'true');
+  await expect(rect.locator('.lucide-lock')).toHaveCount(1);
+
+  // Esc vuelve a Seleccionar y quita el bloqueo.
+  await canvas.focus();
+  await page.keyboard.press('Escape');
+  await expect(bar.getByRole('button', { name: 'Seleccionar (V)' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(rect.locator('.lucide-lock')).toHaveCount(0);
+});
+
+test('la barra de herramientas se recorre con ← y →, y cada herramienta muestra su atajo en el tooltip', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `barra-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const bar = toolbar(page);
+  const tabStops = () => page.evaluate(() => [...document.querySelectorAll('[role="toolbar"] button')].filter((b) => (b as HTMLElement).tabIndex === 0).length);
+
+  const select = bar.getByRole('button', { name: 'Seleccionar (V)' });
+  await select.focus();
+  expect(await tabStops()).toBe(1);
+  await page.keyboard.press('ArrowRight');
+  await expect(bar.getByRole('button', { name: 'Seleccionar y mano', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(bar.getByRole('button', { name: 'Marco (F)' })).toBeFocused();
+  expect(await tabStops()).toBe(1);
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  // Desde el primero, ← da la vuelta al último (Animar, o IA si está disponible).
+  await expect(bar.getByRole('button').last()).toBeFocused();
+
+  // ↑ con el foco en un grupo abre su desplegable.
+  await bar.getByRole('button', { name: 'Línea (L)' }).focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.getByRole('menu', { name: 'Líneas' }).getByRole('menuitemcheckbox', { name: 'Flecha' })).toHaveAttribute('aria-keyshortcuts', 'Shift+L');
+  await page.keyboard.press('Escape');
+
+  await page.mouse.move(0, 0);
+  await bar.getByRole('button', { name: 'Texto (T)' }).hover();
+  // Los tooltips que se cierran siguen en el DOM durante su salida, y el foco de Línea abre el suyo.
+  const tip = page.getByRole('tooltip').filter({ hasText: 'Texto' });
+  await expect(tip).toBeVisible();
+  await expect(tip.locator('kbd')).toHaveText('T');
+});
+
+test('el desplegable de un grupo sale por encima de la barra y entero en 390×844, también con una pulsación larga', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const account = await createVerifiedAccount(page.request, `barra-movil-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const bar = toolbar(page);
+  const inside = async (menu: ReturnType<Page['getByRole']>) => {
+    const menuBox = (await menu.boundingBox())!;
+    const barBox = (await bar.boundingBox())!;
+    expect(menuBox.x).toBeGreaterThanOrEqual(0);
+    expect(menuBox.y).toBeGreaterThanOrEqual(0);
+    expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(390);
+    expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(barBox.y);
+  };
+
+  await bar.getByRole('button', { name: 'Formas', exact: true }).click();
+  const shapes = page.getByRole('menu', { name: 'Formas' });
+  await expect(shapes.getByRole('menuitem', { name: 'Imagen' })).toBeVisible();
+  await inside(shapes);
+  await page.keyboard.press('Escape');
+
+  // Mantener pulsado el botón del grupo 300 ms abre el desplegable sin cambiar de herramienta.
+  // Hasta la maqueta móvil, la barra de zoom tapa el final de la barra a este ancho: se usa el grupo Formas.
+  const rect = bar.getByRole('button', { name: 'Rectángulo (R)' });
+  const box = (await rect.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(400);
+  await page.mouse.up();
+  await expect(shapes).toBeVisible();
+  await inside(shapes);
+  await expect(rect).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('con la Galería abierta, la barra de zoom no tapa ningún botón de la barra de herramientas', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const account = await createVerifiedAccount(page.request, `barra-galeria-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const bar = toolbar(page);
+  await bar.getByRole('button', { name: 'Galería' }).click();
+  await expect(bar.getByRole('button', { name: 'Galería' })).toHaveAttribute('aria-pressed', 'true');
+  const covered = await page.evaluate(() =>
+    [...document.querySelectorAll('[role="toolbar"] button')]
+      .filter((button) => {
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return !hit || !button.contains(hit);
+      })
+      .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+  );
+  expect(covered).toEqual([]);
 });

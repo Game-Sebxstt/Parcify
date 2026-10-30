@@ -263,7 +263,7 @@ test('axe sin violaciones en los paneles del editor: IA, chat, versiones, timeli
   expect(await audit(page)).toEqual([]);
   await page.getByTestId('versions-toggle').click();
 
-  await page.getByRole('button', { name: 'Mostrar la línea de tiempo' }).click();
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
   await expect(page.getByTestId('timeline').getByRole('grid', { name: 'Línea de tiempo' })).toBeVisible();
   expect(await audit(page)).toEqual([]);
   await page.getByTestId('timeline').getByTestId('timeline-ai').click();

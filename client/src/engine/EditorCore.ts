@@ -139,6 +139,8 @@ export class EditorCore {
   readonly user: EngineUser;
 
   readonly tool = new Store<Tool>('select');
+  // Herramienta bloqueada (doble clic en la barra): sigue activa después de crear.
+  readonly toolLocked = new Store(false);
   readonly selection = new Store<readonly string[]>([], sameList);
   readonly selectionRecords = new Store<readonly NodeRecord[]>([], sameList);
   readonly readOnly: Store<boolean>;
@@ -318,7 +320,10 @@ export class EditorCore {
     this.commands = new Commands(this);
     this.controller = new PointerController(this);
     this.readOnly.subscribe((readOnly) => {
-      if (readOnly && EDIT_TOOLS.has(this.tool.get())) this.tool.set('select');
+      if (readOnly && EDIT_TOOLS.has(this.tool.get())) {
+        this.toolLocked.set(false);
+        this.tool.set('select');
+      }
       if (readOnly) this.controller.cancel();
       if (readOnly) this.stopTextEdit();
       this.overlayDirty = true;

@@ -109,7 +109,7 @@ test('IA: animación propuesta con vista previa sin escribir y aplicada en un pa
   await page.keyboard.press('Tab');
   await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection())).toEqual([rect.id]);
 
-  await page.getByRole('button', { name: 'Mostrar la línea de tiempo' }).click();
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
   const timeline = page.getByTestId('timeline');
   await timeline.getByTestId('timeline-ai').click();
   const animate = timeline.getByTestId('ai-animate');
@@ -178,7 +178,7 @@ test('IA: sin modelos configurados no aparecen los botones de IA', async ({ page
   await page.getByRole('button', { name: 'Galería', exact: true }).click();
   await expect(page.getByTestId('gallery-panel')).toBeVisible();
   await expect(page.getByTestId('gallery-generate')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Mostrar la línea de tiempo' }).click();
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
   await expect(page.getByTestId('timeline')).toBeVisible();
   await expect(page.getByTestId('timeline-ai')).toHaveCount(0);
 });

@@ -30,6 +30,11 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { key: 'd', ctrl: true, run: (c) => c.duplicateSelection(), edit: true },
   { key: 'delete', run: (c) => c.deleteSelection(), edit: true },
   { key: 'backspace', run: (c) => c.deleteSelection(), edit: true },
+  // Antes que «]» y «[»: en el teclado español «+» está en la tecla BracketRight.
+  { key: '+', ctrl: true, run: (c) => c.zoomIn() },
+  { key: '+', ctrl: true, shift: true, run: (c) => c.zoomIn() },
+  { key: '=', ctrl: true, run: (c) => c.zoomIn() },
+  { key: '-', ctrl: true, run: (c) => c.zoomOut() },
   { key: ']', ctrl: true, run: (c) => c.zOrder('forward'), edit: true },
   { key: '[', ctrl: true, run: (c) => c.zOrder('backward'), edit: true },
   { key: ']', ctrl: true, shift: true, run: (c) => c.zOrder('front'), edit: true },
@@ -58,6 +63,8 @@ function keyOf(input: KeyInput): string[] {
   if (input.code.startsWith('Digit')) keys.push(input.code.slice(5));
   if (input.code === 'BracketRight') keys.push(']');
   if (input.code === 'BracketLeft') keys.push('[');
+  if (input.code === 'NumpadAdd') keys.push('+');
+  if (input.code === 'NumpadSubtract') keys.push('-');
   if (input.code.startsWith('Key')) keys.push(input.code.slice(3).toLowerCase());
   return keys;
 }

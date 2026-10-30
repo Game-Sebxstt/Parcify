@@ -1,12 +1,5 @@
 <script lang="ts">
-  import Redo from '@lucide/svelte/icons/redo-2';
-  import Scan from '@lucide/svelte/icons/scan';
-  import Undo from '@lucide/svelte/icons/undo-2';
-  import Film from '@lucide/svelte/icons/film';
-  import MapIcon from '@lucide/svelte/icons/map';
   import X from '@lucide/svelte/icons/x';
-  import ZoomIn from '@lucide/svelte/icons/zoom-in';
-  import ZoomOut from '@lucide/svelte/icons/zoom-out';
   import { onMount, tick } from 'svelte';
   import { on } from 'svelte/events';
   import { describeSelection } from '../engine/a11y/describe.ts';
@@ -48,8 +41,8 @@
   import Present, { presentationSlides } from './editor/Present.svelte';
   import { downloadLocalCopy } from '../lib/local-copy.ts';
   import PropertiesPanel from './editor/PropertiesPanel.svelte';
-  import ToolButton from './editor/ToolButton.svelte';
-  import Toolbar from './editor/Toolbar.svelte';
+  import FloatingToolbar from './editor/toolbar/FloatingToolbar.svelte';
+  import ZoomBar from './editor/toolbar/ZoomBar.svelte';
   import TopBar, { type Collaborator } from './editor/TopBar.svelte';
   import VersionsPanel from './editor/VersionsPanel.svelte';
   import type TimelinePanel from './editor/timeline/TimelinePanel.svelte';
@@ -68,6 +61,7 @@
   let projectName = $state('');
   let collabState = $state<CollabState | null>(null);
   let tool = $state<Tool>('select');
+  let toolLocked = $state(false);
   // El motor parchea los registros en sitio: el panel recibe copias para que cada cambio sea un valor nuevo.
   let selection = $state.raw<readonly NodeRecord[]>([]);
   let history = $state({ canUndo: false, canRedo: false });
@@ -93,6 +87,12 @@
   let downloadingLocal = $state(false);
   let previews: PreviewPublisher | null = null;
   let minimapOpen = $state(false);
+  // Anchos de la franja inferior y de sus barras: si no caben en una fila, el zoom y el minimapa suben encima.
+  let barsWidth = $state(0);
+  let toolbarWidth = $state(0);
+  let zoomWidth = $state(0);
+  let minimapWidth = $state(0);
+  const barsStacked = $derived(barsWidth > 0 && barsWidth < zoomWidth + toolbarWidth + 8 + (minimapOpen ? minimapWidth + 8 : 0));
   let following = $state<number | null>(null);
   let assetEvent = $state.raw<{ type: 'ready' | 'deleted'; assetId: string; n: number } | null>(null);
   // La línea de tiempo se descarga la primera vez que se abre.
@@ -323,6 +323,7 @@
     }
     engineCleanups = [
       created.state.tool.subscribe((value) => (tool = value)),
+      created.state.toolLocked.subscribe((value) => (toolLocked = value)),
       created.state.selectionRecords.subscribe((value) => (selection = value.map((record) => ({ ...record })))),
       created.state.history.subscribe((value) => (history = value)),
       created.state.zoom.subscribe((value) => (zoom = value)),
@@ -514,11 +515,22 @@
   const screen = $derived(failure ? SCREENS[failure] : undefined);
 
   // Ctrl+S guarda una versión en vez de abrir el «Guardar como» del navegador.
+  // Ctrl/⌘+Shift+K inserta una imagen: es una acción del editor (selector de archivos), no un comando del documento.
   function onWindowKey(event: KeyboardEvent) {
-    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.key.toLowerCase() !== 's') return;
-    if (!versionsPanel) return;
-    event.preventDefault();
-    if (!engineReadOnly) void versionsPanel.saveVersion();
+    if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+    const key = event.key.toLowerCase();
+    if (!event.shiftKey && key === 's') {
+      if (!versionsPanel) return;
+      event.preventDefault();
+      if (!engineReadOnly) void versionsPanel.saveVersion();
+      return;
+    }
+    if (event.shiftKey && (key === 'k' || event.code === 'KeyK')) {
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || target?.closest('input, textarea, select, [role="dialog"]')) return;
+      event.preventDefault();
+      if (!engineReadOnly) pickImages();
+    }
   }
 
   // Los dos paneles laterales comparten el hueco de la derecha.
@@ -635,14 +647,6 @@
       onleave={publishBeforeLeaving}
     />
     <div class="flex min-h-0 flex-1">
-      <Toolbar
-        {tool}
-        readOnly={engineReadOnly}
-        gallery={galleryOpen}
-        onselect={(next) => engine?.commands.setTool(next)}
-        onimage={pickImages}
-        ongallery={() => (galleryOpen = !galleryOpen)}
-      />
       <aside aria-label={m.editor_side_label()} class="flex w-56 shrink-0 flex-col gap-4 overflow-hidden bg-surface-1 px-2 py-3 text-sm">
         {#if engine}
           <PagesPanel {engine} readOnly={engineReadOnly} />
@@ -712,45 +716,53 @@
             </div>
           {/if}
 
-          <div class="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-surface-1 p-1 shadow-float">
-            {#if !engineReadOnly}
-              <ToolButton side="top" label={m.editor_undo()} disabled={!history.canUndo} onclick={() => engine?.commands.undo()}><Undo size={16} aria-hidden="true" /></ToolButton>
-              <ToolButton side="top" label={m.editor_redo()} disabled={!history.canRedo} onclick={() => engine?.commands.redo()}><Redo size={16} aria-hidden="true" /></ToolButton>
-            {/if}
-            <ToolButton side="top" label={m.editor_zoom_out()} onclick={() => engine?.commands.zoomOut()}><ZoomOut size={16} aria-hidden="true" /></ToolButton>
-            <button
-              type="button"
-              aria-label={m.editor_zoom_reset()}
-              onclick={() => engine?.commands.zoomTo(1)}
-              class="h-9 min-w-14 cursor-pointer rounded-full px-2 text-xs tabular text-ink-muted hover:bg-surface-2 hover:text-ink"
-            >
-              {Math.round(zoom * 100)} %
-            </button>
-            <ToolButton side="top" label={m.editor_zoom_in()} onclick={() => engine?.commands.zoomIn()}><ZoomIn size={16} aria-hidden="true" /></ToolButton>
-            <ToolButton side="top" label={m.editor_zoom_fit()} onclick={() => engine?.commands.fitAll()}><Scan size={16} aria-hidden="true" /></ToolButton>
-            <ToolButton
-              side="top"
-              label={minimapOpen ? m.editor_minimap_hide() : m.editor_minimap_show()}
-              pressed={minimapOpen}
-              onclick={() => (minimapOpen = !minimapOpen)}
-            >
-              <MapIcon size={16} aria-hidden="true" />
-            </ToolButton>
-            <ToolButton
-              side="top"
-              label={timelineOpen ? m.timeline_hide() : m.timeline_show()}
-              pressed={timelineOpen}
-              disabled={timelineLoading}
-              onclick={toggleTimeline}
-            >
-              <Film size={16} aria-hidden="true" />
-            </ToolButton>
-          </div>
-          {#if minimapOpen && engine}
-            <div class="absolute right-3 bottom-3">
-              <Minimap {engine} />
+          <!-- La barra de herramientas va antes que la de zoom en el DOM: es el orden de tabulación. La rejilla la
+               centra mientras cabe y la aparta a la derecha cuando el lienzo se estrecha, sin solaparse con el zoom. -->
+          <div
+            bind:clientWidth={barsWidth}
+            class={['pointer-events-none absolute inset-x-3 bottom-3 grid items-end gap-2', barsStacked ? 'grid-cols-1' : 'grid-cols-[1fr_auto_1fr]']}
+            data-testid="canvas-bars"
+          >
+            <div bind:offsetWidth={toolbarWidth} class={['flex', barsStacked ? 'col-start-1 row-start-2 justify-self-center' : 'col-start-2 row-start-1']}>
+              <FloatingToolbar
+                {tool}
+                {toolLocked}
+                readOnly={engineReadOnly}
+                gallery={galleryOpen}
+                {timelineOpen}
+                {timelineLoading}
+                {aiAvailable}
+                {aiOpen}
+                onselect={(next, locked) => engine?.commands.setTool(next, { locked: locked === true })}
+                onimage={pickImages}
+                ongallery={() => (galleryOpen = !galleryOpen)}
+                onanimate={toggleTimeline}
+                onai={toggleAi}
+              />
             </div>
-          {/if}
+            <div bind:offsetWidth={zoomWidth} class="col-start-1 row-start-1 flex justify-self-start">
+              <ZoomBar
+                {zoom}
+                canUndo={history.canUndo}
+                canRedo={history.canRedo}
+                readOnly={engineReadOnly}
+                {minimapOpen}
+                onundo={() => engine?.commands.undo()}
+                onredo={() => engine?.commands.redo()}
+                onzoomin={() => engine?.commands.zoomIn()}
+                onzoomout={() => engine?.commands.zoomOut()}
+                onzoomreset={() => engine?.commands.zoomTo(1)}
+                onfitall={() => engine?.commands.fitAll()}
+                onfitselection={() => engine?.commands.zoomToSelection()}
+                onminimap={() => (minimapOpen = !minimapOpen)}
+              />
+            </div>
+            {#if minimapOpen && engine}
+              <div bind:offsetWidth={minimapWidth} class={['pointer-events-auto row-start-1 justify-self-end', barsStacked ? 'col-start-1' : 'col-start-3']}>
+                <Minimap {engine} />
+              </div>
+            {/if}
+          </div>
           {#if presenting && engine && stage}
             <Present bind:this={presenter} {engine} host={stage} onclose={stopPresenting} />
           {/if}

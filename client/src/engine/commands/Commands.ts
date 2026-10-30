@@ -191,10 +191,17 @@ export class Commands {
 
   // ── Herramientas y selección ──
 
-  setTool(tool: Tool): void {
+  // `locked` deja la herramienta activa después de crear; cualquier otro cambio de herramienta la desbloquea.
+  setTool(tool: Tool, opts: { locked?: boolean } = {}): void {
     if (!this.canEdit && EDIT_TOOLS.has(tool)) return;
+    this.core.toolLocked.set(tool !== 'select' && tool !== 'hand' && opts.locked === true);
     this.core.tool.set(tool);
     this.core.controller.cancel();
+  }
+
+  // Al terminar de crear: vuelve a Seleccionar salvo que la herramienta esté bloqueada.
+  finishTool(): void {
+    if (!this.core.toolLocked.get()) this.setTool('select');
   }
 
   // Enter con un solo texto o forma seleccionada abre su texto para editar.
