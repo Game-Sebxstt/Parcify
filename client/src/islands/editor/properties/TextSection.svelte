@@ -2,20 +2,23 @@
   import ALargeSmall from '@lucide/svelte/icons/a-large-small';
   import Bold from '@lucide/svelte/icons/bold';
   import Italic from '@lucide/svelte/icons/italic';
+  import MoveHorizontal from '@lucide/svelte/icons/move-horizontal';
   import MoveVertical from '@lucide/svelte/icons/move-vertical';
+  import SquareDashed from '@lucide/svelte/icons/square-dashed';
   import Strikethrough from '@lucide/svelte/icons/strikethrough';
   import TextAlignCenter from '@lucide/svelte/icons/text-align-center';
   import TextAlignEnd from '@lucide/svelte/icons/text-align-end';
   import TextAlignStart from '@lucide/svelte/icons/text-align-start';
+  import TextWrap from '@lucide/svelte/icons/text-wrap';
   import Underline from '@lucide/svelte/icons/underline';
   import type { NodeRecord } from '../../../engine/index.ts';
   import { cssFamily } from '../../../engine/text/fonts.ts';
+  import { textSizeMode, type TextSizeMode } from '../../../engine/text/resize.ts';
   import { m } from '../../../paraglide/messages.js';
   import { FONT_FAMILIES, type FontFamily } from '../../../shared/document/schema.js';
   import ScrubInput from '../../../ui/ScrubInput.svelte';
   import SegmentedControl from '../../../ui/SegmentedControl.svelte';
   import Select from '../../../ui/Select.svelte';
-  import Switch from '../../../ui/Switch.svelte';
   import ColorRow from './ColorRow.svelte';
   import PanelButton from './PanelButton.svelte';
   import Section from './Section.svelte';
@@ -41,13 +44,17 @@
     { value: 'center', label: m.editor_props_align_center(), icon: TextAlignCenter },
     { value: 'right', label: m.editor_props_align_right(), icon: TextAlignEnd },
   ];
+  const MODES = [
+    { value: 'auto-width', label: m.editor_props_text_mode_auto_width(), icon: MoveHorizontal },
+    { value: 'auto-height', label: m.editor_props_text_mode_auto_height(), icon: TextWrap },
+    { value: 'fixed', label: m.editor_props_text_mode_fixed(), icon: SquareDashed },
+  ];
   const DECORATIONS = [
     { key: 'italic', label: m.editor_props_italic, icon: Italic },
     { key: 'underline', label: m.editor_props_underline, icon: Underline },
     { key: 'strike', label: m.editor_props_strike, icon: Strikethrough },
   ] as const;
 
-  const uid = $props.id();
   const texts = $derived(records.filter((record): record is TextNode => record.type === 'text'));
   const family = $derived(shared(texts, (record) => record.fontFamily));
   const weight = $derived(shared(texts, (record) => record.fontWeight));
@@ -58,7 +65,7 @@
   const colorAlpha = $derived(sharedAlpha(texts, (record) => record.color));
   const colorOf = (record: NodeRecord) => (record.type === 'text' ? record.color : undefined);
   const bold = $derived(texts.every((record) => record.fontWeight >= 600));
-  const autoWidth = $derived(texts.every((record) => record.autoWidth));
+  const mode = $derived(shared(texts, (record) => textSizeMode(record)));
 </script>
 
 {#if texts.length}
@@ -151,14 +158,17 @@
       oncommit={(change, meta) => edits.setStyle(colorPatch('color', change, colorOf), meta)}
       oncancel={() => edits.cancel()}
     />
-    <div class="flex h-6 min-w-0 items-center justify-between gap-2">
-      <label for="{uid}-auto-width" class="min-w-0 truncate text-xs text-ink">{m.editor_props_auto_width()}</label>
-      <Switch
-        id="{uid}-auto-width"
-        checked={autoWidth}
+    <div class="flex min-w-0 items-center justify-between gap-2">
+      <span aria-hidden="true" class="min-w-0 truncate text-xs text-ink">{m.editor_props_text_mode()}</span>
+      <SegmentedControl
+        items={MODES}
+        value={mode.mixed ? '' : (mode.value ?? 'auto-width')}
+        label={m.editor_props_text_mode()}
+        iconOnly
+        size="sm"
         disabled={readonly}
-        testid="props-auto-width"
-        onCheckedChange={(checked) => edits.setStyle({ autoWidth: checked })}
+        testid="props-text-mode"
+        onValueChange={(value) => edits.setTextMode(value as TextSizeMode)}
       />
     </div>
   </Section>

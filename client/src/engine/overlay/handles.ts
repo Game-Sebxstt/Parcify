@@ -47,10 +47,15 @@ function sides(corners: readonly [Point, Point, Point, Point]): { width: number;
   return { width: Math.hypot(ne.x - nw.x, ne.y - nw.y), height: Math.hypot(sw.x - nw.x, sw.y - nw.y) };
 }
 
+// Con `sideEdges` (un texto solo), E y O se ven con cualquier alto: el texto de una línea mide menos de 28 px y E/O son
+// los que lo pasan a auto-alto.
+export type HandleOptions = { sideEdges?: boolean };
+
 // Posiciones de los 8 handles en pantalla a partir de las esquinas ya proyectadas.
 export function handlePositions(
   corners: readonly [Point, Point, Point, Point],
   profile?: Pick<InputProfile, 'kind'>,
+  options: HandleOptions = {},
 ): Array<{ kind: HandleKind; x: number; y: number }> {
   const [nw, ne, se, sw] = corners;
   const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
@@ -60,7 +65,7 @@ export function handlePositions(
     handles.push({ kind: 'nw', ...nw }, { kind: 'ne', ...ne }, { kind: 'se', ...se }, { kind: 'sw', ...sw });
   }
   if (width >= MIN_EDGE_HANDLES_PX) handles.push({ kind: 'n', ...mid(nw, ne) }, { kind: 's', ...mid(sw, se) });
-  if (height >= MIN_EDGE_HANDLES_PX) handles.push({ kind: 'e', ...mid(ne, se) }, { kind: 'w', ...mid(nw, sw) });
+  if (height >= MIN_EDGE_HANDLES_PX || (options.sideEdges && height > 0)) handles.push({ kind: 'e', ...mid(ne, se) }, { kind: 'w', ...mid(nw, sw) });
   return handles;
 }
 
@@ -80,9 +85,15 @@ export type HandleHit = { kind: HandleKind; x: number; y: number } | { kind: 'ro
 // giro entre rotateZone[0] y rotateZone[1] px de cada esquina. Si la caja mide en pantalla menos de dos zonas de impacto,
 // cada tirador solo cuenta fuera de la caja o a menos de handleDraw de su punto: dentro manda el cuerpo, para poder
 // arrastrar las formas pequeñas.
-export function hitHandle(corners: readonly [Point, Point, Point, Point], x: number, y: number, profile: HandleProfile): HandleHit {
+export function hitHandle(
+  corners: readonly [Point, Point, Point, Point],
+  x: number,
+  y: number,
+  profile: HandleProfile,
+  options: HandleOptions = {},
+): HandleHit {
   const half = profile.handleHit / 2;
-  const handles = handlePositions(corners, profile);
+  const handles = handlePositions(corners, profile, options);
   const inside = insideQuad(corners, x, y);
   if (profile.rotateHandle !== null) {
     const at = rotateHandlePosition(corners, profile.rotateHandle);

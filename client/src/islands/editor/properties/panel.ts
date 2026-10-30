@@ -1,4 +1,4 @@
-import type { Engine, FramePresetId, GeometryPatch, NodeRecord, StyleEach, StylePatch } from '../../../engine/index.ts';
+import type { Engine, FramePresetId, GeometryPatch, NodeRecord, StyleEach, StylePatch, TextSizeMode } from '../../../engine/index.ts';
 import { m } from '../../../paraglide/messages.js';
 import { parseHex, topColors } from '../../../ui/color.ts';
 
@@ -115,6 +115,12 @@ export class PanelEdits {
   cancel(): void {
     this.owner = null;
     this.engine().commands.cancelPreview();
+  }
+
+  // Modo de tamaño de los textos seleccionados (auto-ancho, auto-alto o fijo), con la caja medida.
+  setTextMode(mode: TextSizeMode): void {
+    this.owner = null;
+    this.engine().commands.setTextMode(this.ids(), mode);
   }
 
   // «Restablecer recorrido» en los conectores seleccionados, en un solo paso.

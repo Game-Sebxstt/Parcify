@@ -1,4 +1,5 @@
 import { DOCUMENT_LIMITS } from '../../shared/document/limits.js';
+import type { TextBoxChange } from '../commands/Commands.ts';
 import { newConnector, newFrame, newLine, newShape, DEFAULT_SIZE } from '../commands/defaults.ts';
 import { linePointsInParent, linePointsPatch, polylineRecord, storedWaypoints, waypointPoints } from '../commands/paths.ts';
 import type { AnchorTarget, EditorCore, Tool } from '../EditorCore.ts';
@@ -26,6 +27,7 @@ import { Store } from '../store.ts';
 import { containsAABB, type AABB, type BasicShapeType, type NodeRecord } from '../types.ts';
 import type { InputProfile, PointerKind } from './input/profile.ts';
 import { findShortcut, type KeyInput } from './shortcuts.ts';
+import { TEXT_FONT_MAX, TEXT_FONT_MIN } from '../text/resize.ts';
 
 // Con la herramienta T, un arrastre que deja una caja de al menos tanto ancho en pantalla crea un texto de ancho fijo.
 export const TEXT_MIN_DRAG_PX = 24;
@@ -117,6 +119,12 @@ export class PointerController {
   // Línea de la Pluma: puntos fijados en mundo, el siguiente (que sigue al puntero) y si el puntero está sobre el último.
   private pen: { points: Point[]; next: Point | null; closing: boolean } | null = null;
   private lastPenClick: { x: number; y: number; time: number } | null = null;
+  // Un texto solo que se redimensiona: los lados cambian su ancho de reflujo (width), arriba y abajo dejan la caja fija
+  // (height) y las esquinas escalan la fuente (corner). Los lados se ven con la vista previa de estilo (`textChange`)
+  // y las esquinas con la matriz del gesto y la escala `textScale`.
+  private textResize: { id: string; mode: 'width' | 'height' | 'corner' } | null = null;
+  private textChange: TextBoxChange | null = null;
+  private textScale = 1;
 
   constructor(private readonly core: EditorCore) {
     // Al dejar la Pluma (también al pasar a solo lectura) o cambiar de página, lo que quede de la línea se descarta;
@@ -260,8 +268,13 @@ export class PointerController {
         this.applyPendingSelection();
         this.click(target, input);
         break;
-      case 'dragging':
       case 'resizing':
+        if (this.textResize) {
+          this.commitTextResize(this.textResize.id);
+          break;
+        }
+      // falls through
+      case 'dragging':
       case 'rotating':
         if (this.matrix && this.moveIds.length) {
           const drop = this.state === 'dragging' ? this.world(input) : undefined;
@@ -311,7 +324,7 @@ export class PointerController {
     if (this.state === 'dragging' || this.state === 'resizing' || this.state === 'rotating') this.core.setGesture(null);
     if (this.state === 'marquee') this.core.setMarquee(null);
     if (this.state === 'creating') this.core.setCreating(null);
-    if (this.state === 'point' || this.state === 'segment' || this.state === 'radius') this.core.setStylePreview(null);
+    if (this.state === 'point' || this.state === 'segment' || this.state === 'radius' || this.textChange) this.core.setStylePreview(null);
     // Una pulsación anulada (dos dedos, pointercancel) no deja el tramo que seguía al puntero.
     if (this.state === 'pen' && this.pen) {
       this.pen.next = null;
@@ -334,6 +347,9 @@ export class PointerController {
     this.radiusPreview = null;
     this.pathBase = null;
     this.waypointPreview = null;
+    this.textResize = null;
+    this.textChange = null;
+    this.textScale = 1;
     this.lastPan = null;
     this.pendingSelect = null;
     this.core.setRotationReadout(null);
@@ -503,7 +519,7 @@ export class PointerController {
     const frame = this.core.selectionFrame(ids);
     if (!frame) return null;
     const corners = this.core.screenCorners(frame);
-    const hit = hitHandle(corners, x, y, profile);
+    const hit = hitHandle(corners, x, y, profile, { sideEdges: ids.length === 1 && this.core.record(ids[0]!)?.type === 'text' });
     const radius = ids.length === 1 && radiusVisible(corners, profile, this.nearRadiusCorner(x, y)) ? this.radiusAt(ids[0]!, corners, x, y) : null;
     // Un tirador de radio y uno de escala pueden solaparse cerca de la esquina: gana el más cercano.
     if (radius && (!hit || hit.kind === 'rotate' || radius.distance < Math.hypot(hit.x - x, hit.y - y))) return radius.target;
@@ -551,10 +567,16 @@ export class PointerController {
       case 'empty':
         this.state = 'marquee';
         return;
-      case 'handle':
+      case 'handle': {
         this.state = 'resizing';
         this.moveIds = [...this.core.selection.get()];
+        const id = this.moveIds.length === 1 ? this.moveIds[0]! : null;
+        if (id && this.core.record(id)?.type === 'text') {
+          const [hx, hy] = HANDLE_SIDES[target.handle];
+          this.textResize = { id, mode: hy === 0 ? 'width' : hx === 0 ? 'height' : 'corner' };
+        }
         return;
+      }
       case 'rotate':
         this.state = 'rotating';
         this.moveIds = [...this.core.selection.get()];
@@ -694,7 +716,16 @@ export class PointerController {
     const [scaleY, ay] = axis(hy, p.y, frame.h, input.alt);
     let sx = scaleX;
     let sy = scaleY;
-    if (input.shift) {
+    const text = this.textResize;
+    if (text?.mode === 'width') {
+      sx = Math.max(sx, frame.w > 0 ? 1 / frame.w : 1);
+      sy = 1;
+    } else if (text?.mode === 'height') {
+      sx = 1;
+      sy = Math.max(sy, frame.h > 0 ? 1 / frame.h : 1);
+    } else if (text?.mode === 'corner') {
+      sx = sy = this.textCornerScale(text.id, frame, scaleX, scaleY);
+    } else if (input.shift) {
       if (hx !== 0 && hy !== 0) {
         const s = Math.max(Math.abs(sx), Math.abs(sy));
         sx = Math.sign(sx || 1) * s;
@@ -716,7 +747,41 @@ export class PointerController {
       rotation(-frame.angle),
       translation(-frame.x, -frame.y),
     );
+    if (text && text.mode !== 'corner') {
+      // Los lados de un texto no lo estiran: la vista previa es la caja que se escribirá, y con el ancho nuevo el
+      // texto se reparte en líneas en cada frame.
+      const box = this.core.commands.textBoxUnder(text.id, this.matrix);
+      this.matrix = null;
+      if (!box) return;
+      this.textChange = text.mode === 'width' ? { kind: 'width', x: box.x, y: box.y, w: box.w } : { kind: 'fixed', x: box.x, y: box.y, h: box.h };
+      const patch = this.core.commands.textResizePatch(text.id, this.textChange);
+      if (patch) this.core.setStylePreview({ ids: [text.id], patch });
+      return;
+    }
+    if (text) this.textScale = sx;
     this.core.setGesture({ ids: this.moveIds, matrix: this.matrix });
+  }
+
+  // Escala uniforme de una esquina de texto: la proyección del puntero sobre la diagonal (sirve para agrandar y para
+  // achicar), sin voltear y sin sacar la fuente de [4, 800].
+  private textCornerScale(id: string, frame: SelectionFrame, scaleX: number, scaleY: number): number {
+    const w2 = frame.w * frame.w;
+    const h2 = frame.h * frame.h;
+    const s = w2 + h2 > 0 ? (scaleX * w2 + scaleY * h2) / (w2 + h2) : 1;
+    const record = this.core.record(id);
+    const fontSize = record?.type === 'text' ? record.fontSize : 16;
+    const min = Math.max(TEXT_FONT_MIN / fontSize, frame.w > 0 ? 1 / frame.w : 0, frame.h > 0 ? 1 / frame.h : 0);
+    return Math.min(Math.max(s, min), TEXT_FONT_MAX / fontSize);
+  }
+
+  // Al soltar un tirador de un texto solo: los lados escriben la caja de la vista previa y las esquinas, la escala.
+  private commitTextResize(id: string): void {
+    const change = this.textChange;
+    if (change?.kind === 'width') this.core.commands.resizeText(id, change);
+    else if (change?.kind === 'fixed') this.core.commands.fixTextSize(id, change);
+    else if (this.matrix) this.core.commands.scaleText(id, this.textScale, this.matrix);
+    if (change) this.core.setStylePreview(null);
+    this.core.setGesture(null);
   }
 
   private toFrame(frame: SelectionFrame, world: Point): Point {

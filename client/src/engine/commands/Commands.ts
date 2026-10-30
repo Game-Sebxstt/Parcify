@@ -48,6 +48,7 @@ import { changeOfBasis, groupPatch, reexpressPatch } from './group.ts';
 import { PathCommands, transformWaypoints } from './paths.ts';
 import { onFontLoad } from '../text/fonts.ts';
 import { measureTextBox } from '../text/measure.ts';
+import { keepOrigin, scaledFontSize, textModeFlags, uniformScale, type TextSizeMode } from '../text/resize.ts';
 import type { AssistantPlan } from '../../shared/ai/assistant.js';
 import { resolvePlan, type PlanView } from '../ai/plan.ts';
 
@@ -119,6 +120,13 @@ type Patches = Map<string, Record<string, unknown>>;
 // Valores del panel «Posición y tamaño»; el giro en grados, con el sentido horario positivo.
 export type GeometryPatch = Partial<{ x: number; y: number; w: number; h: number; rotationDeg: number }>;
 export type Geometry = { x: number; y: number; w: number; h: number; rotationDeg: number | null };
+
+// Caja nueva de un texto en el sistema de su padre. `width`: otro ancho de reflujo (pasa a auto-alto y el alto se mide).
+// `fixed`: caja fija con este alto (y este ancho, si se da).
+export type TextBoxChange = { kind: 'width'; x: number; y: number; w: number } | { kind: 'fixed'; x: number; y: number; h: number; w?: number };
+
+// Propiedades que no se animan: con «Grabar» activo se cambian en el diseño base y se avisa.
+export type NotAnimatedKey = 'textSize';
 export type AlignMode = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom';
 export type FlipAxis = 'h' | 'v';
 
@@ -152,7 +160,8 @@ export class Commands {
   private readonly pendingRemeasure = new Map<string, number>();
   private readonly unsubscribeFonts: () => void;
   private pendingStyle: { ids: string[]; each: Map<string, StylePatch> } | null = null;
-  private pendingGeometry: { ids: string[]; patch: GeometryPatch } | null = null;
+  // `text`: la vista previa es la de un texto solo (W o H del panel), que va por la vista previa de estilo.
+  private pendingGeometry: { ids: string[]; patch: GeometryPatch; text?: boolean } | null = null;
   private readonly unsubscribeSelection: () => void;
   private readonly paths: PathCommands;
 
@@ -161,6 +170,8 @@ export class Commands {
 
   // Modo «Grabar»: mover, girar y cambiar opacidad, relleno o trazo escriben keyframes en vez de cambiar el nodo.
   recorder: ((changes: RecordedChange[]) => void) | null = null;
+  // Se llama cuando, con «Grabar» activo, un cambio de una propiedad que no se anima va al diseño base.
+  onNotAnimated: ((key: NotAnimatedKey) => void) | null = null;
 
   // Una vista previa del panel que sigue pendiente al cambiar la selección se confirma sobre los nodos que tenía,
   // no sobre los nuevos.
@@ -656,6 +667,111 @@ export class Commands {
     }, 'merge');
   }
 
+  // ── Tamaño de los textos ──
+  //
+  // Los tiradores laterales cambian el ancho de reflujo, los de arriba y abajo dejan la caja fija y las esquinas
+  // escalan la fuente. Cambian el diseño del texto, no su escala: con «Grabar» activo van al diseño base y avisan.
+
+  // Caja de un texto bajo una matriz de mundo, en el sistema de su padre.
+  textBoxUnder(id: string, matrix: Readonly<Mat>): { x: number; y: number; w: number; h: number } | null {
+    const record = this.core.record(id);
+    if (record?.type !== 'text') return null;
+    const patch = transformPatch(record, matrix, this.core.tree.parentWorld(this.core.tree.parent(id)));
+    return { x: patch.x ?? record.x, y: patch.y ?? record.y, w: patch.w ?? record.w, h: patch.h ?? record.h };
+  }
+
+  // Lo que escribiría el cambio de caja: la vista previa de los tiradores y del panel usa lo mismo que se escribe.
+  textResizePatch(id: string, change: TextBoxChange): Record<string, unknown> | null {
+    const record = this.core.record(id);
+    if (record?.type !== 'text') return null;
+    const size = (value: number) => round3(Math.max(MIN_SIZE, Math.min(DOCUMENT_LIMITS.maxSize, value)));
+    const w = size(change.w ?? record.w);
+    if (change.kind === 'fixed') {
+      return { x: round3(change.x), y: round3(change.y), w, h: size(change.h), autoWidth: false, fixedHeight: true };
+    }
+    const flags = textModeFlags('auto-height');
+    const placed = { ...record, x: change.x, y: change.y, w, ...flags } as TextRecord;
+    return { ...this.refitText(id, placed), ...flags };
+  }
+
+  // Tirador E u O (o W del panel): otro ancho de reflujo y el alto medido. El texto pasa a auto-alto.
+  resizeText(id: string, box: { x: number; y: number; w: number }, options: { merge?: boolean } = {}): void {
+    this.writeTextBox(id, this.textResizePatch(id, { kind: 'width', ...box }), options);
+  }
+
+  // Tirador N o S (o H del panel): la caja pasa a fija con este alto.
+  fixTextSize(id: string, box: { x: number; y: number; h: number; w?: number }, options: { merge?: boolean } = {}): void {
+    this.writeTextBox(id, this.textResizePatch(id, { kind: 'fixed', ...box }), options);
+  }
+
+  // Esquinas: la fuente por `s` (en medios puntos, entre 4 y 800), el ancho por `s` si no es auto-ancho y lo que se
+  // mide según el modo vuelto a medir. `matrix`: la del gesto, que da la posición; sin ella se escala desde el origen.
+  scaleText(id: string, s: number, matrix?: Readonly<Mat>): void {
+    const record = this.core.record(id);
+    if (record?.type !== 'text' || !Number.isFinite(s) || s <= 0) return;
+    const box = matrix
+      ? this.textBoxUnder(id, matrix)!
+      : { ...keepOrigin(record, record.w * s, record.h * s), w: record.w * s, h: record.h * s };
+    this.writeTextBox(id, this.scaledTextPatch(id, record, box, s));
+  }
+
+  // Texto escalado por `s` con la caja ya transformada (`placed` lleva la caja y el giro nuevos).
+  private scaledTextPatch(id: string, record: TextRecord, placed: Partial<TextRecord>, s: number): Record<string, unknown> {
+    const fontSize = scaledFontSize(record.fontSize, s);
+    return { ...this.refitText(id, { ...record, ...placed, fontSize } as TextRecord), fontSize };
+  }
+
+  // Caja de un texto ya colocado (`placed`) con lo que depende del contenido vuelto a medir según su modo. La esquina
+  // de origen no se mueve: el texto se pinta desde ella.
+  private refitText(id: string, placed: TextRecord): { x: number; y: number; w: number; h: number } {
+    const measured = this.textBox(id, placed, this.core.store.text(id));
+    const size = (value: number) => Math.max(MIN_SIZE, Math.min(DOCUMENT_LIMITS.maxSize, value));
+    const w = measured?.w !== undefined ? size(Math.ceil(measured.w)) : placed.w;
+    const h = measured?.h !== undefined ? size(Math.ceil(measured.h)) : placed.h;
+    const at = keepOrigin(placed, w, h);
+    return { x: round3(at.x), y: round3(at.y), w: round3(w), h: round3(h) };
+  }
+
+  private writeTextBox(id: string, patch: Record<string, unknown> | null, options: { merge?: boolean } = {}): void {
+    const record = this.core.record(id);
+    if (!patch || !this.canEdit || record?.type !== 'text' || this.core.isLocked(id)) return;
+    const next = { ...record, ...patch } as NodeRecord;
+    if (!NodeSchema.safeParse(next).success) return;
+    const connectors = this.connectorBoxPatches(new Map([[id, next]]));
+    this.transact(() => {
+      this.patchNode(id, patch);
+      for (const [connector, box] of connectors) this.patchNode(connector, box);
+    }, options.merge ? 'merge' : 'new');
+    this.notAnimated('textSize');
+  }
+
+  // Auto-ancho, auto-alto o fijo, con la caja medida en la misma transacción.
+  setTextMode(ids: readonly string[], mode: TextSizeMode): void {
+    if (!this.canEdit) return;
+    const flags = textModeFlags(mode);
+    const patches: Array<[string, Record<string, unknown>]> = [];
+    const changed = new Map<string, NodeRecord>();
+    for (const id of ids) {
+      const record = this.core.record(id);
+      if (record?.type !== 'text' || this.core.isLocked(id)) continue;
+      if (record.autoWidth === flags.autoWidth && Boolean(record.fixedHeight) === Boolean(flags.fixedHeight)) continue;
+      const next = { ...record, ...flags } as TextRecord;
+      const patch = { ...flags, ...this.textBoxPatch(next, this.textBox(id, next, this.core.store.text(id))) };
+      patches.push([id, patch]);
+      changed.set(id, { ...next, ...patch } as NodeRecord);
+    }
+    if (!patches.length) return;
+    const connectors = this.connectorBoxPatches(changed);
+    this.transact(() => {
+      for (const [id, patch] of patches) this.patchNode(id, patch);
+      for (const [connector, box] of connectors) this.patchNode(connector, box);
+    });
+  }
+
+  private notAnimated(key: NotAnimatedKey): void {
+    if (this.recorder) this.onNotAnimated?.(key);
+  }
+
   // ── Transformar ──
 
   // Traduce la matriz del gesto (en mundo) a x, y, w, h, rotation (y puntos) de cada nodo, en una transacción.
@@ -706,6 +822,7 @@ export class Commands {
     const systems = new Map<string, Mat>();
     // Conectores cuyos extremos libres se transforman con la matriz.
     const freeEnds = new Set<string>();
+    let scaledTexts = false;
     const parentWorldOf = (id: string) => tree.parentWorld(tree.parent(id));
     const leafPatch = (record: NodeRecord, matrix: Readonly<Mat>) => {
       const patch = transformPatch(record, matrix, parentWorldOf(record.id));
@@ -718,10 +835,19 @@ export class Commands {
         if (isContainer(record)) systems.set(child, multiply(m, tree.worldMatrix(record)));
       }
     };
+    // Un texto que se deforma escala su fuente por √|sx·sy| y su caja se transforma como la de cualquier hoja (lo que su
+    // modo mide se vuelve a medir).
     const moveLeaf = (record: NodeRecord, matrix: Readonly<Mat>) => {
       delta.set(record.id, matrix as Mat);
-      if (record.type === 'connector') freeEnds.add(record.id);
-      else merge(patches, record.id, leafPatch(record, matrix));
+      if (record.type === 'connector') {
+        freeEnds.add(record.id);
+      } else if (record.type === 'text' && !isRigid(matrix)) {
+        const patch = leafPatch(record, matrix);
+        merge(patches, record.id, { ...patch, ...this.scaledTextPatch(record.id, record, patch as Partial<TextRecord>, uniformScale(matrix)) });
+        scaledTexts = true;
+      } else {
+        merge(patches, record.id, leafPatch(record, matrix));
+      }
     };
     const resizeFrame = (record: FrameRecord, matrix: Readonly<Mat>, keepChildren: boolean) => {
       const values: Record<string, unknown> = { ...leafPatch(record, matrix), presetName: undefined };
@@ -817,6 +943,7 @@ export class Commands {
       Object.assign(patch, this.cacheFor(record, moving, undefined, parent ? systems.get(parent) : undefined));
       merge(patches, id, patch);
     }
+    if (scaledTexts) this.notAnimated('textSize');
   }
 
   // Un movimiento o giro en modo «Grabar»: el desplazamiento y el giro de cada nodo, en el sistema de su padre.
@@ -889,9 +1016,28 @@ export class Commands {
   // quita la vista previa de geometría que hubiera.
   setGeometry(ids: readonly string[], patch: GeometryPatch, options: { merge?: boolean } = {}): void {
     if (this.canEdit && this.core.activePage) {
-      this.applyMatrices(this.editableOnly(this.geometryMatrices(this.panelRoots(ids), patch)), options.merge ? 'merge' : 'new');
+      const text = this.textGeometry(ids, patch);
+      if (text) {
+        if (text.change) this.writeTextBox(text.id, this.textResizePatch(text.id, text.change), options);
+      } else {
+        this.applyMatrices(this.editableOnly(this.geometryMatrices(this.panelRoots(ids), patch)), options.merge ? 'merge' : 'new');
+      }
     }
     this.clearGeometryPreview();
+  }
+
+  // An o Al del panel con un solo texto: como sus tiradores. An cambia el ancho de reflujo (auto-alto) y Al, solo o
+  // con An, deja la caja fija. null si no es el caso; `change` null si no cambia nada.
+  private textGeometry(ids: readonly string[], patch: GeometryPatch): { id: string; change: TextBoxChange | null } | null {
+    if (patch.w === undefined && patch.h === undefined) return null;
+    const roots = this.panelRoots(ids);
+    const id = roots.length === 1 ? roots[0]! : null;
+    if (!id || this.core.record(id)?.type !== 'text' || this.core.isLocked(id)) return null;
+    const matrix = this.geometryMatrices(roots, patch).get(id);
+    if (!matrix || isIdentity(matrix)) return { id, change: null };
+    const box = this.textBoxUnder(id, matrix)!;
+    const change: TextBoxChange = patch.h === undefined ? { kind: 'width', x: box.x, y: box.y, w: box.w } : { kind: 'fixed', ...box };
+    return { id, change };
   }
 
   // Lo mismo que setGeometry sin escribir ni grabar: solo la vista local (y la presencia si todas las raíces
@@ -899,6 +1045,15 @@ export class Commands {
   previewGeometry(ids: readonly string[], patch: GeometryPatch): void {
     if (!this.canEdit || !this.core.activePage) return;
     const roots = this.panelRoots(ids);
+    const text = this.textGeometry(ids, patch);
+    if (this.pendingGeometry && Boolean(this.pendingGeometry.text) !== Boolean(text)) this.clearGeometryPreview();
+    if (text) {
+      // El texto refluye en vivo: va por la vista previa de estilo, no por una matriz que lo estiraría.
+      this.pendingGeometry = { ids: roots, patch: { ...patch }, text: true };
+      const preview = text.change && this.textResizePatch(text.id, text.change);
+      this.core.setStylePreview(preview ? { ids: [text.id], patch: preview } : null);
+      return;
+    }
     const matrices = this.editableOnly(this.geometryMatrices(roots, patch));
     const moving = [...matrices.keys()];
     const list = [...matrices.values()];
@@ -915,9 +1070,11 @@ export class Commands {
   }
 
   private clearGeometryPreview(): void {
-    if (!this.pendingGeometry) return;
+    const pending = this.pendingGeometry;
+    if (!pending) return;
     this.pendingGeometry = null;
-    this.core.setGesture(null);
+    if (pending.text) this.core.setStylePreview(null);
+    else this.core.setGesture(null);
   }
 
   // Gira la selección entera alrededor del centro de su caja, como el tirador de giro.

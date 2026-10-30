@@ -51,6 +51,7 @@ import type { LineHandles, OverlayModel, RemoteModel, RenderSink, ViewOverride }
 import { SpatialIndex } from './spatial/SpatialIndex.ts';
 import { Store, sameList } from './store.ts';
 import { TEXT_REFRESH_PER_FRAME, TEXT_ZOOM_SETTLE_MS, textResolution } from './text/layout.ts';
+import { scaledFontSize, uniformScale } from './text/resize.ts';
 import {
   hasLabel,
   hasTextContent,
@@ -156,6 +157,7 @@ export const SNAP_THRESHOLD_PX = 6;
 const VIEWPORT_MARGIN = 0.25;
 const CREATING_ID = '__creating';
 const GEOMETRY_KEYS = ['x', 'y', 'w', 'h', 'rotation', 'points'];
+const BOX_KEYS = ['x', 'y', 'w', 'h'];
 
 
 
@@ -1345,8 +1347,10 @@ export class EditorCore {
   }
 
   // Caja de la selección: girada si todos los nodos comparten ángulo, alineada a los ejes si no.
+  // Con una vista previa de estilo que cambia la caja (el ancho de un texto mientras se arrastra su lado), es la caja de
+  // la vista previa.
   selectionFrame(ids: readonly string[] = this.selection.get()): SelectionFrame | null {
-    const records = ids.map((id) => this.store.get(id)).filter((r): r is NodeRecord => !!r);
+    const records = ids.map((id) => this.store.get(id)).filter((r): r is NodeRecord => !!r).map((record) => this.withPreviewBox(record));
     if (records.length === 0) return null;
     const first = this.worldAngle(records[0]!);
     const angle = records.every((record) => Math.abs(this.worldAngle(record) - first) < 1e-6) ? first : 0;
@@ -1364,6 +1368,13 @@ export class EditorCore {
     }
     const origin = apply(rotation(angle), box.minX, box.minY);
     return { x: origin.x, y: origin.y, w: box.maxX - box.minX, h: box.maxY - box.minY, angle };
+  }
+
+  private withPreviewBox(record: NodeRecord): NodeRecord {
+    const preview = this.stylePreview;
+    if (!preview?.ids.includes(record.id)) return record;
+    const own = { ...preview.patch, ...preview.each?.get(record.id) };
+    return BOX_KEYS.some((key) => key in own) ? ({ ...record, ...own } as NodeRecord) : record;
   }
 
   screenCorners(frame: SelectionFrame, matrix?: Readonly<Mat>): [Point, Point, Point, Point] {
@@ -1671,7 +1682,9 @@ export class EditorCore {
       const next = applyPatch(record, transformPatch(record, matrix, parentWorld));
       return { record: next, world: this.tree.worldMatrix(next), redraw: true };
     }
-    const next = applyPatch(record, transformPatch(record, matrix, parentWorld)) as RenderableRecord;
+    let next = applyPatch(record, transformPatch(record, matrix, parentWorld)) as RenderableRecord;
+    // Un texto que se deforma escala su fuente, como al soltar (Commands.scaleText y collectTransform).
+    if (next.type === 'text' && !isRigid(matrix)) next = { ...next, fontSize: scaledFontSize(next.fontSize, uniformScale(matrix)) };
     const sameSize = next.w === record.w && next.h === record.h && next.type !== 'line';
     if (sameSize || count > RESIZE_REDRAW_LIMIT) return grouped();
     return { record: next, world: this.tree.worldMatrix(next), redraw: true };
@@ -1987,7 +2000,7 @@ export class EditorCore {
     return {
       corners,
       box: !lineHandles,
-      handles: boxed ? handlePositions(corners, profile) : [],
+      handles: boxed ? handlePositions(corners, profile, { sideEdges: single?.type === 'text' }) : [],
       radiusHandles,
       rotateHandle: boxed && profile.rotateHandle !== null ? rotateHandlePosition(corners, profile.rotateHandle) : null,
       lineHandles,
@@ -2106,12 +2119,13 @@ export class EditorCore {
     const readout = this.rotationReadout;
     const insets = this.viewInsets;
     const key =
-      `${this.selectionVersion}:${this.recordsVersion}:${this.camera.version}:${this.gestureVersion}:${insets.bottom}:` +
+      `${this.selectionVersion}:${this.recordsVersion}:${this.camera.version}:${this.gestureVersion}:${this.stylePreviewVersion}:${insets.bottom}:` +
       `${readout ? `${readout.angle}:${readout.snapped}` : '-'}`;
     if (key === this.hudKey) return;
     this.hudKey = key;
-    // Durante un gesto los registros no cambian: la caja se calcula una vez y el gesto solo la transforma.
-    const frameKey = `${this.selectionVersion}:${this.recordsVersion}`;
+    // Durante un gesto los registros no cambian: la caja se calcula una vez y el gesto solo la transforma. Una vista
+    // previa de estilo puede cambiarla (el ancho de un texto).
+    const frameKey = `${this.selectionVersion}:${this.recordsVersion}:${this.stylePreviewVersion}`;
     if (this.hudFrame?.key !== frameKey) this.hudFrame = { key: frameKey, frame: this.selectionFrame(ids) };
     const frame = this.hudFrame.frame;
     if (!frame) {

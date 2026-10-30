@@ -5,7 +5,18 @@ import { joinWorkspace } from './helpers/invite.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
 import { doubleTap, pinch, twoFingerPan } from './helpers/touch.ts';
 
-type Node = { id: string; type: string; x: number; y: number; w: number; h: number; autoWidth?: boolean; fontSize?: number; fontWeight?: number };
+type Node = {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  autoWidth?: boolean;
+  fixedHeight?: boolean;
+  fontSize?: number;
+  fontWeight?: number;
+};
 
 const nodes = (page: Page) => page.evaluate(() => window.__parcifyTest!.nodes() as unknown as Node[]);
 const texts = (page: Page) => page.evaluate(() => window.__parcifyTest!.texts());
@@ -274,4 +285,118 @@ test('móvil @touch: abrir la edición enfoca el texto; dos dedos no la cierran 
   await page.touchscreen.tap(center.x + 60, editor.y + editor.height + 160);
   await expect.poll(() => editing(page)).toBeNull();
   await expect(editorBox(page)).toHaveCount(0);
+});
+
+// Texto auto-ancho seleccionado, creado con la T en `at`, con este contenido y este tamaño de fuente.
+async function selectedText(page: Page, at: { x: number; y: number }, content: string, fontSize: number) {
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  await canvas.focus();
+  await page.keyboard.press('t');
+  await page.mouse.click(at.x, at.y);
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.type(content);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => editing(page)).toBeNull();
+  const size = page.getByTestId('properties-panel').getByTestId('props-font-size');
+  await size.fill(String(fontSize));
+  await size.press('Enter');
+  await expect.poll(async () => (await textNodes(page))[0]?.fontSize).toBe(fontSize);
+  return (await textNodes(page))[0]!;
+}
+
+async function dragFrom(page: Page, from: { x: number; y: number }, dx: number, dy: number) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + dx / 2, from.y + dy / 2, { steps: 4 });
+  await page.mouse.move(from.x + dx, from.y + dy, { steps: 4 });
+  await page.mouse.up();
+}
+
+test('tirador E: el auto-ancho pasa a auto-alto con w medido en la página y el texto se reparte en líneas (CA-4.2)', async ({ page }) => {
+  const { center } = await openNew(page, 'text-resize-e');
+  const start = await selectedText(page, { x: center.x - 250, y: center.y - 60 }, 'Hola mundo, esto es un texto largo', 32);
+  expect(start.autoWidth).toBe(true);
+  const zoom = await zoomOf(page);
+  const e = await toPage(page, start.x + start.w, start.y + start.h / 2);
+  await dragFrom(page, e, 100, 0);
+  await expect.poll(async () => (await textNodes(page))[0]!.autoWidth).toBe(false);
+  const wider = (await textNodes(page))[0]!;
+  expect(wider.w - start.w).toBeCloseTo(100 / zoom, 0);
+  expect(wider.h).toBe(start.h);
+  expect(wider.fontSize).toBe(32);
+  // Más estrecho que el contenido: el alto pasa a ser el de varias líneas.
+  const e2 = await toPage(page, wider.x + wider.w, wider.y + wider.h / 2);
+  await dragFrom(page, e2, -(wider.w * zoom) / 2, 0);
+  await expect.poll(async () => (await textNodes(page))[0]!.h).toBeGreaterThan(start.h * 1.6);
+  expect((await textNodes(page))[0]!.fixedHeight).toBeFalsy();
+});
+
+// Una línea de 24 px mide 30 de alto: al 80 % se queda en 24 en pantalla, y una de 16 px en 20 al 100 %.
+for (const { fontSize, zoomOut } of [
+  { fontSize: 24, zoomOut: false },
+  { fontSize: 24, zoomOut: true },
+  { fontSize: 16, zoomOut: false },
+]) {
+  const percent = zoomOut ? 80 : 100;
+  test(`tirador E en un texto de una línea de ${fontSize} px al ${percent} % (CA-4.2)`, async ({ page }) => {
+    const { canvas, center } = await openNew(page, `text-resize-e-${fontSize}-${percent}`);
+    await canvas.focus();
+    await page.keyboard.press('Control+Digit0');
+    if (zoomOut) await page.keyboard.press('Control+Minus');
+    await expect.poll(() => zoomOf(page)).toBeCloseTo(percent / 100, 2);
+    const start = await selectedText(page, { x: center.x - 250, y: center.y - 60 }, 'Hola mundo', fontSize);
+    expect(start.autoWidth).toBe(true);
+    const zoom = await zoomOf(page);
+    if (zoomOut || fontSize < 24) expect(start.h * zoom).toBeLessThan(28);
+    const e = await toPage(page, start.x + start.w, start.y + start.h / 2);
+    await dragFrom(page, e, 80, 0);
+    await expect.poll(async () => (await textNodes(page))[0]!.autoWidth).toBe(false);
+    const wider = (await textNodes(page))[0]!;
+    expect(wider.w - start.w).toBeCloseTo(80 / zoom, 0);
+    expect(wider.h).toBe(start.h);
+    expect(wider.x).toBeCloseTo(start.x, 0);
+    expect(wider.fontSize).toBe(fontSize);
+  });
+}
+
+test('esquina SE al doble: fontSize 16 → 32 (CA-4.3)', async ({ page }) => {
+  const { center } = await openNew(page, 'text-resize-corner');
+  const start = await selectedText(page, { x: center.x - 200, y: center.y - 60 }, 'Escala', 16);
+  const nw = await toPage(page, start.x, start.y);
+  const se = await toPage(page, start.x + start.w, start.y + start.h);
+  await dragFrom(page, se, se.x - nw.x, se.y - nw.y);
+  await expect.poll(async () => (await textNodes(page))[0]!.fontSize).toBe(32);
+  const scaled = (await textNodes(page))[0]!;
+  expect(scaled.autoWidth).toBe(true);
+  expect(scaled.x).toBeCloseTo(start.x, 0);
+  expect(scaled.y).toBeCloseTo(start.y, 0);
+  expect(scaled.w / start.w).toBeGreaterThan(1.8);
+});
+
+test('tirador S: deja fixedHeight y escribir después no cambia h; el panel cambia de modo (CA-4.4)', async ({ page }) => {
+  const { center } = await openNew(page, 'text-resize-s');
+  const start = await selectedText(page, { x: center.x - 200, y: center.y - 60 }, 'Alto fijo', 32);
+  const s = await toPage(page, start.x + start.w / 2, start.y + start.h);
+  await dragFrom(page, s, 0, 60);
+  await expect.poll(async () => (await textNodes(page))[0]!.fixedHeight).toBe(true);
+  const fixed = (await textNodes(page))[0]!;
+  expect(fixed.autoWidth).toBe(false);
+  expect(fixed.h).toBeGreaterThan(start.h);
+  const mode = page.getByTestId('properties-panel').getByTestId('props-text-mode');
+  await expect(mode.getByRole('radio', { name: 'Fijo' })).toHaveAttribute('aria-checked', 'true');
+
+  const at = await toPage(page, fixed.x + fixed.w / 2, fixed.y + 10);
+  await page.mouse.dblclick(at.x, at.y);
+  await expect.poll(() => editing(page)).toBe(fixed.id);
+  await page.keyboard.press('End');
+  await page.keyboard.type(' con mucho más texto\nen otra línea\ny otra más');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => editing(page)).toBeNull();
+  expect((await textNodes(page))[0]!.h).toBe(fixed.h);
+
+  await mode.getByRole('radio', { name: 'Auto-ancho' }).click();
+  await expect.poll(async () => (await textNodes(page))[0]!.autoWidth).toBe(true);
+  const auto = (await textNodes(page))[0]!;
+  expect(auto.fixedHeight).toBeFalsy();
+  expect(auto.h).toBeGreaterThan(fixed.h);
 });
