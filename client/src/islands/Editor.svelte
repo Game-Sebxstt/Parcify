@@ -1,5 +1,6 @@
 <script lang="ts">
   import Eye from '@lucide/svelte/icons/eye';
+  import { BitsConfig } from 'bits-ui';
   import X from '@lucide/svelte/icons/x';
   import { onMount, tick } from 'svelte';
   import { on } from 'svelte/events';
@@ -112,6 +113,9 @@
   let workspace = $state.raw<{ slug: string; name: string } | null>(null);
   let presenting = $state(false);
   let presenter = $state<ReturnType<typeof Present> | null>(null);
+  let presentMode = $state<'frames' | 'page'>('frames');
+  // Página sin frames: se pregunta si se presenta entera.
+  let presentPageAsk = $state(false);
   // Raíz del editor: el lienzo ocupa toda la ventana y los paneles flotan encima. Presentar la pasa a pantalla completa.
   let root = $state<HTMLDivElement | null>(null);
   let downloadingLocal = $state(false);
@@ -693,11 +697,18 @@
   function startPresenting() {
     if (!engine) return;
     if (!presentationSlides(engine).length) {
-      showToast({ message: m.present_no_frames() });
+      presentPageAsk = true;
       return;
     }
+    beginPresenting('frames');
+  }
+
+  function beginPresenting(mode: 'frames' | 'page') {
+    if (!engine) return;
+    presentPageAsk = false;
     menu = null;
     viewer.close();
+    presentMode = mode;
     presenting = true;
   }
 
@@ -930,436 +941,459 @@
 {:else if phase === 'loading' || !collabState}
   <p class="grid h-dvh place-items-center text-sm text-ink-muted" role="status">{m.editor_loading()}</p>
 {:else}
-  <!-- Orden del DOM = orden de tabulación: panel izquierdo, lienzo, barra contextual, barras, línea de tiempo, panel
-       derecho y ventanas.
-       La posición de cada pieza la da el CSS: el lienzo ocupa toda la ventana y lo demás flota encima. -->
-  <div bind:this={root} class={['relative h-dvh overflow-hidden', inputKind === 'touch' ? 'touch-ui' : '']} data-ui={layout.ui}>
-    {#snippet fileHeader(compact: boolean)}
-      {#if collabState}
-        <FileHeader
-          name={projectName}
-          {canRename}
-          collab={collabState}
+  <!-- Presentando a pantalla completa solo se ve la raíz del editor: lo que vaya en portal tiene que ir dentro. -->
+  <BitsConfig defaultPortalTo={presenting && root ? root : 'body'}>
+    <!-- Orden del DOM = orden de tabulación: panel izquierdo, lienzo, barra contextual, barras, línea de tiempo, panel
+         derecho y ventanas.
+         La posición de cada pieza la da el CSS: el lienzo ocupa toda la ventana y lo demás flota encima. -->
+    <div bind:this={root} class={['relative h-dvh overflow-hidden', inputKind === 'touch' ? 'touch-ui' : '']} data-ui={layout.ui}>
+      {#snippet fileHeader(compact: boolean)}
+        {#if collabState}
+          <FileHeader
+            name={projectName}
+            {canRename}
+            collab={collabState}
+            {compact}
+            {canPublish}
+            {uiKeys}
+            onrename={rename}
+            onleave={publishBeforeLeaving}
+            onexport={() => (exportOpen = true)}
+            ondownload={() => void downloadLocal()}
+            onpublish={() => (publishOpen = true)}
+            onminimize={() => layout.toggleMinimized()}
+            onhide={hideInterface}
+            onwheel={() => (wheelOpen = true)}
+            onshortcuts={() => (shortcutsOpen = true)}
+            ontoggle={() => (compact ? layout.open('left') : layout.collapse('left'))}
+          />
+        {/if}
+      {/snippet}
+
+      {#snippet sessionBar(compact: boolean)}
+        <SessionBar
           {compact}
-          {canPublish}
-          {uiKeys}
-          onrename={rename}
-          onleave={publishBeforeLeaving}
-          onexport={() => (exportOpen = true)}
-          ondownload={() => void downloadLocal()}
-          onpublish={() => (publishOpen = true)}
-          onminimize={() => layout.toggleMinimized()}
-          onhide={hideInterface}
-          onwheel={() => (wheelOpen = true)}
-          onshortcuts={() => (shortcutsOpen = true)}
-          ontoggle={() => (compact ? layout.open('left') : layout.collapse('left'))}
-        />
-      {/if}
-    {/snippet}
-
-    {#snippet sessionBar(compact: boolean)}
-      <SessionBar
-        {compact}
-        {people}
-        {following}
-        {chatOpen}
-        {chatUnread}
-        versionsOpen={versionsOpen && rightOpen}
-        {aiAvailable}
-        {aiOpen}
-        {canShare}
-        onfollow={(clientId) => engine?.follow(clientId)}
-        onchat={toggleChat}
-        onversions={toggleVersions}
-        onai={() => void toggleAi()}
-        onpresent={startPresenting}
-        onshare={openShare}
-        ontoggle={() => (compact ? layout.open('right') : collapseRight())}
-      />
-    {/snippet}
-
-    {#snippet design()}
-      {#if engine}
-        <PropertiesPanel
-          {engine}
-          records={selection}
-          readOnly={engineReadOnly}
-          {tool}
-          preset={framePreset}
-          pageName={pages.find((item) => item.id === activePage)?.name ?? ''}
-          onpreset={(next) => engine?.core.framePreset.set(next)}
-          onexport={() => (exportOpen = true)}
-          onkeyframes={() => void openTimeline(true, true)}
-        />
-      {/if}
-    {/snippet}
-
-    {#snippet versionsView()}
-      {#if chatSession}
-        <VersionsPanel
-          bind:this={versionsPanel}
-          {projectId}
-          open={versionsOpen}
-          canEdit={!engineReadOnly}
-          {activePage}
-          onclose={() => (layout.rightView = 'design')}
-        />
-      {/if}
-    {/snippet}
-
-    <LeftPanel
-      bind:this={leftPanel}
-      bind:width={leftWidth}
-      bind:pillWidth={leftPillWidth}
-      bind:pillHeight={leftPillHeight}
-      {engine}
-      readOnly={engineReadOnly}
-      open={leftOpen}
-      hidden={hideUi}
-      clearance={panelClearance}
-      header={fileHeader}
-      raised={overlayDocked}
-    />
-
-    <input bind:this={imageInput} type="file" accept={CANVAS_IMAGE_ACCEPT} multiple class="hidden" tabindex="-1" aria-hidden="true" onchange={onImagesPicked} data-testid="image-input" />
-    <!-- El lienzo recibe el foco para los atajos de teclado. -->
-    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <div
-      bind:this={container}
-      tabindex="0"
-      role="application"
-      aria-label={m.editor_canvas_label()}
-      onpointerdown={onCanvasPointerDown}
-      onpointerup={onCanvasPointerUp}
-      onpointercancel={onCanvasPointerCancel}
-      class="absolute inset-0 touch-none overflow-hidden outline-none select-none [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
-    ></div>
-    <CanvasHud
-      restoring={contextState === 'lost'}
-      hud={presenting ? null : hud}
-      touch={inputKind === 'touch'}
-      pointLimit={pointLimit && !presenting && !hideUi}
-      recording={recordingAt !== null && recordMode === 'all' ? recordingAt : null}
-      area={{ left: barsLeft, right: barsRight, bottom: bottomEdge }}
-    />
-    <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
-    <div class="sr-only" aria-live="polite" aria-atomic="true" data-testid="record-announcer">{recordAnnouncement}</div>
-    <input
-      bind:this={replaceInput}
-      type="file"
-      accept={CANVAS_IMAGE_ACCEPT}
-      class="hidden"
-      tabindex="-1"
-      aria-hidden="true"
-      onchange={onReplacementPicked}
-      data-testid="replace-image-input"
-    />
-    {#if engine && container && (selection.length > 0 || tool === 'pen') && !hideUi && !engineReadOnly}
-      <ContextBar
-        {engine}
-        records={selection}
-        rect={selectionRect}
-        {container}
-        locked={selectionLocked}
-        avoid={contextAvoid}
-        touch={inputKind === 'touch'}
-        vertex={activeVertex}
-        pen={tool === 'pen' ? penPoints : null}
-        editing={editingText}
-        onmore={openMoreMenu}
-        onreplaceimage={pickReplacement}
-        onescape={() => container?.focus({ preventScroll: true })}
-      />
-    {/if}
-
-    {#if followed}
-      <div aria-hidden="true" class="pointer-events-none absolute inset-0 border-2" style:border-color={followed.color}></div>
-    {/if}
-    <!-- Avisos arriba, centrados en el hueco que dejan los paneles. -->
-    <div
-      class="pointer-events-none absolute top-3 z-(--z-hud) flex flex-col items-center gap-2"
-      style:left="{leftEdge + 12}px"
-      style:right="{rightEdge + 12}px"
-      hidden={presenting || !(followed || collabState.notice)}
-    >
-      {#if followed}
-        <div role="status" class="pointer-events-auto flex items-center gap-2 rounded-full bg-surface-2 py-1 pr-1 pl-3 text-xs shadow-float">
-          <span class="size-2 rounded-full" style:background-color={followed.color} aria-hidden="true"></span>
-          {m.editor_following({ name: followed.name })}
-          <button type="button" onclick={() => engine?.follow(null)} class="h-7 cursor-pointer rounded-full px-2.5 font-semibold hover:bg-petrol">
-            {m.editor_follow_stop()}
-          </button>
-        </div>
-      {/if}
-
-      {#if collabState.notice}
-        <div role="status" class="pointer-events-auto flex w-full max-w-136 items-start gap-3 rounded-panel bg-surface-2 py-2.5 pr-2 pl-4 text-sm shadow-float">
-          <p class="flex-1">{NOTICES[collabState.notice]()}</p>
-          {#if (collabState.notice === 'size_warning' || collabState.notice === 'size_readonly') && collabState.role === 'admin' && !compactRequested}
-            <button
-              type="button"
-              disabled={compacting}
-              onclick={requestCompaction}
-              class="h-8 shrink-0 cursor-pointer rounded-full px-3 font-semibold text-coral hover:bg-petrol disabled:cursor-wait disabled:opacity-60"
-            >
-              {m.editor_compact_request()}
-            </button>
-          {/if}
-          {#if collabState.notice === 'local_copy_discarded' || collabState.notice === 'offline_changes_rejected'}
-            <button
-              type="button"
-              disabled={downloadingLocal}
-              aria-describedby="download-local-hint"
-              onclick={downloadLocal}
-              class="h-8 shrink-0 cursor-pointer rounded-full px-3 font-semibold text-coral hover:bg-petrol disabled:cursor-wait disabled:opacity-60"
-              data-testid="download-local"
-            >
-              {m.editor_download_local()}
-            </button>
-            <span id="download-local-hint" class="sr-only">{m.editor_download_local_hint()}</span>
-          {/if}
-          <button
-            type="button"
-            aria-label={m.common_close()}
-            onclick={() => collab?.dismissNotice()}
-            class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-petrol hover:text-ink"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
-        </div>
-      {/if}
-    </div>
-
-    <!-- La barra de herramientas va antes que la de zoom en el DOM: es el orden de tabulación. La rejilla la centra en
-         el hueco entre los paneles mientras cabe y, si no, sube el zoom y el minimapa a la fila de encima. -->
-    <div
-      bind:clientWidth={barsWidth}
-      bind:offsetHeight={barsHeight}
-      hidden={hideUi}
-      class={['pointer-events-none absolute z-(--z-toolbar) grid items-end gap-2', barsStacked ? 'grid-cols-1' : 'grid-cols-[1fr_auto_1fr]']}
-      style:left="{barsLeft + 12}px"
-      style:right="{barsRight + 12}px"
-      style:bottom="{barsBottom}px"
-      data-testid="canvas-bars"
-    >
-      <div bind:offsetWidth={toolbarWidth} class={['flex', barsStacked ? 'col-start-1 row-start-2 justify-self-center' : 'col-start-2 row-start-1']}>
-        <FloatingToolbar
-          {tool}
-          {toolLocked}
-          readOnly={engineReadOnly}
-          gallery={galleryOpen}
-          {timelineOpen}
-          {timelineLoading}
-          recording={recordingAt !== null && recordMode === 'all'}
+          {people}
+          {following}
+          {chatOpen}
+          {chatUnread}
+          versionsOpen={versionsOpen && rightOpen}
           {aiAvailable}
           {aiOpen}
-          onselect={(next, locked) => engine?.commands.setTool(next, { locked: locked === true })}
-          onimage={pickImages}
-          ongallery={() => (galleryOpen = !galleryOpen)}
-          onanimate={toggleTimeline}
-          onai={toggleAi}
+          {canShare}
+          onfollow={(clientId) => engine?.follow(clientId)}
+          onchat={toggleChat}
+          onversions={toggleVersions}
+          onai={() => void toggleAi()}
+          onpresent={startPresenting}
+          onshare={openShare}
+          ontoggle={() => (compact ? layout.open('right') : collapseRight())}
         />
-      </div>
-      <div bind:offsetWidth={zoomWidth} class="col-start-1 row-start-1 flex justify-self-start">
-        <ZoomBar
-          {zoom}
-          canUndo={history.canUndo}
-          canRedo={history.canRedo}
-          readOnly={engineReadOnly}
-          {minimapOpen}
-          onundo={() => engine?.commands.undo()}
-          onredo={() => engine?.commands.redo()}
-          onzoomin={() => engine?.commands.zoomIn()}
-          onzoomout={() => engine?.commands.zoomOut()}
-          onzoomreset={() => engine?.commands.zoomTo(1)}
-          onfitall={() => engine?.commands.fitAll()}
-          onfitselection={() => engine?.commands.zoomToSelection()}
-          onminimap={() => (minimapOpen = !minimapOpen)}
-        />
-      </div>
-      {#if minimapOpen && engine}
-        <div bind:offsetWidth={minimapWidth} class={['pointer-events-auto row-start-1 justify-self-end', barsStacked ? 'col-start-1' : 'col-start-3']}>
-          <Minimap {engine} />
-        </div>
-      {/if}
-    </div>
+      {/snippet}
 
-    {#if timelineLoading}
-      <p role="status" class="sr-only">{m.timeline_loading()}</p>
-    {/if}
-    {#if Timeline && engine}
-      <!-- Flota abajo entre los paneles; su alto lo decide el asa del propio panel. -->
+      {#snippet design()}
+        {#if engine}
+          <PropertiesPanel
+            {engine}
+            records={selection}
+            readOnly={engineReadOnly}
+            {tool}
+            preset={framePreset}
+            pageName={pages.find((item) => item.id === activePage)?.name ?? ''}
+            onpreset={(next) => engine?.core.framePreset.set(next)}
+            onexport={() => (exportOpen = true)}
+            onkeyframes={() => void openTimeline(true, true)}
+          />
+        {/if}
+      {/snippet}
+
+      {#snippet versionsView()}
+        {#if chatSession}
+          <VersionsPanel
+            bind:this={versionsPanel}
+            {projectId}
+            open={versionsOpen}
+            canEdit={!engineReadOnly}
+            {activePage}
+            onclose={() => (layout.rightView = 'design')}
+          />
+        {/if}
+      {/snippet}
+
+      <!-- Mientras se presenta solo quedan el lienzo, su HUD y la presentación: nada más puede tapar la diapositiva.
+           La maqueta (anchos, plegado, línea de tiempo) no cambia y todo vuelve igual al salir. -->
+      {#if !presenting}
+        <LeftPanel
+          bind:this={leftPanel}
+          bind:width={leftWidth}
+          bind:pillWidth={leftPillWidth}
+          bind:pillHeight={leftPillHeight}
+          {engine}
+          readOnly={engineReadOnly}
+          open={leftOpen}
+          hidden={hideUi}
+          clearance={panelClearance}
+          header={fileHeader}
+          raised={overlayDocked}
+        />
+      {/if}
+
+      <input bind:this={imageInput} type="file" accept={CANVAS_IMAGE_ACCEPT} multiple class="hidden" tabindex="-1" aria-hidden="true" onchange={onImagesPicked} data-testid="image-input" />
+      <!-- El lienzo recibe el foco para los atajos de teclado. -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
-        bind:offsetHeight={timelineHeight}
-        hidden={hideUi || !timelineOpen}
-        class="absolute bottom-2 z-(--z-panel) touch-pan-x touch-pan-y"
+        bind:this={container}
+        tabindex="0"
+        role="application"
+        aria-label={m.editor_canvas_label()}
+        onpointerdown={onCanvasPointerDown}
+        onpointerup={onCanvasPointerUp}
+        onpointercancel={onCanvasPointerCancel}
+        class="absolute inset-0 touch-none overflow-hidden outline-none select-none [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
+      ></div>
+      <CanvasHud
+        restoring={contextState === 'lost'}
+        hud={presenting ? null : hud}
+        touch={inputKind === 'touch'}
+        pointLimit={pointLimit && !presenting && !hideUi}
+        recording={recordingAt !== null && recordMode === 'all' ? recordingAt : null}
+        area={{ left: barsLeft, right: barsRight, bottom: bottomEdge }}
+      />
+      <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
+      <div class="sr-only" aria-live="polite" aria-atomic="true" data-testid="record-announcer">{recordAnnouncement}</div>
+      <input
+        bind:this={replaceInput}
+        type="file"
+        accept={CANVAS_IMAGE_ACCEPT}
+        class="hidden"
+        tabindex="-1"
+        aria-hidden="true"
+        onchange={onReplacementPicked}
+        data-testid="replace-image-input"
+      />
+      {#if engine && container && (selection.length > 0 || tool === 'pen') && !hideUi && !engineReadOnly}
+        <ContextBar
+          {engine}
+          records={selection}
+          rect={selectionRect}
+          {container}
+          locked={selectionLocked}
+          avoid={contextAvoid}
+          touch={inputKind === 'touch'}
+          vertex={activeVertex}
+          pen={tool === 'pen' ? penPoints : null}
+          editing={editingText}
+          onmore={openMoreMenu}
+          onreplaceimage={pickReplacement}
+          onescape={() => container?.focus({ preventScroll: true })}
+        />
+      {/if}
+
+      {#if followed}
+        <div aria-hidden="true" class="pointer-events-none absolute inset-0 border-2" style:border-color={followed.color}></div>
+      {/if}
+      <!-- Avisos arriba, centrados en el hueco que dejan los paneles. -->
+      {#if !presenting}
+        <div
+          class="pointer-events-none absolute top-3 z-(--z-hud) flex flex-col items-center gap-2"
+          style:left="{leftEdge + 12}px"
+          style:right="{rightEdge + 12}px"
+          hidden={!(followed || collabState.notice)}
+        >
+          {#if followed}
+            <div role="status" class="pointer-events-auto flex items-center gap-2 rounded-full bg-surface-2 py-1 pr-1 pl-3 text-xs shadow-float">
+              <span class="size-2 rounded-full" style:background-color={followed.color} aria-hidden="true"></span>
+              {m.editor_following({ name: followed.name })}
+              <button type="button" onclick={() => engine?.follow(null)} class="h-7 cursor-pointer rounded-full px-2.5 font-semibold hover:bg-petrol">
+                {m.editor_follow_stop()}
+              </button>
+            </div>
+          {/if}
+
+          {#if collabState.notice}
+            <div role="status" class="pointer-events-auto flex w-full max-w-136 items-start gap-3 rounded-panel bg-surface-2 py-2.5 pr-2 pl-4 text-sm shadow-float">
+              <p class="flex-1">{NOTICES[collabState.notice]()}</p>
+              {#if (collabState.notice === 'size_warning' || collabState.notice === 'size_readonly') && collabState.role === 'admin' && !compactRequested}
+                <button
+                  type="button"
+                  disabled={compacting}
+                  onclick={requestCompaction}
+                  class="h-8 shrink-0 cursor-pointer rounded-full px-3 font-semibold text-coral hover:bg-petrol disabled:cursor-wait disabled:opacity-60"
+                >
+                  {m.editor_compact_request()}
+                </button>
+              {/if}
+              {#if collabState.notice === 'local_copy_discarded' || collabState.notice === 'offline_changes_rejected'}
+                <button
+                  type="button"
+                  disabled={downloadingLocal}
+                  aria-describedby="download-local-hint"
+                  onclick={downloadLocal}
+                  class="h-8 shrink-0 cursor-pointer rounded-full px-3 font-semibold text-coral hover:bg-petrol disabled:cursor-wait disabled:opacity-60"
+                  data-testid="download-local"
+                >
+                  {m.editor_download_local()}
+                </button>
+                <span id="download-local-hint" class="sr-only">{m.editor_download_local_hint()}</span>
+              {/if}
+              <button
+                type="button"
+                aria-label={m.common_close()}
+                onclick={() => collab?.dismissNotice()}
+                class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-petrol hover:text-ink"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          {/if}
+        </div>
+
+        <!-- La barra de herramientas va antes que la de zoom en el DOM: es el orden de tabulación. La rejilla la centra en
+             el hueco entre los paneles mientras cabe y, si no, sube el zoom y el minimapa a la fila de encima. -->
+        <div
+          bind:clientWidth={barsWidth}
+          bind:offsetHeight={barsHeight}
+          hidden={hideUi}
+          class={['pointer-events-none absolute z-(--z-toolbar) grid items-end gap-2', barsStacked ? 'grid-cols-1' : 'grid-cols-[1fr_auto_1fr]']}
+          style:left="{barsLeft + 12}px"
+          style:right="{barsRight + 12}px"
+          style:bottom="{barsBottom}px"
+          data-testid="canvas-bars"
+        >
+          <div bind:offsetWidth={toolbarWidth} class={['flex', barsStacked ? 'col-start-1 row-start-2 justify-self-center' : 'col-start-2 row-start-1']}>
+            <FloatingToolbar
+              {tool}
+              {toolLocked}
+              readOnly={engineReadOnly}
+              gallery={galleryOpen}
+              {timelineOpen}
+              {timelineLoading}
+              recording={recordingAt !== null && recordMode === 'all'}
+              {aiAvailable}
+              {aiOpen}
+              onselect={(next, locked) => engine?.commands.setTool(next, { locked: locked === true })}
+              onimage={pickImages}
+              ongallery={() => (galleryOpen = !galleryOpen)}
+              onanimate={toggleTimeline}
+              onai={toggleAi}
+            />
+          </div>
+          <div bind:offsetWidth={zoomWidth} class="col-start-1 row-start-1 flex justify-self-start">
+            <ZoomBar
+              {zoom}
+              canUndo={history.canUndo}
+              canRedo={history.canRedo}
+              readOnly={engineReadOnly}
+              {minimapOpen}
+              onundo={() => engine?.commands.undo()}
+              onredo={() => engine?.commands.redo()}
+              onzoomin={() => engine?.commands.zoomIn()}
+              onzoomout={() => engine?.commands.zoomOut()}
+              onzoomreset={() => engine?.commands.zoomTo(1)}
+              onfitall={() => engine?.commands.fitAll()}
+              onfitselection={() => engine?.commands.zoomToSelection()}
+              onminimap={() => (minimapOpen = !minimapOpen)}
+            />
+          </div>
+          {#if minimapOpen && engine}
+            <div bind:offsetWidth={minimapWidth} class={['pointer-events-auto row-start-1 justify-self-end', barsStacked ? 'col-start-1' : 'col-start-3']}>
+              <Minimap {engine} />
+            </div>
+          {/if}
+        </div>
+
+        {#if timelineLoading}
+          <p role="status" class="sr-only">{m.timeline_loading()}</p>
+        {/if}
+        {#if Timeline && engine}
+          <!-- Flota abajo entre los paneles; su alto lo decide el asa del propio panel. -->
+          <div
+            bind:offsetHeight={timelineHeight}
+            hidden={hideUi || !timelineOpen}
+            class="absolute bottom-2 z-(--z-panel) touch-pan-x touch-pan-y"
+            style:left="{leftEdge + 8}px"
+            style:right="{rightEdge + 8}px"
+          >
+            <Timeline
+              {engine}
+              {projectId}
+              readOnly={engineReadOnly}
+              aiAnimation={!!aiFeatures?.animation && !engineReadOnly}
+              open={timelineOpen}
+              touch={inputKind === 'touch'}
+              focusRequest={timelineFocus}
+              onclose={() => layout.closeTimeline()}
+            />
+          </div>
+        {/if}
+
+        <RightPanel
+          bind:width={rightWidth}
+          bind:pillWidth={rightPillWidth}
+          bind:pillHeight={rightPillHeight}
+          open={rightOpen}
+          hidden={hideUi}
+          clearance={panelClearance}
+          header={sessionBar}
+          {design}
+          versions={versionsView}
+          raised={overlayDocked}
+        />
+      {/if}
+
+      <!-- Galería, chat e IA flotan a la izquierda del panel derecho hasta que tengan su ventana propia. -->
+      <div
+        hidden={hideUi}
+        class="pointer-events-none absolute z-(--z-window) flex justify-end gap-2"
+        style:top="{rightOpen ? 8 : 56}px"
+        style:bottom="{barsBottom + BAR_ROW + 8}px"
         style:left="{leftEdge + 8}px"
         style:right="{rightEdge + 8}px"
       >
-        <Timeline
-          {engine}
-          {projectId}
-          readOnly={engineReadOnly}
-          aiAnimation={!!aiFeatures?.animation && !engineReadOnly}
-          open={timelineOpen}
-          touch={inputKind === 'touch'}
-          focusRequest={timelineFocus}
-          onclose={() => layout.closeTimeline()}
-        />
+        <!-- Al presentar, el chat y la IA solo se ocultan (siguen contando y recibiendo); la galería no se monta. -->
+        {#if galleryOpen && engine && !presenting}
+          <div class={WINDOW}>
+            <GalleryPanel
+              {engine}
+              {projectId}
+              readOnly={engineReadOnly}
+              {assetEvent}
+              jobEvent={aiJobEvent}
+              canGenerate={!!aiFeatures?.image && !engineReadOnly}
+              onsendtochat={aiFeatures?.chat && !engineReadOnly ? (asset) => void sendToAiChat(asset) : null}
+              onclose={() => (galleryOpen = false)}
+            />
+          </div>
+        {/if}
+        {#if chatSession}
+          <!-- Montado aunque esté cerrado: cuenta los no leídos y recibe los mensajes en vivo. -->
+          <div hidden={!chatOpen} class={WINDOW}>
+            <ChatPanel
+              {projectId}
+              session={chatSession}
+              me={{ id: chatSession.user.id, name: chatSession.user.name, avatarAssetId: session.me?.user.avatarAssetId ?? null }}
+              role={collabState.role ?? 'viewer'}
+              open={chatOpen}
+              status={collabState.status}
+              {typingNames}
+              ontyping={(value) => engine?.core.presence.update({ chatTyping: value })}
+              onunread={(count) => (chatUnread = count)}
+              onclose={() => (chatOpen = false)}
+            />
+          </div>
+        {/if}
+        {#if AiPanel && aiOpen && aiAvailable && aiFeatures && engine}
+          <div class={WINDOW}>
+            <AiPanel
+              {engine}
+              {projectId}
+              features={aiFeatures}
+              readOnly={engineReadOnly}
+              attachment={aiAttachment}
+              onclose={() => {
+                aiOpen = false;
+                aiAttachment = null;
+              }}
+            />
+          </div>
+        {/if}
       </div>
-    {/if}
 
-    <RightPanel
-      bind:width={rightWidth}
-      bind:pillWidth={rightPillWidth}
-      bind:pillHeight={rightPillHeight}
-      open={rightOpen}
-      hidden={hideUi}
-      clearance={panelClearance}
-      header={sessionBar}
-      {design}
-      versions={versionsView}
-      raised={overlayDocked}
-    />
+      {#if viewer.viewing && !presenting}
+        <!-- Tapa el hueco del lienzo y sus barras sin dejar franjas del lienzo vivo; las pastillas de los paneles plegados
+             quedan encima, dentro de su barra. -->
+        <VersionOverlay
+          canEdit={!engineReadOnly}
+          left={leftEdge + 8}
+          right={rightEdge + 8}
+          top={8}
+          pills={overlayPills}
+          fullscreen={viewport.mode === 'mobile'}
+        />
+      {/if}
 
-    <!-- Galería, chat e IA flotan a la izquierda del panel derecho hasta que tengan su ventana propia. -->
-    <div
-      hidden={hideUi}
-      class="pointer-events-none absolute z-(--z-window) flex justify-end gap-2"
-      style:top="{rightOpen ? 8 : 56}px"
-      style:bottom="{barsBottom + BAR_ROW + 8}px"
-      style:left="{leftEdge + 8}px"
-      style:right="{rightEdge + 8}px"
-    >
-      {#if galleryOpen && engine}
-        <div class={WINDOW}>
-          <GalleryPanel
-            {engine}
-            {projectId}
-            readOnly={engineReadOnly}
-            {assetEvent}
-            jobEvent={aiJobEvent}
-            canGenerate={!!aiFeatures?.image && !engineReadOnly}
-            onsendtochat={aiFeatures?.chat && !engineReadOnly ? (asset) => void sendToAiChat(asset) : null}
-            onclose={() => (galleryOpen = false)}
-          />
-        </div>
+      {#if presenting && engine && root}
+        <Present bind:this={presenter} {engine} host={root} mode={presentMode} onclose={stopPresenting} />
       {/if}
-      {#if chatSession}
-        <!-- Montado aunque esté cerrado: cuenta los no leídos y recibe los mensajes en vivo. -->
-        <div hidden={!chatOpen} class={WINDOW}>
-          <ChatPanel
-            {projectId}
-            session={chatSession}
-            me={{ id: chatSession.user.id, name: chatSession.user.name, avatarAssetId: session.me?.user.avatarAssetId ?? null }}
-            role={collabState.role ?? 'viewer'}
-            open={chatOpen}
-            status={collabState.status}
-            {typingNames}
-            ontyping={(value) => engine?.core.presence.update({ chatTyping: value })}
-            onunread={(count) => (chatUnread = count)}
-            onclose={() => (chatOpen = false)}
-          />
-        </div>
-      {/if}
-      {#if AiPanel && aiOpen && aiAvailable && aiFeatures && engine}
-        <div class={WINDOW}>
-          <AiPanel
-            {engine}
-            {projectId}
-            features={aiFeatures}
-            readOnly={engineReadOnly}
-            attachment={aiAttachment}
-            onclose={() => {
-              aiOpen = false;
-              aiAttachment = null;
-            }}
-          />
-        </div>
+
+      {#if layout.ui === 'hidden' && !presenting}
+        <Tooltip text={m.editor_show_ui()} kbd={uiKeys.hide} side="left">
+          {#snippet children(props)}
+            <button
+              {...props}
+              type="button"
+              aria-label={m.editor_show_ui()}
+              aria-keyshortcuts={uiKeys.hideAria}
+              onclick={showInterface}
+              class={[
+                'absolute top-2 right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-panel border border-edge/40 bg-surface-2 text-ink-muted shadow-float transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink',
+                overlayDocked ? 'z-(--z-stage-pill)' : 'z-(--z-toolbar)',
+              ]}
+              data-testid="show-ui"
+            >
+              <Eye size={16} aria-hidden="true" />
+            </button>
+          {/snippet}
+        </Tooltip>
       {/if}
     </div>
-
-    {#if viewer.viewing && !presenting}
-      <!-- Tapa el hueco del lienzo y sus barras sin dejar franjas del lienzo vivo; las pastillas de los paneles plegados
-           quedan encima, dentro de su barra. -->
-      <VersionOverlay
-        canEdit={!engineReadOnly}
-        left={leftEdge + 8}
-        right={rightEdge + 8}
-        top={8}
-        pills={overlayPills}
-        fullscreen={viewport.mode === 'mobile'}
-      />
+    {#if menu && engine}
+      {#key menu}
+        <ContextMenu
+          {engine}
+          request={menu}
+          readOnly={engineReadOnly}
+          onclose={closeMenu}
+          onanimate={() => void openTimeline(true, true)}
+          oncopypng={copyAsPng}
+          onexport={() => (exportOpen = true)}
+          onrename={(id) => void leftPanel?.rename(id)}
+        />
+      {/key}
     {/if}
-
-    {#if presenting && engine && root}
-      <Present bind:this={presenter} {engine} host={root} onclose={stopPresenting} />
+    {#if engine}
+      <ExportDialog bind:open={exportOpen} {engine} {projectId} {projectName} />
     {/if}
-
-    {#if layout.ui === 'hidden' && !presenting}
-      <Tooltip text={m.editor_show_ui()} kbd={uiKeys.hide} side="left">
-        {#snippet children(props)}
-          <button
-            {...props}
-            type="button"
-            aria-label={m.editor_show_ui()}
-            aria-keyshortcuts={uiKeys.hideAria}
-            onclick={showInterface}
-            class={[
-              'absolute top-2 right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-panel border border-edge/40 bg-surface-2 text-ink-muted shadow-float transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink',
-              overlayDocked ? 'z-(--z-stage-pill)' : 'z-(--z-toolbar)',
-            ]}
-            data-testid="show-ui"
-          >
-            <Eye size={16} aria-hidden="true" />
-          </button>
-        {/snippet}
-      </Tooltip>
-    {/if}
-  </div>
-  {#if menu && engine}
-    {#key menu}
-      <ContextMenu
-        {engine}
-        request={menu}
-        readOnly={engineReadOnly}
-        onclose={closeMenu}
-        onanimate={() => void openTimeline(true, true)}
-        oncopypng={copyAsPng}
-        onexport={() => (exportOpen = true)}
-        onrename={(id) => void leftPanel?.rename(id)}
-      />
-    {/key}
-  {/if}
-  {#if engine}
-    <ExportDialog bind:open={exportOpen} {engine} {projectId} {projectName} />
-  {/if}
-  <ConfirmDialog
-    bind:open={() => viewer.confirming !== null, (value) => {
-      if (!value) viewer.confirming = null;
-    }}
-    title={m.editor_versions_restore_title()}
-    description={m.editor_versions_restore_body()}
-    confirmLabel={m.editor_versions_restore()}
-    busy={viewer.restoreBusy}
-    onconfirm={() => void viewer.restore()}
-    onCloseAutoFocus={(event) => viewer.confirmCloseFocus(event)}
-  />
-  <ShortcutsDialog bind:open={shortcutsOpen} {uiKeys} />
-  <WheelDialog bind:open={wheelOpen} />
-  {#if shareMounted && canShare}
-    {#await import('./share/SharePanel.svelte') then { default: SharePanel }}
-      <SharePanel bind:open={shareOpen} {projectId} {projectName} meId={session.me?.user.id ?? ''} myRole="admin" />
-    {/await}
-  {/if}
-  {#if workspace && canPublish}
-    <PublishTemplateDialog
-      bind:open={publishOpen}
-      {projectId}
-      {projectName}
-      workspaceSlug={workspace.slug}
-      workspaceName={workspace.name}
-      beforePublish={publishBeforeLeaving}
+    <ConfirmDialog
+      bind:open={() => viewer.confirming !== null, (value) => {
+        if (!value) viewer.confirming = null;
+      }}
+      title={m.editor_versions_restore_title()}
+      description={m.editor_versions_restore_body()}
+      confirmLabel={m.editor_versions_restore()}
+      busy={viewer.restoreBusy}
+      onconfirm={() => void viewer.restore()}
+      onCloseAutoFocus={(event) => viewer.confirmCloseFocus(event)}
     />
-  {/if}
+    <ConfirmDialog
+      bind:open={presentPageAsk}
+      title={m.present_page_title()}
+      description={m.present_page_body()}
+      confirmLabel={m.present_page_confirm()}
+      onconfirm={() => beginPresenting('page')}
+      onCloseAutoFocus={(event) => {
+        // El botón que abrió el diálogo no está mientras se presenta: el foco va a la presentación.
+        if (!presenting) return;
+        event.preventDefault();
+        presenter?.focus();
+      }}
+    />
+    <ShortcutsDialog bind:open={shortcutsOpen} {uiKeys} />
+    <WheelDialog bind:open={wheelOpen} />
+    {#if shareMounted && canShare}
+      {#await import('./share/SharePanel.svelte') then { default: SharePanel }}
+        <SharePanel bind:open={shareOpen} {projectId} {projectName} meId={session.me?.user.id ?? ''} myRole="admin" />
+      {/await}
+    {/if}
+    {#if workspace && canPublish}
+      <PublishTemplateDialog
+        bind:open={publishOpen}
+        {projectId}
+        {projectName}
+        workspaceSlug={workspace.slug}
+        workspaceName={workspace.name}
+        beforePublish={publishBeforeLeaving}
+      />
+    {/if}
+  </BitsConfig>
 {/if}

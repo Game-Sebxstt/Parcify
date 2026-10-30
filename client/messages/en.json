@@ -314,7 +314,6 @@
   "present_next": "Next slide",
   "present_exit": "Exit presentation",
   "present_keys": "Arrows or space to advance. Esc to exit.",
-  "present_no_frames": "Add a frame to this page to present it.",
   "dashboard_import": "Import .parcify",
   "dashboard_import_title": "Import a project",
   "dashboard_import_file": ".parcify file",
