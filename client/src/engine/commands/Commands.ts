@@ -437,6 +437,16 @@ export class Commands {
     return id;
   }
 
+  // Otra imagen en el mismo nodo: la caja no cambia y el ajuste decide cómo entra. El texto alternativo describía
+  // la imagen anterior, así que se quita salvo que llegue uno nuevo. El recorte era de la anterior y también se quita.
+  replaceImage(id: string, image: InsertableImage): void {
+    const record = this.core.record(id);
+    if (!this.canEdit || record?.type !== 'image' || this.core.isLocked(id) || record.assetId === image.assetId) return;
+    const alt = image.alt?.trim().slice(0, DOCUMENT_LIMITS.maxAltLength) || undefined;
+    if (!NodeSchema.safeParse({ ...record, assetId: image.assetId, alt, crop: undefined }).success) return;
+    this.transact(() => this.patchNode(id, { assetId: image.assetId, alt, crop: undefined }));
+  }
+
   // Texto nuevo en un punto (ancho automático) o en una caja arrastrada (ancho fijo), con su Y.Text vacío.
   createText(at: { x: number; y: number }, width: number | null = null): string | null {
     if (!this.creationAllowed()) return null;
@@ -1270,7 +1280,8 @@ export class Commands {
     if (pending) this.setStyle(pending.patch, pending.ids);
   }
 
-  private cancelPreview(): void {
+  // Descarta la vista previa de estilo sin escribir nada (Esc durante un scrub).
+  cancelPreview(): void {
     if (this.styleTimer) clearTimeout(this.styleTimer);
     this.styleTimer = null;
     if (this.pendingStyle) {

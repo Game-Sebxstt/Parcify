@@ -18,18 +18,23 @@ export function pointAnchor(x: number, y: number): VirtualAnchor {
 export type PlaceOptions = {
   placement?: Placement;
   gap?: number;
-  padding?: number;
+  // Distancia a cada borde de la ventana que el elemento no debe pisar (paneles, barras de abajo).
+  padding?: number | Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
+  // Márgenes con los que el rectángulo cuenta como fuera de la vista y el elemento se oculta. Por defecto los de
+  // `padding`; una franja que el elemento no debe pisar no tiene por qué esconder lo que hay debajo.
+  hidePadding?: number | Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
 };
 
 // Coloca `el` (position: fixed) junto a un rectángulo en coordenadas de la ventana. Se llama cada vez que el motor
-// publica un rectángulo nuevo, en vez de dejar un autoUpdate escuchando.
+// publica un rectángulo nuevo, en vez de dejar un autoUpdate escuchando. Si no cabe ni a un lado ni al otro (una
+// selección más alta que la vista), se mete dentro del área permitida aunque tape parte del rectángulo.
 export async function placeOverCanvas(el: HTMLElement, rect: Rect, opts: PlaceOptions = {}): Promise<void> {
   const reference = virtualAnchor(() => new DOMRect(rect.x, rect.y, rect.width, rect.height));
   const padding = opts.padding ?? 8;
   const { x, y, middlewareData } = await computePosition(reference, el, {
     strategy: 'fixed',
     placement: opts.placement ?? 'top',
-    middleware: [offset(opts.gap ?? 8), flip({ padding }), shift({ padding }), hide({ padding })],
+    middleware: [offset(opts.gap ?? 8), flip({ padding }), shift({ padding, crossAxis: true }), hide({ padding: opts.hidePadding ?? padding })],
   });
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;

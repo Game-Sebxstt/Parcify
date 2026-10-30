@@ -9,6 +9,7 @@
   import Undo from '@lucide/svelte/icons/undo-2';
   import { m } from '../../../paraglide/messages.js';
   import DropdownMenu, { type MenuEntry } from '../../../ui/DropdownMenu.svelte';
+  import { MOD_ARIA, MOD_KEY } from '../layout/ui-keys.ts';
   import ToolButton from '../ToolButton.svelte';
 
   type Props = {
@@ -48,8 +49,8 @@
 
   // El atajo va en su columna, así que los nombres no lo repiten entre paréntesis.
   const items = $derived.by<MenuEntry[]>(() => [
-    { kind: 'item', id: 'zoom-in', label: m.editor_zoom_in(), icon: Plus, keys: 'Ctrl++', ariaKeys: 'Control++', onSelect: onzoomin },
-    { kind: 'item', id: 'zoom-out', label: m.editor_zoom_out(), icon: Minus, keys: 'Ctrl+−', ariaKeys: 'Control+-', onSelect: onzoomout },
+    { kind: 'item', id: 'zoom-in', label: m.editor_zoom_in(), icon: Plus, keys: `${MOD_KEY}++`, ariaKeys: `${MOD_ARIA}++`, onSelect: onzoomin },
+    { kind: 'item', id: 'zoom-out', label: m.editor_zoom_out(), icon: Minus, keys: `${MOD_KEY}+−`, ariaKeys: `${MOD_ARIA}+-`, onSelect: onzoomout },
     { kind: 'separator', id: 'zoom-sep-1' },
     { kind: 'item', id: 'fit-all', label: m.editor_zoom_fit_all_name(), icon: Scan, keys: 'Shift+1', ariaKeys: 'Shift+1', onSelect: onfitall },
     {
@@ -61,7 +62,7 @@
       ariaKeys: 'Shift+2',
       onSelect: onfitselection,
     },
-    { kind: 'item', id: 'zoom-reset', label: m.editor_zoom_100(), icon: Percent, keys: 'Ctrl+0', ariaKeys: 'Control+0', onSelect: onzoomreset },
+    { kind: 'item', id: 'zoom-reset', label: m.editor_zoom_100(), icon: Percent, keys: `${MOD_KEY}+0`, ariaKeys: `${MOD_ARIA}+0`, onSelect: onzoomreset },
     { kind: 'separator', id: 'zoom-sep-2' },
     { kind: 'item', id: 'minimap', label: minimapOpen ? m.editor_minimap_hide() : m.editor_minimap_show(), icon: MapIcon, onSelect: onminimap },
   ]);

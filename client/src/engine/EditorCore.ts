@@ -59,6 +59,15 @@ export const EDIT_TOOLS: ReadonlySet<Tool> = new Set(['rect', 'ellipse', 'triang
 export const CAMERA_SETTLE_MS = 200;
 // Constante de tiempo de la interpolación de «Seguir a», como el suavizado de los cursores remotos.
 export const FOLLOW_SMOOTHING_MS = 120;
+// La barra contextual vuelve a aparecer este tiempo después del último cambio de cámara (pan, zoom, inercia).
+export const SELECTION_BAR_SETTLE_MS = 150;
+
+// Caja alineada a los ejes en px del contenedor del lienzo.
+export type ScreenRect = { x: number; y: number; width: number; height: number };
+
+const sameRect = (a: ScreenRect | null, b: ScreenRect | null) =>
+  a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height);
+const roundPx = (value: number) => Math.round(value * 10) / 10;
 
 // Matriz de mundo de cada nodo que se mueve en un gesto (local o remoto), para recalcular sus conectores.
 type MovingLookup = (id: string) => Readonly<Mat> | null;
@@ -166,6 +175,10 @@ export class EditorCore {
   // Atajos que cambian la interfaz y no el documento (ocultar o minimizar los paneles): los atiende quien monta el
   // motor. `n` sube con cada pulsación para que dos seguidas iguales también avisen.
   readonly uiCommand = new Store<UiCommand | null>(null);
+  // Caja en pantalla de la selección para anclar la barra contextual. Vale null sin selección, durante los gestos,
+  // la marquesina, la edición de texto y hasta SELECTION_BAR_SETTLE_MS después del último cambio de cámara. Solo
+  // se publica desde el frame, así que cambia como mucho una vez por frame.
+  readonly selectionScreenRect = new Store<ScreenRect | null>(null, sameRect);
 
   // Grupo en el que se ha entrado con doble clic: sus hijos se seleccionan directamente.
   scope: string | null = null;
@@ -211,6 +224,9 @@ export class EditorCore {
   private readonly gestureKeyOf = new Map<string, string>();
   private readonly gestureMatrices = new Map<string, Mat>();
   private cameraTimer: unknown = null;
+  // Armado mientras la cámara se mueve: la barra contextual espera a que pare.
+  private barTimer: unknown = null;
+  private barKey: string | null = null;
   private readonly inSink = new Set<string>();
   private inView = new Set<string>();
   private queryRect: AABB | null = null;
@@ -585,6 +601,7 @@ export class EditorCore {
       this.remoteDirty = true;
       this.needsRender = true;
       this.scheduleCameraSettle();
+      this.scheduleBarSettle();
     }
     const rebuilt = this.spatial.update(this.pendingSpatial);
     if (this.cull(this.pendingSpatial.keys(), rebuilt)) this.needsRender = true;
@@ -605,6 +622,7 @@ export class EditorCore {
     this.cursorsAnimating = this.cursors.animating(time);
     this.scheduler.keepAlive('cursors', this.cursorsAnimating);
     this.updateTextResolution();
+    this.publishSelectionRect();
     if (this.sink.flushAssets()) this.needsRender = true;
 
     // Un frame sin cambios visibles (p. ej. el puntero se mueve sin cambiar el hover) no renderiza.
@@ -635,6 +653,46 @@ export class EditorCore {
       if (this.destroyed) return;
       this.sink.settleCamera(this.camera.state());
     }, CAMERA_SETTLE_MS);
+  }
+
+  private scheduleBarSettle(): void {
+    if (this.barTimer !== null) this.timers.clearTimeout(this.barTimer);
+    this.barTimer = this.timers.setTimeout(() => {
+      this.barTimer = null;
+      if (!this.destroyed) this.requestFrame();
+    }, SELECTION_BAR_SETTLE_MS);
+  }
+
+  // Solo se recalcula cuando cambia la selección, sus registros o la cámara, o al terminar lo que la ocultaba.
+  private publishSelectionRect(): void {
+    const ids = this.selection.get();
+    const state = this.controller.state;
+    const busy =
+      this.barTimer !== null ||
+      this.gesture !== null ||
+      this.marquee !== null ||
+      this.creating !== null ||
+      this.editingText.get() !== null ||
+      (state !== 'idle' && state !== 'pressing');
+    if (!ids.length || busy) {
+      this.barKey = null;
+      this.selectionScreenRect.set(null);
+      return;
+    }
+    const key = `${this.selectionVersion}:${this.recordsVersion}:${this.camera.version}`;
+    if (key === this.barKey) return;
+    this.barKey = key;
+    const frame = this.selectionFrame(ids);
+    if (!frame) {
+      this.selectionScreenRect.set(null);
+      return;
+    }
+    const corners = this.screenCorners(frame);
+    const xs = corners.map((p) => p.x);
+    const ys = corners.map((p) => p.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    this.selectionScreenRect.set({ x: roundPx(x), y: roundPx(y), width: roundPx(Math.max(...xs) - x), height: roundPx(Math.max(...ys) - y) });
   }
 
   // La resolución del texto sigue al zoom 200 ms después del último cambio, de 20 textos en 20 por frame.
@@ -2020,6 +2078,7 @@ export class EditorCore {
     this.detachBackend();
     if (this.textTimer !== null) this.timers.clearTimeout(this.textTimer);
     if (this.cameraTimer !== null) this.timers.clearTimeout(this.cameraTimer);
+    if (this.barTimer !== null) this.timers.clearTimeout(this.barTimer);
     if (this.watchdogTimer !== null) this.timers.clearTimeout(this.watchdogTimer);
     this.anim.destroy();
     this.scheduler.destroy();

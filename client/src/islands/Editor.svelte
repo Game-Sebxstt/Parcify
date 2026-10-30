@@ -15,6 +15,7 @@
     type NodeRecord,
     type PageRecord,
     type PointerKind,
+    type ScreenRect,
     type Tool,
     type UiCommand,
   } from '../engine/index.ts';
@@ -42,6 +43,7 @@
   import Present, { presentationSlides } from './editor/Present.svelte';
   import { downloadLocalCopy } from '../lib/local-copy.ts';
   import PropertiesPanel from './editor/PropertiesPanel.svelte';
+  import ContextBar from './editor/toolbar/ContextBar.svelte';
   import FloatingToolbar from './editor/toolbar/FloatingToolbar.svelte';
   import ZoomBar from './editor/toolbar/ZoomBar.svelte';
   import FileHeader from './editor/layout/FileHeader.svelte';
@@ -74,6 +76,8 @@
   let toolLocked = $state(false);
   // El motor parchea los registros en sitio: el panel recibe copias para que cada cambio sea un valor nuevo.
   let selection = $state.raw<readonly NodeRecord[]>([]);
+  // Caja en pantalla de la selección para la barra contextual (null mientras el motor la oculta).
+  let selectionRect = $state.raw<ScreenRect | null>(null);
   let history = $state({ canUndo: false, canRedo: false });
   let zoom = $state(1);
   let engineReadOnly = $state(true);
@@ -171,6 +175,14 @@
     engine?.setViewInsets(insets);
   });
 
+  // La barra contextual no pisa los paneles abiertos, las pastillas de arriba ni las barras de abajo.
+  const contextAvoid = $derived({
+    top: leftOpen && rightOpen ? 8 : 56,
+    left: leftEdge + 8,
+    right: rightEdge + 8,
+    bottom: bottomEdge + 12 + barsHeight + 8,
+  });
+
   let container = $state<HTMLDivElement | null>(null);
   // Canvas del motor montado (cada montaje crea el suyo, ver createEngineCanvas).
   let engineCanvas: HTMLCanvasElement | null = null;
@@ -179,6 +191,11 @@
   const MAX_IMAGES_AT_ONCE = 10;
   const IMAGE_STAGGER = 24;
   let engine: Engine | null = $state.raw(null);
+  // Bloqueado el nodo o uno de sus contenedores: la barra contextual solo ofrece «Más…».
+  const selectionLocked = $derived.by(() => {
+    const current = engine;
+    return current !== null && selection.length > 0 && current.core.anyLocked(selection.map((record) => record.id));
+  });
   let collab: CollabSession | null = null;
   let projectId = $state('');
   const cleanups: Array<() => void> = [];
@@ -347,7 +364,10 @@
         assets: canvasAssets,
         onDropFiles: (files, at) => void insertImages(files, at),
         clipboard: { source: { projectId, workspace: workspaceSlug }, copyAssets: (ids) => copyAssetsTo(projectId, ids) },
-        onContextMenu: (request) => (menu = request),
+        onContextMenu: (request) => {
+          menuTrigger = null;
+          menu = request;
+        },
         labels: { textEditor: m.editor_text_label() },
         wheelPref: wheelPreference,
         reducedMotion: motionReduced,
@@ -378,6 +398,7 @@
       created.state.tool.subscribe((value) => (tool = value)),
       created.state.toolLocked.subscribe((value) => (toolLocked = value)),
       created.state.selectionRecords.subscribe((value) => (selection = value.map((record) => ({ ...record })))),
+      created.core.selectionScreenRect.subscribe((value) => (selectionRect = value)),
       created.state.history.subscribe((value) => (history = value)),
       created.state.zoom.subscribe((value) => (zoom = value)),
       created.state.readOnly.subscribe((value) => (engineReadOnly = value)),
@@ -475,6 +496,43 @@
     imageInput?.click();
   }
 
+  // «Reemplazar…» de la barra contextual: otra imagen en el mismo nodo.
+  let replaceInput = $state<HTMLInputElement | null>(null);
+  let replaceTarget: string | null = null;
+
+  function pickReplacement(id: string) {
+    replaceTarget = id;
+    replaceInput?.click();
+  }
+
+  async function onReplacementPicked(event: Event & { currentTarget: HTMLInputElement }) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    const id = replaceTarget;
+    replaceTarget = null;
+    const target = engine;
+    if (!file || !id || !target || engineReadOnly) return;
+    showToast({ message: m.editor_image_uploading() });
+    try {
+      const asset = await uploadCanvasImage(file, projectId);
+      if (engine === target) target.commands.replaceImage(id, { assetId: asset.id, width: asset.width, height: asset.height });
+    } catch (error) {
+      showToast({ message: error instanceof ApiError ? error.message : m.editor_image_upload_error(), tone: 'error' });
+    }
+  }
+
+  // «Más…» de la barra contextual abre el menú contextual debajo del botón; «Pegar» pega en ese punto.
+  // Al cerrarse, el foco vuelve al botón que abrió el menú si sigue montado.
+  let menuTrigger: HTMLElement | null = null;
+
+  function openMoreMenu(at: { clientX: number; clientY: number }) {
+    if (!engine || !container) return;
+    menuTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const box = container.getBoundingClientRect();
+    const world = engine.core.camera.screenToWorld(at.clientX - box.left, at.clientY - box.top);
+    menu = { clientX: at.clientX, clientY: at.clientY, at: { x: world.x, y: world.y }, pointerType: 'mouse' };
+  }
+
   function onImagesPicked(event: Event & { currentTarget: HTMLInputElement }) {
     const files = [...(event.currentTarget.files ?? [])];
     event.currentTarget.value = '';
@@ -516,7 +574,11 @@
 
   function closeMenu(returnFocus: boolean) {
     menu = null;
-    if (returnFocus) container?.focus({ preventScroll: true });
+    const trigger = menuTrigger;
+    menuTrigger = null;
+    if (!returnFocus) return;
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    else container?.focus({ preventScroll: true });
   }
 
   function startPresenting() {
@@ -578,6 +640,7 @@
     engineCleanups = [];
     engine?.destroy();
     engine = null;
+    selectionRect = null;
     engineCanvas?.remove();
     engineCanvas = null;
     contextState = 'ok';
@@ -740,7 +803,8 @@
 {:else if phase === 'loading' || !collabState}
   <p class="grid h-dvh place-items-center text-sm text-ink-muted" role="status">{m.editor_loading()}</p>
 {:else}
-  <!-- Orden del DOM = orden de tabulación: panel izquierdo, lienzo, barras, línea de tiempo, panel derecho y ventanas.
+  <!-- Orden del DOM = orden de tabulación: panel izquierdo, lienzo, barra contextual, barras, línea de tiempo, panel
+       derecho y ventanas.
        La posición de cada pieza la da el CSS: el lienzo ocupa toda la ventana y lo demás flota encima. -->
   <div bind:this={root} class={['relative h-dvh overflow-hidden', inputKind === 'touch' ? 'touch-ui' : '']} data-ui={layout.ui}>
     {#snippet fileHeader(compact: boolean)}
@@ -830,6 +894,29 @@
     ></div>
     <CanvasHud restoring={contextState === 'lost'} />
     <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
+    <input
+      bind:this={replaceInput}
+      type="file"
+      accept={CANVAS_IMAGE_ACCEPT}
+      class="hidden"
+      tabindex="-1"
+      aria-hidden="true"
+      onchange={onReplacementPicked}
+      data-testid="replace-image-input"
+    />
+    {#if engine && container && selection.length > 0 && !hideUi && !engineReadOnly}
+      <ContextBar
+        {engine}
+        records={selection}
+        rect={selectionRect}
+        {container}
+        locked={selectionLocked}
+        avoid={contextAvoid}
+        onmore={openMoreMenu}
+        onreplaceimage={pickReplacement}
+        onescape={() => container?.focus({ preventScroll: true })}
+      />
+    {/if}
 
     {#if followed}
       <div aria-hidden="true" class="pointer-events-none absolute inset-0 border-2" style:border-color={followed.color}></div>

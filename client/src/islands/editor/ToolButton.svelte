@@ -9,6 +9,8 @@
     tip?: string | undefined;
     // Tecla que se muestra en el tooltip, p. ej. «R» o «Ctrl+Shift+K».
     kbd?: string | undefined;
+    // aria-keyshortcuts cuando no coincide con lo que se muestra («Control+G» frente a «Ctrl+G»).
+    ariaKeys?: string | undefined;
     pressed?: boolean;
     disabled?: boolean;
     // Candado en la esquina inferior derecha (herramienta bloqueada, §3.3).
@@ -31,6 +33,7 @@
     label,
     tip,
     kbd,
+    ariaKeys,
     pressed,
     disabled = false,
     locked = false,
@@ -64,7 +67,7 @@
       type="button"
       aria-label={label}
       aria-pressed={pressed}
-      aria-keyshortcuts={kbd}
+      aria-keyshortcuts={ariaKeys ?? kbd}
       {disabled}
       {tabindex}
       data-stop={stop}

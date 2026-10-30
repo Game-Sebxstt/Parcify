@@ -650,3 +650,65 @@ test('Ctrl+\\ oculta la interfaz, también con AltGr del teclado español, y Ctr
   await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'open');
   await expect(page.getByTestId('right-panel')).toHaveAttribute('data-state', 'open');
 });
+
+test('la barra contextual queda 12 px encima de la forma, baja si no cabe, no pisa la barra de herramientas y se oculta al arrastrar o desplazar', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const account = await createVerifiedAccount(page.request, `barra-contextual-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const bar = page.getByTestId('context-bar');
+  const gap = await canvasGap(page);
+
+  await canvas.focus();
+  await page.keyboard.press('r');
+  const from = { x: gap.x + gap.width / 2 - 80, y: gap.y + gap.height / 2 - 40 };
+  await drag(page, from, { x: from.x + 160, y: from.y + 80 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  await expect(bar).toBeVisible();
+  await expect(bar).toHaveAttribute('data-kind', 'shape');
+
+  // Esquinas de la caja en la página y caja de la barra.
+  const shapeBox = async () => {
+    const node = (await nodes(page))[0]!;
+    const a = await toPage(page, node.x, node.y);
+    const b = await toPage(page, node.x + node.w, node.y + node.h);
+    return { top: a.y, bottom: b.y, center: (a.x + b.x) / 2 };
+  };
+  const placed = async () => {
+    const box = (await bar.boundingBox())!;
+    return { top: box.y, bottom: box.y + box.height, center: box.x + box.width / 2, box };
+  };
+
+  await expect.poll(async () => Math.abs((await shapeBox()).top - 12 - (await placed()).bottom)).toBeLessThanOrEqual(1);
+  expect(Math.abs((await shapeBox()).center - (await placed()).center)).toBeLessThanOrEqual(1);
+  const tools = (await toolbar(page).boundingBox())!;
+  const own = (await placed()).box;
+  const overlaps = own.x < tools.x + tools.width && tools.x < own.x + own.width && own.y < tools.y + tools.height && tools.y < own.y + own.height;
+  expect(overlaps).toBe(false);
+
+  // Mientras se arrastra no está; al soltar vuelve.
+  const start = await shapeBox();
+  const grab = { x: start.center, y: (start.top + start.bottom) / 2 };
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x, grab.y - 30, { steps: 4 });
+  await expect(bar).toBeHidden();
+  // Pegada arriba (su borde superior a unos 20 px de la ventana): la barra va debajo.
+  await page.mouse.move(grab.x, grab.y - (start.top - 20), { steps: 6 });
+  await page.mouse.up();
+  await expect(bar).toBeVisible();
+  await expect.poll(async () => Math.abs((await placed()).top - ((await shapeBox()).bottom + 12))).toBeLessThanOrEqual(1);
+
+  // Diez eventos de rueda desplazan la vista: la barra se oculta y vuelve 150 ms después, otra vez junto a la forma.
+  await page.mouse.move(gap.x + gap.width / 2, gap.y + gap.height / 2);
+  for (let i = 0; i < 10; i++) await page.mouse.wheel(0, -12);
+  await expect(bar).toBeHidden();
+  await expect(bar).toBeVisible();
+  await expect.poll(async () => {
+    const shape = await shapeBox();
+    const now = await placed();
+    return Math.min(Math.abs(shape.top - 12 - now.bottom), Math.abs(now.top - shape.bottom - 12));
+  }).toBeLessThanOrEqual(1);
+});
