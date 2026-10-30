@@ -15,9 +15,25 @@
     width?: number;
     // Alto que tapan por abajo las barras flotantes (tablet): el contenido termina por encima.
     clearance?: number;
+    // Vista previa de versiones abierta: la pastilla queda por encima de la superposición.
+    raised?: boolean;
+    // Tamaño de la pastilla plegada en pantalla (0 sin pastilla).
+    pillWidth?: number;
+    pillHeight?: number;
   };
 
-  let { open, header, design, versions, hidden, width = $bindable(0), clearance = 0 }: Props = $props();
+  let {
+    open,
+    header,
+    design,
+    versions,
+    hidden,
+    width = $bindable(0),
+    clearance = 0,
+    raised = false,
+    pillWidth = $bindable(0),
+    pillHeight = $bindable(0),
+  }: Props = $props();
 
   const layout = getEditorLayout();
 </script>
@@ -58,7 +74,12 @@
 {#if !open && !hidden}
   <!-- Con las dos pastillas en una ventana estrecha, cada una se queda con su mitad y esta desplaza sus botones. -->
   <div
-    class="scroll-thin absolute top-2 right-2 z-(--z-panel) max-w-[calc(50%-0.75rem)] touch-pan-x touch-pan-y overflow-x-auto overflow-y-hidden rounded-panel border border-edge/40 bg-surface-2 text-ui shadow-float"
+    bind:offsetWidth={pillWidth}
+    bind:offsetHeight={pillHeight}
+    class={[
+      'scroll-thin absolute top-2 right-2 max-w-[calc(50%-0.75rem)] touch-pan-x touch-pan-y overflow-x-auto overflow-y-hidden rounded-panel border border-edge/40 bg-surface-2 text-ui shadow-float',
+      raised ? 'z-(--z-stage-pill)' : 'z-(--z-panel)',
+    ]}
     data-testid="right-panel-pill"
   >
     {@render header(true)}

@@ -9,6 +9,7 @@ type Node = { id: string; type: string; x: number; y: number; w: number; h: numb
 
 const nodes = (page: Page) => page.evaluate(() => window.__parcifyTest!.nodes() as unknown as Node[]);
 const panel = (page: Page) => page.getByTestId('versions-panel');
+const overlay = (page: Page) => page.getByTestId('version-overlay');
 const canvasArea = (page: Page) => page.getByRole('application', { name: 'Lienzo del proyecto' });
 const toPage = (page: Page, x: number, y: number) => page.evaluate(([wx, wy]) => window.__parcifyTest!.toPage(wx!, wy!), [x, y]);
 const pixelAt = (page: Page, point: { x: number; y: number }) => page.evaluate(([x, y]) => window.__parcifyTest!.pixelAt(x!, y!), [point.x, point.y]);
@@ -123,16 +124,18 @@ test('A crea una versión, cambia el lienzo y la restaura; B ve el cambio sin re
   await drawRect(page, 220);
   await expect.poll(async () => (await nodes(bea)).length).toBe(2);
 
-  // Vista previa de solo lectura con el estado de la versión.
+  // Vista previa de solo lectura con el estado de la versión, en la superposición sobre el lienzo.
   await named.getByRole('button', { name: 'Vista previa de Un rectángulo' }).click();
-  const previewDialog = page.getByRole('dialog', { name: 'Un rectángulo' });
-  await expect(previewDialog.getByTestId('version-preview')).toHaveAttribute('data-state', 'ready');
+  const preview = overlay(page);
+  await expect(preview).toContainText('Viendo: Un rectángulo');
+  await expect(preview.getByTestId('version-preview')).toHaveAttribute('data-state', 'ready');
 
   // Restaurar desde la vista previa, con confirmación.
-  await previewDialog.getByRole('button', { name: 'Restaurar', exact: true }).click();
+  await preview.getByRole('button', { name: 'Restaurar', exact: true }).click();
   const confirm = page.getByRole('dialog', { name: '¿Restaurar esta versión?' });
   await confirm.getByRole('button', { name: 'Restaurar', exact: true }).click();
   await expect(page.getByText('Versión restaurada.')).toBeVisible();
+  await expect(preview).toHaveCount(0);
 
   await expect.poll(async () => (await nodes(bea)).map((node) => node.id)).toEqual([kept]);
   await expect.poll(async () => (await nodes(page)).map((node) => node.id)).toEqual([kept]);
@@ -252,14 +255,157 @@ test('abrir y cerrar 5 vistas previas no cambia el lienzo principal con contenid
 
   for (let round = 1; round <= 5; round++) {
     await item.getByRole('button', { name: 'Vista previa de Con caché' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Con caché' });
-    await expect(dialog.getByTestId('version-preview')).toHaveAttribute('data-state', 'ready');
+    await expect(overlay(page).getByTestId('version-preview')).toHaveAttribute('data-state', 'ready');
+    // El foco sigue en «Vista previa» de la lista: Esc cierra la superposición y no la vista de versiones.
     await page.keyboard.press('Escape');
-    await expect(dialog).toBeHidden();
+    await expect(overlay(page)).toHaveCount(0);
+    await expect(panel(page)).toBeVisible();
   }
 
   await repaint(page);
   expect(await page.evaluate(() => window.__parcifyTest!.cachedContainers())).toBeGreaterThan(0);
   expect(await pixelAt(page, cached)).toEqual(before.render);
   expect(samePixel(await screenPixel(page, cached), before.screen)).toBe(true);
+
+  // 5 cambios de versión con la superposición abierta, y luego cerrar: el lienzo principal sigue igual.
+  await panel(page).getByRole('button', { name: 'Crear versión con nombre' }).click();
+  const otherDialog = page.getByRole('dialog', { name: 'Crear versión con nombre' });
+  await otherDialog.getByLabel('Nombre de la versión').fill('Otra');
+  await otherDialog.getByRole('button', { name: 'Crear versión' }).click();
+  const other = panel(page).getByTestId('version-item').filter({ hasText: 'Otra' });
+  await expect(other).toBeVisible();
+  await item.getByRole('button', { name: 'Vista previa de Con caché' }).click();
+  await expect(previewArea(page)).toHaveAttribute('data-state', 'ready');
+  for (let round = 1; round <= 5; round++) {
+    const [target, name] = round % 2 === 1 ? [other, 'Otra'] : [item, 'Con caché'];
+    await target.getByRole('button', { name: `Vista previa de ${name}` }).click();
+    await expect(overlay(page).locator('h2')).toContainText(name);
+    await expect(previewArea(page)).toHaveAttribute('data-state', 'ready');
+  }
+  await page.keyboard.press('Escape');
+  await expect(overlay(page)).toHaveCount(0);
+
+  await repaint(page);
+  expect(await page.evaluate(() => window.__parcifyTest!.cachedContainers())).toBeGreaterThan(0);
+  expect(await pixelAt(page, cached)).toEqual(before.render);
+  expect(samePixel(await screenPixel(page, cached), before.screen)).toBe(true);
+});
+
+// DEFAULT_BACKGROUND de shared/document/init.ts (#141416).
+const BACKGROUND = [0x14, 0x14, 0x16];
+const previewArea = (page: Page) => overlay(page).getByTestId('version-preview');
+const previewRect = (page: Page) => page.evaluate(() => window.__parcifyTest!.previewPageRect());
+const previewPixel = (page: Page, point: { x: number; y: number }) =>
+  page.evaluate(([x, y]) => window.__parcifyTest!.previewPixelAt(x!, y!), [point.x, point.y]);
+
+async function moveSelected(page: Page, x: number, y: number) {
+  for (const [id, value] of [['props-x', x], ['props-y', y]] as const) {
+    const field = page.getByTestId(id);
+    await field.fill(String(value));
+    await field.press('Enter');
+  }
+  await expect.poll(async () => (await nodes(page)).map((node) => [node.x, node.y])).toEqual([[x, y]]);
+}
+
+async function saveNamedVersion(page: Page, name: string) {
+  await panel(page).getByRole('button', { name: 'Crear versión con nombre' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Crear versión con nombre' });
+  await dialog.getByLabel('Nombre de la versión').fill(name);
+  await dialog.getByRole('button', { name: 'Crear versión' }).click();
+  await expect(panel(page).getByTestId('version-item').filter({ hasText: name })).toBeVisible();
+}
+
+test('la vista previa encaja el contenido lejano con el fondo real, cambia 5 veces de versión con un canvas nuevo y Restaurar pinta lo restaurado', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const ana = await createVerifiedAccount(page.request, `superposicion-${test.info().project.name}`, 'Ana Superposición');
+  const projectId = await createProject(page.request, ana.workspaceSlug, 'Superposición');
+  await openEditor(page, projectId);
+
+  // Dos versiones con el único rectángulo lejos del origen, en sitios distintos.
+  await drawRect(page, 0);
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  await moveSelected(page, 5000, 4000);
+  await page.getByTestId('versions-toggle').click();
+  await saveNamedVersion(page, 'Lejos');
+  await canvasArea(page).focus();
+  await page.keyboard.press('Control+a');
+  await page.getByTestId('versions-toggle').click();
+  await moveSelected(page, -3000, 2500);
+  await page.getByTestId('versions-toggle').click();
+  await saveNamedVersion(page, 'Izquierda');
+
+  // Con la superposición abierta se elige otra versión de la lista 5 veces (CA-9.1, CA-9.2 y CA-10.1).
+  for (const name of ['Lejos', 'Izquierda', 'Lejos', 'Izquierda', 'Lejos']) {
+    await panel(page).getByTestId('version-item').filter({ hasText: name }).getByRole('button', { name: `Vista previa de ${name}` }).click();
+    await expect(overlay(page)).toContainText(`Viendo: ${name}`);
+    await expect(previewArea(page)).toHaveAttribute('data-state', 'ready');
+    const box = (await previewArea(page).boundingBox())!;
+
+    // Todo el contenido queda dentro y centrado.
+    await expect
+      .poll(async () => {
+        const rect = await previewRect(page);
+        if (!rect) return null;
+        const inside = rect.left >= box.x && rect.top >= box.y && rect.right <= box.x + box.width && rect.bottom <= box.y + box.height;
+        const dx = Math.abs((rect.left + rect.right) / 2 - (box.x + box.width / 2));
+        const dy = Math.abs((rect.top + rect.bottom) / 2 - (box.y + box.height / 2));
+        return inside && dx <= 2 && dy <= 2;
+      })
+      .toBe(true);
+
+    // Un canvas nuevo cada vez, y solo uno en la vista previa.
+    const canvas = await page.evaluate(() => {
+      const holder = window as unknown as { __previewCanvas?: Element | null };
+      const found = document.querySelectorAll('[data-testid="version-preview"] canvas');
+      const same = holder.__previewCanvas === found[0];
+      holder.__previewCanvas = found[0] ?? null;
+      return { count: found.length, same };
+    });
+    expect(canvas).toEqual({ count: 1, same: false });
+
+    // Una esquina vacía tiene el fondo del documento y el centro del contenido, el rectángulo.
+    await expect.poll(async () => samePixel(await previewPixel(page, { x: box.x + 12, y: box.y + 12 }), BACKGROUND)).toBe(true);
+    const rect = (await previewRect(page))!;
+    const shape = await previewPixel(page, { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 });
+    expect(shape).not.toBeNull();
+    expect(samePixel(shape, BACKGROUND, 10)).toBe(false);
+  }
+
+  // La superposición deja libre el panel derecho con la lista.
+  const overlayBox = (await overlay(page).boundingBox())!;
+  const rightBox = (await page.getByTestId('right-panel').boundingBox())!;
+  expect(overlayBox.x + overlayBox.width).toBeLessThanOrEqual(rightBox.x - 7);
+  await expect(panel(page).getByTestId('version-item').first()).toBeVisible();
+
+  // Dos dedos del touchpad (rueda sin Ctrl) desplazan la vista previa y no el editor de debajo.
+  const box = (await previewArea(page).boundingBox())!;
+  const editorBefore = await page.evaluate(() => window.__parcifyTest!.camera('editor'));
+  const previewBefore = await page.evaluate(() => window.__parcifyTest!.camera('preview'));
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 120);
+  await expect.poll(async () => (await page.evaluate(() => window.__parcifyTest!.camera('preview')))?.y).not.toBe(previewBefore?.y);
+  expect(await page.evaluate(() => window.__parcifyTest!.camera('editor'))).toEqual(editorBefore);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+  // Restaurar desde la superposición: el lienzo principal pinta el rectángulo de esa versión.
+  await overlay(page).getByRole('button', { name: 'Restaurar', exact: true }).click();
+  await page.getByRole('dialog', { name: '¿Restaurar esta versión?' }).getByRole('button', { name: 'Restaurar', exact: true }).click();
+  await expect(page.getByText('Versión restaurada.')).toBeVisible();
+  await expect(overlay(page)).toHaveCount(0);
+  await page.waitForFunction(() => window.__parcifyTest?.status() === 'connected' && window.__parcifyTest.synced());
+  await expect.poll(async () => (await nodes(page)).map((node) => [node.x, node.y])).toEqual([[5000, 4000]]);
+  await canvasArea(page).focus();
+  await page.keyboard.press('Shift+1');
+  await expect
+    .poll(async () => {
+      await repaint(page);
+      const node = (await nodes(page))[0];
+      if (!node) return false;
+      const pixel = await pixelAt(page, await centerOf(page, node));
+      return pixel !== null && !samePixel(pixel, BACKGROUND, 10);
+    })
+    .toBe(true);
+  expect(await page.evaluate(() => document.querySelectorAll('[role=application] canvas').length)).toBe(1);
 });

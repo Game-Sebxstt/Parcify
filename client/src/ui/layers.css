@@ -7,6 +7,8 @@
   --z-window: 40;
   --z-sheet: 45;
   --z-stage: 48;
+  /* Pastillas de los paneles plegados mientras se ve una versión: encima de la superposición, dentro de su barra. */
+  --z-stage-pill: 49;
   --z-popover: 50;
   --z-dialog: 60;
   --z-toast: 70;

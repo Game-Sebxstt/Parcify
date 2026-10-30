@@ -13,12 +13,13 @@
     busy?: boolean;
     children?: Snippet;
     onconfirm: () => void;
+    onCloseAutoFocus?: (event: Event) => void;
   };
 
-  let { open = $bindable(false), title, description, confirmLabel, danger = false, busy = false, children, onconfirm }: Props = $props();
+  let { open = $bindable(false), title, description, confirmLabel, danger = false, busy = false, children, onconfirm, onCloseAutoFocus }: Props = $props();
 </script>
 
-<Dialog bind:open {title} {description}>
+<Dialog bind:open {title} {description} {onCloseAutoFocus}>
   {@render children?.()}
   <div class="mt-1 flex justify-end gap-2">
     <Button variant="ghost" onclick={() => (open = false)}>{m.common_cancel()}</Button>

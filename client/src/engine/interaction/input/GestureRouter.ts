@@ -22,7 +22,8 @@ type Mode = 'idle' | 'single' | 'multi' | 'swallow';
 export type FrameLoop = { request(run: (time: number) => void): number; cancel(handle: number): void };
 
 export type GestureRouterOptions = {
-  // Incrustado (la landing): sin dos dedos ni pulsación larga; cada puntero va tal cual al controlador.
+  // Incrustado en una página que se desplaza (la landing): sin dos dedos ni pulsación larga; cada puntero va tal cual
+  // al controlador.
   embedded?: boolean;
   // Con movimiento reducido no hay inercia.
   reducedMotion?: () => boolean;

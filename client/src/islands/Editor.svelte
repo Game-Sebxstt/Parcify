@@ -57,7 +57,10 @@
   import ShortcutsDialog from './editor/layout/ShortcutsDialog.svelte';
   import WheelDialog from './editor/layout/WheelDialog.svelte';
   import { DEFAULT_UI_KEYS, loadUiKeys, type UiKeys } from './editor/layout/ui-keys.ts';
+  import VersionOverlay from './editor/VersionOverlay.svelte';
   import VersionsPanel from './editor/VersionsPanel.svelte';
+  import { setVersionViewer, VersionViewer } from './editor/versions/version-viewer.svelte.ts';
+  import ConfirmDialog from './dashboard/ConfirmDialog.svelte';
   import Tooltip from '../ui/Tooltip.svelte';
   import { EditorLayout, setEditorLayout } from '../lib/editor-layout.svelte.ts';
   import { Viewport } from '../lib/viewport.svelte.ts';
@@ -153,6 +156,14 @@
   // En tablet y móvil los paneles empiezan plegados si este navegador no tiene una maqueta guardada.
   const layout = new EditorLayout({ compact: viewport.mode !== 'desktop' });
   setEditorLayout(layout);
+  // Vista previa de versiones: la abre el panel de versiones y se pinta en la superposición sobre el lienzo.
+  const viewer = new VersionViewer({
+    projectId: () => projectId,
+    user: () => ({ id: collab?.user.id ?? '', name: collab?.user.name ?? '', color: collab?.user.color ?? '#888888', avatarAssetId: null }),
+    activePage: () => activePage,
+    fallbackFocus: () => container,
+  });
+  setVersionViewer(viewer);
   let uiKeys = $state.raw<UiKeys>(DEFAULT_UI_KEYS);
   let shortcutsOpen = $state(false);
   let wheelOpen = $state(false);
@@ -160,6 +171,10 @@
   let inputKind = $state<PointerKind>('mouse');
   let leftWidth = $state(0);
   let rightWidth = $state(0);
+  let leftPillWidth = $state(0);
+  let leftPillHeight = $state(0);
+  let rightPillWidth = $state(0);
+  let rightPillHeight = $state(0);
   let timelineHeight = $state(0);
 
   const timelineOpen = $derived(layout.timeline.open);
@@ -172,6 +187,17 @@
   // Borde interior de cada panel abierto, en px desde el borde de la ventana (8 de margen más su ancho).
   const leftEdge = $derived(leftOpen ? 8 + (leftWidth || layout.leftWidth) : 0);
   const rightEdge = $derived(rightOpen ? 8 + (rightWidth || layout.rightWidth) : 0);
+  // Vista previa de versiones en escritorio y tablet: empieza a 8 px de arriba y lo que queda arriba en los bordes
+  // (pastillas de los paneles plegados o «Mostrar la interfaz») sube por encima de ella, dentro de su barra.
+  const overlayDocked = $derived(viewer.viewing !== null && !presenting && viewport.mode !== 'mobile');
+  const SHOW_UI_SIZE = 32;
+  const overlayPills = $derived.by(() => {
+    const showUi = layout.ui === 'hidden' && !presenting;
+    const left = !hideUi && !leftOpen ? leftPillWidth : 0;
+    const right = !hideUi && !rightOpen ? rightPillWidth : showUi ? SHOW_UI_SIZE : 0;
+    const height = Math.max(left ? leftPillHeight : 0, !hideUi && !rightOpen ? rightPillHeight : showUi ? SHOW_UI_SIZE : 0);
+    return { left, right, height };
+  });
   const bottomEdge = $derived(!hideUi && timelineOpen && Timeline && timelineHeight ? 8 + timelineHeight : 0);
   // En tablet los paneles abiertos flotan sin reservar sitio: abrirlos no cambia el encuadre ni mueve las barras de
   // abajo, que quedan por encima de ellos.
@@ -356,7 +382,12 @@
     await mountEngine();
     if (import.meta.env.PUBLIC_TEST_HOOKS === '1') {
       const { installTestHooks } = await import('./editor/test-hooks.ts');
-      installTestHooks(() => engine, () => collab, () => container);
+      installTestHooks(
+        () => engine,
+        () => collab,
+        () => container,
+        () => viewer.preview?.engine ?? null,
+      );
     }
   }
 
@@ -660,6 +691,7 @@
       return;
     }
     menu = null;
+    viewer.close();
     presenting = true;
   }
 
@@ -701,6 +733,7 @@
   }
 
   function destroyEngine() {
+    viewer.close();
     menu = null;
     exportOpen = false;
     publishOpen = false;
@@ -792,7 +825,7 @@
     }
     if (event.shiftKey && (key === 'k' || event.code === 'KeyK')) {
       const target = event.target as HTMLElement | null;
-      if (target?.isContentEditable || target?.closest('input, textarea, select, [role="dialog"]')) return;
+      if (target?.isContentEditable || target?.closest('input, textarea, select, [role="dialog"], [data-own-stage]')) return;
       event.preventDefault();
       if (!engineReadOnly) pickImages();
     }
@@ -961,13 +994,24 @@
           {projectId}
           open={versionsOpen}
           canEdit={!engineReadOnly}
-          user={{ id: chatSession.user.id, name: chatSession.user.name, color: chatSession.user.color, avatarAssetId: null }}
           onclose={() => (layout.rightView = 'design')}
         />
       {/if}
     {/snippet}
 
-    <LeftPanel bind:this={leftPanel} bind:width={leftWidth} {engine} readOnly={engineReadOnly} open={leftOpen} hidden={hideUi} clearance={panelClearance} header={fileHeader} />
+    <LeftPanel
+      bind:this={leftPanel}
+      bind:width={leftWidth}
+      bind:pillWidth={leftPillWidth}
+      bind:pillHeight={leftPillHeight}
+      {engine}
+      readOnly={engineReadOnly}
+      open={leftOpen}
+      hidden={hideUi}
+      clearance={panelClearance}
+      header={fileHeader}
+      raised={overlayDocked}
+    />
 
     <input bind:this={imageInput} type="file" accept={CANVAS_IMAGE_ACCEPT} multiple class="hidden" tabindex="-1" aria-hidden="true" onchange={onImagesPicked} data-testid="image-input" />
     <!-- El lienzo recibe el foco para los atajos de teclado. -->
@@ -1157,7 +1201,18 @@
       </div>
     {/if}
 
-    <RightPanel bind:width={rightWidth} open={rightOpen} hidden={hideUi} clearance={panelClearance} header={sessionBar} {design} versions={versionsView} />
+    <RightPanel
+      bind:width={rightWidth}
+      bind:pillWidth={rightPillWidth}
+      bind:pillHeight={rightPillHeight}
+      open={rightOpen}
+      hidden={hideUi}
+      clearance={panelClearance}
+      header={sessionBar}
+      {design}
+      versions={versionsView}
+      raised={overlayDocked}
+    />
 
     <!-- Galería, chat e IA flotan a la izquierda del panel derecho hasta que tengan su ventana propia. -->
     <div
@@ -1216,6 +1271,19 @@
       {/if}
     </div>
 
+    {#if viewer.viewing && !presenting}
+      <!-- Tapa el hueco del lienzo y sus barras sin dejar franjas del lienzo vivo; las pastillas de los paneles plegados
+           quedan encima, dentro de su barra. -->
+      <VersionOverlay
+        canEdit={!engineReadOnly}
+        left={leftEdge + 8}
+        right={rightEdge + 8}
+        top={8}
+        pills={overlayPills}
+        fullscreen={viewport.mode === 'mobile'}
+      />
+    {/if}
+
     {#if presenting && engine && root}
       <Present bind:this={presenter} {engine} host={root} onclose={stopPresenting} />
     {/if}
@@ -1229,7 +1297,10 @@
             aria-label={m.editor_show_ui()}
             aria-keyshortcuts={uiKeys.hideAria}
             onclick={showInterface}
-            class="absolute top-2 right-2 z-(--z-toolbar) inline-flex size-8 cursor-pointer items-center justify-center rounded-panel border border-edge/40 bg-surface-2 text-ink-muted shadow-float transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink"
+            class={[
+              'absolute top-2 right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-panel border border-edge/40 bg-surface-2 text-ink-muted shadow-float transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink',
+              overlayDocked ? 'z-(--z-stage-pill)' : 'z-(--z-toolbar)',
+            ]}
             data-testid="show-ui"
           >
             <Eye size={16} aria-hidden="true" />
@@ -1255,6 +1326,17 @@
   {#if engine}
     <ExportDialog bind:open={exportOpen} {engine} {projectId} {projectName} />
   {/if}
+  <ConfirmDialog
+    bind:open={() => viewer.confirming !== null, (value) => {
+      if (!value) viewer.confirming = null;
+    }}
+    title={m.editor_versions_restore_title()}
+    description={m.editor_versions_restore_body()}
+    confirmLabel={m.editor_versions_restore()}
+    busy={viewer.restoreBusy}
+    onconfirm={() => void viewer.restore()}
+    onCloseAutoFocus={(event) => viewer.confirmCloseFocus(event)}
+  />
   <ShortcutsDialog bind:open={shortcutsOpen} {uiKeys} />
   <WheelDialog bind:open={wheelOpen} />
   {#if shareMounted && canShare}

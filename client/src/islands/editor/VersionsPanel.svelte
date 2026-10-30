@@ -3,31 +3,29 @@
   import Eye from '@lucide/svelte/icons/eye';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
-  import { tick, untrack } from 'svelte';
-  import type { EngineUser } from '../../engine/index.ts';
+  import { untrack } from 'svelte';
   import { ApiError } from '../../lib/api.ts';
-  import { canvasAssets } from '../../lib/canvas-images.ts';
   import { formatDate } from '../../lib/format.ts';
-  import { createVersion, fetchVersionState, listVersions, restoreVersion } from '../../lib/versions.ts';
+  import { createVersion, listVersions } from '../../lib/versions.ts';
   import { m } from '../../paraglide/messages.js';
   import type { VersionDto } from '../../shared/api/versions.js';
   import Button from '../../ui/Button.svelte';
-  import Dialog from '../../ui/Dialog.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import Tooltip from '../../ui/Tooltip.svelte';
-  import ConfirmDialog from '../dashboard/ConfirmDialog.svelte';
   import NameDialog from '../dashboard/NameDialog.svelte';
-  import type { VersionPreview } from './version-preview.ts';
+  import { getVersionViewer, versionLabel } from './versions/version-viewer.svelte.ts';
 
   type Props = {
     projectId: string;
     open: boolean;
     canEdit: boolean;
-    user: EngineUser;
     onclose: () => void;
   };
 
-  let { projectId, open, canEdit, user, onclose }: Props = $props();
+  let { projectId, open, canEdit, onclose }: Props = $props();
+
+  // La vista previa y la confirmación de Restaurar viven en el editor: sobreviven a que se desmonte este panel.
+  const viewer = getVersionViewer();
 
   const uid = $props.id();
   // Un 409 DOCUMENT_RELOADED se reintenta una vez cuando el documento ya se recargó.
@@ -39,33 +37,12 @@
   let loadingMore = $state(false);
   let saving = $state(false);
   let nameOpen = $state(false);
-  let restoring = $state<VersionDto | null>(null);
-  let confirmOpen = $state(false);
-  let restoreBusy = $state(false);
-  let previewing = $state<VersionDto | null>(null);
-  let previewOpen = $state(false);
-  let previewPhase = $state<'loading' | 'ready' | 'error'>('loading');
-  let previewContainer = $state<HTMLDivElement | null>(null);
-  let preview: VersionPreview | null = null;
-  let previewRun = 0;
 
-  // Se recarga cada vez que se abre: otras personas también crean y restauran versiones.
+  // Se recarga cada vez que se abre y tras cada restauración: otras personas también crean y restauran versiones.
   $effect(() => {
+    void viewer.restored;
     if (open) untrack(() => void load());
   });
-
-  $effect(() => {
-    if (!previewOpen) untrack(closePreview);
-  });
-
-  $effect(() => () => closePreview());
-
-  function labelOf(version: VersionDto): string {
-    if (version.name) return version.name;
-    if (version.kind === 'auto') return m.editor_versions_kind_auto();
-    if (version.kind === 'restore_point') return m.editor_versions_kind_restore_point();
-    return m.editor_versions_kind_manual();
-  }
 
   async function load() {
     phase = versions.length ? phase : 'loading';
@@ -121,76 +98,15 @@
     if (error) showToast({ message: error, tone: 'error' });
   }
 
-  function askRestore(version: VersionDto) {
-    restoring = version;
-    confirmOpen = true;
-  }
-
-  async function restore() {
-    const version = restoring;
-    if (!version) return;
-    restoreBusy = true;
-    try {
-      await restoreVersion(projectId, version.id);
-      confirmOpen = false;
-      previewOpen = false;
-      showToast({ message: m.editor_versions_restored() });
-      void load();
-    } catch (error) {
-      const message =
-        error instanceof ApiError && error.code !== 'COLLAB_UNAVAILABLE' && error.code !== 'INTERNAL'
-          ? error.message
-          : m.editor_versions_restore_error();
-      showToast({ message, tone: 'error' });
-    } finally {
-      restoreBusy = false;
-    }
-  }
-
-  async function openPreview(version: VersionDto) {
-    closePreview();
-    const run = ++previewRun;
-    previewing = version;
-    previewPhase = 'loading';
-    previewOpen = true;
-    try {
-      const [state, module] = await Promise.all([fetchVersionState(projectId, version.id), import('./version-preview.ts')]);
-      await tick();
-      if (run !== previewRun || !previewContainer) return;
-      const mounted = await module.mountVersionPreview({
-        container: previewContainer,
-        state,
-        user,
-        assets: canvasAssets,
-        label: m.editor_text_label(),
-      });
-      if (run !== previewRun) {
-        mounted.destroy();
-        return;
-      }
-      preview = mounted;
-      previewPhase = 'ready';
-    } catch {
-      if (run === previewRun) previewPhase = 'error';
-    }
-  }
-
-  // Dos diálogos apilados no se pueden usar: la confirmación sustituye a la vista previa.
-  function restoreFromPreview() {
-    const version = previewing;
-    if (!version) return;
-    previewOpen = false;
-    askRestore(version);
-  }
-
-  function closePreview() {
-    previewRun++;
-    preview?.destroy();
-    preview = null;
-  }
-
+  // Con una vista previa abierta, el primer Esc la cierra; el siguiente vuelve a Diseño.
   function onPanelKey(event: KeyboardEvent) {
-    if (event.key === 'Escape' && !event.defaultPrevented) onclose();
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (viewer.viewing) {
+      event.preventDefault();
+      viewer.close(true);
+      return;
+    }
+    onclose();
   }
 </script>
 
@@ -246,8 +162,14 @@
       <!-- Línea de tiempo: de la más reciente a la más antigua. -->
       <ol aria-labelledby="{uid}-title" class="relative ml-3 border-l border-petrol">
         {#each versions as version (version.id)}
-          {@const label = labelOf(version)}
-          <li class="group relative py-1.5 pr-1 pl-3" data-testid="version-item" data-version-id={version.id}>
+          {@const label = versionLabel(version)}
+          {@const viewing = viewer.viewing?.id === version.id}
+          <li
+            class="group relative py-1.5 pr-1 pl-3"
+            aria-current={viewing ? 'true' : undefined}
+            data-testid="version-item"
+            data-version-id={version.id}
+          >
             <span
               aria-hidden="true"
               class={[
@@ -255,7 +177,12 @@
                 version.kind === 'manual' ? 'bg-coral' : version.kind === 'restore_point' ? 'bg-sage' : 'bg-ink-muted',
               ].join(' ')}
             ></span>
-            <div class="rounded-panel px-2 py-1.5 group-hover:bg-surface-2 group-focus-within:bg-surface-2">
+            <div
+              class={[
+                'rounded-panel px-2 py-1.5 group-hover:bg-surface-2 group-focus-within:bg-surface-2',
+                viewing ? 'bg-surface-2 ring-1 ring-coral/60' : '',
+              ]}
+            >
               <p class={['truncate', version.kind === 'manual' ? 'font-semibold' : 'text-ink-muted'].join(' ')}>{label}</p>
               <p class="truncate text-xs text-ink-muted">
                 <time datetime={version.createdAt}>{formatDate(version.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</time>
@@ -267,8 +194,8 @@
                 <button
                   type="button"
                   aria-label={m.editor_versions_preview_of({ name: label })}
-                  onclick={() => void openPreview(version)}
-                  class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-ink-muted hover:bg-petrol hover:text-ink"
+                  onclick={() => viewer.open(version)}
+                  class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap text-ink-muted hover:bg-petrol hover:text-ink"
                 >
                   <Eye size={13} aria-hidden="true" />
                   {m.editor_versions_preview()}
@@ -277,8 +204,8 @@
                   <button
                     type="button"
                     aria-label={m.editor_versions_restore_of({ name: label })}
-                    onclick={() => askRestore(version)}
-                    class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-ink-muted hover:bg-petrol hover:text-ink"
+                    onclick={() => viewer.askRestore(version)}
+                    class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap text-ink-muted hover:bg-petrol hover:text-ink"
                   >
                     <RotateCcw size={13} aria-hidden="true" />
                     {m.editor_versions_restore()}
@@ -313,52 +240,3 @@
   primary
   onsubmit={(name) => create(name)}
 />
-
-<ConfirmDialog
-  bind:open={confirmOpen}
-  title={m.editor_versions_restore_title()}
-  description={m.editor_versions_restore_body()}
-  confirmLabel={m.editor_versions_restore()}
-  busy={restoreBusy}
-  onconfirm={() => void restore()}
-/>
-
-<Dialog bind:open={previewOpen} title={previewing ? labelOf(previewing) : m.editor_versions_preview_title()} size="lg">
-  <div class="flex flex-col gap-4">
-    <div class="relative h-[min(60dvh,32rem)] overflow-hidden rounded-panel bg-ground">
-      <div
-        bind:this={previewContainer}
-        role="img"
-        aria-label={m.editor_versions_preview_canvas()}
-        class="absolute inset-0"
-        data-testid="version-preview"
-        data-state={previewPhase}
-      ></div>
-      {#if previewPhase === 'loading'}
-        <p class="absolute inset-0 grid place-items-center text-ink-muted" role="status">{m.editor_versions_preview_loading()}</p>
-      {:else if previewPhase === 'error'}
-        <div class="absolute inset-0 flex flex-col items-center justify-center gap-3" role="alert">
-          <p class="text-ink-muted">{m.editor_versions_preview_error()}</p>
-          {#if previewing}
-            {@const version = previewing}
-            <Button variant="secondary" size="sm" onclick={() => void openPreview(version)}>{m.common_retry()}</Button>
-          {/if}
-        </div>
-      {/if}
-    </div>
-    {#if previewing}
-      <div class="flex items-center justify-between gap-3">
-        <p class="text-sm text-ink-muted">
-          <time datetime={previewing.createdAt}>{formatDate(previewing.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</time>
-          · {m.editor_versions_nodes({ count: previewing.nodeCount })}
-        </p>
-        {#if canEdit}
-          <Button variant="primary" size="sm" onclick={() => restoreFromPreview()}>
-            <RotateCcw size={14} aria-hidden="true" />
-            {m.editor_versions_restore()}
-          </Button>
-        {/if}
-      </div>
-    {/if}
-  </div>
-</Dialog>

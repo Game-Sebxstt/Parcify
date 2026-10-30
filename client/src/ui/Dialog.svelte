@@ -12,11 +12,13 @@
     trigger?: Snippet<[Record<string, unknown>]>;
     children: Snippet;
     onOpenChange?: (open: boolean) => void;
+    // Al cerrarse; con preventDefault, el foco no vuelve al elemento que tenía antes de abrirse.
+    onCloseAutoFocus?: (event: Event) => void;
     // lg: para contenido ancho, como la vista previa de una imagen.
     size?: 'md' | 'lg';
   };
 
-  let { open = $bindable(false), title, description, trigger, children, onOpenChange, size = 'md' }: Props = $props();
+  let { open = $bindable(false), title, description, trigger, children, onOpenChange, onCloseAutoFocus, size = 'md' }: Props = $props();
 </script>
 
 <Dialog.Root bind:open {onOpenChange}>
@@ -30,6 +32,7 @@
   <Dialog.Portal>
     <Dialog.Overlay class="fixed inset-0 z-40 bg-ground/70" />
     <Dialog.Content
+      {onCloseAutoFocus}
       class={[
         // En móvil ocupa el ancho con 16 px de margen; si no cabe en alto, el contenido hace scroll dentro.
         'fixed top-1/2 left-1/2 z-50 max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 overflow-x-hidden overflow-y-auto scroll-thin rounded-panel bg-surface-1 p-5 text-ink shadow-float sm:p-6',

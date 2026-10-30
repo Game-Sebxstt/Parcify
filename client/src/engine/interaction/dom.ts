@@ -38,6 +38,9 @@ export const OWN_KEYS_ATTR = 'data-own-keys';
 // Las zonas que gestionan su propia rueda (cada lienzo, las pistas de la línea de tiempo) llevan este atributo: fuera de
 // ellas, el editor anula Ctrl/⌘+rueda para que el pellizco no haga zoom de la página.
 export const OWN_WHEEL_ATTR = 'data-own-wheel';
+// Superposiciones que tapan el lienzo con otro lienzo (la vista previa de una versión): con el foco dentro, el teclado
+// y el portapapeles no llegan al editor de debajo.
+export const OWN_STAGE_ATTR = 'data-own-stage';
 
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -64,7 +67,10 @@ export type DomOptions = {
 // Un único conjunto de listeners sobre el contenedor del lienzo; Pixi no escucha eventos.
 export function bindDom(core: EditorCore, container: HTMLElement, clipboard: ClipboardController, options: DomOptions = {}): () => void {
   // Incrustado, el teclado y el portapapeles solo cuentan con el foco dentro del lienzo.
-  const outside = (event: Event) => options.embedded === true && !container.contains(event.target as Node | null);
+  const outside = (event: Event) =>
+    options.embedded === true
+      ? !container.contains(event.target as Node | null)
+      : event.target instanceof Element && event.target.closest(`[${OWN_STAGE_ATTR}]`) !== null;
   let rect = container.getBoundingClientRect();
   const refreshRect = () => {
     rect = container.getBoundingClientRect();
@@ -96,8 +102,11 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
   let lastDownKind: PointerKind = 'mouse';
   let lastDownButton = 0;
 
+  // Dentro de una página que se desplaza (la landing), el dedo es de la página: sin dos dedos ni gestos de Safari.
+  // La vista previa de versiones, incrustada pero con la rueda propia, sí hace pan y zoom con dos dedos.
+  const inScrollingPage = options.embedded === true && options.wheel === 'page';
   const router = new GestureRouter(core, {
-    embedded: options.embedded === true,
+    embedded: inScrollingPage,
     ...(options.reducedMotion ? { reducedMotion: options.reducedMotion } : {}),
     stopTextEdit: () => {
       if (!core.editingText.get()) return;
@@ -257,7 +266,7 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
   const observer = new ResizeObserver(refreshRect);
   observer.observe(container);
   container.setAttribute(OWN_WHEEL_ATTR, '');
-  const unbindSafari = options.embedded ? () => {} : bindSafariGestures(container, core, router);
+  const unbindSafari = inScrollingPage ? () => {} : bindSafariGestures(container, core, router);
 
   container.addEventListener('pointerdown', onPointerDown);
   container.addEventListener('pointermove', onPointerMove);

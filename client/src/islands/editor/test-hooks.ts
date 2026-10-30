@@ -36,6 +36,12 @@ export type ParcifyTestHooks = {
   pixelAt(x: number, y: number): [number, number, number, number] | null;
   // Contenedores que ahora se pintan desde su textura cacheada.
   cachedContainers(): number;
+  // Cámara del editor o de la vista previa de versión abierta (null si no hay).
+  camera(target?: 'editor' | 'preview'): { x: number; y: number; zoom: number } | null;
+  // Como pixelAt, sobre el canvas de la vista previa de versión.
+  previewPixelAt(x: number, y: number): [number, number, number, number] | null;
+  // Caja del contenido de la página de la vista previa, en coordenadas de la página web.
+  previewPageRect(): { left: number; top: number; right: number; bottom: number } | null;
   // Reabre el documento como un cambio de epoch: el editor desmonta y vuelve a montar el motor.
   forceCollabReset(): Promise<void>;
 };
@@ -46,7 +52,34 @@ declare global {
   }
 }
 
-export function installTestHooks(getEngine: () => Engine | null, getCollab: () => CollabSession | null, container: () => HTMLElement | null): void {
+function readPixel(engine: Engine | null, x: number, y: number): [number, number, number, number] | null {
+  if (!engine) return null;
+  const pixi = engine.renderer.app.renderer;
+  const canvas = engine.renderer.app.canvas;
+  if (!('gl' in pixi) || !canvas.isConnected) return null;
+  const gl = pixi.gl;
+  if (gl.isContextLost()) return null;
+  const rect = canvas.getBoundingClientRect();
+  const px = Math.floor((x - rect.left) * pixi.resolution);
+  const py = gl.drawingBufferHeight - 1 - Math.floor((y - rect.top) * pixi.resolution);
+  if (px < 0 || py < 0 || px >= gl.drawingBufferWidth || py >= gl.drawingBufferHeight) return null;
+  try {
+    // Sin preserveDrawingBuffer el búfer solo es legible en el mismo turno en que se pinta.
+    pixi.render(engine.renderer.app.stage);
+    const pixel = new Uint8Array(4);
+    gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    return [pixel[0]!, pixel[1]!, pixel[2]!, pixel[3]!];
+  } catch {
+    return null;
+  }
+}
+
+export function installTestHooks(
+  getEngine: () => Engine | null,
+  getCollab: () => CollabSession | null,
+  container: () => HTMLElement | null,
+  getPreview: () => Engine | null,
+): void {
   window.__parcifyTest = {
     status: () => getCollab()?.state.get().status ?? 'connecting',
     synced: () => getCollab()?.state.get().synced ?? false,
@@ -110,29 +143,27 @@ export function installTestHooks(getEngine: () => Engine | null, getCollab: () =
       const camera = getEngine()?.core.camera;
       return camera ? { width: camera.width, height: camera.height } : null;
     },
-    pixelAt: (x, y) => {
-      const engine = getEngine();
-      if (!engine) return null;
-      const pixi = engine.renderer.app.renderer;
-      const canvas = engine.renderer.app.canvas;
-      if (!('gl' in pixi) || !canvas.isConnected) return null;
-      const gl = pixi.gl;
-      if (gl.isContextLost()) return null;
-      const rect = canvas.getBoundingClientRect();
-      const px = Math.floor((x - rect.left) * pixi.resolution);
-      const py = gl.drawingBufferHeight - 1 - Math.floor((y - rect.top) * pixi.resolution);
-      if (px < 0 || py < 0 || px >= gl.drawingBufferWidth || py >= gl.drawingBufferHeight) return null;
-      try {
-        // Sin preserveDrawingBuffer el búfer solo es legible en el mismo turno en que se pinta.
-        pixi.render(engine.renderer.app.stage);
-        const pixel = new Uint8Array(4);
-        gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-        return [pixel[0]!, pixel[1]!, pixel[2]!, pixel[3]!];
-      } catch {
-        return null;
-      }
-    },
+    pixelAt: (x, y) => readPixel(getEngine(), x, y),
     cachedContainers: () => getEngine()?.renderer.cachedContainers ?? 0,
+    camera: (target = 'editor') => {
+      const engine = target === 'preview' ? getPreview() : getEngine();
+      if (!engine) return null;
+      const camera = engine.camera();
+      return { x: camera.x, y: camera.y, zoom: camera.zoom };
+    },
+    previewPixelAt: (x, y) => readPixel(getPreview(), x, y),
+    previewPageRect: () => {
+      const engine = getPreview();
+      const canvas = engine?.renderer.app.canvas;
+      if (!engine || !canvas?.isConnected) return null;
+      engine.core.syncModel();
+      const bounds = engine.core.pageBounds();
+      if (!bounds) return null;
+      const rect = canvas.getBoundingClientRect();
+      const min = engine.core.worldToScreen(bounds.minX, bounds.minY);
+      const max = engine.core.worldToScreen(bounds.maxX, bounds.maxY);
+      return { left: rect.left + min.x, top: rect.top + min.y, right: rect.left + max.x, bottom: rect.top + max.y };
+    },
     forceCollabReset: async () => {
       const reset = getCollab()?.testReset;
       if (!reset) throw new Error('La sesión no admite reinicios de prueba');
