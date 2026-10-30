@@ -1,7 +1,7 @@
 <script lang="ts">
   import Plus from '@lucide/svelte/icons/plus';
   import Upload from '@lucide/svelte/icons/upload';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { ApiError, browser } from '../lib/api.ts';
   import {
     byLastEdited,
@@ -49,8 +49,13 @@
   const spaces = $derived(activeWorkspaces());
   const names = $derived(new Map(workspaces.items.map((workspace) => [workspace.slug, workspace.name])));
 
+  // ?pestana= viene de la barra lateral (Compartidos conmigo, Favoritos): al cargar se lleva esa sección a la vista.
+  const TAB_SECTIONS: Record<string, string> = { compartidos: 'shared-heading', favoritos: 'favorites-heading' };
+  let pendingTab: string | null = null;
+
   onMount(() => {
     const url = new URL(window.location.href);
+    pendingTab = url.searchParams.get('pestana');
     welcome = url.searchParams.has('bienvenida');
     if (welcome) {
       url.searchParams.delete('bienvenida');
@@ -74,6 +79,12 @@
       favorites = [...favoritePages.flatMap((page) => page.items), ...sharedPage.items.filter((item) => item.favorite)].sort(byLastEdited);
       shared = sharedPage.items;
       status = 'ready';
+      const section = pendingTab ? TAB_SECTIONS[pendingTab] : undefined;
+      pendingTab = null;
+      if (section) {
+        await tick();
+        document.getElementById(section)?.scrollIntoView({ block: 'start' });
+      }
     } catch {
       status = 'error';
     }

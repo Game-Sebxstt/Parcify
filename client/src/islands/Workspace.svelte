@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import type { z } from 'zod';
   import { ApiError, apiFetch } from '../lib/api.ts';
+  import { replaceAppUrl } from '../lib/app-location.svelte.ts';
   import { formatDate } from '../lib/format.ts';
   import { loadSession, session } from '../lib/session.svelte.ts';
   import { loadWorkspaces } from '../lib/workspaces.svelte.ts';
@@ -61,7 +62,7 @@
     if (view === 'proyectos') url.searchParams.delete('vista');
     else url.searchParams.set('vista', view);
     if (view !== 'actividad') url.searchParams.delete('proyecto');
-    history.replaceState(history.state, '', `${url.pathname}${url.search}`);
+    replaceAppUrl(url);
   }
 
   async function restore() {

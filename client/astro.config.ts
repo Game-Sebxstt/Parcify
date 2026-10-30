@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
 import type { AstroIntegration } from 'astro';
 import type { Plugin as VitePlugin } from 'vite';
+import { SIDEBAR_BOOT_HASH } from './src/layouts/sidebar-boot.ts';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
 
@@ -98,7 +99,8 @@ export default defineConfig({
         `form-action 'self' ${env.apiOrigin}`,
         "object-src 'none'",
       ],
-      scriptDirective: { resources: ["'self'"] },
+      // Los scripts en línea que Astro no procesa (is:inline) no llevan hash automático: se añade el suyo.
+      scriptDirective: { resources: ["'self'"], hashes: [SIDEBAR_BOOT_HASH] },
       styleDirective: { resources: ["'self'", "'unsafe-inline'"] },
     },
   },

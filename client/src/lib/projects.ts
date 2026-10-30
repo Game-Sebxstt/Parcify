@@ -32,8 +32,8 @@ export function listWorkspaceProjects(slug: string, params: ProjectListParams = 
   });
 }
 
-export function listSharedProjects(limit = 12) {
-  return apiFetch(`/v1/projects/shared?limit=${limit}`, { schema: ProjectListResponseSchema });
+export function listSharedProjects(limit = 12, signal?: AbortSignal) {
+  return apiFetch(`/v1/projects/shared?limit=${limit}`, { schema: ProjectListResponseSchema, ...(signal ? { signal } : {}) });
 }
 
 // Con templateId, el proyecto nace con el contenido y las imágenes de la plantilla.
@@ -49,8 +49,12 @@ export function renameProject(id: string, name: string) {
   return apiFetch(`/v1/projects/${id}`, { method: 'PATCH', body: { name }, schema: ProjectDetailSchema });
 }
 
-export function setFavorite(id: string, favorite: boolean) {
-  return apiFetch(`/v1/favorites/project/${id}`, { method: favorite ? 'PUT' : 'DELETE' });
+// Lo escucha la barra lateral, que es otra isla, para refrescar su lista de favoritos.
+export const FAVORITES_CHANGED = 'parcify:favorites-changed';
+
+export async function setFavorite(id: string, favorite: boolean) {
+  await apiFetch(`/v1/favorites/project/${id}`, { method: favorite ? 'PUT' : 'DELETE' });
+  window.dispatchEvent(new CustomEvent(FAVORITES_CHANGED));
 }
 
 export function duplicateProject(id: string) {

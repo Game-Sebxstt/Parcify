@@ -7,14 +7,16 @@
     // Atajo que se muestra a la derecha del texto, p. ej. «R» o «Ctrl+Shift+K».
     kbd?: string;
     side?: 'top' | 'right' | 'bottom' | 'left';
+    // Para elementos que solo necesitan tooltip en un estado (una barra plegada que deja solo el icono).
+    disabled?: boolean;
     children: Snippet<[Record<string, unknown>]>;
   };
 
-  let { text, kbd, side = 'top', children }: Props = $props();
+  let { text, kbd, side = 'top', disabled = false, children }: Props = $props();
 </script>
 
 <Tooltip.Provider delayDuration={500}>
-  <Tooltip.Root>
+  <Tooltip.Root {disabled}>
     <Tooltip.Trigger>
       {#snippet child({ props })}
         {@render children(props)}

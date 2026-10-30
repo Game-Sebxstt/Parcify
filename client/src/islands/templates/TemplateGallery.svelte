@@ -2,6 +2,7 @@
   import Search from '@lucide/svelte/icons/search';
   import { onDestroy, onMount } from 'svelte';
   import { ApiError, browser } from '../../lib/api.ts';
+  import { replaceAppUrl } from '../../lib/app-location.svelte.ts';
   import { createProject } from '../../lib/projects.ts';
   import { listTemplates, setTemplateFavorite, setTemplateLike } from '../../lib/templates.ts';
   import { m } from '../../paraglide/messages.js';
@@ -11,6 +12,7 @@
   import Skeleton from '../../ui/Skeleton.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import { SEARCH_DEBOUNCE_MS } from '../dashboard/ProjectFilters.svelte';
+  import { TEMPLATE_PARAM, TEMPLATE_QUERY_PARAM } from '../shell/search.ts';
   import { templateByline } from './byline.ts';
   import TemplateCard from './TemplateCard.svelte';
   import TemplatePreview from './TemplatePreview.svelte';
@@ -41,8 +43,22 @@
     { value: 'favorites', label: m.templates_filter_favorites },
   ];
 
+  // Desde el buscador de la barra lateral se llega con ?plantilla=<id>&plantillaq=<nombre>: se busca por el nombre, se
+  // abre su vista previa y los dos parámetros salen de la URL. ?q= es la búsqueda de Proyectos y no se toca.
   onMount(() => {
-    void load();
+    const url = new URL(window.location.href);
+    const wanted = url.searchParams.get(TEMPLATE_PARAM);
+    const initial = (url.searchParams.get(TEMPLATE_QUERY_PARAM) ?? '').trim().slice(0, 80);
+    if (wanted !== null || url.searchParams.has(TEMPLATE_QUERY_PARAM)) {
+      url.searchParams.delete(TEMPLATE_PARAM);
+      url.searchParams.delete(TEMPLATE_QUERY_PARAM);
+      replaceAppUrl(url);
+    }
+    if (initial) q = draft = initial;
+    void load().then(() => {
+      const found = wanted ? items.find((item) => item.id === wanted) : undefined;
+      if (found) preview(found);
+    });
     return () => controller?.abort();
   });
 

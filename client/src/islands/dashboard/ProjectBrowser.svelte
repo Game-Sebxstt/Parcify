@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ApiError } from '../../lib/api.ts';
+  import { replaceAppUrl } from '../../lib/app-location.svelte.ts';
   import {
     batchProjects,
     duplicateProject,
@@ -67,7 +68,7 @@
     set('q', next.q, '');
     set('filtro', next.filter, 'all');
     set('orden', next.sort, 'edited');
-    history.replaceState(history.state, '', `${url.pathname}${url.search}`);
+    replaceAppUrl(url);
   }
 
   onMount(() => {

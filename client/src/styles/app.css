@@ -61,6 +61,48 @@
   --animate-toast-in: toast-in 160ms ease-out;
   --animate-float-in: float-in var(--dur-base) var(--ease-out);
   --animate-float-out: float-out var(--dur-fast) var(--ease-in) forwards;
+  --animate-sheet-left-in: sheet-left-in var(--dur-slow) var(--ease-out);
+  --animate-sheet-left-out: sheet-left-out var(--dur-base) var(--ease-in) forwards;
+  --animate-sheet-bottom-in: sheet-bottom-in var(--dur-slow) var(--ease-out);
+  --animate-sheet-bottom-out: sheet-bottom-out var(--dur-base) var(--ease-in) forwards;
+  --animate-fade-in: fade-in var(--dur-slow) var(--ease-out);
+  --animate-fade-out: fade-out var(--dur-base) var(--ease-in) forwards;
+
+  @keyframes sheet-left-in {
+    from {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes sheet-left-out {
+    to {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes sheet-bottom-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  @keyframes sheet-bottom-out {
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
 
   @keyframes float-in {
     from {
@@ -182,6 +224,16 @@
   }
   &:where(.touch-ui, .touch-ui *) {
     @slot;
+  }
+}
+
+/* Barra lateral del inicio plegada a 56 px. El atributo lo pone en <html> un script antes de pintar, así que la página
+   no salta al cargar. En móvil la barra es un cajón y no se pliega. */
+@custom-variant collapsed {
+  @media (width >= 40rem) {
+    &:where([data-sidebar='collapsed'] [data-shell-aside], [data-sidebar='collapsed'] [data-shell-aside] *) {
+      @slot;
+    }
   }
 }
 

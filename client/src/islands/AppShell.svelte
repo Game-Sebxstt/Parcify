@@ -1,40 +1,89 @@
 <script lang="ts">
-  import House from '@lucide/svelte/icons/house';
-  import Menu from '@lucide/svelte/icons/menu';
+  import MenuIcon from '@lucide/svelte/icons/menu';
   import Plus from '@lucide/svelte/icons/plus';
-  import Settings from '@lucide/svelte/icons/settings';
-  import X from '@lucide/svelte/icons/x';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import { on } from 'svelte/events';
+  import { innerWidth } from 'svelte/reactivity/window';
   import { ApiError, apiFetch, browser } from '../lib/api.ts';
+  import { syncAppLocation } from '../lib/app-location.svelte.ts';
   import { assetUrl } from '../lib/assets.ts';
-  import { formatDate } from '../lib/format.ts';
-  import { loadSession, session, signOut } from '../lib/session.svelte.ts';
-  import { activeWorkspaces, loadWorkspaces, trashedWorkspaces, workspaces } from '../lib/workspaces.svelte.ts';
+  import { FAVORITES_CHANGED, listSharedProjects, listWorkspaceProjects } from '../lib/projects.ts';
+  import { loadSession, session } from '../lib/session.svelte.ts';
+  import { TABLET_MIN_WIDTH } from '../lib/viewport.svelte.ts';
+  import { activeWorkspaces, loadWorkspaces, trashedWorkspaces, workspaces, type Workspace } from '../lib/workspaces.svelte.ts';
   import { m } from '../paraglide/messages.js';
   import { WorkspaceDetailSchema } from '../shared/api/workspaces.js';
-  import Avatar from '../ui/Avatar.svelte';
-  import Button from '../ui/Button.svelte';
-  import MenuList from '../ui/Menu.svelte';
-  import Skeleton from '../ui/Skeleton.svelte';
+  import Sheet from '../ui/Sheet.svelte';
   import { showToast } from '../ui/toast.svelte.ts';
   import NameDialog from './dashboard/NameDialog.svelte';
+  import { mergeProjects, SEARCH_MAX_WORKSPACES } from './shell/search.ts';
+  import ShellNav, { type FavoritesState } from './shell/ShellNav.svelte';
+  import NewProjectDialog from './templates/NewProjectDialog.svelte';
 
   type Props = { current: 'home' | 'workspace' | 'settings' };
   let { current }: Props = $props();
 
-  let activeSlug = $state<string | null>(null);
+  // Lo lee también layouts/sidebar-boot.ts antes de pintar, para no saltar de 240 a 56 px al cargar.
+  const PREFS_KEY = 'parcify:sidebar';
+  const SPACE_KEY = 'parcify:workspace';
+  const FAVORITES_SHOWN = 10;
+
+  let pageSlug = $state<string | null>(null);
+  let storedSlug = $state<string | null>(null);
+  let collapsed = $state(false);
   let drawerOpen = $state(false);
-  let createOpen = $state(false);
+  let asideSearch = $state(false);
+  let drawerSearch = $state(false);
+  let createSpaceOpen = $state(false);
+  let createProjectOpen = $state(false);
   let restoring = $state<string | null>(null);
   let avatar = $state<string | null>(null);
+  let favorites = $state<FavoritesState>({ open: false, status: 'idle', items: [] });
+  let favoritesController: AbortController | null = null;
 
-  const active = $derived(activeWorkspaces());
+  const spaces = $derived(activeWorkspaces());
   const trashed = $derived(trashedWorkspaces());
+  // En la página de un espacio manda ese espacio; si no, el último elegido, el personal o el primero.
+  const selected = $derived<Workspace | null>(
+    spaces.find((space) => space.slug === pageSlug) ??
+      spaces.find((space) => space.slug === storedSlug) ??
+      spaces.find((space) => space.personal) ??
+      spaces[0] ??
+      null,
+  );
+  const mobile = $derived((innerWidth.current ?? TABLET_MIN_WIDTH) < TABLET_MIN_WIDTH);
+  const title = $derived(
+    current === 'settings'
+      ? m.shell_settings_short()
+      : current === 'workspace'
+        ? (workspaces.items.find((space) => space.slug === pageSlug)?.name ?? '')
+        : m.shell_home(),
+  );
 
   onMount(() => {
-    activeSlug = /^\/app\/e\/([a-z0-9-]{1,48})\/?$/.exec(window.location.pathname)?.[1] ?? null;
+    pageSlug = /^\/app\/e\/([a-z0-9-]{1,48})\/?$/.exec(window.location.pathname)?.[1] ?? null;
+    syncAppLocation();
+    const prefs = readPrefs();
+    collapsed = prefs.collapsed === true;
+    favorites.open = prefs.favorites === true;
+    try {
+      storedSlug = localStorage.getItem(SPACE_KEY);
+      if (pageSlug) localStorage.setItem(SPACE_KEY, pageSlug);
+    } catch {
+      storedSlug = null;
+    }
     void loadSession();
-    void loadWorkspaces();
+    void loadWorkspaces().then(() => {
+      if (favorites.open) void loadFavorites();
+    });
+    // La estrella de una tarjeta (otra isla) cambia los favoritos: la lista abierta se vuelve a pedir.
+    const off = on(window, FAVORITES_CHANGED, () => {
+      if (favorites.open) void loadFavorites();
+    });
+    return () => {
+      off();
+      favoritesController?.abort();
+    };
   });
 
   $effect(() => {
@@ -42,6 +91,99 @@
     avatar = null;
     if (id) void assetUrl(id).then((url) => (avatar = url));
   });
+
+  function readPrefs(): { collapsed?: boolean; favorites?: boolean } {
+    try {
+      const value: unknown = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
+      return typeof value === 'object' && value !== null ? value : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed, favorites: favorites.open }));
+    } catch {
+      // Sin almacenamiento (modo privado estricto) la preferencia dura lo que la página.
+    }
+  }
+
+  function toggleCollapsed() {
+    collapsed = !collapsed;
+    if (collapsed) document.documentElement.dataset.sidebar = 'collapsed';
+    else delete document.documentElement.dataset.sidebar;
+    savePrefs();
+  }
+
+  function toggleFavorites() {
+    favorites.open = !favorites.open;
+    savePrefs();
+    if (favorites.open) void loadFavorites();
+    else favoritesController?.abort();
+  }
+
+  async function loadFavorites() {
+    favoritesController?.abort();
+    const controller = (favoritesController = new AbortController());
+    const { signal } = controller;
+    if (favorites.status !== 'ready') favorites.status = 'loading';
+    try {
+      const [pages, shared] = await Promise.all([
+        Promise.all(
+          spaces
+            .slice(0, SEARCH_MAX_WORKSPACES)
+            .map((space) => listWorkspaceProjects(space.slug, { filter: 'favorites', sort: 'edited', dir: 'desc', limit: FAVORITES_SHOWN }, signal)),
+        ),
+        listSharedProjects(50, signal),
+      ]);
+      if (signal.aborted) return;
+      favorites.items = mergeProjects([...pages.map((page) => page.items), shared.items.filter((item) => item.favorite)], FAVORITES_SHOWN);
+      favorites.status = 'ready';
+    } catch {
+      if (signal.aborted) return;
+      favorites.status = 'error';
+    }
+  }
+
+  function selectSpace(slug: string) {
+    storedSlug = slug;
+    try {
+      localStorage.setItem(SPACE_KEY, slug);
+    } catch {
+      // Ver savePrefs.
+    }
+    if (!(current === 'workspace' && pageSlug === slug)) browser.assign(`/app/e/${slug}`);
+  }
+
+  // Desde el cajón móvil, los diálogos se abren cuando el cajón ya se ha cerrado: dos capas modales a la vez se pelean
+  // por el foco.
+  async function fromDrawer(open: () => void) {
+    if (drawerOpen) {
+      drawerOpen = false;
+      await tick();
+    }
+    open();
+  }
+
+  async function openSearch() {
+    if (mobile) {
+      drawerOpen = true;
+      await tick();
+      drawerSearch = true;
+    } else {
+      asideSearch = true;
+    }
+  }
+
+  function onkeydown(event: KeyboardEvent) {
+    if (event.defaultPrevented || event.altKey || event.shiftKey || !(event.ctrlKey || event.metaKey)) return;
+    if (event.key.toLowerCase() !== 'k') return;
+    // Con otro diálogo modal abierto (crear un proyecto, confirmar), el atajo no lo tapa con otra capa.
+    if (document.querySelector('[role="dialog"][aria-modal="true"]:not([data-testid="app-drawer"])')) return;
+    event.preventDefault();
+    void openSearch();
+  }
 
   async function createWorkspace(name: string): Promise<string | null> {
     try {
@@ -54,195 +196,95 @@
     }
   }
 
-  async function restore(slug: string, name: string) {
-    restoring = slug;
+  async function restore(workspace: Workspace) {
+    restoring = workspace.slug;
     try {
-      await apiFetch(`/v1/workspaces/${encodeURIComponent(slug)}/restore`, { method: 'POST', schema: WorkspaceDetailSchema });
+      await apiFetch(`/v1/workspaces/${encodeURIComponent(workspace.slug)}/restore`, { method: 'POST', schema: WorkspaceDetailSchema });
       await loadWorkspaces({ force: true });
-      showToast({ message: m.workspace_restored({ name }), tone: 'success' });
+      showToast({ message: m.workspace_restored({ name: workspace.name }), tone: 'success' });
     } catch (error) {
       showToast({ message: error instanceof ApiError ? error.message : m.error_internal(), tone: 'error' });
     } finally {
       restoring = null;
     }
   }
-
-  const linkClass = (selected: boolean) =>
-    [
-      'flex h-9 items-center gap-2.5 rounded-panel px-2.5 text-sm',
-      selected ? 'bg-surface-2 font-semibold text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
-    ].join(' ');
 </script>
 
-<svelte:window
-  onkeydown={(event) => {
-    if (event.key === 'Escape' && drawerOpen) drawerOpen = false;
-  }}
-/>
+<svelte:window {onkeydown} />
 
-<div class="flex h-14 items-center gap-2 bg-surface-1 px-3 md:hidden">
+{#snippet nav(inDrawer: boolean)}
+  <ShellNav
+    {current}
+    {pageSlug}
+    {spaces}
+    {trashed}
+    status={workspaces.status}
+    {selected}
+    collapsed={inDrawer ? false : collapsed}
+    collapsible={!inDrawer}
+    {favorites}
+    {avatar}
+    {restoring}
+    bind:searchOpen={() => (inDrawer ? drawerSearch : asideSearch), (value) => (inDrawer ? (drawerSearch = value) : (asideSearch = value))}
+    onselectspace={selectSpace}
+    oncreatespace={() => void fromDrawer(() => (createSpaceOpen = true))}
+    ontogglecollapse={toggleCollapsed}
+    ontogglefavorites={toggleFavorites}
+    onrestore={(workspace) => void restore(workspace)}
+  />
+{/snippet}
+
+<header
+  class="sticky top-0 z-(--z-toolbar) flex h-12 items-center gap-1 border-b border-edge/25 bg-surface-1 px-1 pt-[env(safe-area-inset-top)] box-content sm:hidden"
+>
   <button
     type="button"
     aria-label={m.shell_open_menu()}
+    aria-haspopup="dialog"
     aria-expanded={drawerOpen}
-    aria-controls="app-sidebar"
     onclick={() => (drawerOpen = true)}
-    class="inline-flex size-10 cursor-pointer items-center justify-center rounded-full text-ink hover:bg-surface-2"
+    data-testid="shell-menu"
+    class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-card text-ink hover:bg-surface-2"
   >
-    <Menu size={20} aria-hidden="true" />
+    <MenuIcon size={20} aria-hidden="true" />
   </button>
-  <a href="/app" class="flex items-center gap-2 font-bold">
-    <img src="/brand/Logo-no-background-no-text.png" alt="" width="24" height="24" class="size-6" />
-    {m.brand_name()}
-  </a>
-</div>
-
-{#if drawerOpen}
-  <button
-    type="button"
-    tabindex="-1"
-    aria-hidden="true"
-    class="fixed inset-0 z-30 bg-ground/70 md:hidden"
-    onclick={() => (drawerOpen = false)}
-  ></button>
-{/if}
-
-<aside
-  id="app-sidebar"
-  aria-label={m.shell_label()}
-  class={[
-    'fixed inset-y-0 left-0 z-40 w-64 flex-col overscroll-contain bg-surface-1 md:sticky md:top-0 md:flex md:h-dvh',
-    drawerOpen ? 'flex shadow-float' : 'hidden',
-  ].join(' ')}
->
-  <div class="flex h-14 shrink-0 items-center justify-between px-4">
-    <a href="/app" class="flex items-center gap-2 font-bold tracking-[-0.02em]">
-      <img src="/brand/Logo-no-background-no-text.png" alt="" width="24" height="24" class="size-6" />
-      {m.brand_name()}
-    </a>
+  <p class="min-w-0 flex-1 truncate text-ui font-semibold">{title}</p>
+  {#if spaces.length}
     <button
       type="button"
-      aria-label={m.shell_close_menu()}
-      onclick={() => (drawerOpen = false)}
-      class="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-2 hover:text-ink md:hidden"
+      aria-label={m.dashboard_new_project()}
+      onclick={() => (createProjectOpen = true)}
+      data-testid="shell-new-project"
+      class="mr-1.5 inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-card bg-coral text-coral-ink hover:bg-coral-hover"
     >
-      <X size={18} aria-hidden="true" />
+      <Plus size={20} aria-hidden="true" />
     </button>
-  </div>
+  {/if}
+</header>
 
-  <nav aria-label={m.shell_nav()} class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-2 pb-4">
-    <ul class="flex flex-col gap-0.5">
-      <li>
-        <a href="/app" class={linkClass(current === 'home')} aria-current={current === 'home' ? 'page' : undefined}>
-          <House size={16} aria-hidden="true" />{m.shell_home()}
-        </a>
-      </li>
-      <li>
-        <a href="/app/ajustes" class={linkClass(current === 'settings')} aria-current={current === 'settings' ? 'page' : undefined}>
-          <Settings size={16} aria-hidden="true" />{m.shell_settings()}
-        </a>
-      </li>
-    </ul>
-
-    <div class="flex flex-col gap-1">
-      <div class="flex items-center justify-between pr-1 pl-2.5">
-        <h2 id="spaces-nav" class="text-sm font-semibold text-ink">{m.shell_spaces()}</h2>
-        <button
-          type="button"
-          aria-label={m.shell_new_space()}
-          onclick={() => (createOpen = true)}
-          class="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-2 hover:text-ink"
-        >
-          <Plus size={16} aria-hidden="true" />
-        </button>
-      </div>
-      {#if workspaces.status === 'loading' || workspaces.status === 'idle'}
-        <div class="flex flex-col gap-1.5 px-2.5" aria-hidden="true">
-          <Skeleton class="h-6 w-40" />
-          <Skeleton class="h-6 w-32" />
-        </div>
-      {:else if workspaces.status === 'error'}
-        <p class="px-2.5 text-sm text-ink-muted">{m.shell_spaces_error()}</p>
-      {:else}
-        <ul aria-labelledby="spaces-nav" class="flex flex-col gap-0.5">
-          {#each active as workspace (workspace.id)}
-            {@const selected = current === 'workspace' && activeSlug === workspace.slug}
-            <li>
-              <a href="/app/e/{workspace.slug}" class={linkClass(selected)} aria-current={selected ? 'page' : undefined}>
-                <span class="truncate">{workspace.name}</span>
-              </a>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
-
-    {#if trashed.length}
-      <div class="flex flex-col gap-1">
-        <h2 id="trash-nav" class="pl-2.5 text-sm font-semibold text-ink">{m.shell_trash()}</h2>
-        <ul aria-labelledby="trash-nav" class="flex flex-col gap-1">
-          {#each trashed as workspace (workspace.id)}
-            <li class="flex items-center gap-2 rounded-panel px-2.5 py-1.5">
-              <div class="min-w-0 flex-1">
-                <a href="/app/e/{workspace.slug}" class="block truncate text-sm text-ink-muted hover:text-ink">{workspace.name}</a>
-                {#if workspace.purgeAt}
-                  <p class="text-xs text-ink-muted">{m.shell_purge_on({ date: formatDate(workspace.purgeAt) })}</p>
-                {/if}
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                loading={restoring === workspace.slug}
-                label={m.shell_restore_space({ name: workspace.name })}
-                onclick={() => void restore(workspace.slug, workspace.name)}
-              >
-                {m.workspace_restore()}
-              </Button>
-            </li>
-          {/each}
-        </ul>
-      </div>
-    {/if}
-  </nav>
-
-  <div class="shrink-0 p-2">
-    {#if session.me}
-      {@const me = session.me}
-      <MenuList
-        align="start"
-        side="top"
-        items={[
-          { label: m.shell_settings(), onSelect: () => browser.assign('/app/ajustes') },
-          { label: m.app_sign_out(), onSelect: () => void signOut() },
-        ]}
-      >
-        {#snippet trigger(props)}
-          <button
-            {...props}
-            type="button"
-            class="flex w-full cursor-pointer items-center gap-2.5 rounded-panel px-2 py-2 text-left hover:bg-surface-2"
-          >
-            <Avatar name={me.user.name} src={avatar} />
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-semibold">{me.user.name}</span>
-              <span class="block truncate text-xs text-ink-muted">{me.user.email}</span>
-            </span>
-          </button>
-        {/snippet}
-      </MenuList>
-    {:else}
-      <div class="flex items-center gap-2.5 px-2 py-2" aria-hidden="true">
-        <Skeleton rounded="full" class="size-8" />
-        <Skeleton class="h-4 w-32" />
-      </div>
-    {/if}
-  </div>
+<aside
+  data-shell-aside
+  aria-label={m.shell_label()}
+  class="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-edge/25 bg-surface-1 sm:flex collapsed:w-14"
+>
+  {@render nav(false)}
 </aside>
 
+<Sheet
+  bind:open={() => drawerOpen && mobile, (value) => (drawerOpen = value)}
+  side="left"
+  title={m.brand_name()}
+  testid="app-drawer"
+>
+  {@render nav(true)}
+</Sheet>
+
 <NameDialog
-  bind:open={createOpen}
+  bind:open={createSpaceOpen}
   title={m.shell_new_space_title()}
   label={m.shell_space_name()}
   submitLabel={m.shell_create_space()}
   onsubmit={createWorkspace}
 />
+
+<NewProjectDialog bind:open={createProjectOpen} {spaces} {...selected ? { initialSlug: selected.slug } : {}} />

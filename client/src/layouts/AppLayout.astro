@@ -4,6 +4,7 @@ import VersionGate from '../islands/VersionGate.svelte';
 import Toast from '../ui/Toast.svelte';
 import { m } from '../paraglide/messages.js';
 import BaseHead from './BaseHead.astro';
+import { SIDEBAR_BOOT } from './sidebar-boot.ts';
 
 type Props = { title: string; current: 'home' | 'workspace' | 'settings' };
 const { title, current } = Astro.props;
@@ -13,10 +14,11 @@ const { title, current } = Astro.props;
 <html lang="es">
   <head>
     <BaseHead title={title} noindex />
+    <script is:inline set:html={SIDEBAR_BOOT} />
   </head>
   <body class="min-h-dvh">
     <a href="#contenido" class="skip-link">{m.common_skip()}</a>
-    <div class="md:flex">
+    <div class="sm:flex">
       <AppShell client:load current={current} />
       <main id="contenido" tabindex="-1" class="min-w-0 flex-1 pb-24">
         <slot />

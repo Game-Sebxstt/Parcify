@@ -4,13 +4,14 @@
   type Props = {
     name: string;
     src?: string | null;
-    size?: 'sm' | 'md' | 'lg';
+    // nav: 28 px, el de la cuenta en la barra lateral.
+    size?: 'sm' | 'nav' | 'md' | 'lg';
     color?: string;
   };
 
   let { name, src = null, size = 'md', color }: Props = $props();
 
-  const SIZES = { sm: 'size-6 text-[10px]', md: 'size-8 text-xs', lg: 'size-12 text-base' } as const;
+  const SIZES = { sm: 'size-6 text-[10px]', nav: 'size-7 text-[11px]', md: 'size-8 text-xs', lg: 'size-12 text-base' } as const;
 
   const initials = $derived(
     name

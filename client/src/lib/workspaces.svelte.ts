@@ -13,7 +13,8 @@ export const workspaces = $state<{ status: 'idle' | 'loading' | 'ready' | 'error
 
 export async function loadWorkspaces(options: { force?: boolean } = {}): Promise<Workspace[]> {
   if (options.force) invalidateCache('workspaces');
-  if (workspaces.status === 'idle') workspaces.status = 'loading';
+  // Tras un error también pasa a loading: quien reintenta ve que se está pidiendo y se entera de cómo acaba.
+  if (workspaces.status !== 'ready') workspaces.status = 'loading';
   try {
     const { items } = await cached('workspaces', () => apiFetch('/v1/workspaces', { schema: WorkspaceListResponseSchema }));
     workspaces.items = items;
