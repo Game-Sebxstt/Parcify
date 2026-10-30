@@ -1,4 +1,4 @@
-import { effectiveDuration, type NodeRecord } from '../../../engine/index.ts';
+import { effectiveDuration, type KeyRef, type NodeRecord } from '../../../engine/index.ts';
 import { formatNumber } from '../../../lib/format.ts';
 import { m } from '../../../paraglide/messages.js';
 import { ANIM_PROPS, type Animation, type AnimProp, type Keyframe } from '../../../shared/document/schema.js';
@@ -27,8 +27,8 @@ export type NodeRow = {
   record: NodeRecord;
   animation: Animation | undefined;
   expanded: boolean;
-  // Instantes (ms) con algún keyframe, para el resumen de la fila plegada.
-  marks: number[];
+  // Instantes (ms) con algún keyframe y los keyframes de cada uno, para el resumen de la fila plegada.
+  marks: Array<{ ms: number; refs: KeyRef[] }>;
   count: number;
   // Pistas que se pueden añadir desde el menú de la fila: las animables que aún no tienen keyframes.
   addable: AnimProp[];
@@ -94,7 +94,11 @@ export function buildRows(
       animation: anim,
       keyframes: sortedKeyframes(anim, prop),
     }));
-    const marks = [...new Set(tracks.flatMap((track) => track.keyframes.map((item) => item.time)))].sort((a, b) => a - b);
+    const grouped = new Map<number, KeyRef[]>();
+    for (const track of tracks) {
+      for (const item of track.keyframes) grouped.set(item.time, [...(grouped.get(item.time) ?? []), { nodeId: id, prop: track.prop, key: item.key }]);
+    }
+    const marks = [...grouped].map(([ms, refs]) => ({ ms, refs })).sort((a, b) => a.ms - b.ms);
     const addable = ANIM_PROPS.filter((prop) => !hasData(anim, prop) && animatable(node, prop));
     const expanded = !collapsed.has(id);
     const count = tracks.reduce((sum, track) => sum + track.keyframes.length, 0);

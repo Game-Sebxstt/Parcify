@@ -889,7 +889,7 @@
   "timeline_zoom_in": "Acercar la línea de tiempo",
   "timeline_zoom_out": "Alejar la línea de tiempo",
   "timeline_head": "Cabezal",
-  "timeline_hint": "Flechas para moverte entre fotogramas clave, Alt+Flecha izquierda o derecha para mover el seleccionado, Enter para editarlo o para añadir uno en el cabezal desde el nombre de una pista, Supr para borrarlo y Espacio para reproducir o pausar. Las pistas nuevas se añaden desde el menú de cada elemento.",
+  "timeline_hint": "Flechas para moverte entre fotogramas clave y Espacio para sumar o quitar de la selección el que tiene el foco. Con él seleccionado, Flecha izquierda o derecha mueven la selección un fotograma (con Mayús, diez). Ctrl+C, Ctrl+V y Ctrl+D copian, pegan en el cabezal y duplican; Supr borra; Esc vacía la selección. Alt+Flecha izquierda o derecha mueve el fotograma clave con el foco, Enter lo edita o, desde el nombre de una pista, añade uno en el cabezal, y la tecla de menú abre sus acciones. Espacio fuera de un fotograma clave reproduce o pausa. Las pistas nuevas se añaden desde el menú de cada elemento.",
   "timeline_empty": "Selecciona un elemento y pulsa Grabar: cada cambio que hagas en el lienzo o en el panel creará un keyframe en el cabezal. Lo que ya está animado se actualiza solo. También puedes aplicar un efecto desde Animación, en el panel derecho.",
   "timeline_zoom": "Zoom del tiempo",
   "timeline_fit": "Encajar el tiempo",
@@ -933,6 +933,84 @@
   "timeline_unit_deg": "grados",
   "timeline_unit_times": "veces",
   "timeline_unit_percent": "%",
+  "timeline_keyframe_menu": "Acciones de los fotogramas clave",
+  "timeline_menu_edit": "Editar valor…",
+  "timeline_menu_paste": "Pegar en el cabezal",
+  "timeline_menu_stretch": "Estirar…",
+  "timeline_menu_easing": "Curva",
+  "timeline_additive": "Añadir a la selección",
+  "timeline_clear_selection": "Vaciar la selección",
+  "timeline_easing_title": "Curva del tramo",
+  "timeline_easing_custom_hint": "Este tramo tiene una curva personalizada. Para cambiar sus puntos, edita el fotograma clave.",
+  "timeline_stretch_title": "Estirar los fotogramas clave",
+  "timeline_stretch_hint": "Multiplica la separación entre los fotogramas clave seleccionados, tomando el primero como punto fijo.",
+  "timeline_stretch_factor": "Factor",
+  "timeline_stretch_apply": "Estirar",
+  "timeline_paste_track_full": "No se pudo pegar: alguna pista pasaría de 64 fotogramas clave.",
+  "timeline_paste_animation_limit": "No se pudo pegar: se pasaría del máximo de elementos animados.",
+  "timeline_paste_too_long": "No se pudo pegar: la animación pasaría de la duración máxima.",
+  "timeline_paste_nothing": "No hay fotogramas clave que pegar en estos elementos.",
+  "timeline_copied": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} fotograma clave copiado.",
+        "countPlural=*": "{count} fotogramas clave copiados."
+      }
+    }
+  ],
+  "timeline_pasted": [
+    {
+      "declarations": [
+        "input count",
+        "input time",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} fotograma clave pegado en {time}.",
+        "countPlural=*": "{count} fotogramas clave pegados en {time}."
+      }
+    }
+  ],
+  "timeline_duplicated": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} fotograma clave duplicado.",
+        "countPlural=*": "{count} fotogramas clave duplicados."
+      }
+    }
+  ],
+  "timeline_deleted": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} fotograma clave borrado.",
+        "countPlural=*": "{count} fotogramas clave borrados."
+      }
+    }
+  ],
   "editor_paste_error": "No se pudo pegar.",
   "editor_follow": "Seguir a {name}",
   "editor_following": "Siguiendo a {name}",

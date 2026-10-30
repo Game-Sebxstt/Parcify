@@ -203,6 +203,11 @@ export type UiCommandName = 'hideUi' | 'minimizeUi' | 'toggleRecord';
 // Un cambio grabado como keyframes (`mode` de la grabación, `time` en ms), para anunciarlo.
 export type RecordedNotice = { props: readonly AnimProp[]; time: number; mode: 'all' | 'tracked'; n: number };
 export type UiCommand = { name: UiCommandName; n: number };
+// Conmutadores táctiles que hacen de Shift y Alt con el dedo (§2.15.1): proporción y desde el centro al crear o
+// redimensionar, giro de 15 en 15 y añadir a la selección (también en la línea de tiempo).
+export type TouchModifiers = { proportional: boolean; fromCenter: boolean; step15: boolean; additive: boolean };
+const sameModifiers = (a: TouchModifiers, b: TouchModifiers) =>
+  a.proportional === b.proportional && a.fromCenter === b.fromCenter && a.step15 === b.step15 && a.additive === b.additive;
 
 export class EditorCore {
   readonly backend: DocumentBackend;
@@ -241,6 +246,7 @@ export class EditorCore {
   readonly following = new Store<number | null>(null);
   // Perfil del puntero con el que se está trabajando (el del último pointerdown o pointermove): umbrales y tiradores.
   readonly inputProfile = new Store<Readonly<InputProfile>>(INPUT_PROFILES[initialKind()]);
+  readonly touchModifiers = new Store<Readonly<TouchModifiers>>({ proportional: false, fromCenter: false, step15: false, additive: false }, sameModifiers);
   // Atajos que cambian la interfaz y no el documento (ocultar o minimizar los paneles): los atiende quien monta el
   // motor. `n` sube con cada pulsación para que dos seguidas iguales también avisen.
   readonly uiCommand = new Store<UiCommand | null>(null);

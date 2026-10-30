@@ -18,10 +18,14 @@
     onheadkey: (event: KeyboardEvent) => void;
     // Empieza un gesto de dos dedos: hay que soltar cualquier arrastre de un dedo en curso.
     oncancelgesture: () => void;
+    // Un gesto de un dedo que no es scroll (la marquesina tras la pulsación larga): el navegador no debe desplazar.
+    lockTouch: boolean;
     row: Snippet<[T, { top: number; height: number; index: number }]>;
+    // Encima de las filas, en coordenadas de la rejilla (x desde el inicio de las pistas, y desde la primera fila).
+    overlay?: Snippet;
   };
 
-  let { rows, heights, zoom = $bindable(), head, span, recording, touch, grid, onseek, onheadkey, oncancelgesture, row }: Props = $props();
+  let { rows, heights, zoom = $bindable(), head, span, recording, touch, grid, onseek, onheadkey, oncancelgesture, lockTouch, row, overlay }: Props = $props();
 
   // Margen a la derecha del final para que el último keyframe no quede pegado al borde.
   const TAIL = 32;
@@ -94,6 +98,16 @@
   export function timeAt(clientX: number): number {
     const left = (scroller?.getBoundingClientRect().left ?? 0) + LABEL_WIDTH;
     return (clientX - left + scrollX - LANE_PAD) / zoom;
+  }
+
+  // Punto de la ventana en coordenadas de la rejilla: x como timeX (px desde el inicio de las pistas) e y desde el
+  // borde superior de la primera fila.
+  export function gridPoint(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = scroller?.getBoundingClientRect();
+    return {
+      x: clientX - (rect?.left ?? 0) - LABEL_WIDTH + (scroller?.scrollLeft ?? 0),
+      y: clientY - (rect?.top ?? 0) - RULER_HEIGHT + (scroller?.scrollTop ?? 0),
+    };
   }
 
   // Lleva a la vista la fila `index` y, si se indica, el instante `ms`.
@@ -189,7 +203,7 @@
     };
     // Con dos dedos, el navegador no debe desplazar las filas por su cuenta mientras se hace zoom.
     const onTouch = (event: TouchEvent) => {
-      if (event.touches.length >= 2 && event.cancelable) event.preventDefault();
+      if ((event.touches.length >= 2 || lockTouch) && event.cancelable) event.preventDefault();
     };
 
     // En iOS y iPadOS el pellizco llega por Pointer Events (maxTouchPoints > 0) y lo llevan los dos dedos de arriba.
@@ -252,7 +266,7 @@
     scrollX = event.currentTarget.scrollLeft;
     scrollTop = event.currentTarget.scrollTop;
   }}
-  class="scroll-thin relative min-h-0 flex-1 touch-pan-x touch-pan-y overflow-auto overscroll-contain rounded-b-[9px]"
+  class={['scroll-thin relative min-h-0 flex-1 overflow-auto overscroll-contain rounded-b-[9px]', lockTouch ? 'touch-none' : 'touch-pan-x touch-pan-y']}
   data-testid="timeline-tracks"
 >
   <div class="relative" style:width="{LABEL_WIDTH + contentWidth}px" style:height="{Math.max(RULER_HEIGHT + total, viewHeight)}px">
@@ -265,6 +279,18 @@
         {@render row(entry.item, { top: offsets[entry.index] ?? 0, height: heights[entry.index] ?? 0, index: entry.index })}
       {/each}
     </div>
+    {#if overlay}
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute z-[6]"
+        style:top="{RULER_HEIGHT}px"
+        style:left="{LABEL_WIDTH}px"
+        style:width="{contentWidth}px"
+        style:height="{total}px"
+      >
+        {@render overlay()}
+      </div>
+    {/if}
     <span
       aria-hidden="true"
       class={['pointer-events-none absolute bottom-0 z-[5] w-px', recording ? 'bg-danger' : 'bg-coral']}

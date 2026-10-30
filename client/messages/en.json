@@ -138,7 +138,7 @@
   "timeline_zoom_in": "Zoom the timeline in",
   "timeline_zoom_out": "Zoom the timeline out",
   "timeline_head": "Playhead",
-  "timeline_hint": "Arrows to move between keyframes, Alt+Left or Right arrow to move the selected one, Enter to edit it or to add one at the playhead from a track name, Delete to remove it and Space to play or pause. New tracks are added from each element's menu.",
+  "timeline_hint": "Arrows to move between keyframes and Space to add the focused one to the selection or remove it. With it selected, Left or Right arrow move the selection one frame (ten with Shift). Ctrl+C, Ctrl+V and Ctrl+D copy, paste at the playhead and duplicate; Delete removes; Esc clears the selection. Alt+Left or Right arrow moves the focused keyframe, Enter edits it or, from a track name, adds one at the playhead, and the menu key opens its actions. Space outside a keyframe plays or pauses. New tracks are added from each element's menu.",
   "timeline_empty": "Select an element and press Record: every change you make on the canvas or in the panel creates a keyframe at the playhead. Whatever is already animated updates on its own. You can also apply an effect from Animation, in the right panel.",
   "timeline_prop_offsetX": "Offset X",
   "timeline_prop_offsetY": "Offset Y",

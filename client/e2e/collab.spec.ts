@@ -197,3 +197,74 @@ test('dos personas editan los puntos de paso del mismo conector y ven el mismo r
 
   await otherContext.close();
 });
+
+test('dos personas mueven a la vez keyframes distintos de la misma pista y ven la misma animación (CA-5.7)', async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  type Animation = { delay: number; duration: number; tracks: Partial<Record<string, Record<string, { t: number }>>> };
+  const label = `collab-keyframes-${test.info().project.name}`;
+  const ana = await createVerifiedAccount(page.request, `${label}-a`, 'Ana Keyframes');
+  const otherContext = await browser.newContext();
+  const bea = await otherContext.newPage();
+  await createVerifiedAccount(bea.request, `${label}-b`, 'Bea Keyframes');
+  const projectId = await createProject(page.request, ana.workspaceSlug, 'Keyframes compartidos');
+  await joinProjectByLink(page.request, projectId, bea.request, 'editor');
+  await openEditor(page, projectId);
+  await openEditor(bea, projectId);
+  const animation = (who: Page, id: string) => who.evaluate((nodeId) => (window.__parcifyTest!.animations() as unknown as Record<string, Animation>)[nodeId] ?? null, id);
+  const times = async (who: Page, id: string) => {
+    const anim = await animation(who, id);
+    return Object.values(anim?.tracks.offsetY ?? {})
+      .map((kf) => Math.round(anim!.delay + kf.t * anim!.duration))
+      .sort((a, b) => a - b);
+  };
+
+  // Ana dibuja un rectángulo y le pone «Deslizar»: Desplazamiento Y con keyframes en 0 y 500 ms.
+  const origin = await canvasOrigin(page);
+  await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
+  await drag(page, origin, { x: origin.x + 120, y: origin.y + 80 });
+  await expect.poll(async () => (await nodes(bea)).length).toBe(1);
+  const rect = (await nodes(page))[0]!;
+  await page.getByTestId('properties-panel').getByTestId('props-anim-presets').getByRole('button', { name: 'Deslizar' }).click();
+  await expect.poll(() => times(bea, rect.id)).toEqual([0, 500]);
+
+  // Las dos abren la línea de tiempo. Ana arrastra el de 500 ms 100 ms a la izquierda y Bea, a la vez, el de 0 ms
+  // 100 ms a la derecha (con Mayús tras apoyar, sin imán).
+  const grab = async (who: Page, time: string) => {
+    await who.getByRole('button', { name: 'Animar', exact: true }).click();
+    const panel = who.getByTestId('timeline');
+    const first = panel.getByRole('gridcell', { name: /^Desplazamiento Y, fotograma clave en 0,00 s/ });
+    const last = panel.getByRole('gridcell', { name: /^Desplazamiento Y, fotograma clave en 0,50 s/ });
+    await expect(last).toBeVisible();
+    const a = (await first.boundingBox())!;
+    const b = (await last.boundingBox())!;
+    const zoom = (b.x - a.x) / 500;
+    const target = time === '0,00 s' ? a : b;
+    return { x: target.x + target.width / 2, y: target.y + target.height / 2, zoom };
+  };
+  const anaPoint = await grab(page, '0,50 s');
+  const beaPoint = await grab(bea, '0,00 s');
+  const move = async (who: Page, point: { x: number; y: number; zoom: number }, deltaMs: number) => {
+    await who.mouse.move(point.x, point.y);
+    await who.mouse.down();
+    await who.keyboard.down('Shift');
+    await who.mouse.move(point.x + (deltaMs / 2) * point.zoom, point.y, { steps: 3 });
+    await who.mouse.move(point.x + deltaMs * point.zoom, point.y, { steps: 3 });
+    await who.mouse.up();
+    await who.keyboard.up('Shift');
+  };
+  await Promise.all([move(page, anaPoint, -100), move(bea, beaPoint, 100)]);
+
+  // Los dos ven los dos movimientos: ninguno pisa al otro.
+  const bothMoved = async (who: Page) => {
+    const [first, second] = await times(who, rect.id);
+    return first! > 50 && second! < 450;
+  };
+  await expect.poll(() => bothMoved(page)).toBe(true);
+  await expect.poll(() => bothMoved(bea)).toBe(true);
+  await expect.poll(async () => JSON.stringify(await animation(page, rect.id)) === JSON.stringify(await animation(bea, rect.id))).toBe(true);
+  const [first, second] = await times(page, rect.id);
+  expect(Math.abs(first! - 100)).toBeLessThan(1 / beaPoint.zoom + 1);
+  expect(Math.abs(second! - 400)).toBeLessThan(1 / anaPoint.zoom + 1);
+  await expect.poll(async () => JSON.stringify(await times(bea, rect.id))).toBe(JSON.stringify([first, second]));
+  await otherContext.close();
+});

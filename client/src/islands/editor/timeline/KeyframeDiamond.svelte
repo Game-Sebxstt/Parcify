@@ -7,6 +7,7 @@
     // Posición en la pista (px desde el inicio del tiempo).
     left: number;
     tabindex: number;
+    // Está en la selección de keyframes: relleno coral.
     selected: boolean;
     // Cae en el cabezal: anillo coral alrededor.
     atHead: boolean;
@@ -20,11 +21,28 @@
     onpointermove: (event: PointerEvent) => void;
     onpointerup: (event: PointerEvent) => void;
     onpointercancel: (event: PointerEvent) => void;
+    oncontextmenu: (event: MouseEvent) => void;
     ondblclick: () => void;
   };
 
-  let { id, label, left, tabindex, selected, atHead, proposed, readOnly, touch, onfocus, onpointerdown, onpointermove, onpointerup, onpointercancel, ondblclick }: Props =
-    $props();
+  let {
+    id,
+    label,
+    left,
+    tabindex,
+    selected,
+    atHead,
+    proposed,
+    readOnly,
+    touch,
+    onfocus,
+    onpointerdown,
+    onpointermove,
+    onpointerup,
+    onpointercancel,
+    oncontextmenu,
+    ondblclick,
+  }: Props = $props();
 </script>
 
 <!-- El teclado de la celda lo lleva la rejilla. -->
@@ -39,15 +57,17 @@
   {onpointermove}
   {onpointerup}
   {onpointercancel}
+  {oncontextmenu}
   {ondblclick}
   style:left="{left}px"
   class={[
-    'group/kf absolute top-1/2 grid -translate-1/2 touch-none place-items-center rounded-xs outline-none',
+    'group/kf absolute top-1/2 z-[1] grid -translate-1/2 touch-none place-items-center rounded-xs outline-none select-none',
     'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
     touch ? 'size-7' : 'size-4',
     readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
   ]}
   data-testid="keyframe"
+  data-selected={selected ? '' : undefined}
   data-at-head={atHead ? '' : undefined}
 >
   <span

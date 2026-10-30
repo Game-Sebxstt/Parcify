@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
@@ -552,4 +552,180 @@ test('línea de tiempo: zoom y pan del tiempo con la rueda, barra de rango, alto
   await page.keyboard.press('Escape');
   await expect(panel).toBeVisible();
   expect(await natives()).toEqual([]);
+});
+
+// Instantes absolutos (ms) de los keyframes de una pista, de menor a mayor.
+const times = async (page: Page, id: string, prop: string) => {
+  const anim = await animation(page, id);
+  return Object.values(anim?.tracks[prop] ?? {})
+    // t se guarda con 4 decimales: en una iteración de 1,5 s, 500 ms se lee como 499,95.
+    .map((kf) => Math.round(anim!.delay + kf.t * anim!.duration))
+    .sort((a, b) => a - b);
+};
+
+test('keyframes: marquesina y Mayús+clic, arrastre en grupo, copiar y pegar, duplicar, estirar y curva (CA-5.5, 5.6, 5.15)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const account = await createVerifiedAccount(page.request, `keyframes-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Keyframes en grupo');
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 60, y: box.y + box.height / 2 - 120 };
+  await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
+  await drag(page, origin, { x: origin.x + 120, y: origin.y + 80 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  const rect = (await nodes(page))[0]!;
+  // «Deslizar»: Desplazamiento Y y Opacidad, cada una con keyframes en 0 y 500 ms.
+  await page.getByTestId('properties-panel').getByTestId('props-anim-presets').getByRole('button', { name: 'Deslizar' }).click();
+  await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500]);
+
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
+  const panel = page.getByTestId('timeline');
+  const grid = panel.getByRole('grid', { name: 'Línea de tiempo' });
+  const kf = (track: string, time: string) => grid.getByRole('gridcell', { name: new RegExp(`^${track}, fotograma clave en ${time}`) });
+  const center = async (locator: Locator) => {
+    const rect = (await locator.boundingBox())!;
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  };
+  const y0 = kf('Desplazamiento Y', '0,00 s');
+  const y500 = kf('Desplazamiento Y', '0,50 s');
+  const o0 = kf('Opacidad', '0,00 s');
+  await expect(y0).toBeVisible();
+  const zoom = ((await center(y500)).x - (await center(y0)).x) / 500;
+  const selected = panel.locator('[data-testid="keyframe"][data-selected]');
+
+  // Marquesina desde el vacío de Desplazamiento Y hasta el de Opacidad: los dos keyframes en 0. Mayús+clic suma el
+  // de 500 ms de Desplazamiento Y.
+  const a = await center(y0);
+  const b = await center(o0);
+  const rowOf = (cell: Locator) => cell.locator('xpath=ancestor::*[@role="row"][1]');
+  const rowY = (await rowOf(y0).boundingBox())!;
+  const rowO = (await rowOf(o0).boundingBox())!;
+  await page.mouse.move(a.x + 24, rowY.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(a.x + 10, (rowY.y + rowO.y) / 2, { steps: 3 });
+  await expect(panel.getByTestId('timeline-marquee')).toBeVisible();
+  await page.mouse.move(b.x - 6, rowO.y + rowO.height - 2, { steps: 3 });
+  await page.mouse.up();
+  await expect(panel.getByTestId('timeline-marquee')).toHaveCount(0);
+  await expect(selected).toHaveCount(2);
+  await page.keyboard.down('Shift');
+  await y500.click();
+  await page.keyboard.up('Shift');
+  await expect(selected).toHaveCount(3);
+  await expect(grid).toHaveAttribute('aria-multiselectable', 'true');
+
+  // Arrastrarlos 200 ms (Mayús tras apoyar, sin imán) los mueve juntos en un paso de deshacer (CA-5.5).
+  const from = await center(y0);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.keyboard.down('Shift');
+  await page.mouse.move(from.x + 100 * zoom, from.y, { steps: 4 });
+  await page.mouse.move(from.x + 200 * zoom, from.y, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  const tolerance = 1 / zoom + 0.5;
+  await expect.poll(async () => (await times(page, rect.id, 'offsetY'))[0]!).toBeGreaterThan(150);
+  const [movedY0, movedY1] = await times(page, rect.id, 'offsetY');
+  const [movedO0, movedO1] = await times(page, rect.id, 'opacity');
+  expect(Math.abs(movedY0! - 200)).toBeLessThan(tolerance);
+  expect(Math.abs(movedY1! - 700)).toBeLessThan(tolerance);
+  expect(Math.abs(movedO0! - 200)).toBeLessThan(tolerance);
+  expect(movedO1).toBe(500);
+  await page.keyboard.press('Control+z');
+  await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500]);
+  expect(await times(page, rect.id, 'opacity')).toEqual([0, 500]);
+
+  // Ctrl+C sobre los 2 de Desplazamiento Y, el cabezal a 1 s y Ctrl+V: 2 keyframes nuevos con la misma separación
+  // (CA-5.6). La selección pasa a las copias.
+  await y0.click();
+  await page.keyboard.down('Shift');
+  await y500.click();
+  await page.keyboard.up('Shift');
+  await expect(selected).toHaveCount(2);
+  await page.keyboard.press('Control+c');
+  await expect(panel.getByTestId('timeline-announcement')).toHaveText('2 fotogramas clave copiados.');
+  const time = panel.getByTestId('timeline-time-field');
+  await time.fill('1');
+  await time.press('Enter');
+  await y0.focus();
+  await page.keyboard.press('Control+v');
+  await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500, 1000, 1500]);
+  expect(await times(page, rect.id, 'opacity')).toEqual([0, 500]);
+  expect((await nodes(page)).length).toBe(1);
+  await expect(selected).toHaveCount(2);
+  await expect(kf('Desplazamiento Y', '1,00 s')).toHaveAttribute('aria-selected', 'true');
+
+  // Ctrl+D duplica la selección justo después: (1500 − 1000) + 100 ms más tarde.
+  await kf('Desplazamiento Y', '1,00 s').focus();
+  await page.keyboard.press('Control+d');
+  await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500, 1000, 1500, 1600, 2100]);
+  expect((await nodes(page)).length).toBe(1);
+  await page.keyboard.press('Control+z');
+  await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500, 1000, 1500]);
+
+  // Con 3 keyframes en 0, 500 y 1000 ms, el asa derecha de la caja de estirado hasta 2000 ms los deja en 0, 1000 y
+  // 2000 ms, en un paso de deshacer (CA-5.15). Antes, encajar y alejar para que quepan los 2 s.
+  await panel.getByRole('button', { name: 'Encajar el tiempo' }).click();
+  await panel.getByRole('button', { name: 'Alejar la línea de tiempo' }).click();
+  await expect.poll(async () => (await center(y500)).x - (await center(y0)).x).toBeLessThan(500 * zoom * 0.9);
+  const fitted = ((await center(y500)).x - (await center(y0)).x) / 500;
+  await y0.click();
+  await page.keyboard.down('Shift');
+  await y500.click();
+  await kf('Desplazamiento Y', '1,00 s').click();
+  await page.keyboard.up('Shift');
+  await expect(selected).toHaveCount(3);
+  const handle = panel.getByTestId('timeline-stretch-end');
+  await expect(handle).toBeVisible();
+  const grip = await center(handle);
+  const start = await center(y0);
+  await page.mouse.move(grip.x, grip.y);
+  await page.mouse.down();
+  await page.keyboard.down('Shift');
+  await page.mouse.move(start.x + 1500 * fitted, grip.y, { steps: 4 });
+  await page.mouse.move(start.x + 2000 * fitted, grip.y, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  await expect.poll(async () => (await times(page, rect.id, 'offsetY')).at(-1)!).toBeGreaterThan(1900);
+  const stretched = await times(page, rect.id, 'offsetY');
+  expect(stretched).toHaveLength(4);
+  const stretchTolerance = 2 / fitted + 0.5;
+  expect(stretched[0]).toBe(0);
+  expect(Math.abs(stretched[1]! - 1000)).toBeLessThan(stretchTolerance);
+  expect(stretched[2]).toBe(1500);
+  expect(Math.abs(stretched[3]! - 2000)).toBeLessThan(stretchTolerance);
+  await page.keyboard.press('Control+z');
+  await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500, 1000, 1500]);
+
+  // Un clic en el tramo entre 0 y 0,5 s abre su curva; «Lineal» la cambia en el keyframe que lo empieza.
+  const easingOf = async () => Object.values((await animation(page, rect.id))!.tracks.offsetY ?? {}).find((item) => item.t === 0) as { e?: unknown } | undefined;
+  expect((await easingOf())?.e).toBe('easeOut');
+  const segment = rowOf(y0).getByTestId('keyframe-segment').first();
+  await segment.click({ force: true });
+  const popover = page.getByRole('dialog', { name: 'Curva del tramo' });
+  await expect(popover).toBeVisible();
+  await expect(popover.getByRole('radio', { name: 'Salida suave', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await popover.getByRole('radio', { name: 'Lineal', exact: true }).click();
+  await expect.poll(async () => (await easingOf())?.e).toBe('linear');
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+
+  // Clic derecho sobre un keyframe: el menú con las mismas acciones y la curva.
+  await y500.click({ button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Acciones de los fotogramas clave' });
+  await expect(menu).toBeVisible();
+  for (const name of ['Editar valor…', 'Copiar', 'Pegar en el cabezal', 'Duplicar', 'Borrar', 'Estirar…', 'Curva']) {
+    await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible();
+  }
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+
+  // Esc vacía la selección y, con ella vacía, devuelve el foco al lienzo.
+  await y500.focus();
+  await page.keyboard.press('Escape');
+  await expect(selected).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(canvas).toBeFocused();
+  expect(await audit(page)).toEqual([]);
 });

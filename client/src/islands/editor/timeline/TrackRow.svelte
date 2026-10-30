@@ -1,6 +1,7 @@
 <script lang="ts" module>
   import type { MenuEntry } from '../../../ui/DropdownMenu.svelte';
   import type { KeyframeContext } from '../properties/panel.ts';
+  import type { KeyRef } from '../../../engine/index.ts';
   import type { NodeRow, Row, TimelineKeyframe, TrackRow } from './model.ts';
 
   export type RangeMode = 'move' | 'start' | 'end';
@@ -10,7 +11,7 @@
   export type RowActions = {
     cellId: (position: CellPosition) => string;
     tabindex: (row: Row, key: string | null) => number;
-    isCurrent: (row: Row, key: string | null) => boolean;
+    isSelected: (refs: readonly KeyRef[]) => boolean;
     focusCell: (position: CellPosition) => void;
     nameOf: (row: Row) => string;
     nodeLabel: (row: NodeRow) => string;
@@ -28,11 +29,18 @@
     laneDown: (event: PointerEvent) => void;
     laneMove: (event: PointerEvent) => void;
     laneUp: (event: PointerEvent) => void;
+    laneMenu: (event: MouseEvent) => void;
+    // Instante en que se ve un rombo resumen de la fila plegada (con la vista previa de los arrastres).
+    markTime: (row: NodeRow, ms: number, refs: readonly KeyRef[]) => number;
     keyframeLabel: (row: TrackRow, kf: TimelineKeyframe) => string;
-    dragStart: (event: PointerEvent, row: TrackRow, kf: TimelineKeyframe) => void;
-    dragMove: (event: PointerEvent) => void;
-    dragEnd: (event: PointerEvent) => void;
-    dragCancel: () => void;
+    // Rombos (uno o, en la fila plegada, todos los de un instante): selección, arrastre y menú.
+    keyDown: (event: PointerEvent, refs: KeyRef[], ms: number, position: CellPosition | null) => void;
+    keyMove: (event: PointerEvent) => void;
+    keyUp: (event: PointerEvent) => void;
+    keyCancel: (event: PointerEvent) => void;
+    keyMenu: (event: MouseEvent, refs: KeyRef[], position: CellPosition | null) => void;
+    // Clic en el tramo que empieza en `kf`: su curva.
+    segment: (event: MouseEvent, row: TrackRow, kf: TimelineKeyframe) => void;
     edit: (row: TrackRow, kf: TimelineKeyframe) => void;
     valueAt: (row: TrackRow) => number | string | null;
     commitValue: (row: TrackRow, value: number) => void;
@@ -169,6 +177,9 @@
       onpointermove={actions.laneMove}
       onpointerup={actions.laneUp}
       onpointercancel={actions.laneUp}
+      oncontextmenu={(event) => {
+        if (event.target === event.currentTarget) actions.laneMenu(event);
+      }}
       class="relative min-w-0 flex-1 border-b border-edge/20"
     >
       {#if settings}
@@ -207,13 +218,34 @@
         </div>
       {/if}
       {#if !node.expanded}
-        {#each node.marks as ms (ms)}
+        <!-- Rombos resumen: se seleccionan y se arrastran todos los keyframes de ese instante a la vez. Con el teclado
+             se despliega la fila. -->
+        {#each node.marks as mark (mark.ms)}
+          {@const on = actions.isSelected(mark.refs)}
           <span
             aria-hidden="true"
-            class="pointer-events-none absolute top-1/2 size-[7px] -translate-1/2 rotate-45 rounded-[1px] border border-ink-muted bg-surface-2"
-            style:left="{timeX(settings ? settings.delay + ((ms - (node.animation?.delay ?? 0)) / (node.animation?.duration || 1)) * settings.duration : ms, zoom)}px"
-            style:border-color={proposed ? AI_PREVIEW_COLOR : undefined}
-          ></span>
+            onpointerdown={(event) => actions.keyDown(event, mark.refs, mark.ms, null)}
+            onpointermove={actions.keyMove}
+            onpointerup={actions.keyUp}
+            onpointercancel={actions.keyCancel}
+            oncontextmenu={(event) => actions.keyMenu(event, mark.refs, null)}
+            class={[
+              'group/mark absolute top-1/2 z-[1] grid -translate-1/2 touch-none place-items-center select-none',
+              touch ? 'size-7' : 'size-4',
+              readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+            ]}
+            style:left="{timeX(actions.markTime(node, mark.ms, mark.refs), zoom)}px"
+            data-testid="keyframe-mark"
+            data-selected={on ? '' : undefined}
+          >
+            <span
+              class={[
+                'block size-[7px] rotate-45 rounded-[1px] border transition-colors duration-(--dur-fast)',
+                on ? 'border-coral bg-coral' : 'border-ink-muted bg-surface-2 group-hover/mark:border-ink',
+              ]}
+              style:border-color={proposed && !on ? AI_PREVIEW_COLOR : undefined}
+            ></span>
+          </span>
         {/each}
       {/if}
     </div>
@@ -272,31 +304,54 @@
       onpointermove={actions.laneMove}
       onpointerup={actions.laneUp}
       onpointercancel={actions.laneUp}
+      oncontextmenu={(event) => {
+        if (event.target === event.currentTarget) actions.laneMenu(event);
+      }}
       class="relative min-w-0 flex-1 border-b border-edge/20"
     >
+      <!-- Tramos entre keyframes: un clic abre su curva. Con el teclado, «Curva ▸» del menú del keyframe. -->
       {#each times as time, i (track.keyframes[i]!.key)}
         {@const next = times[i + 1]}
         {#if next !== undefined && next > time}
-          <span aria-hidden="true" class="pointer-events-none absolute top-1/2 h-0.5 -translate-y-1/2 bg-petrol" style:left="{timeX(time, zoom)}px" style:width="{(next - time) * zoom}px"></span>
+          <button
+            type="button"
+            tabindex="-1"
+            aria-hidden="true"
+            disabled={readOnly}
+            onclick={(event) => actions.segment(event, track, track.keyframes[i]!)}
+            class={[
+              'group/seg absolute top-1/2 h-3 -translate-y-1/2 cursor-pointer disabled:cursor-default',
+              // Con el dedo, el tramo no es un botón: la corrección de toques del navegador lo elegiría al tocar el vacío
+              // (scroll y marquesina). La curva está en «Curva ▸» de la pulsación larga.
+              touch && 'pointer-events-none',
+            ]}
+            style:left="{timeX(time, zoom)}px"
+            style:width="{(next - time) * zoom}px"
+            data-testid="keyframe-segment"
+          >
+            <span class={['block h-0.5 w-full bg-petrol transition-colors duration-(--dur-fast)', !readOnly && 'group-hover/seg:bg-coral']}></span>
+          </button>
         {/if}
       {/each}
       {#each track.keyframes as kf, i (kf.key)}
         {@const position = { row: track.rowKey, key: kf.key }}
+        {@const refs = [{ nodeId: track.id, prop: track.prop, key: kf.key }]}
         <KeyframeDiamond
           id={actions.cellId(position)}
           label={actions.keyframeLabel(track, kf)}
           left={timeX(times[i] ?? kf.time, zoom)}
           tabindex={actions.tabindex(track, kf.key)}
-          selected={actions.isCurrent(track, kf.key)}
+          selected={actions.isSelected(refs)}
           atHead={Math.abs((times[i] ?? kf.time) - head) < 1}
           {proposed}
           {readOnly}
           {touch}
           onfocus={() => actions.focusCell(position)}
-          onpointerdown={(event) => actions.dragStart(event, track, kf)}
-          onpointermove={actions.dragMove}
-          onpointerup={actions.dragEnd}
-          onpointercancel={actions.dragCancel}
+          onpointerdown={(event) => actions.keyDown(event, refs, kf.time, position)}
+          onpointermove={actions.keyMove}
+          onpointerup={actions.keyUp}
+          onpointercancel={actions.keyCancel}
+          oncontextmenu={(event) => actions.keyMenu(event, refs, position)}
           ondblclick={() => actions.edit(track, kf)}
         />
       {/each}

@@ -1,6 +1,15 @@
 <script lang="ts">
+  import ClipboardPaste from '@lucide/svelte/icons/clipboard-paste';
+  import Copy from '@lucide/svelte/icons/copy';
+  import CopyPlus from '@lucide/svelte/icons/copy-plus';
+  import ListPlus from '@lucide/svelte/icons/list-plus';
+  import ListX from '@lucide/svelte/icons/list-x';
   import Minus from '@lucide/svelte/icons/minus';
+  import MoveHorizontal from '@lucide/svelte/icons/move-horizontal';
   import Pause from '@lucide/svelte/icons/pause';
+  import Pencil from '@lucide/svelte/icons/pencil';
+  import Spline from '@lucide/svelte/icons/spline';
+  import Trash from '@lucide/svelte/icons/trash';
   import Play from '@lucide/svelte/icons/play';
   import Plus from '@lucide/svelte/icons/plus';
   import Repeat from '@lucide/svelte/icons/repeat';
@@ -17,13 +26,16 @@
     poseValue,
     type AnimationState,
     type Engine,
+    type KeyframePasteResult,
+    type KeyRef,
     type Pose,
   } from '../../../engine/index.ts';
   import { getEditorLayout, TIMELINE_HEIGHT, WIDTH_STEP } from '../../../lib/editor-layout.svelte.ts';
   import { m } from '../../../paraglide/messages.js';
   import { ANIMATION_LIMITS } from '../../../shared/document/limits.js';
-  import type { Animation, AnimProp, Keyframe } from '../../../shared/document/schema.js';
+  import { EASINGS, type Animation, type AnimProp, type Keyframe } from '../../../shared/document/schema.js';
   import type { MenuEntry } from '../../../ui/DropdownMenu.svelte';
+  import PointMenu from '../../../ui/PointMenu.svelte';
   import ScrubInput from '../../../ui/ScrubInput.svelte';
   import Select from '../../../ui/Select.svelte';
   import Slider from '../../../ui/Slider.svelte';
@@ -31,7 +43,11 @@
   import { kindLabel } from '../kinds.ts';
   import ToolButton from '../ToolButton.svelte';
   import AiAnimate from './AiAnimate.svelte';
+  import { onKeyframeClip, keyframeClip, setKeyframeClip } from './clipboard.ts';
+  import EasingPopover, { easingLabel, type EasingPreset } from './EasingPopover.svelte';
   import KeyframeEditor from './KeyframeEditor.svelte';
+  import { KeyframeSelection, refId } from './keyframe-selection.svelte.ts';
+  import StretchPopover from './StretchPopover.svelte';
   import TrackList from './TrackList.svelte';
   import TrackRow, { type CellPosition, type RangeMode, type RowActions } from './TrackRow.svelte';
   import {
@@ -42,8 +58,10 @@
     keyframeAt,
     propLabel,
     rowHeight,
+    rowOffsets,
     sliderToZoom,
     spanOf,
+    timeX,
     zoomToSlider,
     type NodeRow,
     type Row,
@@ -81,11 +99,57 @@
     { value: '2', label: '2×' },
   ];
   const DRAG_THRESHOLD = 3;
+  // Con el dedo, un arrastre empieza a los 8 px y la pulsación larga dura 500 ms.
+  const TOUCH_SLOP = 8;
+  const LONG_PRESS_MS = 500;
   const NUDGE = 0.01;
+  // Las flechas mueven la selección un fotograma (1/60 s); con Mayús, diez.
+  const FRAME_MS = 1000 / 60;
+  // Imán de los arrastres de keyframes y del estirado.
+  const SNAP_PX = 6;
   // Los arrastres de la barra de rango van de 10 en 10 ms.
   const RANGE_STEP = 10;
 
-  type Drag = { pointerId: number; id: string; prop: AnimProp; key: string; startX: number; startT: number; t: number; duration: number; moved: boolean };
+  type Range = { min: number; max: number };
+  // Arrastre de keyframes: la vista previa suma `delta` a todos los de `ids` y se escribe una vez, al soltar.
+  type KeyDrag = {
+    pointerId: number;
+    ids: ReadonlySet<string>;
+    refs: KeyRef[];
+    grabbedMs: number;
+    startX: number;
+    startY: number;
+    threshold: number;
+    limits: Range;
+    targets: number[];
+    // Clic sin mover sobre un keyframe que ya estaba en una selección mayor: la selección pasa a ser solo ese.
+    collapseTo: KeyRef[] | null;
+    // Toque sin mover con «Añadir a la selección» sobre un keyframe ya seleccionado: al soltar, sale de la selección.
+    toggleOff: KeyRef[] | null;
+    canMove: boolean;
+    moved: boolean;
+    delta: number;
+    snap: number | null;
+  };
+  // Estirado desde un asa de la caja: el pivote es el asa contraria (con Alt, el centro).
+  type Stretch = {
+    pointerId: number;
+    side: 'start' | 'end';
+    startX: number;
+    ids: ReadonlySet<string>;
+    refs: KeyRef[];
+    minMs: number;
+    maxMs: number;
+    limits: Range;
+    centerLimits: Range;
+    targets: number[];
+    moved: boolean;
+    pivot: number;
+    factor: number;
+    snap: number | null;
+  };
+  // Pulsación en el vacío de las pistas: clic (cabezal), arrastre (marquesina) o, con el dedo, scroll o pulsación larga.
+  type LaneGesture = { pointerId: number; target: HTMLElement; startX: number; startY: number; origin: { x: number; y: number }; touch: boolean; additive: boolean; base: KeyRef[]; marquee: boolean };
   type RangeDrag = { pointerId: number; id: string; mode: RangeMode; startX: number; delay0: number; duration0: number; delay: number; duration: number; moved: boolean };
 
   let version = $state(0);
@@ -104,9 +168,23 @@
   let focus = $state<CellPosition | null>(null);
   let pendingFocus = $state<CellPosition | null>(null);
   let editing = $state<{ id: string; prop: AnimProp; key: string; left: number; bottom: number } | null>(null);
-  let drag = $state<Drag | null>(null);
+  const picked = new KeyframeSelection();
+  let keyDrag = $state.raw<KeyDrag | null>(null);
+  let stretch = $state.raw<Stretch | null>(null);
+  let lane: LaneGesture | null = null;
+  let lockTouch = $state(false);
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastPointer = 'mouse';
+  // «Añadir a la selección» con el dedo (el mismo conmutador que la barra contextual del lienzo).
+  let additive = $state(false);
+  let hasClip = $state(false);
+  let announcement = $state('');
+  let menu = $state.raw<{ at: { x: number; y: number }; refs: KeyRef[] } | null>(null);
+  // La acción del menú ya lleva el foco a otro sitio (editor, estirar): al cerrarse no vuelve a la celda.
+  let menuKeepFocus = false;
+  let easingTarget = $state.raw<{ ref: KeyRef; rect: DOMRect } | null>(null);
+  let stretchAt = $state.raw<{ at: { x: number; y: number }; refs: KeyRef[]; pivot: number; limits: Range } | null>(null);
   let rangeDrag = $state<RangeDrag | null>(null);
-  let scrubbing: number | null = null;
   // La acción del menú de una fila ya lleva el foco a otro sitio: el menú no lo devuelve a su botón.
   let keepMenuFocus = false;
   let wasPlaying = false;
@@ -130,6 +208,8 @@
         source.state.selection.subscribe((value) => (selection = value)),
         source.anim.state.subscribe(onPlayer),
         source.core.aiAnimations.subscribe((value) => (proposed = value)),
+        source.core.touchModifiers.subscribe((value) => (additive = value.additive)),
+        onKeyframeClip((clip) => (hasClip = clip !== null)),
       ];
       return () => unsubscribe.forEach((run) => run());
     });
@@ -227,6 +307,11 @@
     untrack(() => {
       aiOpen = false;
       editing = null;
+      menu = null;
+      easingTarget = null;
+      stretchAt = null;
+      cancelGestures();
+      picked.clear();
       engine.anim.stop();
     });
   });
@@ -251,7 +336,174 @@
   });
 
   const cellId = (position: CellPosition) => `${uid}-${position.row}-${position.key ?? 'h'}`;
-  const isCurrent = (row: Row, key: string | null) => current?.row === row.rowKey && current.key === key;
+
+  const keyframeOf = (ref: KeyRef) => animationOf(ref.nodeId)?.tracks[ref.prop]?.[ref.key];
+
+  // Instante (ms) del keyframe en la primera iteración, o null si ya no existe.
+  function msOf(ref: KeyRef): number | null {
+    const animation = animationOf(ref.nodeId);
+    const kf = animation?.tracks[ref.prop]?.[ref.key];
+    return animation && kf ? keyframeAt(animation, kf.t) : null;
+  }
+
+  // La selección sin lo que ya no existe (borrado, deshacer o un cambio de otra persona) ni lo que no está en la página.
+  const visibleIds = $derived(new Set(ids));
+  const shownRef = (ref: KeyRef) => visibleIds.has(ref.nodeId) && keyframeOf(ref) !== undefined;
+  const selectedRefs = $derived.by(() => {
+    void version;
+    void proposed;
+    return picked.refs().filter(shownRef);
+  });
+
+  // Al cambiar de página, la selección y los gestos de la anterior se descartan.
+  $effect(() => {
+    void pageId;
+    untrack(() => {
+      cancelGestures();
+      picked.clear();
+      menu = null;
+      easingTarget = null;
+      stretchAt = null;
+    });
+  });
+  const selectedIds = $derived(new Set(selectedRefs.map(refId)));
+  const isSelected = (refs: readonly KeyRef[]) => refs.length > 0 && refs.every((ref) => selectedIds.has(refId(ref)));
+  const rowIndex = $derived(new Map(rows.map((row, index) => [row.rowKey, index])));
+
+  // Con la vista previa de un arrastre o de un estirado.
+  function previewMs(ref: KeyRef, ms: number): number {
+    const id = refId(ref);
+    if (keyDrag?.moved && keyDrag.ids.has(id)) return ms + keyDrag.delta;
+    if (stretch?.moved && stretch.ids.has(id)) return Math.max(0, stretch.pivot + (ms - stretch.pivot) * stretch.factor);
+    return ms;
+  }
+
+  // Caja de estirado: con 2 o más keyframes seleccionados en al menos dos instantes distintos, de minMs a maxMs y 6 px
+  // por debajo del rombo más bajo.
+  const stretchBox = $derived.by(() => {
+    if (selectedRefs.length < 2) return null;
+    const offsets = rowOffsets(heights);
+    let min = Infinity;
+    let max = -Infinity;
+    let bottom = -Infinity;
+    for (const ref of selectedRefs) {
+      const ms = msOf(ref);
+      if (ms === null) continue;
+      const shown = previewMs(ref, ms);
+      min = Math.min(min, shown);
+      max = Math.max(max, shown);
+      const index = rowIndex.get(`${ref.nodeId}:${ref.prop}`) ?? rowIndex.get(ref.nodeId);
+      if (index !== undefined) bottom = Math.max(bottom, (offsets[index] ?? 0) + (heights[index] ?? 0) / 2);
+    }
+    if (!Number.isFinite(bottom) || max - min < 0.5) return null;
+    return { min, max, top: bottom + 4.5 + 6 };
+  });
+  const snapGuide = $derived(keyDrag?.snap ?? stretch?.snap ?? null);
+
+  // Imán: el cabezal, 0, el final de cada iteración y los keyframes que no se mueven.
+  function snapTargets(exclude: ReadonlySet<string>): number[] {
+    const targets = [0, head];
+    for (const id of ids) {
+      const animation = animationOf(id);
+      if (!animation) continue;
+      targets.push(animation.delay + animation.duration);
+      for (const [prop, track] of Object.entries(animation.tracks)) {
+        for (const [key, kf] of Object.entries(track ?? {})) if (!exclude.has(`${id}:${prop}:${key}`)) targets.push(keyframeAt(animation, kf.t));
+      }
+    }
+    return targets;
+  }
+
+  function snapTo(ms: number, targets: readonly number[]): number | null {
+    let best: number | null = null;
+    let distance = SNAP_PX / zoom;
+    for (const target of targets) {
+      const d = Math.abs(target - ms);
+      if (d <= distance) {
+        best = target;
+        distance = d;
+      }
+    }
+    return best;
+  }
+
+  const clamp = (value: number, range: Range) => Math.min(range.max, Math.max(range.min, value));
+
+  // Lo que reciben copiar, duplicar, borrar y mover: la selección o, sin ella, el keyframe con el foco.
+  function targets(): KeyRef[] {
+    if (selectedRefs.length) return selectedRefs;
+    const position = current;
+    const row = position?.key ? rows[rowIndex.get(position.row) ?? -1] : undefined;
+    return row?.kind === 'track' && position?.key ? [{ nodeId: row.id, prop: row.prop, key: position.key }] : [];
+  }
+
+  function announce(text: string) {
+    // Vaciar y volver a escribir: así se anuncia también el mismo texto dos veces seguidas.
+    announcement = '';
+    queueMicrotask(() => (announcement = text));
+  }
+
+  const PASTE_ERRORS: Record<Exclude<KeyframePasteResult, { ok: true }>['reason'], () => string> = {
+    track_full: m.timeline_paste_track_full,
+    animation_limit: m.timeline_paste_animation_limit,
+    too_long: m.timeline_paste_too_long,
+    nothing: m.timeline_paste_nothing,
+  };
+
+  // Pegar y duplicar: la selección pasa a las copias.
+  function pasted(result: KeyframePasteResult, done: (count: number) => string) {
+    if (!result.ok) {
+      showToast({ message: PASTE_ERRORS[result.reason](), tone: 'error' });
+      return;
+    }
+    picked.set(result.refs);
+    announce(done(result.refs.length));
+  }
+
+  function copySelection(): boolean {
+    const refs = targets();
+    const clip = refs.length ? engine.anim.keyframes.copyKeyframes(refs) : null;
+    if (!clip) return false;
+    setKeyframeClip(clip);
+    announce(m.timeline_copied({ count: clip.items.length }));
+    return true;
+  }
+
+  function pasteAtHead(): boolean {
+    const clip = keyframeClip();
+    if (!clip || readOnly) return false;
+    pasted(engine.anim.keyframes.pasteKeyframes(clip, head, selection), (count) => m.timeline_pasted({ count, time: formatTime(head) }));
+    return true;
+  }
+
+  function duplicateSelection(): boolean {
+    const refs = targets();
+    if (!refs.length || readOnly) return false;
+    pasted(engine.anim.keyframes.duplicateKeyframes(refs), (count) => m.timeline_duplicated({ count }));
+    return true;
+  }
+
+  function deleteSelection(): boolean {
+    const refs = targets();
+    if (!refs.length || readOnly) return false;
+    const position = current;
+    const row = position ? rows[rowIndex.get(position.row) ?? -1] : undefined;
+    if (!engine.anim.keyframes.deleteKeyframes(refs)) return false;
+    picked.clear();
+    announce(m.timeline_deleted({ count: refs.length }));
+    // Si el keyframe con el foco se ha ido, el foco pasa a la fila de su nodo.
+    if (row && position?.key && refs.some((ref) => ref.nodeId === row.id && ref.key === position.key)) pendingFocus = { row: row.id, key: null };
+    return true;
+  }
+
+  function moveSelection(direction: 1 | -1, big: boolean) {
+    if (readOnly || !selectedRefs.length) return;
+    engine.anim.keyframes.moveKeyframes(selectedRefs, direction * FRAME_MS * (big ? 10 : 1));
+  }
+
+  function clearSelection() {
+    picked.clear();
+  }
 
   function nameOf(row: Row): string {
     const text = row.record.type === 'text' ? engine.core.store.text(row.id) : '';
@@ -440,9 +692,26 @@
     const kfs = row.kind === 'track' ? row.keyframes : [];
     const at = position.key ? kfs.findIndex((kf) => kf.key === position.key) : -1;
     const kf = at >= 0 ? kfs[at] : undefined;
+    lastPointer = 'keyboard';
+    // Con el keyframe del foco en la selección, ←/→ mueven toda la selección un fotograma (Mayús: diez).
+    const moving = !event.altKey && !event.ctrlKey && !event.metaKey && !!kf && row.kind === 'track' && selectedIds.has(refId({ nodeId: row.id, prop: row.prop, key: kf.key }));
+    if ((event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) && kf && row.kind === 'track') {
+      const ref = { nodeId: row.id, prop: row.prop, key: kf.key };
+      if (!selectedIds.has(refId(ref))) picked.set([ref]);
+      const box = document.getElementById(cellId(position))?.getBoundingClientRect();
+      openMenu(box ? { x: box.right, y: box.top + box.height / 2 } : { x: window.innerWidth / 2, y: window.innerHeight / 2 });
+      event.preventDefault();
+      return;
+    }
     switch (event.key) {
+      case ' ':
+        // Espacio sobre un keyframe lo suma o lo quita de la selección; en el resto del panel, reproduce.
+        if (!kf || row.kind !== 'track' || event.ctrlKey || event.metaKey || event.altKey) return;
+        picked.toggle({ nodeId: row.id, prop: row.prop, key: kf.key });
+        break;
       case 'ArrowRight':
-        if (event.altKey) {
+        if (moving) moveSelection(1, event.shiftKey);
+        else if (event.altKey) {
           if (kf && row.kind === 'track') nudge(row, kf, 1);
         } else if (row.kind === 'node') {
           if (!row.expanded) toggle(row.id, true);
@@ -450,7 +719,8 @@
         } else if (at + 1 < kfs.length) go(index, kfs[at + 1]!.key);
         break;
       case 'ArrowLeft':
-        if (event.altKey) {
+        if (moving) moveSelection(-1, event.shiftKey);
+        else if (event.altKey) {
           if (kf && row.kind === 'track') nudge(row, kf, -1);
         } else if (row.kind === 'node') {
           if (row.expanded) toggle(row.id, false);
@@ -480,7 +750,8 @@
         break;
       case 'Delete':
       case 'Backspace':
-        if (kf && row.kind === 'track') remove(row, kf);
+        if (selectedRefs.length) deleteSelection();
+        else if (kf && row.kind === 'track') remove(row, kf);
         break;
       default:
         return;
@@ -491,10 +762,34 @@
   // Espacio reproduce o pausa y K enciende o apaga Grabar, con el foco en cualquier parte del panel salvo en un
   // control que ya usa la tecla. Esc no cierra la línea de tiempo: solo la cierran × y el botón de la barra.
   function onPanelKey(event: KeyboardEvent) {
+    if (event.defaultPrevented) return;
+    const target = event.target as HTMLElement;
+    const inField = !!target.closest('input, textarea, [role="dialog"]');
+    // Ctrl/⌘+C, V y D trabajan con los keyframes; sin keyframes que copiar, duplicar o pegar, el atajo sigue hasta el
+    // lienzo (los nodos).
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && !inField) {
+      const key = event.key.toLowerCase();
+      const done = key === 'c' ? copySelection() : key === 'v' ? pasteAtHead() : key === 'd' ? duplicateSelection() : false;
+      if (!done) return;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (event.key === 'Escape' && !inField && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      if (keyDrag || stretch || lane) cancelGestures();
+      else if (selectedRefs.length) clearSelection();
+      else document.querySelector<HTMLElement>('[role="application"]')?.focus();
+      return;
+    }
+    if (event.key === 'Delete' && !inField && selectedRefs.length && !target.closest('[role="grid"]')) {
+      event.preventDefault();
+      deleteSelection();
+      return;
+    }
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const record = event.key.toLowerCase() === 'k' && !event.shiftKey;
     if (event.key !== ' ' && !record) return;
-    const target = event.target as HTMLElement;
     if (target.closest(record ? 'input, textarea, [role="dialog"]' : 'button, input, select, textarea, [role="dialog"]')) return;
     event.preventDefault();
     if (record) toggleRecord();
@@ -503,9 +798,13 @@
 
   // Los gestos de un dedo (arrastrar un keyframe, la barra o el cabezal) se sueltan sin escribir si empieza uno de dos.
   function cancelGestures() {
-    drag = null;
+    cancelPress();
+    keyDrag = null;
+    stretch = null;
+    lane = null;
+    lockTouch = false;
+    picked.marquee = null;
     rangeDrag = null;
-    scrubbing = null;
   }
 
   const capture = (event: PointerEvent) => {
@@ -516,31 +815,405 @@
     }
   };
 
-  function dragStart(event: PointerEvent, row: TrackRowModel, kf: TimelineKeyframe) {
-    focus = { row: row.rowKey, key: kf.key };
-    if ((event.pointerType === 'mouse' && event.button !== 0) || readOnly || !row.animation) return;
-    event.stopPropagation();
-    capture(event);
-    drag = { pointerId: event.pointerId, id: row.id, prop: row.prop, key: kf.key, startX: event.clientX, startT: kf.keyframe.t, t: kf.keyframe.t, duration: row.animation.duration, moved: false };
+  // Con el ratón, un arrastre sobre texto seleccionado empezaría un arrastre nativo (y un pointercancel): se anula la
+  // acción por defecto y el foco se lleva a mano al rombo o a la rejilla, para que los atajos sigan llegando al panel.
+  function holdPointer(event: PointerEvent) {
+    if (event.pointerType !== 'mouse') return;
+    event.preventDefault();
+    window.getSelection()?.removeAllRanges();
+    const target = event.currentTarget as HTMLElement;
+    const focusable = target.getAttribute('role') === 'gridcell' ? target : target.closest<HTMLElement>('[role="grid"]');
+    focusable?.focus({ preventScroll: true });
   }
 
-  function dragMove(event: PointerEvent) {
-    const active = drag;
+  function cancelPress() {
+    if (pressTimer !== null) clearTimeout(pressTimer);
+    pressTimer = null;
+  }
+
+  // Rombo (o rombo resumen): clic selecciona; Mayús/Ctrl/⌘+clic (o «Añadir a la selección» con el dedo) suma o quita;
+  // arrastrar mueve toda la selección con imán; con el dedo, la pulsación larga abre el menú.
+  function keyDown(event: PointerEvent, refs: KeyRef[], ms: number, position: CellPosition | null) {
+    lastPointer = event.pointerType;
+    if (position) focus = position;
+    const mouse = event.pointerType === 'mouse';
+    if (mouse && event.button !== 0) return;
+    event.stopPropagation();
+    holdPointer(event);
+    const touchLike = !mouse;
+    const add = event.shiftKey || event.ctrlKey || event.metaKey || (touchLike && additive);
+    let next: KeyRef[];
+    let collapseTo: KeyRef[] | null = null;
+    let toggleOff: KeyRef[] | null = null;
+    if (add && isSelected(refs)) {
+      // Con el ratón se quita en el acto. Con el dedo se decide al soltar: así la pulsación larga abre el menú con toda
+      // la selección y un arrastre mueve el grupo.
+      if (!touchLike) {
+        const drop = new Set(refs.map(refId));
+        picked.set(selectedRefs.filter((ref) => !drop.has(refId(ref))));
+        return;
+      }
+      next = selectedRefs;
+      toggleOff = refs;
+    } else if (add) next = [...selectedRefs, ...refs];
+    else if (isSelected(refs)) {
+      next = selectedRefs;
+      collapseTo = refs;
+    } else next = refs;
+    picked.set(next);
+    const dragRefs = picked.refs().filter(shownRef);
+    if (touchLike) startPress(event, refs);
+    capture(event);
+    keyDrag = {
+      pointerId: event.pointerId,
+      ids: new Set(dragRefs.map(refId)),
+      refs: dragRefs,
+      grabbedMs: ms,
+      startX: event.clientX,
+      startY: event.clientY,
+      threshold: touchLike ? TOUCH_SLOP : DRAG_THRESHOLD,
+      limits: readOnly ? { min: 0, max: 0 } : engine.anim.keyframes.moveLimits(dragRefs),
+      targets: snapTargets(new Set(dragRefs.map(refId))),
+      collapseTo,
+      toggleOff,
+      canMove: !readOnly,
+      moved: false,
+      delta: 0,
+      snap: null,
+    };
+  }
+
+  function startPress(event: PointerEvent, refs: KeyRef[]) {
+    cancelPress();
+    const at = { x: event.clientX, y: event.clientY };
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      keyDrag = null;
+      navigator.vibrate?.(10);
+      if (!isSelected(refs)) picked.set(refs);
+      openMenu(at);
+    }, LONG_PRESS_MS);
+  }
+
+  function keyMove(event: PointerEvent) {
+    const active = keyDrag;
     if (!active || active.pointerId !== event.pointerId) return;
     const dx = event.clientX - active.startX;
-    if (!active.moved && Math.abs(dx) < DRAG_THRESHOLD) return;
-    const t = Math.min(1, Math.max(0, active.startT + dx / zoom / active.duration));
-    drag = { ...active, moved: true, t: Math.round(t * 10000) / 10000 };
+    if (!active.moved && Math.hypot(dx, event.clientY - active.startY) < active.threshold) return;
+    cancelPress();
+    if (!active.canMove) return;
+    let delta = dx / zoom;
+    let snap: number | null = null;
+    if (!event.shiftKey) {
+      const target = snapTo(active.grabbedMs + delta, active.targets);
+      if (target !== null) {
+        delta = target - active.grabbedMs;
+        snap = target;
+      }
+    }
+    delta = clamp(delta, active.limits);
+    if (snap !== null && Math.abs(active.grabbedMs + delta - snap) > 1e-6) snap = null;
+    keyDrag = { ...active, moved: true, delta: Math.round(delta * 1000) / 1000, snap };
   }
 
-  // Se escribe una vez, al soltar.
-  function dragEnd(event: PointerEvent) {
-    const active = drag;
+  // Se escribe una vez, al soltar: un paso de deshacer para todos los keyframes.
+  function keyUp(event: PointerEvent) {
+    const active = keyDrag;
     if (!active || active.pointerId !== event.pointerId) return;
-    drag = null;
-    if (!active.moved || active.t === active.startT) return;
-    engine.anim.keyframes.moveKeyframe(active.id, active.prop, active.key, active.t);
-    pendingFocus = { row: `${active.id}:${active.prop}`, key: active.key };
+    cancelPress();
+    keyDrag = null;
+    if (!active.moved) {
+      if (event.type !== 'pointerup') return;
+      if (active.collapseTo) picked.set(active.collapseTo);
+      else if (active.toggleOff) {
+        const drop = new Set(active.toggleOff.map(refId));
+        picked.set(selectedRefs.filter((ref) => !drop.has(refId(ref))));
+      }
+      return;
+    }
+    if (Math.abs(active.delta) < 1e-6) return;
+    engine.anim.keyframes.moveKeyframes(active.refs, active.delta);
+  }
+
+  function keyCancel(event: PointerEvent) {
+    if (keyDrag?.pointerId !== event.pointerId) return;
+    cancelPress();
+    keyDrag = null;
+  }
+
+  // Clic derecho sobre un rombo. Con el dedo, el menú lo abre la pulsación larga y el contextmenu nativo se descarta.
+  function keyMenu(event: MouseEvent, refs: KeyRef[], position: CellPosition | null) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (lastPointer === 'touch' || lastPointer === 'pen') return;
+    if (position) focus = position;
+    if (!isSelected(refs)) picked.set(refs);
+    openMenu({ x: event.clientX, y: event.clientY });
+  }
+
+  function laneMenu(event: MouseEvent) {
+    event.preventDefault();
+    if (lastPointer === 'touch' || lastPointer === 'pen') return;
+    picked.clear();
+    openMenu({ x: event.clientX, y: event.clientY });
+  }
+
+  function openMenu(at: { x: number; y: number }) {
+    menu = { at, refs: selectedRefs };
+  }
+
+  function closeMenu(returnFocus: boolean) {
+    menu = null;
+    const keep = menuKeepFocus;
+    menuKeepFocus = false;
+    if (!returnFocus || keep || !current) return;
+    document.getElementById(cellId(current))?.focus({ preventScroll: true });
+  }
+
+  // Marquesina: con el ratón, al arrastrar en el vacío; con el dedo, tras una pulsación larga en el vacío.
+  function updateMarquee(clientX: number, clientY: number) {
+    const gesture = lane;
+    if (!gesture || !list) return;
+    const end = list.gridPoint(clientX, clientY);
+    const box = {
+      x0: Math.min(gesture.origin.x, end.x),
+      y0: Math.min(gesture.origin.y, end.y),
+      x1: Math.max(gesture.origin.x, end.x),
+      y1: Math.max(gesture.origin.y, end.y),
+    };
+    picked.marquee = box;
+    const hits = refsIn(box);
+    picked.set(gesture.additive ? [...gesture.base, ...hits] : hits);
+  }
+
+  // Keyframes cuyo rombo toca la caja (4 px de margen): los de las pistas y los resúmenes de las filas plegadas.
+  function refsIn(box: { x0: number; y0: number; x1: number; y1: number }): KeyRef[] {
+    const offsets = rowOffsets(heights);
+    const hits: KeyRef[] = [];
+    const inside = (x: number) => x >= box.x0 - 4 && x <= box.x1 + 4;
+    rows.forEach((row, index) => {
+      const y = (offsets[index] ?? 0) + (heights[index] ?? 0) / 2;
+      if (y < box.y0 - 4 || y > box.y1 + 4) return;
+      if (row.kind === 'track') {
+        for (const kf of row.keyframes) if (inside(timeX(kf.time, zoom))) hits.push({ nodeId: row.id, prop: row.prop, key: kf.key });
+      } else if (!row.expanded) {
+        for (const mark of row.marks) if (inside(timeX(mark.ms, zoom))) hits.push(...mark.refs);
+      }
+    });
+    return hits;
+  }
+
+  // Vacío de las pistas. Ratón: un clic lleva el cabezal allí y vacía la selección; arrastrar dibuja la marquesina. Dedo:
+  // scroll nativo, un toque vacía la selección y la pulsación larga empieza la marquesina.
+  function laneDown(event: PointerEvent) {
+    lastPointer = event.pointerType;
+    const touchLike = event.pointerType !== 'mouse';
+    if (!touchLike && event.button !== 0) return;
+    if (!list) return;
+    const add = event.shiftKey || event.ctrlKey || event.metaKey || (touchLike && additive);
+    const gesture: LaneGesture = {
+      pointerId: event.pointerId,
+      target: event.currentTarget as HTMLElement,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: list.gridPoint(event.clientX, event.clientY),
+      touch: touchLike,
+      additive: add,
+      base: add ? selectedRefs : [],
+      marquee: false,
+    };
+    lane = gesture;
+    if (!touchLike) {
+      holdPointer(event);
+      capture(event);
+      return;
+    }
+    cancelPress();
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      if (lane !== gesture) return;
+      navigator.vibrate?.(10);
+      gesture.marquee = true;
+      lockTouch = true;
+      try {
+        gesture.target.setPointerCapture(gesture.pointerId);
+      } catch {
+        // Un puntero sintético no se puede capturar.
+      }
+      updateMarquee(gesture.startX, gesture.startY);
+    }, LONG_PRESS_MS);
+  }
+
+  function laneMove(event: PointerEvent) {
+    const gesture = lane;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (!gesture.marquee) {
+      if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) < (gesture.touch ? TOUCH_SLOP : DRAG_THRESHOLD)) return;
+      if (gesture.touch) {
+        // Es un scroll: lo hace el navegador.
+        cancelPress();
+        lane = null;
+        return;
+      }
+      gesture.marquee = true;
+    }
+    updateMarquee(event.clientX, event.clientY);
+  }
+
+  function laneUp(event: PointerEvent) {
+    const gesture = lane;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    cancelPress();
+    lane = null;
+    lockTouch = false;
+    if (gesture.marquee) {
+      picked.marquee = null;
+      return;
+    }
+    if (event.type === 'pointercancel') return;
+    if (!gesture.additive) picked.clear();
+    if (!gesture.touch && list) setHead(list.timeAt(event.clientX));
+  }
+
+  // Asas de la caja de estirado: factor = (nuevo extremo − pivote) / (extremo − pivote), con imán en el asa.
+  function stretchDown(event: PointerEvent, side: 'start' | 'end') {
+    const box = stretchBox;
+    if ((event.pointerType === 'mouse' && event.button !== 0) || readOnly || !box) return;
+    event.stopPropagation();
+    event.preventDefault();
+    capture(event);
+    const refs = selectedRefs;
+    stretch = {
+      pointerId: event.pointerId,
+      side,
+      startX: event.clientX,
+      ids: new Set(refs.map(refId)),
+      refs,
+      minMs: box.min,
+      maxMs: box.max,
+      limits: engine.anim.keyframes.stretchLimits(refs, side === 'end' ? box.min : box.max),
+      centerLimits: engine.anim.keyframes.stretchLimits(refs, (box.min + box.max) / 2),
+      targets: snapTargets(new Set(refs.map(refId))),
+      moved: false,
+      pivot: side === 'end' ? box.min : box.max,
+      factor: 1,
+      snap: null,
+    };
+  }
+
+  function stretchMove(event: PointerEvent) {
+    const active = stretch;
+    if (!active || active.pointerId !== event.pointerId) return;
+    const dx = event.clientX - active.startX;
+    if (!active.moved && Math.abs(dx) < (event.pointerType === 'mouse' ? DRAG_THRESHOLD : TOUCH_SLOP)) return;
+    const center = event.altKey;
+    const pivot = center ? (active.minMs + active.maxMs) / 2 : active.side === 'end' ? active.minMs : active.maxMs;
+    const original = active.side === 'end' ? active.maxMs : active.minMs;
+    let edge = original + dx / zoom;
+    let snap: number | null = null;
+    if (!event.shiftKey) {
+      const target = snapTo(edge, active.targets);
+      if (target !== null) {
+        edge = target;
+        snap = target;
+      }
+    }
+    const span = original - pivot;
+    const factor = clamp(span !== 0 ? (edge - pivot) / span : 1, center ? active.centerLimits : active.limits);
+    if (snap !== null && Math.abs(pivot + span * factor - snap) > 0.01) snap = null;
+    stretch = { ...active, moved: true, pivot, factor, snap };
+  }
+
+  function stretchUp(event: PointerEvent) {
+    const active = stretch;
+    if (!active || active.pointerId !== event.pointerId) return;
+    stretch = null;
+    if (!active.moved || event.type === 'pointercancel' || Math.abs(active.factor - 1) < 1e-6) return;
+    engine.anim.keyframes.stretchKeyframes(active.refs, active.pivot, active.factor);
+  }
+
+  // «Estirar…» del menú: un factor con el pivote en el primer keyframe seleccionado.
+  function openStretch(at: { x: number; y: number }, refs: KeyRef[]) {
+    const times = refs.map(msOf).filter((ms): ms is number => ms !== null);
+    if (times.length < 2) return;
+    const pivot = Math.min(...times);
+    menuKeepFocus = true;
+    stretchAt = { at, refs, pivot, limits: engine.anim.keyframes.stretchLimits(refs, pivot) };
+  }
+
+  function applyStretch(factor: number) {
+    const target = stretchAt;
+    stretchAt = null;
+    if (target && !readOnly) engine.anim.keyframes.stretchKeyframes(target.refs, target.pivot, factor);
+    refocusCell();
+  }
+
+  function refocusCell() {
+    if (current) void tick().then(() => document.getElementById(cellId(current!))?.focus({ preventScroll: true }));
+  }
+
+  function openEasing(event: MouseEvent, row: TrackRowModel, kf: TimelineKeyframe) {
+    if (readOnly) return;
+    easingTarget = { ref: { nodeId: row.id, prop: row.prop, key: kf.key }, rect: (event.currentTarget as HTMLElement).getBoundingClientRect() };
+  }
+
+  const easingShown = $derived(easingTarget ? (keyframeOf(easingTarget.ref)?.e ?? null) : null);
+
+  // Menú del keyframe: clic derecho, pulsación larga o la tecla de menú.
+  const menuItems = $derived.by((): MenuEntry[] => {
+    if (!menu) return [];
+    const { refs, at } = menu;
+    const has = refs.length > 0;
+    const edit = !readOnly;
+    const single = refs.length === 1 ? refs[0]! : null;
+    const singleRow = single ? rows.find((row): row is TrackRowModel => row.kind === 'track' && row.id === single.nodeId && row.prop === single.prop) : undefined;
+    const singleKf = single ? singleRow?.keyframes.find((kf) => kf.key === single.key) : undefined;
+    const times = new Set(refs.map((ref) => Math.round(msOf(ref) ?? -1)));
+    const easings = refs.map((ref) => keyframeOf(ref)?.e);
+    return [
+      {
+        kind: 'item',
+        id: 'edit',
+        label: m.timeline_menu_edit(),
+        icon: Pencil,
+        disabled: !singleRow || !singleKf,
+        onSelect: () => {
+          if (!singleRow || !singleKf) return;
+          menuKeepFocus = true;
+          openEditor(singleRow, singleKf);
+        },
+      },
+      { kind: 'separator', id: 'sep-edit' },
+      { kind: 'item', id: 'copy', label: m.editor_menu_copy(), icon: Copy, keys: 'Ctrl+C', ariaKeys: 'Control+C', disabled: !has, onSelect: () => void copySelection() },
+      { kind: 'item', id: 'paste', label: m.timeline_menu_paste(), icon: ClipboardPaste, keys: 'Ctrl+V', ariaKeys: 'Control+V', disabled: !edit || !hasClip, onSelect: () => void pasteAtHead() },
+      { kind: 'item', id: 'duplicate', label: m.editor_menu_duplicate(), icon: CopyPlus, keys: 'Ctrl+D', ariaKeys: 'Control+D', disabled: !edit || !has, onSelect: () => void duplicateSelection() },
+      { kind: 'item', id: 'delete', label: m.editor_menu_delete(), icon: Trash, keys: 'Supr', ariaKeys: 'Delete', danger: true, disabled: !edit || !has, onSelect: () => void deleteSelection() },
+      { kind: 'separator', id: 'sep-time' },
+      { kind: 'item', id: 'stretch', label: m.timeline_menu_stretch(), icon: MoveHorizontal, disabled: !edit || times.size < 2, onSelect: () => openStretch(at, refs) },
+      {
+        kind: 'sub',
+        id: 'easing',
+        label: m.timeline_menu_easing(),
+        icon: Spline,
+        disabled: !edit || !has,
+        items: EASINGS.map((preset) => ({
+          kind: 'check',
+          id: preset,
+          label: easingLabel(preset),
+          checked: has && easings.every((easing) => easing === preset),
+          onSelect: () => void engine.anim.keyframes.setEasing(refs, preset),
+        })),
+      },
+    ];
+  });
+
+  function pickEasing(preset: EasingPreset) {
+    if (easingTarget && !readOnly) engine.anim.keyframes.setEasing([easingTarget.ref], preset);
+  }
+
+  function toggleAdditive() {
+    const current = engine.core.touchModifiers.get();
+    engine.core.touchModifiers.set({ ...current, additive: !current.additive });
   }
 
   // Barra de rango: entera cambia el retardo; el extremo izquierdo, el inicio sin mover el final; el derecho, la
@@ -579,22 +1252,6 @@
     engine.anim.keyframes.setAnimation(active.id, { delay: active.delay, duration: active.duration });
   }
 
-  // Un clic en el vacío de las pistas lleva el cabezal allí. Con el dedo, el vacío hace scroll.
-  function laneDown(event: PointerEvent) {
-    if (event.pointerType === 'touch' || event.button !== 0) return;
-    scrubbing = event.pointerId;
-    capture(event);
-    if (list) setHead(list.timeAt(event.clientX));
-  }
-
-  function laneMove(event: PointerEvent) {
-    if (scrubbing === event.pointerId && list) setHead(list.timeAt(event.clientX));
-  }
-
-  function laneUp(event: PointerEvent) {
-    if (scrubbing === event.pointerId) scrubbing = null;
-  }
-
   function settingsOf(row: Row): { delay: number; duration: number } | null {
     if (rangeDrag?.id === row.id) return { delay: rangeDrag.delay, duration: rangeDrag.duration };
     return row.animation ? { delay: row.animation.delay, duration: row.animation.duration } : null;
@@ -602,9 +1259,14 @@
 
   function shownTime(row: TrackRowModel, kf: TimelineKeyframe): number {
     const settings = settingsOf(row);
-    if (drag && drag.key === kf.key && drag.id === row.id && drag.prop === row.prop && settings) return keyframeAt(settings, drag.t);
     if (rangeDrag?.id === row.id && settings) return keyframeAt(settings, kf.keyframe.t);
-    return kf.time;
+    return previewMs({ nodeId: row.id, prop: row.prop, key: kf.key }, kf.time);
+  }
+
+  function markTime(row: NodeRow, ms: number, refs: readonly KeyRef[]): number {
+    const settings = settingsOf(row);
+    if (rangeDrag?.id === row.id && settings && row.animation) return settings.delay + ((ms - row.animation.delay) / (row.animation.duration || 1)) * settings.duration;
+    return refs[0] ? previewMs(refs[0], ms) : ms;
   }
 
   function valueAt(row: TrackRowModel): number | string | null {
@@ -634,7 +1296,7 @@
   const actions: RowActions = {
     cellId,
     tabindex: (row, key) => (current?.row === row.rowKey && current.key === key ? 0 : -1),
-    isCurrent,
+    isSelected,
     focusCell: (position) => (focus = position),
     nameOf,
     nodeLabel,
@@ -655,11 +1317,15 @@
     laneDown,
     laneMove,
     laneUp,
+    laneMenu,
+    markTime,
     keyframeLabel: (row, kf) => m.timeline_keyframe({ track: propLabel(row.prop), time: formatTime(kf.time), value: formatValue(row.prop, kf.keyframe.v) }),
-    dragStart,
-    dragMove,
-    dragEnd,
-    dragCancel: () => (drag = null),
+    keyDown,
+    keyMove,
+    keyUp,
+    keyCancel,
+    keyMenu,
+    segment: openEasing,
     edit: openEditor,
     valueAt,
     commitValue,
@@ -705,6 +1371,7 @@
     'aria-labelledby': `${uid}-title`,
     'aria-describedby': `${uid}-hint`,
     'aria-rowcount': rows.length,
+    'aria-multiselectable': true,
     onkeydown: onGridKey,
   });
 </script>
@@ -758,7 +1425,7 @@
 
   <h2 id="{uid}-title" class="sr-only">{m.timeline_label()}</h2>
   <!-- Encajar, IA y × quedan siempre a la vista; si no cabe el resto, se desplaza y el slider de zoom se oculta. -->
-  <div class="@container flex h-10 shrink-0 items-center gap-1 border-b border-edge/40 px-2" data-testid="timeline-header">
+  <div class={['@container flex shrink-0 items-center gap-1 border-b border-edge/40 px-2', touch ? 'h-12' : 'h-10']} data-testid="timeline-header">
     <div class="scroll-thin flex h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto" data-testid="timeline-header-scroll">
       <ToolButton variant="tool" size="sm" side="top" label={playing ? m.timeline_pause() : m.timeline_play()} kbd="Espacio" ariaKeys="Space" onclick={togglePlay}>
         {#if playing}<Pause size={16} aria-hidden="true" />{:else}<Play size={16} aria-hidden="true" />{/if}
@@ -793,6 +1460,35 @@
           <span aria-hidden="true" class={['size-2 rounded-full border border-danger', recording && 'bg-danger']}></span>
           {recording ? m.timeline_recording_on() : m.timeline_record()}
         </button>
+        <span aria-hidden="true" class="mx-1 h-5 w-px shrink-0 bg-edge/40"></span>
+      {/if}
+      {#if touch}
+        <!-- Con el dedo no hay Mayús: cada toque suma o quita un rombo de la selección. -->
+        <button
+          type="button"
+          aria-pressed={additive}
+          aria-label={m.timeline_additive()}
+          onclick={toggleAdditive}
+          class={[
+            'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-control transition-colors duration-(--dur-fast)',
+            'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
+            additive ? 'bg-coral text-coral-ink' : 'text-ink-muted hover:bg-petrol hover:text-ink',
+          ]}
+          data-testid="timeline-additive"
+        >
+          <ListPlus size={18} aria-hidden="true" />
+        </button>
+        {#if selectedRefs.length}
+          <button
+            type="button"
+            aria-label={m.timeline_clear_selection()}
+            onclick={clearSelection}
+            class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
+            data-testid="timeline-clear-selection"
+          >
+            <ListX size={18} aria-hidden="true" />
+          </button>
+        {/if}
         <span aria-hidden="true" class="mx-1 h-5 w-px shrink-0 bg-edge/40"></span>
       {/if}
       <ToolButton variant="tool" size="xs" side="top" label={m.timeline_repeat()} pressed={repeat} onclick={toggleRepeat}>
@@ -838,6 +1534,7 @@
     <ToolButton variant="tool" size="xs" side="top" label={m.timeline_hide()} onclick={onclose}><X size={14} aria-hidden="true" /></ToolButton>
   </div>
   <p role="status" class="sr-only">{recording ? m.timeline_recording({ time: formatTime(head) }) : ''}</p>
+  <p role="status" class="sr-only" data-testid="timeline-announcement">{announcement}</p>
   <p id="{uid}-hint" class="sr-only">{m.timeline_hint()}</p>
 
   {#if rows.length === 0}
@@ -855,10 +1552,48 @@
       {recording}
       {touch}
       {grid}
+      {lockTouch}
       onseek={setHead}
       onheadkey={onHeadKey}
       oncancelgesture={cancelGestures}
     >
+      {#snippet overlay()}
+        {#if picked.marquee}
+          {@const box = picked.marquee}
+          <div
+            class="absolute rounded-xs border border-coral bg-coral/8"
+            style:left="{box.x0}px"
+            style:top="{box.y0}px"
+            style:width="{box.x1 - box.x0}px"
+            style:height="{box.y1 - box.y0}px"
+            data-testid="timeline-marquee"
+          ></div>
+        {/if}
+        {#if snapGuide !== null}
+          <div class="absolute inset-y-0 w-px bg-sage" style:left="{timeX(snapGuide, zoom)}px" data-testid="timeline-snap"></div>
+        {/if}
+        {#if stretchBox && !readOnly}
+          {@const left = timeX(stretchBox.min, zoom)}
+          {@const right = timeX(stretchBox.max, zoom)}
+          <div class="absolute h-1 rounded-xs bg-coral/20" style:left="{left}px" style:width="{right - left}px" style:top="{stretchBox.top}px" data-testid="timeline-stretch"></div>
+          {#each ['start', 'end'] as const as side (side)}
+            <span
+              role="none"
+              onpointerdown={(event) => stretchDown(event, side)}
+              onpointermove={stretchMove}
+              onpointerup={stretchUp}
+              onpointercancel={stretchUp}
+              class={['pointer-events-auto absolute -translate-x-1/2 cursor-ew-resize touch-none', touch ? 'size-6' : 'size-4']}
+              style:left="{side === 'start' ? left : right}px"
+              style:top="{stretchBox.top}px"
+              data-testid="timeline-stretch-{side}"
+            >
+              <!-- La zona de toque crece solo hacia abajo desde la barra: no tapa los rombos de encima. -->
+              <span class="pointer-events-none absolute top-0.5 left-1/2 block h-3 w-1 -translate-1/2 rounded-xs bg-coral"></span>
+            </span>
+          {/each}
+        {/if}
+      {/snippet}
       {#snippet row(item, place)}
         <TrackRow
           row={item}
@@ -876,6 +1611,23 @@
         />
       {/snippet}
     </TrackList>
+  {/if}
+
+  <PointMenu items={menuItems} at={menu?.at ?? null} onclose={closeMenu} label={m.timeline_keyframe_menu()} testid="keyframe-menu" />
+  {#if easingTarget && easingShown !== null}
+    <EasingPopover at={easingTarget.rect} easing={easingShown} {readOnly} onpick={pickEasing} onclose={() => (easingTarget = null)} />
+  {/if}
+  {#if stretchAt}
+    <StretchPopover
+      at={stretchAt.at}
+      min={stretchAt.limits.min}
+      max={stretchAt.limits.max}
+      onapply={applyStretch}
+      onclose={() => {
+        stretchAt = null;
+        refocusCell();
+      }}
+    />
   {/if}
 
   {#if editing && editTarget}

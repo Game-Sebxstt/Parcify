@@ -17,7 +17,7 @@ import type { InputProfile } from './interaction/input/profile.ts';
 import { TextEditor } from './text/TextEditor.ts';
 import type { NodeRecord } from './types.ts';
 
-export type { Tool, EngineUser, FrameStats, TextEditing, UiCommand, UiCommandName, ScreenRect, Hud, ActiveVertex, RecordedNotice } from './EditorCore.ts';
+export type { Tool, EngineUser, FrameStats, TextEditing, UiCommand, UiCommandName, ScreenRect, Hud, ActiveVertex, RecordedNotice, TouchModifiers } from './EditorCore.ts';
 export type { Pose } from './anim/timeline.ts';
 export { DirectBackend, LinkBackend, type DocumentBackend } from './doc/backend.ts';
 export type { NodeRecord } from './types.ts';
