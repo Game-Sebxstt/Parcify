@@ -309,6 +309,8 @@ test('axe sin violaciones en los paneles del editor: IA, chat, versiones, timeli
   await page.getByRole('button', { name: 'Animar', exact: true }).click();
   await expect(page.getByTestId('timeline').getByRole('grid', { name: 'Línea de tiempo' })).toBeVisible();
   expect(await audit(page)).toEqual([]);
+  // CA-3.3 con la línea de tiempo abierta: ni controles nativos ni `title` en sus botones.
+  expect(await nativeControls(page, '[data-testid="timeline"]')).toEqual(NO_NATIVE);
   await page.getByTestId('timeline').getByTestId('timeline-ai').click();
   await expect(page.getByTestId('ai-animate')).toBeVisible();
   expect(await audit(page)).toEqual([]);

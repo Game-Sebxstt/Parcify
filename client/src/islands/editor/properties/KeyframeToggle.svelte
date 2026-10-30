@@ -14,9 +14,11 @@
     // Nombre del campo al que acompaña («X», «Opacidad»).
     label: string;
     testid?: string;
+    // Tabindex itinerante de la rejilla de la línea de tiempo.
+    tabindex?: number | undefined;
   };
 
-  let { context, records, prop, label, testid }: Props = $props();
+  let { context, records, prop, label, testid, tabindex }: Props = $props();
 
   const ids = $derived(records.filter((record) => animatable(record, prop)).map((record) => record.id));
 
@@ -61,6 +63,7 @@
         aria-pressed={marks.all}
         data-testid={testid}
         data-key={marks.all ? 'key' : marks.tracked ? 'track' : 'none'}
+        {tabindex}
         onclick={toggle}
         class={[
           'group/key inline-flex size-6 shrink-0 cursor-pointer items-center justify-start rounded-xs pl-1',

@@ -32,6 +32,10 @@
     snap?: ScrubSnap;
     testid?: string;
     class?: string;
+    // sm: 20 px de alto, para las filas de 24 px de la línea de tiempo.
+    size?: 'sm' | 'md';
+    // Tabindex itinerante de la rejilla que lo contiene.
+    tabindex?: number | undefined;
     // Solo vista previa: durante el arrastre y mientras se escribe un valor válido.
     oninput?: (value: number) => void;
     oncommit?: (value: number, meta: ScrubCommit) => void;
@@ -55,6 +59,8 @@
     snap,
     testid,
     class: className = '',
+    size = 'md',
+    tabindex,
     oninput,
     oncommit,
     oncancel,
@@ -259,7 +265,8 @@
 
 <div
   class={[
-    'relative flex h-6 min-w-0 items-center rounded-control border bg-surface-2 text-xs text-ink',
+    'relative flex min-w-0 items-center rounded-control border bg-surface-2 text-ink',
+    size === 'sm' ? 'h-5 text-2xs' : 'h-6 text-xs',
     'focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-coral',
     invalid ? 'border-danger' : 'border-transparent',
     interactive && !invalid && 'hover:border-edge/60',
@@ -299,6 +306,7 @@
     data-testid={testid}
     placeholder={mixed ? empty : undefined}
     value={shown}
+    {tabindex}
     {disabled}
     {readonly}
     class={['h-full min-w-0 flex-1 bg-transparent tabular outline-none placeholder:text-ink-muted', hasHandle ? 'pr-1.5' : 'px-1.5']}

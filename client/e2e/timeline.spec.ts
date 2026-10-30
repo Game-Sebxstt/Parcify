@@ -75,9 +75,13 @@ test('timeline: dos keyframes con el teclado, reproducir hasta el final, sincron
   await expect(grid.getByRole('rowheader', { name: /fotogramas clave: 0/ })).toBeFocused();
   expect(await audit(page)).toEqual([]);
 
-  // Enter en la pista añade un keyframe en el cabezal (0 s).
-  await page.keyboard.press('ArrowDown');
-  await expect(grid.getByRole('rowheader', { name: 'Desplazamiento X' })).toBeFocused();
+  // Solo se ven las pistas con datos: el menú de la fila añade una, con un keyframe en el cabezal (0 s).
+  await page.keyboard.press('Tab');
+  await expect(grid.getByRole('button', { name: /^Más acciones de/ })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem', { name: 'Añadir pista' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('menuitem', { name: 'Desplazamiento X' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(grid.getByRole('gridcell', { name: /Desplazamiento X, fotograma clave en 0,00 s/ })).toBeFocused();
 
@@ -101,6 +105,8 @@ test('timeline: dos keyframes con el teclado, reproducir hasta el final, sincron
   const editor = page.getByRole('dialog', { name: 'Fotograma clave de Desplazamiento X' });
   await expect(editor.getByRole('spinbutton', { name: 'Tiempo (ms)' })).toBeFocused();
   expect(await audit(page)).toEqual([]);
+  // El editor de keyframes tampoco usa controles nativos (CA-3.3).
+  expect(await editor.evaluate((root) => root.querySelectorAll('select, input[type=number], input[type=color], input[type=range]').length)).toBe(0);
   await editor.getByRole('spinbutton', { name: 'Valor (px)' }).fill('100');
   await page.keyboard.press('Enter');
   await expect(editor).toHaveCount(0);
@@ -139,11 +145,14 @@ test('timeline: dos keyframes con el teclado, reproducir hasta el final, sincron
   expect(samples.some((x) => x - rect.x > 5 && x - rect.x < 95)).toBe(true);
   expect((await nodes(page)).find((node) => node.id === rect.id)!.x).toBeCloseTo(rect.x, 3);
 
-  // Bea abre su línea de tiempo y cambia la duración a 2 s.
+  // Bea abre su línea de tiempo, selecciona el rectángulo desde su fila y cambia la duración a 2 s en la sección
+  // Animación (la barra de rango tiene ahí su alternativa con el teclado).
   await bea.getByRole('button', { name: 'Animar', exact: true }).click();
   const beaPanel = bea.getByTestId('timeline');
-  const beaDuration = beaPanel.getByRole('spinbutton', { name: /^Duración de/ });
-  await beaDuration.fill('2000');
+  await beaPanel.getByRole('rowheader', { name: /fotogramas clave: 2/ }).click();
+  await expect.poll(() => bea.evaluate(() => window.__parcifyTest!.selection())).toEqual([rect.id]);
+  const beaDuration = bea.getByTestId('properties-panel').getByTestId('props-anim-duration');
+  await beaDuration.fill('2');
   await beaDuration.press('Enter');
   await expect.poll(async () => (await animation(page, rect.id))?.duration).toBe(2000);
 
@@ -228,10 +237,10 @@ test('grabación: lo animado graba sin Grabar, Grabar graba todo y cerrar la lí
 
   // Con una pista de opacidad y Grabar apagado, la opacidad del panel crea el keyframe en el cabezal y no cambia el
   // diseño (CA-5.10).
-  const grid = panel.getByRole('grid', { name: 'Línea de tiempo' });
-  await grid.getByRole('rowheader', { name: 'Opacidad' }).click();
-  await page.keyboard.press('Enter');
+  await properties.getByTestId('props-opacity-key').click();
   await expect.poll(() => track(page, rect.id, 'opacity')).toEqual([{ t: 0.5, v: 1 }]);
+  // La pista nueva aparece en la línea de tiempo (solo se ven las que tienen datos).
+  await expect(panel.getByRole('grid', { name: 'Línea de tiempo' }).getByRole('rowheader', { name: 'Opacidad' })).toBeVisible();
   await moveHead(300);
   const opacity = properties.getByTestId('props-opacity');
   await opacity.fill('40');
@@ -448,4 +457,99 @@ test('biblioteca: la pestaña Animaciones reproduce sin abrir la línea de tiemp
   await expect.poll(async () => Object.keys((await animation(page, plain))?.tracks.opacity ?? {}).length).toBe(0);
   await page.getByTestId('timeline').getByRole('button', { name: 'Ocultar la línea de tiempo' }).click();
   await expect(key).toHaveCount(0);
+});
+
+test('línea de tiempo: zoom y pan del tiempo con la rueda, barra de rango, alto y sin controles nativos (RF-5.6)', async ({ page }) => {
+  test.setTimeout(90_000);
+  const account = await createVerifiedAccount(page.request, `tiempo-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Zoom del tiempo');
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 60, y: box.y + box.height / 2 - 120 };
+  await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
+  await drag(page, origin, { x: origin.x + 120, y: origin.y + 80 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  const rect = (await nodes(page))[0]!;
+  const properties = page.getByTestId('properties-panel');
+  await properties.getByTestId('props-anim-presets').getByRole('button', { name: 'Aparecer' }).click();
+  await expect.poll(async () => (await animation(page, rect.id))?.duration).toBe(400);
+
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
+  const panel = page.getByTestId('timeline');
+  const tracks = panel.getByTestId('timeline-tracks');
+  const diamonds = panel.getByTestId('keyframe');
+  await expect(diamonds).toHaveCount(2);
+  const centerX = async (index: number) => {
+    const rect = (await diamonds.nth(index).boundingBox())!;
+    return rect.x + rect.width / 2;
+  };
+  // Solo la pista con datos: Opacidad, sin Desplazamiento X ni las demás.
+  await expect(panel.getByRole('rowheader')).toHaveCount(2);
+
+  // Sin controles nativos ni `title` en botones (CA-3.3).
+  const natives = () =>
+    page.evaluate(() => {
+      const root = document.querySelector('[data-testid="timeline"]')!;
+      const selector = 'select, input[type=checkbox], input[type=radio], input[type=range], input[type=color], input[type=number]';
+      return [...root.querySelectorAll(selector), ...root.querySelectorAll('button[title]')].map((element) => element.outerHTML.slice(0, 120));
+    });
+  expect(await natives()).toEqual([]);
+
+  // Dispara un WheelEvent en el punto (x, y) de la ventana y devuelve si se anuló.
+  const wheel = (x: number, y: number, init: { ctrlKey?: boolean; deltaX?: number; deltaY?: number }) =>
+    tracks.evaluate(
+      (element, { x, y, init }) => {
+        const target = document.elementFromPoint(x, y) ?? element;
+        const event = new WheelEvent('wheel', { ...init, clientX: x, clientY: y, bubbles: true, cancelable: true });
+        target.dispatchEvent(event);
+        return event.defaultPrevented;
+      },
+      { x, y, init },
+    );
+
+  // Ctrl+rueda (pellizco del touchpad) sobre el segundo rombo: la escala crece y ese instante sigue bajo el puntero.
+  const before = (await centerX(1)) - (await centerX(0));
+  const anchor = await centerX(1);
+  const row = (await diamonds.nth(1).boundingBox())!;
+  for (let i = 0; i < 8; i++) expect(await wheel(anchor, row.y + row.height / 2, { ctrlKey: true, deltaY: -4 })).toBe(true);
+  await expect.poll(async () => (await centerX(1)) - (await centerX(0))).toBeGreaterThan(before * 1.2);
+  expect(Math.abs((await centerX(1)) - anchor)).toBeLessThan(3);
+
+  // Más zoom para que el tiempo no quepa, y dos dedos en horizontal lo desplazan.
+  for (let i = 0; i < 40; i++) await wheel(anchor, row.y + row.height / 2, { ctrlKey: true, deltaY: -10 });
+  const scrollLeft = () => tracks.evaluate((element) => element.scrollLeft);
+  const scrollBefore = await scrollLeft();
+  expect(await wheel(anchor, row.y + row.height / 2, { deltaX: 20 })).toBe(true);
+  await expect.poll(scrollLeft).toBeCloseTo(scrollBefore + 20, 0);
+  // La rueda vertical sin modificadores no se intercepta: es el scroll nativo de las filas.
+  expect(await wheel(anchor, row.y + row.height / 2, { deltaY: 20 })).toBe(false);
+
+  // «Encajar el tiempo» vuelve a ver toda la duración.
+  await panel.getByRole('button', { name: 'Encajar el tiempo' }).click();
+  await expect.poll(scrollLeft).toBe(0);
+
+  // Arrastrar la barra de rango entera cambia el retardo; su extremo derecho, la duración. Una escritura al soltar.
+  const range = panel.getByTestId('timeline-range');
+  const bar = (await range.boundingBox())!;
+  await drag(page, { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 }, { x: bar.x + bar.width / 2 + 120, y: bar.y + bar.height / 2 });
+  await expect.poll(async () => (await animation(page, rect.id))?.delay).toBeGreaterThan(0);
+  const moved = (await animation(page, rect.id))!;
+  expect(moved.duration).toBe(400);
+  const end = (await panel.getByTestId('timeline-range-end').boundingBox())!;
+  await drag(page, { x: end.x + end.width / 2, y: end.y + end.height / 2 }, { x: end.x + end.width / 2 + 80, y: end.y + end.height / 2 });
+  await expect.poll(async () => (await animation(page, rect.id))?.duration).toBeGreaterThan(400);
+  expect((await animation(page, rect.id))?.delay).toBe(moved.delay);
+  // Los keyframes conservan su t: se mueven y se estiran con la barra.
+  expect(Object.values((await animation(page, rect.id))!.tracks.opacity ?? {}).map((kf) => kf.t).sort()).toEqual([0, 1]);
+
+  // El asa superior cambia el alto con las flechas y Esc no cierra la línea de tiempo.
+  const resizer = panel.getByRole('separator', { name: 'Alto de la línea de tiempo' });
+  const height = Number(await resizer.getAttribute('aria-valuenow'));
+  await resizer.focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(resizer).toHaveAttribute('aria-valuenow', String(height + 8));
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeVisible();
+  expect(await natives()).toEqual([]);
 });

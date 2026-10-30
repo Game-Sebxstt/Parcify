@@ -179,6 +179,8 @@
   const barsRight = $derived(compactLayout ? 0 : rightEdge);
   // Por eso en tablet el contenido de los paneles termina por encima de las barras: la última capa sigue al alcance.
   let barsHeight = $state(0);
+  // Las barras de abajo quedan a 12 px del borde, o 8 px por encima de la línea de tiempo abierta.
+  const barsBottom = $derived(bottomEdge ? bottomEdge + 8 : 12);
   const panelClearance = $derived(compactLayout && !hideUi && barsHeight ? bottomEdge + barsHeight + 8 : 0);
   const insets = $derived({
     top: 0,
@@ -213,7 +215,7 @@
     top: leftOpen && rightOpen ? 8 : 56,
     left: leftEdge + 8,
     right: rightEdge + 8,
-    bottom: bottomEdge + 12 + barsHeight + 8,
+    bottom: barsBottom + barsHeight + 8,
   });
 
   let container = $state<HTMLDivElement | null>(null);
@@ -1085,7 +1087,7 @@
       class={['pointer-events-none absolute z-(--z-toolbar) grid items-end gap-2', barsStacked ? 'grid-cols-1' : 'grid-cols-[1fr_auto_1fr]']}
       style:left="{barsLeft + 12}px"
       style:right="{barsRight + 12}px"
-      style:bottom="{bottomEdge + 12}px"
+      style:bottom="{barsBottom}px"
       data-testid="canvas-bars"
     >
       <div bind:offsetWidth={toolbarWidth} class={['flex', barsStacked ? 'col-start-1 row-start-2 justify-self-center' : 'col-start-2 row-start-1']}>
@@ -1134,10 +1136,11 @@
       <p role="status" class="sr-only">{m.timeline_loading()}</p>
     {/if}
     {#if Timeline && engine}
+      <!-- Flota abajo entre los paneles; su alto lo decide el asa del propio panel. -->
       <div
         bind:offsetHeight={timelineHeight}
         hidden={hideUi || !timelineOpen}
-        class="absolute bottom-2 z-(--z-panel) touch-pan-x touch-pan-y rounded-panel border border-edge/40 bg-surface-1 shadow-panel *:rounded-[9px] *:border-t-0"
+        class="absolute bottom-2 z-(--z-panel) touch-pan-x touch-pan-y"
         style:left="{leftEdge + 8}px"
         style:right="{rightEdge + 8}px"
       >
@@ -1147,6 +1150,7 @@
           readOnly={engineReadOnly}
           aiAnimation={!!aiFeatures?.animation && !engineReadOnly}
           open={timelineOpen}
+          touch={inputKind === 'touch'}
           focusRequest={timelineFocus}
           onclose={() => layout.closeTimeline()}
         />
@@ -1160,7 +1164,7 @@
       hidden={hideUi}
       class="pointer-events-none absolute z-(--z-window) flex justify-end gap-2"
       style:top="{rightOpen ? 8 : 56}px"
-      style:bottom="{bottomEdge + 12 + BAR_ROW + 8}px"
+      style:bottom="{barsBottom + BAR_ROW + 8}px"
       style:left="{leftEdge + 8}px"
       style:right="{rightEdge + 8}px"
     >

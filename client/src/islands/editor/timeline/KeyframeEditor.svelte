@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { EASING_CURVES } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import { EASINGS, type AnimProp, type Keyframe } from '../../../shared/document/schema.js';
+  import ColorPicker from '../../../ui/ColorPicker.svelte';
+  import ScrubInput from '../../../ui/ScrubInput.svelte';
+  import Select from '../../../ui/Select.svelte';
   import EasingCurve from './EasingCurve.svelte';
-  import { fromDisplay, propLabel, toDisplay, unitOf } from './model.ts';
+  import { fromDisplay, propLabel, stepOf, toDisplay, unitOf } from './model.ts';
 
   type Preset = (typeof EASINGS)[number];
   type Props = {
@@ -32,15 +35,17 @@
     step: m.timeline_easing_step,
     custom: m.timeline_easing_custom,
   };
+  const EASING_ITEMS = [...EASINGS, 'custom' as const].map((value) => ({ value, label: EASING_LABELS[value]() }));
   const POINT_LABELS = ['X1', 'Y1', 'X2', 'Y2'] as const;
 
   // Copia local: se escribe al guardar.
   const start = untrack(() => ({ keyframe, delay, duration, prop }));
   const initial = start.keyframe;
-  const color = typeof initial.v === 'string';
+  const isColor = typeof initial.v === 'string';
   let time = $state(Math.round(start.delay + initial.t * start.duration));
   let numeric = $state(typeof initial.v === 'number' ? toDisplay(start.prop, initial.v) : 0);
-  let hex = $state(typeof initial.v === 'string' ? initial.v.slice(0, 7) : '#000000');
+  // Los colores de las pistas van en #RRGGBBAA; uno sin alfa se completa opaco.
+  let color = $state(typeof initial.v === 'string' ? (initial.v.length === 7 ? `${initial.v}FF` : initial.v).toUpperCase() : '#000000FF');
   let preset = $state<Preset | 'custom'>(typeof initial.e === 'string' ? initial.e : 'custom');
   const curveOf = (easing: Keyframe['e']): [number, number, number, number] => {
     if (typeof easing !== 'string') return [...easing];
@@ -58,29 +63,39 @@
     return [unit(x1), free(y1), unit(x2), free(y2)];
   }
 
-  function pickPreset(next: Preset | 'custom') {
+  function pickPreset(next: string) {
+    const value = next as Preset | 'custom';
     // Al pasar a personalizada se parte de la curva del preset que había.
-    if (next === 'custom' && preset !== 'custom' && preset in EASING_CURVES) points = curveOf(preset);
-    preset = next;
+    if (value === 'custom' && preset !== 'custom' && preset in EASING_CURVES) points = curveOf(preset);
+    preset = value;
   }
 
-  function save(event: SubmitEvent) {
-    event.preventDefault();
+  function save() {
     if (readOnly) return;
     const t = Math.round(Math.min(1, Math.max(0, (Number(time) - delay) / duration)) * 10000) / 10000;
-    const alpha = typeof initial.v === 'string' && initial.v.length === 9 ? initial.v.slice(7) : 'FF';
-    const v = color ? `${hex.toUpperCase()}${alpha}` : fromDisplay(prop, Number(numeric) || 0);
+    const v = isColor ? color.toUpperCase() : fromDisplay(prop, Number(numeric) || 0);
     onsave({ t, v, e: easing });
   }
 
+  // Enter en un campo confirma su valor (lo hace el propio campo) y guarda, salvo que el valor no fuera válido.
+  async function saveFromField() {
+    await tick();
+    if (root?.querySelector('[aria-invalid="true"]')) return;
+    save();
+  }
+
   const focusFirst = (node: HTMLElement) => {
-    node.querySelector<HTMLElement>('input, select')?.focus();
+    node.querySelector<HTMLElement>('input, button')?.focus();
   };
+
+  // Las listas y el selector de color salen por un portal: tocarlos no es salir del editor.
+  const inside = (target: EventTarget | null) =>
+    target instanceof Node && (!!root?.contains(target) || (target instanceof Element && !!target.closest('[data-floating]')));
 </script>
 
 <svelte:window
   onpointerdown={(event) => {
-    if (root && !root.contains(event.target as Node)) onclose();
+    if (root && !inside(event.target)) onclose();
   }}
 />
 
@@ -93,74 +108,84 @@
   onfocusout={(event) => {
     // Sin destino es que la ventana perdió el foco: se deja abierto para no perder lo escrito.
     const next = event.relatedTarget as Node | null;
-    if (next && root && !root.contains(next)) onleave();
+    if (next && !inside(next)) onleave();
   }}
   onkeydown={(event) => {
     event.stopPropagation();
     if (event.key === 'Escape') {
       event.preventDefault();
       onclose();
+    } else if (event.key === 'Enter' && (event.target as HTMLElement).getAttribute('role') === 'spinbutton') {
+      void saveFromField();
     }
   }}
-  class="w-72 rounded-panel bg-surface-2 p-3 text-sm text-ink shadow-float"
+  class="w-72 rounded-panel border border-edge/40 bg-surface-2 p-3 text-sm text-ink shadow-float"
   data-testid="keyframe-editor"
 >
   <h3 id="{uid}-title" class="mb-3 font-semibold">{m.timeline_editor_title({ track: propLabel(prop) })}</h3>
-  <form onsubmit={save} class="flex flex-col gap-3">
+  <form
+    onsubmit={(event) => {
+      event.preventDefault();
+      save();
+    }}
+    class="flex flex-col gap-3"
+  >
     <fieldset disabled={readOnly} class="flex flex-col gap-3">
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-ink-muted">{m.timeline_editor_time()}</span>
-        <input type="number" bind:value={time} min={delay} max={delay + duration} step="10" class="h-8 rounded-[6px] bg-surface-1 px-2 tabular" />
-      </label>
-      {#if color}
-        <label class="flex items-center justify-between gap-2">
-          <span class="text-xs text-ink-muted">{m.timeline_editor_color()}</span>
-          <input type="color" bind:value={hex} class="h-8 w-14 cursor-pointer rounded-[6px] bg-surface-1" />
-        </label>
+      <div class="flex flex-col gap-1">
+        <span aria-hidden="true" class="text-xs text-ink-muted">{m.timeline_editor_time()}</span>
+        <ScrubInput
+          value={time}
+          label={m.timeline_editor_time()}
+          min={delay}
+          max={delay + duration}
+          step={10}
+          decimals={0}
+          readonly={readOnly}
+          oncommit={(next) => (time = next)}
+        />
+      </div>
+      {#if isColor}
+        <div class="flex items-center justify-between gap-2">
+          <span aria-hidden="true" class="text-xs text-ink-muted">{m.timeline_editor_color()}</span>
+          <ColorPicker value={color} label={m.timeline_editor_color()} side="top" swatchSize={24} disabled={readOnly} oncommit={(next) => (color = next)} />
+        </div>
       {:else}
-        <label class="flex flex-col gap-1">
-          <span class="text-xs text-ink-muted">{m.timeline_editor_value({ unit: unitOf(prop) })}</span>
-          <input
-            type="number"
-            bind:value={numeric}
-            step={prop === 'scale' ? 0.05 : 1}
+        <div class="flex flex-col gap-1">
+          <span aria-hidden="true" class="text-xs text-ink-muted">{m.timeline_editor_value({ unit: unitOf(prop) })}</span>
+          <ScrubInput
+            value={numeric}
+            label={m.timeline_editor_value({ unit: unitOf(prop) })}
+            step={stepOf(prop)}
             min={prop === 'opacity' ? 0 : undefined}
             max={prop === 'opacity' ? 100 : undefined}
-            class="h-8 rounded-[6px] bg-surface-1 px-2 tabular"
+            decimals={3}
+            readonly={readOnly}
+            oncommit={(next) => (numeric = next)}
           />
-        </label>
+        </div>
       {/if}
       <div class="flex gap-3">
         <div class="flex min-w-0 flex-1 flex-col gap-2">
-          <label class="flex flex-col gap-1">
-            <span class="text-xs text-ink-muted">{m.timeline_editor_easing()}</span>
-            <select
-              value={preset}
-              onchange={(event) => pickPreset(event.currentTarget.value as Preset | 'custom')}
-              class="h-8 cursor-pointer rounded-[6px] bg-surface-1 px-1.5"
-            >
-              {#each [...EASINGS, 'custom' as const] as option (option)}
-                <option value={option}>{EASING_LABELS[option]()}</option>
-              {/each}
-            </select>
-          </label>
+          <div class="flex flex-col gap-1">
+            <span aria-hidden="true" class="text-xs text-ink-muted">{m.timeline_editor_easing()}</span>
+            <Select items={EASING_ITEMS} value={preset} label={m.timeline_editor_easing()} size="md" side="top" disabled={readOnly} onValueChange={pickPreset} />
+          </div>
           {#if preset === 'custom'}
-            <fieldset class="grid grid-cols-2 gap-1.5">
-              <legend class="mb-1 text-xs text-ink-muted">{m.timeline_editor_points()}</legend>
+            <div role="group" aria-labelledby="{uid}-points" class="grid grid-cols-2 gap-1.5">
+              <span id="{uid}-points" class="col-span-2 text-xs text-ink-muted">{m.timeline_editor_points()}</span>
               {#each POINT_LABELS as label, i (label)}
-                <label class="flex items-center gap-1 text-xs">
-                  <span class="w-5 text-ink-muted">{label}</span>
-                  <input
-                    type="number"
-                    bind:value={points[i]}
-                    step="0.05"
-                    min={i % 2 === 0 ? 0 : -10}
-                    max={i % 2 === 0 ? 1 : 10}
-                    class="h-7 w-full min-w-0 rounded-[6px] bg-surface-1 px-1.5 tabular"
-                  />
-                </label>
+                <ScrubInput
+                  value={points[i] ?? 0}
+                  {label}
+                  prefix={label}
+                  step={0.01}
+                  min={i % 2 === 0 ? 0 : -10}
+                  max={i % 2 === 0 ? 1 : 10}
+                  readonly={readOnly}
+                  oncommit={(next) => (points[i] = next)}
+                />
               {/each}
-            </fieldset>
+            </div>
           {/if}
         </div>
         <EasingCurve {easing} label={m.timeline_editor_curve()} />

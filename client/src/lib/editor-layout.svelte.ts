@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const LEFT_WIDTH = { min: 200, max: 400, initial: 248 } as const;
 export const RIGHT_WIDTH = { min: 240, max: 360, initial: 248 } as const;
-export const TIMELINE_HEIGHT = { min: 160, max: 640, initial: 256 } as const;
+export const TIMELINE_HEIGHT = { min: 160, max: 640, initial: 260 } as const;
 // Paso de las flechas sobre el asa de un panel.
 export const WIDTH_STEP = 8;
 

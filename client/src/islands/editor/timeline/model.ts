@@ -2,12 +2,21 @@ import { effectiveDuration, type NodeRecord } from '../../../engine/index.ts';
 import { formatNumber } from '../../../lib/format.ts';
 import { m } from '../../../paraglide/messages.js';
 import { ANIM_PROPS, type Animation, type AnimProp, type Keyframe } from '../../../shared/document/schema.js';
+import { animatable } from '../properties/panel.ts';
 
-export const ROW_HEIGHT = 28;
 export const MIN_SPAN = 1000;
 // Píxeles por milisegundo entre los que se mueve el zoom de la regla.
 export const MIN_ZOOM = 0.02;
 export const MAX_ZOOM = 2;
+// Columna de nombres y alto de la regla.
+export const LABEL_WIDTH = 200;
+export const RULER_HEIGHT = 24;
+// Margen antes del instante 0: un keyframe en 0 no queda medio tapado por la columna de nombres.
+export const LANE_PAD = 8;
+// Posición en la pista (px) de un instante (ms).
+export const timeX = (ms: number, zoom: number) => LANE_PAD + ms * zoom;
+// Alto de las filas: con el dedo crecen para que los rombos y los botones se puedan tocar.
+const ROW_HEIGHTS = { mouse: { node: 28, track: 24 }, touch: { node: 36, track: 32 } } as const;
 
 export type TimelineKeyframe = { key: string; keyframe: Keyframe; time: number };
 
@@ -18,9 +27,11 @@ export type NodeRow = {
   record: NodeRecord;
   animation: Animation | undefined;
   expanded: boolean;
-  // Instantes (ms) con algún keyframe, para el resumen de la fila.
+  // Instantes (ms) con algún keyframe, para el resumen de la fila plegada.
   marks: number[];
   count: number;
+  // Pistas que se pueden añadir desde el menú de la fila: las animables que aún no tienen keyframes.
+  addable: AnimProp[];
 };
 
 export type TrackRow = {
@@ -52,17 +63,7 @@ export const propLabel = (prop: AnimProp) => PROP_LABELS[prop]();
 // Instante del timeline (ms) en que cae un keyframe: dentro de la primera iteración.
 export const keyframeAt = (animation: Pick<Animation, 'delay' | 'duration'>, t: number) => animation.delay + t * animation.duration;
 
-// Pistas que admite un nodo: las de color solo si tiene ese color (o ya hay keyframes).
-export function propsFor(record: NodeRecord, animation: Animation | undefined): AnimProp[] {
-  return ANIM_PROPS.filter((prop) => {
-    if (animation?.tracks[prop]) return true;
-    if (prop === 'fill') return record.type !== 'line' && typeof (record as { fill?: unknown }).fill === 'string';
-    if (prop === 'stroke') return typeof (record as { stroke?: unknown }).stroke === 'string';
-    // El reproductor todavía no aplica la escala por eje: no se ofrece una pista que no se vería.
-    if (prop === 'scaleX' || prop === 'scaleY') return false;
-    return true;
-  });
-}
+const hasData = (animation: Animation | undefined, prop: AnimProp) => Object.keys(animation?.tracks[prop] ?? {}).length > 0;
 
 export function sortedKeyframes(animation: Animation | undefined, prop: AnimProp): TimelineKeyframe[] {
   const track = animation?.tracks[prop];
@@ -72,6 +73,7 @@ export function sortedKeyframes(animation: Animation | undefined, prop: AnimProp
     .sort((a, b) => a.keyframe.t - b.keyframe.t || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 }
 
+// Una fila por nodo y, debajo, solo las pistas que tienen keyframes.
 export function buildRows(
   ids: readonly string[],
   record: (id: string) => NodeRecord | undefined,
@@ -83,7 +85,7 @@ export function buildRows(
     const node = record(id);
     if (!node || node.type === 'connector') continue;
     const anim = animation(id);
-    const tracks = propsFor(node, anim).map((prop): TrackRow => ({
+    const tracks = ANIM_PROPS.filter((prop) => hasData(anim, prop)).map((prop): TrackRow => ({
       kind: 'track',
       rowKey: `${id}:${prop}`,
       id,
@@ -93,16 +95,44 @@ export function buildRows(
       keyframes: sortedKeyframes(anim, prop),
     }));
     const marks = [...new Set(tracks.flatMap((track) => track.keyframes.map((item) => item.time)))].sort((a, b) => a - b);
+    const addable = ANIM_PROPS.filter((prop) => !hasData(anim, prop) && animatable(node, prop));
     const expanded = !collapsed.has(id);
-    rows.push({ kind: 'node', rowKey: id, id, record: node, animation: anim, expanded, marks, count: tracks.reduce((sum, track) => sum + track.keyframes.length, 0) });
+    const count = tracks.reduce((sum, track) => sum + track.keyframes.length, 0);
+    rows.push({ kind: 'node', rowKey: id, id, record: node, animation: anim, expanded, marks, count, addable });
     if (expanded) rows.push(...tracks);
   }
   return rows;
 }
 
+export const rowHeight = (row: Row, touch: boolean) => ROW_HEIGHTS[touch ? 'touch' : 'mouse'][row.kind];
+
+// Posición vertical de cada fila: offsets[i] es su borde superior y offsets[n], el alto total.
+export function rowOffsets(heights: readonly number[]): number[] {
+  const offsets = [0];
+  for (const height of heights) offsets.push(offsets[offsets.length - 1]! + height);
+  return offsets;
+}
+
+// Filas que hay que pintar para un scroll y un alto de vista, con margen arriba y abajo.
+export function visibleRows(offsets: readonly number[], scrollTop: number, height: number, overscan = 6): { start: number; end: number } {
+  const count = offsets.length - 1;
+  if (count <= 0) return { start: 0, end: 0 };
+  let low = 0;
+  let high = count - 1;
+  const top = Math.max(0, scrollTop);
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (offsets[middle]! <= top) low = middle;
+    else high = middle - 1;
+  }
+  let end = low;
+  while (end < count && offsets[end]! < top + Math.max(height, 1)) end++;
+  return { start: Math.max(0, low - overscan), end: Math.min(count, end + overscan) };
+}
+
 // Lo que mide la regla: al menos un segundo y hasta el final de la animación más larga (una iteración si se repite
 // sin fin).
-export function spanOf(animations: Iterable<Animation>, head: number): number {
+export function spanOf(animations: Iterable<Pick<Animation, 'delay' | 'duration' | 'loop'>>, head: number): number {
   let span = MIN_SPAN;
   for (const animation of animations) {
     const total = effectiveDuration(animation);
@@ -113,6 +143,11 @@ export function spanOf(animations: Iterable<Animation>, head: number): number {
 
 export function formatTime(ms: number): string {
   return `${formatNumber(ms / 1000, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s`;
+}
+
+// Etiquetas de la regla: sin ceros de más («0,5 s», «1 s»).
+export function formatRulerTime(ms: number): string {
+  return `${formatNumber(ms / 1000, { maximumFractionDigits: 2 })} s`;
 }
 
 // Valor en la unidad del editor: grados para el giro y porcentaje para la opacidad.
@@ -135,6 +170,18 @@ export function unitOf(prop: AnimProp): string {
   return m.timeline_unit_px();
 }
 
+// Unidad corta junto al campo de valor de la pista.
+export function shortUnitOf(prop: AnimProp): string {
+  if (prop === 'rotation') return '°';
+  if (prop === 'opacity') return '%';
+  if (prop === 'scale' || prop === 'scaleX' || prop === 'scaleY') return '×';
+  return '';
+}
+
+export function stepOf(prop: AnimProp): number {
+  return prop === 'scale' || prop === 'scaleX' || prop === 'scaleY' ? 0.01 : 1;
+}
+
 export function formatValue(prop: AnimProp, value: number | string): string {
   if (typeof value === 'string') return value;
   const shown = formatNumber(toDisplay(prop, value), { maximumFractionDigits: 2 });
@@ -144,8 +191,35 @@ export function formatValue(prop: AnimProp, value: number | string): string {
   return `${shown} px`;
 }
 
-// Ticks de la regla: un paso «redondo» que deja al menos 64 px entre marcas.
-export function tickStep(zoom: number): number {
-  const steps = [10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000, 30000, 60000];
-  return steps.find((step) => step * zoom >= 64) ?? 60000;
+// Pasos de la regla: etiquetas entre 50 ms y 5 s, con marcas intermedias. Se toma el primero que deja al menos
+// LABEL_GAP píxeles entre etiquetas.
+const TICK_STEPS: ReadonlyArray<{ label: number; minor: number }> = [
+  { label: 50, minor: 10 },
+  { label: 100, minor: 20 },
+  { label: 200, minor: 50 },
+  { label: 500, minor: 100 },
+  { label: 1000, minor: 200 },
+  { label: 2000, minor: 500 },
+  { label: 5000, minor: 1000 },
+];
+const LABEL_GAP = 112;
+
+export function tickSteps(zoom: number): { label: number; minor: number } {
+  return TICK_STEPS.find((step) => step.label * zoom >= LABEL_GAP) ?? TICK_STEPS[TICK_STEPS.length - 1]!;
 }
+
+// Marcas de la regla entre dos instantes (ms); `label` las que llevan texto.
+export function rulerTicks(zoom: number, fromMs: number, toMs: number): Array<{ ms: number; label: boolean }> {
+  const { label, minor } = tickSteps(zoom);
+  const ticks: Array<{ ms: number; label: boolean }> = [];
+  const first = Math.max(0, Math.floor(fromMs / minor) * minor);
+  for (let ms = first; ms <= toMs && ticks.length < 2000; ms += minor) ticks.push({ ms, label: ms % label === 0 });
+  return ticks;
+}
+
+export const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number.isFinite(value) ? value : MIN_ZOOM));
+
+// El slider de zoom va de 0 a 100 en escala logarítmica: cada tramo igual del slider multiplica el zoom por lo mismo.
+const ZOOM_RANGE = Math.log(MAX_ZOOM / MIN_ZOOM);
+export const zoomToSlider = (zoom: number) => Math.round((Math.log(clampZoom(zoom) / MIN_ZOOM) / ZOOM_RANGE) * 100);
+export const sliderToZoom = (value: number) => clampZoom(MIN_ZOOM * Math.exp((Math.min(100, Math.max(0, value)) / 100) * ZOOM_RANGE));
