@@ -77,3 +77,41 @@ test('imagen subida al lienzo y conector entre dos formas, vistos por otra perso
 
   await otherContext.close();
 });
+
+test('al arrastrar el extremo de un conector, su tirador sigue al puntero en cada frame (CA-1.1)', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `tirador-conector-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const a = { x: box.x + box.width / 2 - 200, y: box.y + box.height / 2 - 60 };
+  const b = { x: a.x + 160, y: a.y };
+
+  await canvas.focus();
+  await page.keyboard.press('c');
+  await drag(page, a, b);
+  await expect.poll(async () => (await nodes(page)).filter((node) => node.type === 'connector').length).toBe(1);
+  const connector = (await nodes(page)).find((node) => node.type === 'connector')!;
+  await expect.poll(() => page.evaluate(() => [...window.__parcifyTest!.selection()])).toEqual([connector.id]);
+
+  const handle = () => page.evaluate(() => window.__parcifyTest!.overlayModel()?.selection?.lineHandles?.vertices[1] ?? null);
+  await expect.poll(handle).not.toBeNull();
+  const end = (await handle())!;
+  const start = { x: box.x + end.x, y: box.y + end.y };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  // Tres lecturas a mitad del arrastre: el tirador está a menos de 1 px del puntero en cada una.
+  for (const t of [0.25, 0.5, 0.75]) {
+    const at = { x: start.x + 200 * t, y: start.y + 60 * t };
+    await page.mouse.move(at.x, at.y, { steps: 3 });
+    await expect
+      .poll(async () => {
+        const p = await handle();
+        return p ? Math.hypot(box.x + p.x - at.x, box.y + p.y - at.y) : Infinity;
+      })
+      .toBeLessThan(1);
+  }
+  await page.mouse.move(start.x + 200, start.y + 60, { steps: 3 });
+  await page.mouse.up();
+  await expect.poll(async () => (await nodes(page)).find((node) => node.type === 'connector')!.to).not.toEqual(connector.to);
+});

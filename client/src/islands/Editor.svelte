@@ -12,6 +12,7 @@
     type ContextState,
     type Engine,
     type FramePresetId,
+    type Hud,
     type NodeRecord,
     type PageRecord,
     type PointerKind,
@@ -78,6 +79,7 @@
   let selection = $state.raw<readonly NodeRecord[]>([]);
   // Caja en pantalla de la selección para la barra contextual (null mientras el motor la oculta).
   let selectionRect = $state.raw<ScreenRect | null>(null);
+  let hud = $state.raw<Hud | null>(null);
   let history = $state({ canUndo: false, canRedo: false });
   let zoom = $state(1);
   let engineReadOnly = $state(true);
@@ -399,6 +401,7 @@
       created.state.toolLocked.subscribe((value) => (toolLocked = value)),
       created.state.selectionRecords.subscribe((value) => (selection = value.map((record) => ({ ...record })))),
       created.core.selectionScreenRect.subscribe((value) => (selectionRect = value)),
+      created.core.hud.subscribe((value) => (hud = value)),
       created.state.history.subscribe((value) => (history = value)),
       created.state.zoom.subscribe((value) => (zoom = value)),
       created.state.readOnly.subscribe((value) => (engineReadOnly = value)),
@@ -641,6 +644,7 @@
     engine?.destroy();
     engine = null;
     selectionRect = null;
+    hud = null;
     engineCanvas?.remove();
     engineCanvas = null;
     contextState = 'ok';
@@ -894,7 +898,7 @@
       onpointercancel={onCanvasPointerCancel}
       class="absolute inset-0 touch-none overflow-hidden outline-none select-none [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
     ></div>
-    <CanvasHud restoring={contextState === 'lost'} />
+    <CanvasHud restoring={contextState === 'lost'} hud={presenting ? null : hud} touch={inputKind === 'touch'} />
     <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
     <input
       bind:this={replaceInput}
@@ -914,6 +918,7 @@
         {container}
         locked={selectionLocked}
         avoid={contextAvoid}
+        touch={inputKind === 'touch'}
         onmore={openMoreMenu}
         onreplaceimage={pickReplacement}
         onescape={() => container?.focus({ preventScroll: true })}

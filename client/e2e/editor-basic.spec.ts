@@ -945,3 +945,106 @@ test('el panel de propiedades no tiene scroll horizontal a 248 px con cualquier 
   await expect.poll(async () => (await selection(page)).length).toBeGreaterThan(1);
   await noHorizontalScroll('selección múltiple');
 });
+
+// Selección y tiradores en el lienzo (§3.4).
+const hud = (page: Page) => page.getByTestId('canvas-hud');
+const cursor = (page: Page) => page.evaluate(() => document.querySelector<HTMLElement>('[role="application"]')!.style.cursor);
+
+test('el cursor de giro sale a 14 px de la esquina NE y la píldora muestra el ángulo, en salvia al imantar (CA-2.1, RF-15.2)', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `cursor-giro-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const gap = await canvasGap(page);
+  const origin = { x: gap.x + gap.width / 2 - 60, y: gap.y + gap.height / 2 - 40 };
+  await drawRect(page, origin, { x: origin.x + 120, y: origin.y + 80 }, 1);
+  const rect = (await nodes(page))[0]!;
+
+  const ne = await toPage(page, rect.x + rect.w, rect.y);
+  const start = { x: ne.x + 10, y: ne.y - 10 };
+  await page.mouse.move(start.x - 4, start.y + 4);
+  await page.mouse.move(start.x, start.y, { steps: 2 });
+  await expect.poll(() => cursor(page)).toMatch(/^url\("data:image\/svg\+xml.*, grab$/);
+
+  // Se gira unos 44° alrededor del centro sin soltar: la píldora dice el ángulo y está imantada a 45°.
+  const c = await toPage(page, center(rect).x, center(rect).y);
+  const radius = Math.hypot(start.x - c.x, start.y - c.y);
+  const base = Math.atan2(start.y - c.y, start.x - c.x);
+  await page.mouse.down();
+  for (const deg of [10, 20, 30]) await page.mouse.move(c.x + Math.cos(base + (deg * Math.PI) / 180) * radius, c.y + Math.sin(base + (deg * Math.PI) / 180) * radius, { steps: 2 });
+  await expect(hud(page)).toHaveAttribute('data-kind', 'angle');
+  await expect(hud(page)).toHaveText(/^(29,\d|30(,\d)?)°$/);
+  await expect(hud(page)).toHaveAttribute('data-snapped', 'false');
+  await page.mouse.move(c.x + Math.cos(base + (44 * Math.PI) / 180) * radius, c.y + Math.sin(base + (44 * Math.PI) / 180) * radius, { steps: 2 });
+  await expect(hud(page)).toHaveText('45°');
+  await expect(hud(page)).toHaveAttribute('data-snapped', 'true');
+  expect(await cursor(page)).toMatch(/^url\("data:image\/svg\+xml.*, grab$/);
+  await page.mouse.up();
+  await expect.poll(async () => (await byId(page, rect.id)).rotation).toBeCloseTo(Math.PI / 4, 6);
+  await expect(hud(page)).toHaveAttribute('data-kind', 'size');
+});
+
+test('con una forma de 857×623 al 100 %, la píldora dice «857 × 623» centrada 8 px por debajo (CA-13.1)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const account = await createVerifiedAccount(page.request, `pildora-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const gap = await canvasGap(page);
+  await drawRect(page, { x: gap.x + 20, y: gap.y + 10 }, { x: gap.x + 120, y: gap.y + 90 }, 1);
+  const panel = properties(page);
+  for (const [name, value] of [
+    ['Ancho', '857'],
+    ['Alto', '623'],
+  ] as const) {
+    const field = panel.getByRole('spinbutton', { name, exact: true });
+    await field.fill(value);
+    await field.press('Enter');
+  }
+  await expect.poll(async () => (await nodes(page))[0]).toMatchObject({ w: 857, h: 623 });
+  await expect.poll(() => zoomOf(page)).toBeCloseTo(1, 6);
+  await expect(hud(page)).toHaveText('857 × 623');
+
+  const rect = (await nodes(page))[0]!;
+  const bottom = await toPage(page, rect.x + rect.w / 2, rect.y + rect.h);
+  const pill = (await hud(page).boundingBox())!;
+  expect(Math.abs(pill.x + pill.width / 2 - bottom.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(pill.y - (bottom.y + 8))).toBeLessThanOrEqual(1);
+});
+
+test('el tirador de radio no cambia nada si se pulsa sin mover y arrastrado 20 px deja 20, nunca más de 50 (CA-13.2)', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `radio-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  await expect.poll(() => zoomOf(page)).toBeCloseTo(1, 6);
+  const gap = await canvasGap(page);
+  const origin = { x: gap.x + gap.width / 2 - 100, y: gap.y + gap.height / 2 - 50 };
+  await drawRect(page, origin, { x: origin.x + 200, y: origin.y + 100 }, 1);
+  const rect = (await nodes(page))[0]! as Node & { cornerRadius: number };
+  expect(rect).toMatchObject({ w: 200, h: 100, cornerRadius: 0 });
+  const radiusHandles = () => page.evaluate(() => window.__parcifyTest!.overlayModel()?.selection?.radiusHandles ?? []);
+
+  // Con el ratón lejos de las esquinas no hay tiradores de radio; cerca de una, aparecen dentro, a 12 px.
+  const nw = await toPage(page, rect.x, rect.y);
+  await page.mouse.move(nw.x + 100, nw.y + 50);
+  await expect.poll(async () => (await radiusHandles()).length).toBe(0);
+  await page.mouse.move(nw.x + 10, nw.y + 10, { steps: 3 });
+  await expect.poll(async () => (await radiusHandles()).length).toBe(4);
+  const canvasBox = (await page.getByRole('application', { name: 'Lienzo del proyecto' }).boundingBox())!;
+  const handle = (await radiusHandles())[0]!;
+  const at = { x: canvasBox.x + handle.x, y: canvasBox.y + handle.y };
+  expect(at.x - nw.x).toBeCloseTo(12, 0);
+  expect(at.y - nw.y).toBeCloseTo(12, 0);
+
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForTimeout(100);
+  expect(((await nodes(page))[0] as typeof rect).cornerRadius).toBe(0);
+
+  await drag(page, at, { x: at.x + 20, y: at.y + 20 });
+  await expect.poll(async () => ((await nodes(page))[0] as typeof rect).cornerRadius).toBe(20);
+
+  const moved = (await radiusHandles())[0]!;
+  const from = { x: canvasBox.x + moved.x, y: canvasBox.y + moved.y };
+  await drag(page, from, { x: from.x + 200, y: from.y + 200 });
+  await expect.poll(async () => ((await nodes(page))[0] as typeof rect).cornerRadius).toBe(50);
+});

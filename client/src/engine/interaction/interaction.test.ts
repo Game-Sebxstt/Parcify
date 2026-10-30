@@ -4,6 +4,9 @@ import { ROOT_KEYS } from '../../shared/document/keys.js';
 import { LOCAL_ORIGIN } from '../origins.ts';
 import { frame, makeCore, newDoc, nodeMap, pointer, putNode, rect } from '../test-utils.ts';
 import { applyWheel } from './dom.ts';
+import { INPUT_PROFILES } from './input/profile.ts';
+
+const finger = (x: number, y: number) => ({ ...pointer(x, y), pointerType: 'touch' as const });
 
 function countLocalTransactions(doc: Y.Doc) {
   let count = 0;
@@ -183,6 +186,50 @@ describe('máquina de estados del puntero', () => {
     const angle = nodeMap(doc, id).get('rotation') as number;
     expect(Math.abs(angle / (Math.PI / 12) - Math.round(angle / (Math.PI / 12)))).toBeLessThan(1e-9);
     expect(angle).not.toBe(0);
+  });
+
+  it('con el dedo, el centro de un 50×50 o de una pastilla mueve la forma y no cambia el radio', () => {
+    const doc = newDoc();
+    const small = putNode(doc, rect({ x: 100, y: 100, w: 50, h: 50, cornerRadius: 0 }));
+    const pill = putNode(doc, rect({ x: 300, y: 100, w: 200, h: 200, cornerRadius: 100, index: 'a1' }));
+    const { core, tick } = makeCore(doc);
+    core.inputProfile.set(INPUT_PROFILES.touch);
+    tick();
+    const c = core.controller;
+    core.setSelection([small]);
+    tick();
+    c.pointerDown(finger(125, 125));
+    c.pointerMove(finger(165, 145));
+    tick();
+    expect(c.state).toBe('dragging');
+    c.pointerUp(finger(165, 145));
+    expect(nodeMap(doc, small).toJSON()).toMatchObject({ x: 140, y: 120, cornerRadius: 0 });
+
+    core.setSelection([pill]);
+    tick();
+    c.pointerDown(finger(400, 200));
+    c.pointerMove(finger(460, 230));
+    tick();
+    expect(c.state).toBe('dragging');
+    c.pointerUp(finger(460, 230));
+    expect(nodeMap(doc, pill).toJSON()).toMatchObject({ x: 360, y: 130, cornerRadius: 100 });
+  });
+
+  it('con el dedo, en un 200×200 el tirador de radio sigue respondiendo', () => {
+    const doc = newDoc();
+    const id = putNode(doc, rect({ x: 100, y: 100, w: 200, h: 200, cornerRadius: 0 }));
+    const { core, tick } = makeCore(doc);
+    core.inputProfile.set(INPUT_PROFILES.touch);
+    tick();
+    core.setSelection([id]);
+    tick();
+    const c = core.controller;
+    c.pointerDown(finger(112, 112));
+    c.pointerMove(finger(132, 132));
+    tick();
+    expect(c.state).toBe('radius');
+    c.pointerUp(finger(132, 132));
+    expect(nodeMap(doc, id).get('cornerRadius')).toBeGreaterThan(0);
   });
 
   it('la mano y la rueda mueven la cámara sin tocar el documento', () => {

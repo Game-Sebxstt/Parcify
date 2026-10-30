@@ -2,11 +2,24 @@ import { newConnector, newFrame, newLine, newShape, DEFAULT_SIZE } from '../comm
 import type { EditorCore, Tool } from '../EditorCore.ts';
 import { isAnchorable, SNAP_THRESHOLD_PX } from '../EditorCore.ts';
 import { localMatrix } from '../geometry/bounds.ts';
-import { anchorAt, routeEnd, routeStart, type ConnectorEnd } from '../geometry/connectors.ts';
+import { anchorAt, type ConnectorEnd } from '../geometry/connectors.ts';
 import { apply, compose, invert, rotateAround, rotation, scaling, translation, type Mat, type Point } from '../geometry/matrix.ts';
 import { snapBox, type SnapCandidates } from '../geometry/snapping.ts';
 import { snapRotation, toDeg, toRad } from '../geometry/angles.ts';
-import { expandQuad, HANDLE_SIDES, hitHandle, insideQuad, resizeCursor, type SelectionFrame } from '../overlay/handles.ts';
+import { rotateCursor } from '../overlay/cursors.ts';
+import {
+  expandQuad,
+  HANDLE_SIDES,
+  hitHandle,
+  hitLineHandle,
+  hitRadius,
+  insideQuad,
+  nearCorner,
+  radiusVisible,
+  resizeCursor,
+  type CornerName,
+  type SelectionFrame,
+} from '../overlay/handles.ts';
 import type { HandleKind } from '../render/sink.ts';
 import { Store } from '../store.ts';
 import { containsAABB, type AABB, type BasicShapeType, type LineRecord } from '../types.ts';
@@ -25,14 +38,18 @@ export type PointerInput = {
   pressure: number;
 };
 
-export type PointerState = 'idle' | 'pressing' | 'dragging' | 'marquee' | 'resizing' | 'rotating' | 'creating' | 'panning' | 'point';
+export type PointerState = 'idle' | 'pressing' | 'dragging' | 'marquee' | 'resizing' | 'rotating' | 'creating' | 'panning' | 'point' | 'radius';
 
 // viaBox: se pulsó en un hueco dentro de la caja de la selección; arrastrar mueve la selección y un clic es un clic en vacío.
+// rotate: `corner` es la esquina de la zona de giro (null con el tirador del dedo), para orientar el cursor.
+// radius: `toLocal` lleva el mundo a la caja del nodo y `start` es la pulsación ahí; `inward` es hacia dónde crece el
+// radio desde esa esquina en cada eje.
 type PressTarget =
   | { kind: 'node'; id: string; wasSelected: boolean; viaBox?: boolean }
   | { kind: 'empty'; base: readonly string[] }
   | { kind: 'handle'; handle: HandleKind; frame: SelectionFrame }
-  | { kind: 'rotate'; frame: SelectionFrame }
+  | { kind: 'rotate'; frame: SelectionFrame; corner: CornerName | null }
+  | { kind: 'radius'; id: string; r0: number; max: number; toLocal: Mat; start: Point; inward: [number, number] }
   | { kind: 'point'; id: string; index: number }
   | { kind: 'create'; tool: Tool }
   | { kind: 'pan' };
@@ -61,6 +78,7 @@ export class PointerController {
   private matrix: Mat | null = null;
   private pointPreview: Array<[number, number]> | null = null;
   private endPreview: { which: 'from' | 'to'; end: ConnectorEnd } | null = null;
+  private radiusPreview: number | null = null;
   private startAngle = 0;
   // id null: el clic fue en vacío (o en el hueco de la selección).
   private lastClick: { id: string | null; x: number; y: number; time: number } | null = null;
@@ -212,6 +230,10 @@ export class PointerController {
         if (target?.kind === 'point' && this.endPreview) this.core.commands.setConnectorEnd(target.id, this.endPreview.which, this.endPreview.end);
         this.core.setStylePreview(null);
         break;
+      case 'radius':
+        if (target?.kind === 'radius' && this.radiusPreview !== null) this.core.commands.setStyle({ cornerRadius: this.radiusPreview }, [target.id]);
+        this.core.setStylePreview(null);
+        break;
     }
     this.reset();
   }
@@ -223,6 +245,7 @@ export class PointerController {
     this.moved = false;
     this.latest = null;
     this.core.setHover(null);
+    this.core.setRadiusHover(false);
   }
 
   // Quita las vistas previas del gesto sin escribir nada en el documento.
@@ -230,7 +253,7 @@ export class PointerController {
     if (this.state === 'dragging' || this.state === 'resizing' || this.state === 'rotating') this.core.setGesture(null);
     if (this.state === 'marquee') this.core.setMarquee(null);
     if (this.state === 'creating') this.core.setCreating(null);
-    if (this.state === 'point') this.core.setStylePreview(null);
+    if (this.state === 'point' || this.state === 'radius') this.core.setStylePreview(null);
     this.reset();
   }
 
@@ -244,8 +267,10 @@ export class PointerController {
     this.candidates = null;
     this.pointPreview = null;
     this.endPreview = null;
+    this.radiusPreview = null;
     this.lastPan = null;
     this.pendingSelect = null;
+    this.core.setRotationReadout(null);
     this.cursor.set(this.idleCursor());
   }
 
@@ -334,48 +359,65 @@ export class PointerController {
       this.cursor.set(this.idleCursor());
       return;
     }
+    this.core.setRadiusHover(this.nearRadiusCorner(input.x, input.y));
     const handle = this.handleAt(input.x, input.y);
     if (handle?.kind === 'handle') this.cursor.set(resizeCursor(handle.handle, handle.frame.angle));
-    else if (handle?.kind === 'rotate') this.cursor.set('grab');
+    else if (handle?.kind === 'rotate') this.cursor.set(handle.corner ? rotateCursor(handle.corner, handle.frame.angle) : 'grab');
     else if (handle?.kind === 'point') this.cursor.set('move');
     else this.cursor.set('default');
     this.core.setHover(handle ? null : this.core.pick(input.x, input.y));
+  }
+
+  // Un rectángulo o una imagen solos, editables, con el puntero cerca de una de sus esquinas o de un tirador de radio
+  // (con un radio grande el tirador queda lejos de la esquina).
+  private nearRadiusCorner(x: number, y: number): boolean {
+    const ids = this.core.selection.get();
+    if (ids.length !== 1 || this.readOnly || this.core.anyLocked(ids)) return false;
+    const points = this.core.radiusHandlePoints(ids[0]!);
+    const frame = points && this.core.selectionFrame(ids);
+    return !!frame && (nearCorner(this.core.screenCorners(frame), x, y) || nearCorner(points, x, y));
   }
 
   private handleAt(x: number, y: number): PressTarget | null {
     const ids = this.core.selection.get();
     if (!ids.length || this.readOnly || this.core.anyLocked(ids)) return null;
     const profile = this.profile;
-    const half = profile.handleHit / 2;
     if (ids.length === 1) {
-      const record = this.core.renderable(ids[0]!);
-      if (record?.type === 'line') {
-        const world = this.core.worldMatrix(record);
-        for (let i = 0; i < record.points.length; i++) {
-          const [px, py] = record.points[i]!;
-          const p = apply(world, px, py);
-          const s = this.core.camera.worldToScreen(p.x, p.y);
-          if (Math.abs(s.x - x) <= half && Math.abs(s.y - y) <= half) return { kind: 'point', id: record.id, index: i };
-        }
-        return null;
-      }
-      if (record?.type === 'connector') {
-        const route = this.core.routeOf(record.id);
-        if (!route || route.length < 4) return null;
-        const ends = [routeStart(route), routeEnd(route)];
-        for (let i = 0; i < ends.length; i++) {
-          const s = this.core.camera.worldToScreen(ends[i]!.x, ends[i]!.y);
-          if (Math.abs(s.x - x) <= half && Math.abs(s.y - y) <= half) return { kind: 'point', id: record.id, index: i };
-        }
-        return null;
+      const id = ids[0]!;
+      const handles = this.core.lineHandles(id);
+      if (handles) {
+        const hit = hitLineHandle(handles, x, y, profile);
+        return hit?.kind === 'vertex' ? { kind: 'point', id, index: hit.index } : null;
       }
     }
     const frame = this.core.selectionFrame(ids);
     if (!frame) return null;
-    const hit = hitHandle(this.core.screenCorners(frame), x, y, profile);
+    const corners = this.core.screenCorners(frame);
+    const hit = hitHandle(corners, x, y, profile);
+    const radius = ids.length === 1 && radiusVisible(corners, profile, this.nearRadiusCorner(x, y)) ? this.radiusAt(ids[0]!, corners, x, y) : null;
+    // Un tirador de radio y uno de escala pueden solaparse cerca de la esquina: gana el más cercano.
+    if (radius && (!hit || hit.kind === 'rotate' || radius.distance < Math.hypot(hit.x - x, hit.y - y))) return radius.target;
     if (!hit) return null;
-    if (hit.kind === 'rotate') return { kind: 'rotate', frame };
+    if (hit.kind === 'rotate') return { kind: 'rotate', frame, corner: hit.corner };
     return { kind: 'handle', handle: hit.kind, frame };
+  }
+
+  private radiusAt(id: string, corners: readonly [Point, Point, Point, Point], x: number, y: number): { target: PressTarget; distance: number } | null {
+    const points = this.core.radiusHandlePoints(id);
+    const record = this.core.record(id);
+    if (!points || (record?.type !== 'rect' && record?.type !== 'image')) return null;
+    const hit = hitRadius(points, corners, x, y, this.profile);
+    if (!hit) return null;
+    const world = this.core.worldMatrix(record);
+    const toLocal = invert(world);
+    const pressed = this.world({ x, y });
+    const start = apply(toLocal, pressed.x, pressed.y);
+    // Esquinas nw, ne, se, sw: hacia dentro es +x en las izquierdas y +y en las de arriba.
+    const inward: [number, number] = [hit.index === 0 || hit.index === 3 ? 1 : -1, hit.index < 2 ? 1 : -1];
+    return {
+      target: { kind: 'radius', id, r0: record.cornerRadius, max: Math.min(record.w, record.h) / 2, toLocal, start, inward },
+      distance: hit.distance,
+    };
   }
 
   private start(): void {
@@ -407,10 +449,15 @@ export class PointerController {
         this.state = 'rotating';
         this.moveIds = [...this.core.selection.get()];
         this.startAngle = this.angleFrom(target.frame, this.world(this.down!));
-        this.cursor.set('grabbing');
+        this.cursor.set(target.corner ? rotateCursor(target.corner, target.frame.angle) : 'grabbing');
         return;
       case 'point':
         this.state = 'point';
+        return;
+      case 'radius':
+        this.state = 'radius';
+        // Los tiradores siguen visibles aunque el puntero se aleje de la esquina mientras se arrastra.
+        this.core.setRadiusHover(true);
         return;
       case 'create':
         this.state = 'creating';
@@ -448,7 +495,23 @@ export class PointerController {
         return this.previewCreate(input, down);
       case 'point':
         return this.movePoint(input);
+      case 'radius':
+        return this.moveRadius(input);
     }
+  }
+
+  // El radio crece con la media de lo que el puntero avanza hacia dentro en cada eje local, desde el radio que tenía:
+  // pulsar sin mover no lo cambia.
+  private moveRadius(input: PointerInput): void {
+    const target = this.target;
+    if (target?.kind !== 'radius') return;
+    const world = this.world(input);
+    const p = apply(target.toLocal, world.x, world.y);
+    const dx = (p.x - target.start.x) * target.inward[0];
+    const dy = (p.y - target.start.y) * target.inward[1];
+    const radius = Math.round(Math.max(0, Math.min(target.r0 + (dx + dy) / 2, target.max)) * 100) / 100;
+    this.radiusPreview = radius;
+    this.core.setStylePreview({ ids: [target.id], patch: { cornerRadius: radius } });
   }
 
   private drag(input: PointerInput, down: PointerInput): void {
@@ -549,6 +612,8 @@ export class PointerController {
     const center = this.frameCenter(frame);
     this.matrix = rotateAround(center.x, center.y, delta);
     this.core.setGesture({ ids: this.moveIds, matrix: this.matrix });
+    this.core.setRotationReadout({ angle: snap.angle, snapped: snap.snapped });
+    if (target.corner) this.cursor.set(rotateCursor(target.corner, frame.angle + delta));
   }
 
   private createBox(input: PointerInput, down: PointerInput): { x: number; y: number; w: number; h: number } {

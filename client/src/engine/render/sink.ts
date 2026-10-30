@@ -17,14 +17,32 @@ export type ViewOverride = {
 
 export type HandleKind = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 
+// Tiradores de una línea o un conector seleccionado solo, en pantalla. `anchored`: índices de los vértices que son
+// extremos pegados a un nodo.
+export type LineHandles = {
+  vertices: Point[];
+  mids: Point[];
+  segments: Array<{ a: Point; b: Point; axis: 'x' | 'y' }>;
+  activeVertex: number | null;
+  anchored: number[];
+};
+
+export type OverlayProfile = { handleDraw: number; showHoverOnly: boolean };
+
 export type OverlayModel = {
+  profile: OverlayProfile;
   selection: null | {
     corners: [Point, Point, Point, Point];
     handles: Array<{ kind: HandleKind; x: number; y: number }>;
-    // Handles por punto de una línea seleccionada sola.
-    points: Point[];
+    // Sin caja: las líneas y los conectores solo llevan sus tiradores.
+    box: boolean;
+    radiusHandles: Point[];
+    rotateHandle: Point | null;
+    lineHandles: LineHandles | null;
     outlines: Point[][];
   };
+  // Nodo al que se va a pegar el extremo de un conector: su contorno y sus anclas.
+  anchorTarget: { outline: Point[]; anchors: Point[]; active: number | null } | null;
   // Mientras la selección solo se traslada, la clave no cambia y el dibujo se desplaza con este offset.
   selectionKey: string | null;
   selectionOffset: Point;

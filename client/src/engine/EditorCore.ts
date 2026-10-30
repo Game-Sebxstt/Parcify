@@ -20,13 +20,20 @@ import { INPUT_PROFILES, initialKind, type InputProfile } from './interaction/in
 import { PointerController } from './interaction/PointerController.ts';
 import { DocumentStore, type PageRecord } from './model/DocumentStore.ts';
 import { SceneTree } from './model/tree.ts';
-import { frameCorners, handlePositions, type SelectionFrame } from './overlay/handles.ts';
+import {
+  frameCorners,
+  handlePositions,
+  radiusHandlesLocal,
+  radiusVisible,
+  rotateHandlePosition,
+  type SelectionFrame,
+} from './overlay/handles.ts';
 import { CursorInterpolator } from './presence/cursors.ts';
 import { Presence } from './presence/Presence.ts';
 import { realTimers, type Timers } from './presence/throttle.ts';
 import { Camera, NO_INSETS, type CameraState, type ViewInsets } from './render/Camera.ts';
 import { FrameScheduler } from './render/FrameScheduler.ts';
-import type { OverlayModel, RemoteModel, RenderSink, ViewOverride } from './render/sink.ts';
+import type { LineHandles, OverlayModel, RemoteModel, RenderSink, ViewOverride } from './render/sink.ts';
 import { SpatialIndex } from './spatial/SpatialIndex.ts';
 import { Store, sameList } from './store.ts';
 import { TEXT_REFRESH_PER_FRAME, TEXT_ZOOM_SETTLE_MS, textResolution } from './text/layout.ts';
@@ -68,6 +75,40 @@ export type ScreenRect = { x: number; y: number; width: number; height: number }
 const sameRect = (a: ScreenRect | null, b: ScreenRect | null) =>
   a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height);
 const roundPx = (value: number) => Math.round(value * 10) / 10;
+
+// Píldora bajo la selección: tamaño («857 × 623») o, mientras se gira, el ángulo. x e y en px del contenedor: el
+// centro del borde superior de la píldora (debajo de la selección) o el del inferior (`above`, encima).
+export type Hud = { kind: 'size' | 'angle'; text: string; x: number; y: number; snapped: boolean; above: boolean };
+
+const sameHud = (a: Hud | null, b: Hud | null) =>
+  a === b || (!!a && !!b && a.kind === b.kind && a.text === b.text && a.x === b.x && a.y === b.y && a.snapped === b.snapped && a.above === b.above);
+
+// Separación entre la caja y la píldora, y alto de la píldora más ese margen: si no cabe debajo, va encima.
+const HUD_GAP_PX = 8;
+const HUD_ROOM_PX = 28;
+
+// Esquinas (nw, ne, se, sw) de la caja alineada a los ejes de unos puntos de pantalla.
+function boxCorners(points: readonly Point[]): [Point, Point, Point, Point] | null {
+  if (!points.length) return null;
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+  return [
+    { x: minX, y: minY },
+    { x: maxX, y: minY },
+    { x: maxX, y: maxY },
+    { x: minX, y: maxY },
+  ];
+}
+
+// Entero si lo es; si no, un decimal con coma.
+function hudNumber(value: number): string {
+  const rounded = Math.round(value * 10) / 10 || 0;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace('.', ',');
+}
 
 // Matriz de mundo de cada nodo que se mueve en un gesto (local o remoto), para recalcular sus conectores.
 type MovingLookup = (id: string) => Readonly<Mat> | null;
@@ -184,6 +225,9 @@ export class EditorCore {
   // la marquesina, la edición de texto y hasta SELECTION_BAR_SETTLE_MS después del último cambio de cámara. Solo
   // se publica desde el frame, así que cambia como mucho una vez por frame.
   readonly selectionScreenRect = new Store<ScreenRect | null>(null, sameRect);
+  // Píldora de tamaño o de ángulo de la selección. Se publica desde el frame y solo avisa si cambia el texto, el
+  // color o la posición redondeada.
+  readonly hud = new Store<Hud | null>(null, sameHud);
 
   // Grupo en el que se ha entrado con doble clic: sus hijos se seleccionan directamente.
   scope: string | null = null;
@@ -284,6 +328,17 @@ export class EditorCore {
   private readonly previewRecords = new Map<string, { source: NodeRecord; record: ConnectorRecord }>();
   private readonly fixedTerminals = { from: new Map<string, CachedTerminal>(), to: new Map<string, CachedTerminal>() };
 
+  // Sube con cada vista previa de estilo o de gesto: el overlay y la píldora se rehacen aunque el documento no cambie.
+  private stylePreviewVersion = 0;
+  private gestureVersion = 0;
+  private hudKey: string | null = null;
+  private hudFrame: { key: string; frame: SelectionFrame | null } | null = null;
+  // El puntero está cerca de una esquina de la selección: con hover, los tiradores de radio solo se ven entonces.
+  private radiusHover = false;
+  // Ángulo que muestra la píldora mientras se gira.
+  private rotationReadout: { angle: number; snapped: boolean } | null = null;
+  private lastSelectionModel: OverlayModel['selection'] = null;
+
   gesture: GesturePreview | null = null;
   stylePreview: StylePreview | null = null;
   creating: SceneRecord | null = null;
@@ -346,6 +401,8 @@ export class EditorCore {
     });
     this.commands = new Commands(this);
     this.controller = new PointerController(this);
+    // Los tiradores cambian de tamaño y de tipo con el puntero (ratón, lápiz o dedo).
+    this.inputProfile.subscribe(() => this.markOverlayDirty());
     this.readOnly.subscribe((readOnly) => {
       if (readOnly && EDIT_TOOLS.has(this.tool.get())) {
         this.toolLocked.set(false);
@@ -628,6 +685,7 @@ export class EditorCore {
     this.scheduler.keepAlive('cursors', this.cursorsAnimating);
     this.updateTextResolution();
     this.publishSelectionRect();
+    this.publishHud();
     if (this.sink.flushAssets()) this.needsRender = true;
 
     // Un frame sin cambios visibles (p. ej. el puntero se mueve sin cambiar el hover) no renderiza.
@@ -1447,6 +1505,7 @@ export class EditorCore {
 
   setGesture(gesture: GesturePreview | null): void {
     this.gesture = gesture;
+    this.gestureVersion++;
     this.snapGuides = gesture?.snapGuides ?? [];
     this.overridesDirty = true;
     this.overlayDirty = true;
@@ -1455,11 +1514,34 @@ export class EditorCore {
     this.requestFrame();
   }
 
+  // La vista previa también mueve los tiradores: el de un extremo o de un radio sigue al puntero en cada frame.
   setStylePreview(preview: StylePreview | null): void {
     this.stylePreview = preview;
+    this.stylePreviewVersion++;
     this.overridesDirty = true;
     this.overridesStale = true;
+    this.overlayDirty = true;
     this.requestFrame();
+  }
+
+  setRadiusHover(near: boolean): void {
+    if (near === this.radiusHover) return;
+    this.radiusHover = near;
+    this.markOverlayDirty();
+  }
+
+  setRotationReadout(readout: { angle: number; snapped: boolean } | null): void {
+    const same = readout === this.rotationReadout || (!!readout && !!this.rotationReadout && readout.angle === this.rotationReadout.angle && readout.snapped === this.rotationReadout.snapped);
+    if (same) return;
+    this.rotationReadout = readout;
+    this.requestFrame();
+  }
+
+  // Registro tal como se ve ahora: con la vista previa de un gesto o de estilo si la tiene.
+  previewRecord(id: string): RenderableRecord | undefined {
+    const override = this.overrides.get(id);
+    if (override && isRenderable(override.record)) return override.record;
+    return this.renderable(id);
   }
 
   setCreating(record: SceneRecord | null): void {
@@ -1754,7 +1836,9 @@ export class EditorCore {
 
   private overlayModel(): OverlayModel {
     const gestureMatrix = this.gesture?.matrix;
-    const moving = gestureMatrix !== undefined && isTranslation(gestureMatrix);
+    // Con una matriz por raíz (vista previa del panel), cada raíz se mueve a su manera: se rehace siempre.
+    const moving = gestureMatrix !== undefined && !this.gesture?.matrices && isTranslation(gestureMatrix);
+    const profile = this.inputProfile.get();
     // Al trasladar, el dibujo de la selección se reutiliza y se desplaza; con otros gestos se rehace.
     // Sin selección el dibujo no depende de los registros ni de la cámara: un update remoto no lo rehace.
     const selectionKey =
@@ -1762,9 +1846,12 @@ export class EditorCore {
         ? null
         : this.selection.get().length === 0
           ? 'empty'
-          : `${this.selectionVersion}:${this.recordsVersion}:${this.camera.version}:${this.readOnly.get()}:${moving ? 'move' : 'idle'}`;
+          : `${this.selectionVersion}:${this.recordsVersion}:${this.camera.version}:${this.readOnly.get()}:${moving ? 'move' : 'idle'}:` +
+            `${this.stylePreviewVersion}:${profile.kind}:${profile.handleDraw}:${this.radiusHover}`;
     const zoom = this.camera.zoom;
     const model: OverlayModel = {
+      profile: { handleDraw: profile.handleDraw, showHoverOnly: profile.showHoverOnly },
+      anchorTarget: null,
       selection: null,
       selectionKey,
       selectionOffset: moving ? { x: gestureMatrix[4] * zoom, y: gestureMatrix[5] * zoom } : { x: 0, y: 0 },
@@ -1776,39 +1863,10 @@ export class EditorCore {
     const matrix = moving ? undefined : gestureMatrix;
     const reused = selectionKey !== null && selectionKey === this.lastSelectionKey;
     this.lastSelectionKey = selectionKey;
-    if (ids.length && !reused) {
-      const frame = this.selectionFrame(ids);
-      if (frame) {
-        const corners = this.screenCorners(frame, matrix);
-        const single = ids.length === 1 ? this.renderable(ids[0]!) : undefined;
-        const editable = !this.readOnly.get() && !this.anyLocked(ids);
-        const points: Point[] = [];
-        if (single?.type === 'line') {
-          const override = moving ? undefined : this.overrides.get(single.id);
-          const world = override && !override.gesture ? override.world : matrix ? multiply(matrix, this.tree.worldMatrix(single)) : this.tree.worldMatrix(single);
-          for (const [px, py] of (override?.record as typeof single | undefined)?.points ?? single.points) {
-            const p = apply(world, px, py);
-            points.push(this.camera.worldToScreen(p.x, p.y));
-          }
-        } else if (single?.type === 'connector') {
-          // Un handle en cada extremo.
-          const route = (moving ? this.routes.get(single.id) : this.routeOf(single.id)) ?? [];
-          if (route.length >= 4) {
-            for (const p of [routeStart(route), routeEnd(route)]) {
-              const at = matrix && !this.overrides.get(single.id)?.redraw ? apply(matrix, p.x, p.y) : p;
-              points.push(this.camera.worldToScreen(at.x, at.y));
-            }
-          }
-        }
-        model.selection = {
-          corners,
-          handles: editable && points.length === 0 ? handlePositions(corners) : [],
-          points: editable ? points : [],
-          // Durante un gesto solo la caja: volver a teselar cien contornos por frame no aporta.
-          outlines: !this.gesture && ids.length > 1 && ids.length <= 200 ? ids.map((id) => this.screenOutline(id, matrix)).filter((o): o is Point[] => !!o) : [],
-        };
-      }
-    }
+    // Con la clave igual la capa no redibuja; el modelo lleva la selección anterior para quien lo lea (test-hooks).
+    if (reused) model.selection = this.lastSelectionModel;
+    else if (ids.length) model.selection = this.selectionOverlay(ids, matrix, moving, profile);
+    this.lastSelectionModel = model.selection;
     if (this.hover && !this.isSelected(this.hover) && !this.gesture) model.hover = this.screenOutline(this.hover);
     if (this.marquee) {
       const a = this.camera.worldToScreen(this.marquee.x, this.marquee.y);
@@ -1820,6 +1878,133 @@ export class EditorCore {
       model.guides.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y });
     }
     return model;
+  }
+
+  // Caja, tiradores y contornos de la selección en pantalla. `matrix`: gesto que se dibuja deformando; con `moving`
+  // la capa desplaza el dibujo anterior.
+  private selectionOverlay(ids: readonly string[], matrix: Readonly<Mat> | undefined, moving: boolean, profile: Readonly<InputProfile>): OverlayModel['selection'] {
+    const frame = this.selectionFrame(ids);
+    if (!frame) return null;
+    const matrices = this.gesture?.matrices;
+    const single = ids.length === 1 ? this.renderable(ids[0]!) : undefined;
+    const editable = !this.readOnly.get() && !this.anyLocked(ids);
+    const lineHandles = editable && (single?.type === 'line' || single?.type === 'connector') ? this.lineHandles(single.id, matrix, moving) : null;
+    let corners = this.screenCorners(frame, matrix);
+    let outlines: Point[][] = [];
+    if (matrices && this.gesture) {
+      // Cada raíz con su matriz: la caja común es la de sus contornos ya movidos.
+      const gesture = this.gesture;
+      outlines = gesture.ids.map((id) => this.screenOutline(id, matrices.get(id) ?? gesture.matrix)).filter((o): o is Point[] => !!o);
+      corners = boxCorners(outlines.flat()) ?? corners;
+      if (outlines.length < 2) outlines = [];
+    } else if (!this.gesture && ids.length > 1 && ids.length <= 200) {
+      // Durante un gesto solo la caja: volver a teselar cien contornos por frame no aporta.
+      outlines = ids.map((id) => this.screenOutline(id, matrix)).filter((o): o is Point[] => !!o);
+    }
+    const boxed = editable && !lineHandles && !matrices;
+    const radiusHandles =
+      boxed && single && !this.gesture && radiusVisible(corners, profile, this.radiusHover) ? (this.radiusHandlePoints(single.id) ?? []) : [];
+    return {
+      corners,
+      box: !lineHandles,
+      handles: boxed ? handlePositions(corners, profile) : [],
+      radiusHandles,
+      rotateHandle: boxed && profile.rotateHandle !== null ? rotateHandlePosition(corners, profile.rotateHandle) : null,
+      lineHandles,
+      outlines,
+    };
+  }
+
+  // Tiradores en pantalla de una línea o un conector tal como se ve ahora (con su vista previa). Los usan el overlay y
+  // el impacto del puntero. `matrix`: gesto que lo deforma sin redibujarlo; con `moving`, la capa desplaza el dibujo.
+  lineHandles(id: string, matrix?: Readonly<Mat>, moving = false): LineHandles | null {
+    const record = this.renderable(id);
+    if (record?.type !== 'line' && record?.type !== 'connector') return null;
+    const vertices: Point[] = [];
+    const anchored: number[] = [];
+    if (record.type === 'line') {
+      const override = moving ? undefined : this.overrides.get(id);
+      const shown = override?.record.type === 'line' ? override.record : record;
+      const world = override && !override.gesture ? override.world : matrix ? multiply(matrix, this.tree.worldMatrix(record)) : this.tree.worldMatrix(record);
+      for (const [px, py] of shown.points) {
+        const p = apply(world, px, py);
+        vertices.push(this.camera.worldToScreen(p.x, p.y));
+      }
+    } else {
+      const route = (moving ? this.routes.get(id) : this.routeOf(id)) ?? [];
+      if (route.length < 4) return null;
+      const redrawn = this.overrides.get(id)?.redraw;
+      for (const p of [routeStart(route), routeEnd(route)]) {
+        const at = matrix && !redrawn ? apply(matrix, p.x, p.y) : p;
+        vertices.push(this.camera.worldToScreen(at.x, at.y));
+      }
+      const shown = this.previewRecord(id);
+      if (shown?.type === 'connector') {
+        if ('nodeId' in shown.from) anchored.push(0);
+        if ('nodeId' in shown.to) anchored.push(1);
+      }
+    }
+    return { vertices, mids: [], segments: [], activeVertex: null, anchored };
+  }
+
+  // Tiradores de radio de un rectángulo o una imagen en pantalla (nw, ne, se, sw), con el radio de la vista previa.
+  radiusHandlePoints(id: string): Point[] | null {
+    const record = this.renderable(id);
+    if (record?.type !== 'rect' && record?.type !== 'image') return null;
+    const shown = this.previewRecord(id);
+    const radius = shown && 'cornerRadius' in shown ? shown.cornerRadius : record.cornerRadius;
+    const world = this.tree.worldMatrix(record);
+    return radiusHandlesLocal(record.w, record.h, radius, this.camera.zoom).map((p) => {
+      const at = apply(world, p.x, p.y);
+      return this.camera.worldToScreen(at.x, at.y);
+    });
+  }
+
+  // Píldora bajo la caja de la selección: su tamaño o, mientras se gira, el ángulo. No la llevan las líneas ni los
+  // conectores sueltos. Solo se recalcula si cambia algo de lo que depende.
+  private publishHud(): void {
+    const ids = this.selection.get();
+    const single = ids.length === 1 ? this.store.get(ids[0]!) : undefined;
+    if (!ids.length || this.marquee || this.editingText.get() || single?.type === 'line' || single?.type === 'connector') {
+      this.hudKey = null;
+      this.hud.set(null);
+      return;
+    }
+    const readout = this.rotationReadout;
+    const insets = this.viewInsets;
+    const key =
+      `${this.selectionVersion}:${this.recordsVersion}:${this.camera.version}:${this.gestureVersion}:${insets.bottom}:` +
+      `${readout ? `${readout.angle}:${readout.snapped}` : '-'}`;
+    if (key === this.hudKey) return;
+    this.hudKey = key;
+    // Durante un gesto los registros no cambian: la caja se calcula una vez y el gesto solo la transforma.
+    const frameKey = `${this.selectionVersion}:${this.recordsVersion}`;
+    if (this.hudFrame?.key !== frameKey) this.hudFrame = { key: frameKey, frame: this.selectionFrame(ids) };
+    const frame = this.hudFrame.frame;
+    if (!frame) {
+      this.hud.set(null);
+      return;
+    }
+    const matrix = this.gesture && !this.gesture.matrices ? this.gesture.matrix : undefined;
+    const world = frameCorners(frame, matrix);
+    const screen = world.map((p) => this.camera.worldToScreen(p.x, p.y));
+    const xs = screen.map((p) => p.x);
+    const ys = screen.map((p) => p.y);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const x = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const above = maxY + HUD_GAP_PX + HUD_ROOM_PX > this.camera.height - insets.bottom;
+    const y = above ? minY - HUD_GAP_PX : maxY + HUD_GAP_PX;
+    const width = Math.hypot(world[1].x - world[0].x, world[1].y - world[0].y);
+    const height = Math.hypot(world[3].x - world[0].x, world[3].y - world[0].y);
+    this.hud.set({
+      kind: readout ? 'angle' : 'size',
+      text: readout ? `${hudNumber(readout.angle)}°` : `${hudNumber(width)} × ${hudNumber(height)}`,
+      x: Math.round(x),
+      y: Math.round(y),
+      snapped: readout?.snapped ?? false,
+      above,
+    });
   }
 
   anyLocked(ids: readonly string[]): boolean {

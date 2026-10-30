@@ -52,14 +52,18 @@
     locked: boolean;
     // Distancia a cada borde de la ventana que la barra no pisa: paneles, pastillas y barras de abajo.
     avoid: Avoid;
+    // El último puntero fue un dedo: la selección lleva tirador de giro encima.
+    touch: boolean;
     onmore: (at: { clientX: number; clientY: number }) => void;
     onreplaceimage: (id: string) => void;
     onescape: () => void;
   };
 
-  let { engine, records, rect, container, locked, avoid, onmore, onreplaceimage, onescape }: Props = $props();
+  let { engine, records, rect, container, locked, avoid, touch, onmore, onreplaceimage, onescape }: Props = $props();
 
   const GAP = 12;
+  // Con el dedo hay un tirador de giro 24 px por encima de la caja (círculo de 14 px): la barra queda por encima.
+  const TOUCH_GAP = 40;
   const SHAPES = new Set(['rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc']);
   const DEFAULT_FILL = '#D9D9D9FF';
   const DEFAULT_STROKE = '#EEF2F6FF';
@@ -78,6 +82,7 @@
     if (type === 'text' || type === 'image' || type === 'frame' || type === 'group') return type;
     return 'locked';
   });
+  const gap = $derived(touch && kind !== 'line' && kind !== 'locked' ? TOUCH_GAP : GAP);
   const single = $derived(records.length === 1 ? records[0]! : null);
   const shape = $derived(single && SHAPES.has(single.type) ? (single as Shape) : null);
   const text = $derived(single?.type === 'text' ? single : null);
@@ -103,12 +108,13 @@
   function place(el: HTMLElement) {
     const target = anchorRect;
     const padding = avoid;
+    const offset = gap;
     void kind;
     if (!target) return;
     const box = container.getBoundingClientRect();
     void placeOverCanvas(el, { x: box.left + target.x, y: box.top + target.y, width: target.width, height: target.height }, {
       placement: 'top',
-      gap: GAP,
+      gap: offset,
       padding,
       hidePadding: { top: 0, right: padding.right, bottom: 0, left: padding.left },
     });

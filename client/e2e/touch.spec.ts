@@ -104,4 +104,57 @@ test.describe('@touch gestos con el dedo', () => {
     expect(await selection(page)).toEqual([]);
     expect((await nodes(page))[0]).toMatchObject({ x: resized.x, y: resized.y, w: resized.w, h: resized.h });
   });
+
+  test('el tirador de giro sale 24 px por encima del borde superior y gira la forma con el dedo (CA-2.4)', async ({ page }) => {
+    const { canvas, center } = await openEditor(page, 'tirador-giro');
+
+    await canvas.focus();
+    await page.keyboard.press('r');
+    await touchDrag(page, { x: center.x - 60, y: center.y - 40 }, { x: center.x + 60, y: center.y + 40 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(1);
+    const rect = (await nodes(page))[0]!;
+
+    const handle = () => page.evaluate(() => window.__parcifyTest!.overlayModel()?.selection?.rotateHandle ?? null);
+    await expect.poll(handle).not.toBeNull();
+    const box = (await canvas.boundingBox())!;
+    const top = await page.evaluate(([x, y]) => window.__parcifyTest!.toPage(x!, y!), [rect.x + rect.w / 2, rect.y]);
+    const at = (await handle())!;
+    const knob = { x: box.x + at.x, y: box.y + at.y };
+    expect(knob.x).toBeCloseTo(top.x, 0);
+    expect(top.y - knob.y).toBeCloseTo(24, 0);
+
+    // Llevar el tirador hasta la derecha del centro gira la forma un cuarto de vuelta.
+    const c = await page.evaluate(([x, y]) => window.__parcifyTest!.toPage(x!, y!), [rect.x + rect.w / 2, rect.y + rect.h / 2]);
+    const reach = Math.hypot(knob.x - c.x, knob.y - c.y);
+    await touchDrag(page, knob, { x: c.x + reach, y: c.y });
+    await expect.poll(async () => (await nodes(page))[0]!.rotation).toBeCloseTo(Math.PI / 2, 3);
+  });
+
+  test('en un rectángulo de 40×40 px, el dedo desde el centro lo mueve y desde 10 px fuera de SE lo redimensiona (CA-16.15)', async ({ page }) => {
+    const { canvas, center } = await openEditor(page, 'forma-pequena');
+
+    await canvas.focus();
+    await page.keyboard.press('r');
+    const { zoom } = await view(page);
+    await touchDrag(page, { x: center.x - 20, y: center.y - 20 }, { x: center.x + 20, y: center.y + 20 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(1);
+    const rect = (await nodes(page))[0]!;
+    expect(rect.w * zoom).toBeCloseTo(40, 0);
+    expect(rect.h * zoom).toBeCloseTo(40, 0);
+
+    await touchDrag(page, center, { x: center.x + 60, y: center.y + 30 });
+    await expect.poll(async () => (await nodes(page))[0]!.x).toBeCloseTo(rect.x + 60 / zoom, 0);
+    const moved = (await nodes(page))[0]!;
+    expect(moved.y).toBeCloseTo(rect.y + 30 / zoom, 0);
+    expect(moved.w).toBe(rect.w);
+    expect(moved.h).toBe(rect.h);
+
+    const se = await page.evaluate(([x, y]) => window.__parcifyTest!.toPage(x!, y!), [moved.x + moved.w, moved.y + moved.h]);
+    await touchDrag(page, { x: se.x + 10, y: se.y + 10 }, { x: se.x + 50, y: se.y + 40 });
+    // La esquina va a donde está el dedo: 10 px de partida más el arrastre.
+    await expect.poll(async () => (await nodes(page))[0]!.w).toBeCloseTo(moved.w + 50 / zoom, 0);
+    const resized = (await nodes(page))[0]!;
+    expect(resized.h).toBeCloseTo(moved.h + 40 / zoom, 0);
+    expect(resized.x).toBeCloseTo(moved.x, 3);
+  });
 });
