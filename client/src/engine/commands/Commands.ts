@@ -962,9 +962,9 @@ export class Commands {
       const dx = round3((next.x ?? record.x) - record.x);
       const dy = round3((next.y ?? record.y) - record.y);
       const rotation = record.type === 'line' ? 0 : normalizeAngle((next.rotation ?? record.rotation) - record.rotation);
-      if (dx) changes.push({ id, prop: 'offsetX', value: dx, relative: true });
-      if (dy) changes.push({ id, prop: 'offsetY', value: dy, relative: true });
-      if (Math.abs(rotation) > 1e-6) changes.push({ id, prop: 'rotation', value: rotation, relative: true });
+      if (dx) changes.push({ id, prop: 'offsetX', value: dx, mode: 'add' });
+      if (dy) changes.push({ id, prop: 'offsetY', value: dy, mode: 'add' });
+      if (Math.abs(rotation) > 1e-6) changes.push({ id, prop: 'rotation', value: rotation, mode: 'add' });
     }
     if (changes.length) this.recorder?.(changes);
   }
@@ -1927,11 +1927,13 @@ export class Commands {
     for (const [id, patch] of entries) {
       const record = this.core.record(id);
       if (!record || record.type === 'connector' || this.core.isLocked(id)) continue;
-      if (typeof patch.opacity === 'number') changes.push({ id, prop: 'opacity', value: patch.opacity });
+      if (typeof patch.opacity === 'number') changes.push({ id, prop: 'opacity', value: patch.opacity, mode: 'set' });
       if (typeof patch.fill === 'string' && typeof (record as { fill?: unknown }).fill === 'string' && record.type !== 'line') {
-        changes.push({ id, prop: 'fill', value: patch.fill });
+        changes.push({ id, prop: 'fill', value: patch.fill, mode: 'set' });
       }
-      if (typeof patch.stroke === 'string' && typeof (record as { stroke?: unknown }).stroke === 'string') changes.push({ id, prop: 'stroke', value: patch.stroke });
+      if (typeof patch.stroke === 'string' && typeof (record as { stroke?: unknown }).stroke === 'string') {
+        changes.push({ id, prop: 'stroke', value: patch.stroke, mode: 'set' });
+      }
     }
     if (changes.length) this.recorder?.(changes);
     return entries.map(([id, patch]) => {

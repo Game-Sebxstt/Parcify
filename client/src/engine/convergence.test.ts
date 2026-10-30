@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { ROOT_KEYS, serverOrigin } from '../shared/document/keys.js';
 import { createTouches, normalizeDocument } from '../shared/document/normalize.js';
-import { NodeSchema } from '../shared/document/schema.js';
+import { AnimationSchema, NodeSchema } from '../shared/document/schema.js';
+import { AnimationCommands } from './commands/animation.ts';
 import { compareOrder } from './model/order.ts';
 import { connectorNode, frame, group, makeCore, newDoc, nodeMap, PAGE_ID, putNode, rect } from './test-utils.ts';
 
@@ -251,5 +252,48 @@ describe('convergencia de los waypoints de un conector (CA-1.6)', () => {
     bea.core.commands.setConnectorPath(connector, { waypoints: [{ x: 160, y: 40 }] });
     syncAll(cores.map((r) => r.doc));
     sameRoute();
+  });
+});
+
+describe('convergencia de keyframes', () => {
+  it('dos clientes mueven a la vez keyframes distintos de la misma pista: convergen sin perder ninguno (CA-5.7)', () => {
+    let id = '';
+    const cores = replicas(2, (doc) => {
+      id = putNode(doc, rect());
+      doc.transact(() => {
+        const animation = new Y.Map<unknown>();
+        for (const [key, value] of Object.entries({ duration: 1000, delay: 0, loop: 1, direction: 'normal', autoplay: 'none' })) animation.set(key, value);
+        const tracks = new Y.Map<unknown>();
+        const track = new Y.Map<unknown>();
+        track.set('k1', { t: 0.2, v: 10, e: 'linear' });
+        track.set('k2', { t: 0.6, v: 60, e: 'linear' });
+        track.set('k3', { t: 1, v: 100, e: 'linear' });
+        tracks.set('offsetX', track);
+        animation.set('tracks', tracks);
+        doc.getMap(ROOT_KEYS.animations).set(id, animation);
+      }, 'remote');
+    });
+    const [a, b] = cores as [ReturnType<typeof makeCore>, ReturnType<typeof makeCore>];
+    a.tick();
+    b.tick();
+    const ka = new AnimationCommands(a.core);
+    const kb = new AnimationCommands(b.core);
+    expect(ka.moveKeyframes([{ nodeId: id, prop: 'offsetX', key: 'k1' }], 100)).toBe(true);
+    expect(kb.moveKeyframes([{ nodeId: id, prop: 'offsetX', key: 'k2' }], -100)).toBe(true);
+    a.tick();
+    b.tick();
+    syncAll([a.doc, b.doc]);
+    a.tick();
+    b.tick();
+    const json = (doc: Y.Doc) => doc.getMap(ROOT_KEYS.animations).toJSON();
+    expect(json(b.doc)).toEqual(json(a.doc));
+    expect(AnimationSchema.safeParse(json(a.doc)[id]).success).toBe(true);
+    for (const { core } of cores) {
+      const track = core.store.animation(id)!.tracks.offsetX!;
+      expect(Object.keys(track).sort()).toEqual(['k1', 'k2', 'k3']);
+      expect(track.k1).toMatchObject({ t: 0.3, v: 10 });
+      expect(track.k2).toMatchObject({ t: 0.5, v: 60 });
+      expect(track.k3).toMatchObject({ t: 1, v: 100 });
+    }
   });
 });

@@ -246,3 +246,120 @@ describe('AnimationPlayer en el motor', () => {
     expect(m[0]).toBeCloseTo(2, 6);
   });
 });
+
+describe('escalas por eje, color de texto y vista previa', () => {
+  function animate(seed: (keyframes: AnimationCommands, ids: string[]) => void, nodes: Array<Record<string, unknown>> = [rect({ x: 10, y: 20 })]) {
+    const harness = makeCore();
+    const ids = nodes.map((node) => putNode(harness.doc, node));
+    harness.tick(0);
+    const keyframes = new AnimationCommands(harness.core);
+    seed(keyframes, ids);
+    harness.tick(0);
+    return { ...harness, ids, keyframes };
+  }
+
+  it('scaleX y scaleY escalan cada eje alrededor del centro y una escala negativa no voltea', () => {
+    const { core, sink, tick, ids } = animate((keyframes, [id]) => {
+      keyframes.addKeyframe(id!, 'scaleX', { t: 0, v: 2 });
+      keyframes.addKeyframe(id!, 'scaleY', { t: 0, v: 0.5 });
+      keyframes.addKeyframe(id!, 'scale', { t: 1, v: 1 });
+    });
+    const id = ids[0]!;
+    core.anim.seek(0);
+    tick(1);
+    const m = sink.overrides.get(id)!.gesture!.matrix;
+    expect(m[0]).toBeCloseTo(2, 6);
+    expect(m[3]).toBeCloseTo(0.5, 6);
+    expect(m[0] * 60 + m[2] * 45 + m[4]).toBeCloseTo(60, 6);
+    expect(m[1] * 60 + m[3] * 45 + m[5]).toBeCloseTo(45, 6);
+    expect(core.anim.poseAt(id, 0)).toMatchObject({ sx: 2, sy: 0.5, scale: 1 });
+    // Una pista con un valor negativo escrito a mano (sin pasar por los comandos) se pinta con escala 0.
+    core.writer.transact({}, (w) => w.setKeyframe(id, 'scale', 'neg', { t: 0, v: -1, e: 'linear' }));
+    tick(2);
+    core.anim.seek(0);
+    tick(3);
+    expect(sink.overrides.get(id)!.gesture!.matrix[0]).toBeCloseTo(0, 6);
+  });
+
+  it('la pista fill de un texto pinta el color de la letra', () => {
+    const textNode = {
+      ...rect({ x: 0, y: 0, w: 100, h: 30 }),
+      type: 'text',
+      fontFamily: 'Manrope',
+      fontSize: 24,
+      fontWeight: 400,
+      italic: false,
+      underline: false,
+      strike: false,
+      color: '#EEF2F6FF',
+      align: 'left',
+      lineHeight: 1.25,
+      autoWidth: false,
+    } as Record<string, unknown>;
+    for (const key of ['fill', 'stroke', 'strokeWidth', 'strokeDash', 'shadow', 'cornerRadius']) delete textNode[key];
+    const { core, sink, tick, ids } = animate(
+      (keyframes, [id]) => {
+        keyframes.addKeyframe(id!, 'fill', { t: 0, v: '#000000FF' });
+        keyframes.addKeyframe(id!, 'fill', { t: 1, v: '#FFFFFFFF' });
+      },
+      [textNode],
+    );
+    core.anim.seek(500);
+    tick(1);
+    const view = sink.overrides.get(ids[0]!)!;
+    expect((view.record as { color?: string }).color).toBe('#636363FF');
+    expect(view.redraw).toBe(true);
+    expect(core.record(ids[0]!)).toMatchObject({ color: '#EEF2F6FF' });
+  });
+
+  it('la vista previa reproduce solo los nodos pedidos y al terminar vuelve al estado base', () => {
+    const { core, sink, tick, ids } = animate(
+      (keyframes, [a, b]) => {
+        for (const id of [a!, b!]) {
+          keyframes.addKeyframe(id, 'offsetX', { t: 0, v: 0 });
+          keyframes.addKeyframe(id, 'offsetX', { t: 1, v: 100 });
+        }
+      },
+      [rect({ x: 0 }), rect({ x: 300 })],
+    );
+    const [a, b] = ids as [string, string];
+    core.anim.setRepeat(true);
+    expect(core.anim.preview([a])).toBe(true);
+    expect(core.anim.state.get()).toMatchObject({ status: 'playing', preview: true, duration: 1000 });
+    tick(1000);
+    tick(1500);
+    expect(sink.overrides.get(a)?.gesture?.matrix[4]).toBeCloseTo(50, 6);
+    expect(sink.overrides.has(b)).toBe(false);
+    // Sin repetir aunque la repetición esté activa: el frame del final y el siguiente lo paran.
+    tick(2100);
+    tick(2200);
+    expect(core.anim.state.get()).toMatchObject({ status: 'stopped', time: 0, preview: false });
+    expect(sink.overrides.size).toBe(0);
+    expect(core.isLocked(a)).toBe(false);
+    // Lo que no tiene animación no reproduce nada.
+    expect(core.anim.preview(['nada'])).toBe(false);
+    expect(core.anim.state.get().status).toBe('stopped');
+  });
+
+  it('Esc y preview(null) detienen la vista previa', () => {
+    const { core, sink, tick, ids } = animate((keyframes, [id]) => {
+      keyframes.addKeyframe(id!, 'offsetX', { t: 0, v: 0 });
+      keyframes.addKeyframe(id!, 'offsetX', { t: 1, v: 100 });
+    });
+    const id = ids[0]!;
+    core.anim.preview([id]);
+    tick(0);
+    tick(300);
+    expect(sink.overrides.has(id)).toBe(true);
+    expect(core.controller.keyDown({ key: 'Escape', code: 'Escape', ctrl: false, shift: false, alt: false, repeat: false })).toBe(true);
+    tick(400);
+    expect(core.anim.state.get()).toMatchObject({ status: 'stopped', preview: false });
+    expect(sink.overrides.has(id)).toBe(false);
+    core.anim.preview([id]);
+    tick(500);
+    core.anim.preview(null);
+    tick(600);
+    expect(core.anim.state.get()).toMatchObject({ status: 'stopped', preview: false });
+    expect(sink.overrides.size).toBe(0);
+  });
+});

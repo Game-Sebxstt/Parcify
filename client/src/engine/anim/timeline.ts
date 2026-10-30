@@ -18,9 +18,10 @@ export type CompiledAnimation = {
   tracks: ReadonlyArray<readonly [AnimProp, CompiledTrack]>;
 };
 
-// Lo que la animación cambia sobre el nodo en un instante. offset, rotation y scale son relativos; opacity, fill y
-// stroke son absolutos (undefined: la pista no existe).
-export type Pose = { dx: number; dy: number; rotation: number; scale: number; opacity?: number; fill?: string; stroke?: string };
+// Lo que la animación cambia sobre el nodo en un instante. offset y rotation se suman; scale, sx y sy multiplican
+// (la escala de cada eje es scale·sx y scale·sy); opacity, fill y stroke son absolutos (undefined: la pista no
+// existe). En un texto, fill es el color de la letra.
+export type Pose = { dx: number; dy: number; rotation: number; scale: number; sx: number; sy: number; opacity?: number; fill?: string; stroke?: string };
 
 export function effectiveDuration(animation: Pick<Animation, 'duration' | 'delay' | 'loop'>): number {
   return animation.loop === 0 ? Infinity : animation.delay + animation.duration * animation.loop;
@@ -107,7 +108,7 @@ export function poseAt(animation: CompiledAnimation, time: number): Pose {
 
 // Pose para un avance p (0..1) dentro de una iteración.
 export function poseAtProgress(animation: CompiledAnimation, p: number): Pose {
-  const pose: Pose = { dx: 0, dy: 0, rotation: 0, scale: 1 };
+  const pose: Pose = { dx: 0, dy: 0, rotation: 0, scale: 1, sx: 1, sy: 1 };
   for (const [prop, track] of animation.tracks) {
     if (track.color) {
       pose[prop as 'fill' | 'stroke'] = sampleColor(track, p);
@@ -126,6 +127,12 @@ export function poseAtProgress(animation: CompiledAnimation, p: number): Pose {
         break;
       case 'scale':
         pose.scale = value;
+        break;
+      case 'scaleX':
+        pose.sx = value;
+        break;
+      case 'scaleY':
+        pose.sy = value;
         break;
       case 'opacity':
         pose.opacity = Math.min(1, Math.max(0, value));

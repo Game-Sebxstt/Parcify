@@ -74,7 +74,7 @@
   let layers = $state(0);
   let pageId = $state<string | null>(null);
   let selection = $state.raw<readonly string[]>([]);
-  let player = $state.raw<AnimationState>({ status: 'stopped', time: 0, duration: 0 });
+  let player = $state.raw<AnimationState>({ status: 'stopped', time: 0, duration: 0, preview: false });
   let head = $state(0);
   let speed = $state<number>(1);
   let repeat = $state(false);

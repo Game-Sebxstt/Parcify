@@ -22,7 +22,24 @@ export type { NodeRecord } from './types.ts';
 export type { PageRecord } from './model/DocumentStore.ts';
 export { FRAME_PRESETS, type FramePresetId } from './commands/defaults.ts';
 export type { AnimationState, AnimationStatus } from './anim/AnimationPlayer.ts';
-export { DEFAULT_ANIMATION, keyframeTime, poseValue, restValue, type AnimationCommands, type KeyframeInput, type RecordedChange } from './commands/animation.ts';
+export {
+  DEFAULT_ANIMATION,
+  DUPLICATE_GAP_MS,
+  SAME_TIME,
+  STRETCH_FACTOR,
+  clampAnimValue,
+  keyframeMs,
+  keyframeTime,
+  poseValue,
+  restValue,
+  type AnimationCommands,
+  type KeyframeClip,
+  type KeyframeInput,
+  type KeyframePasteResult,
+  type KeyRef,
+  type RecordedChange,
+} from './commands/animation.ts';
+export { ANIMATION_PRESETS, PRESETS, type AnimationPresetId } from './anim/presets.ts';
 export { EASING_CURVES, easingFn } from './anim/easing.ts';
 export { compileAnimation, effectiveDuration, poseAtProgress, COLOR_PROPS } from './anim/timeline.ts';
 export type { StylePatch, StyleEach, InsertableImage, GeometryPatch, Geometry, AlignMode, FlipAxis, NotAnimatedKey } from './commands/Commands.ts';
@@ -104,6 +121,9 @@ export type EngineAnimation = {
   record(time: number | null): void;
   // Modo Presentar: solo reproduce las animaciones que pasan el filtro y mantiene la pose final; null lo apaga.
   present(filter: ((id: string, animation: Animation) => boolean) | null): void;
+  // Vista previa en el lienzo de las animaciones de `ids` (página activa), sin la línea de tiempo: al terminar, el
+  // lienzo vuelve al estado base. Esc, un clic en el lienzo o null la detienen. false si no hay nada que reproducir.
+  preview(ids: readonly string[] | null): boolean;
   state: Readable<AnimationState>;
   // Sube cuando cambian las animaciones del documento.
   version: Readable<number>;
@@ -200,6 +220,7 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
         core.commands.recorder = time === null ? null : (changes) => void keyframes.recordAt(time, changes);
       },
       present: (filter) => core.anim.present(filter),
+      preview: (ids) => core.anim.preview(ids),
       state: core.anim.state.readonly(),
       version: core.animationsVersion.readonly(),
       keyframes,

@@ -118,6 +118,8 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
   const onPointerDown = (event: PointerEvent) => {
     // Dentro del editor de texto, el puntero mueve el caret; fuera, confirma la edición (lo decide el enrutador).
     if (event.target instanceof Element && event.target.closest(`[${TEXT_EDITOR_ATTR}]`)) return;
+    // Cualquier toque o clic en el lienzo detiene la vista previa de animaciones antes de hacer lo suyo.
+    if (core.anim.previewActive) core.anim.preview(null);
     lastDownKind = toPointerKind(event.pointerType);
     lastDownButton = event.button;
     refreshRect();

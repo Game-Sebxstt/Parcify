@@ -8,8 +8,9 @@ import { compileAnimation, poseAt, type CompiledAnimation, type Pose } from './t
 
 export type AnimationStatus = 'stopped' | 'playing' | 'paused';
 
-// time y duration en ms; duration es Infinity si alguna animación se repite sin fin y 0 si no hay ninguna.
-export type AnimationState = { status: AnimationStatus; time: number; duration: number };
+// time y duration en ms; duration es Infinity si alguna animación se repite sin fin y 0 si no hay ninguna. preview:
+// se está reproduciendo una vista previa (`preview`), que al terminar vuelve al estado base.
+export type AnimationState = { status: AnimationStatus; time: number; duration: number; preview: boolean };
 
 // Lo que el reproductor necesita del motor. Las vistas se cambian con apply; el documento no se toca.
 export interface AnimationHost {
@@ -40,8 +41,8 @@ const isAnimatable = (record: NodeRecord | undefined): record is SceneRecord =>
 // documento.
 export class AnimationPlayer {
   readonly state = new Store<AnimationState>(
-    { status: 'stopped', time: 0, duration: 0 },
-    (a, b) => a.status === b.status && a.time === b.time && a.duration === b.duration,
+    { status: 'stopped', time: 0, duration: 0, preview: false },
+    (a, b) => a.status === b.status && a.time === b.time && a.duration === b.duration && a.preview === b.preview,
   );
   private status: AnimationStatus = 'stopped';
   private time = 0;
@@ -62,11 +63,51 @@ export class AnimationPlayer {
   private repeat = false;
   // Modo Presentar: solo se reproduce lo que pasa el filtro y, al terminar, la pose final se queda a la vista.
   private only: ((id: string, animation: Animation) => boolean) | null = null;
+  // Vista previa: solo estos nodos, una vez y sin repetir; al terminar, stop(). null fuera de la vista previa.
+  private previewIds: ReadonlySet<string> | null = null;
 
   constructor(private readonly host: AnimationHost) {}
 
   present(filter: ((id: string, animation: Animation) => boolean) | null): void {
     this.only = filter;
+    this.collectPending = true;
+  }
+
+  get previewActive(): boolean {
+    return this.previewIds !== null;
+  }
+
+  // Reproduce desde 0 las animaciones de `ids` (las de la página activa) sin abrir la línea de tiempo, y al terminar
+  // devuelve el lienzo al estado base. null la detiene. Devuelve false si no hay nada que reproducir.
+  preview(ids: readonly string[] | null): boolean {
+    if (ids === null) {
+      if (this.previewIds) this.stop();
+      return false;
+    }
+    this.previewIds = new Set(ids);
+    this.collect();
+    if (!this.animated.length) {
+      this.stop();
+      return false;
+    }
+    this.time = 0;
+    this.anchor = null;
+    this.ending = false;
+    this.previewing = false;
+    if (this.status === 'playing') {
+      this.publish();
+    } else {
+      this.setStatus('playing');
+      this.host.keepAlive(true);
+    }
+    this.host.requestFrame();
+    return true;
+  }
+
+  // Sale de la vista previa sin tocar el estado de reproducción.
+  private endPreview(): void {
+    if (!this.previewIds) return;
+    this.previewIds = null;
     this.collectPending = true;
   }
 
@@ -90,6 +131,13 @@ export class AnimationPlayer {
   }
 
   play(): void {
+    // Durante la vista previa, reproducir pasa a la reproducción normal desde el mismo instante.
+    if (this.previewIds) {
+      this.endPreview();
+      this.collect();
+      this.publish();
+      return;
+    }
     if (this.status === 'playing') return;
     this.collect();
     if (!this.animated.length) return;
@@ -102,6 +150,10 @@ export class AnimationPlayer {
   }
 
   pause(): void {
+    if (this.previewIds) {
+      this.stop();
+      return;
+    }
     if (this.status === 'stopped') return;
     this.setStatus('paused');
     this.restore();
@@ -109,7 +161,9 @@ export class AnimationPlayer {
   }
 
   stop(): void {
-    if (this.status === 'stopped' && !this.previewing) return;
+    const wasPreview = this.previewIds !== null;
+    this.endPreview();
+    if (this.status === 'stopped' && !this.previewing && !wasPreview) return;
     this.time = 0;
     this.setStatus('stopped');
     this.restore();
@@ -118,6 +172,7 @@ export class AnimationPlayer {
 
   // Lleva el cabezal a `time` (ms). En pausa, las vistas muestran la pose de ese instante.
   seek(time: number): void {
+    this.endPreview();
     this.collect();
     const limit = Number.isFinite(this.duration) ? this.duration : Number.MAX_SAFE_INTEGER;
     this.time = Math.min(limit, Math.max(0, Number.isFinite(time) ? time : 0));
@@ -148,6 +203,10 @@ export class AnimationPlayer {
     if (this.status === 'playing') {
       if (this.ending) {
         this.ending = false;
+        if (this.previewIds) {
+          this.stop();
+          return;
+        }
         if (this.only) {
           this.previewing = true;
           this.setStatus('paused');
@@ -160,7 +219,7 @@ export class AnimationPlayer {
       if (this.collectPending) this.collect();
       if (this.anchor === null) this.anchor = now - this.time / this.speed;
       this.time = (now - this.anchor) * this.speed;
-      if (this.time >= this.duration && this.repeat && this.duration > 0) {
+      if (this.time >= this.duration && this.repeat && !this.previewIds && this.duration > 0) {
         this.time %= this.duration;
         this.anchor = now - this.time / this.speed;
       } else if (this.time >= this.duration) {
@@ -206,7 +265,7 @@ export class AnimationPlayer {
   }
 
   private publish(): void {
-    this.state.set({ status: this.status, time: this.time, duration: this.duration });
+    this.state.set({ status: this.status, time: this.time, duration: this.duration, preview: this.previewIds !== null });
   }
 
   // Nodos animados de la página activa, su duración total y lo que no se puede editar mientras se reproducen.
@@ -219,7 +278,7 @@ export class AnimationPlayer {
     for (const [id, source] of this.host.animations()) {
       const record = this.host.record(id);
       if (!isAnimatable(record) || record.pageId !== page) continue;
-      if (this.only && !this.only(id, source)) continue;
+      if (this.previewIds ? !this.previewIds.has(id) : this.only && !this.only(id, source)) continue;
       let entry = this.compiled.get(id);
       if (entry?.source !== source) {
         entry = { source, compiled: compileAnimation(source) };
@@ -262,7 +321,10 @@ export class AnimationPlayer {
     let local = localMatrix(
       pose.dx || pose.dy || pose.rotation ? { ...record, x: record.x + pose.dx, y: record.y + pose.dy, rotation: record.rotation + pose.rotation } : record,
     );
-    if (pose.scale !== 1) local = multiply(local, scaleAround(record.w / 2, record.h / 2, pose.scale, pose.scale));
+    // Un easing que se pasa (easeOutBack) puede dar escalas negativas: la vista no se voltea.
+    const sx = Math.max(0, pose.scale * pose.sx);
+    const sy = Math.max(0, pose.scale * pose.sy);
+    if (sx !== 1 || sy !== 1) local = multiply(local, scaleAround(record.w / 2, record.h / 2, sx, sy));
     const parent = this.host.parentWorld(record.id);
     const animatedWorld = parent ? multiply(parent, local) : local;
     const matrix = multiply(animatedWorld, invert(world));
@@ -276,8 +338,9 @@ export class AnimationPlayer {
     const last = this.painted.get(record.id);
     if (last && last.base === record && last.opacity === pose.opacity && last.fill === pose.fill && last.stroke === pose.stroke) return last.record;
     const next = { ...record } as Record<string, unknown>;
-    if (pose.opacity !== undefined) next.opacity = pose.opacity;
-    if (pose.fill !== undefined && 'fill' in record) next.fill = pose.fill;
+    if (pose.opacity !== undefined) next.opacity = Math.min(1, Math.max(0, pose.opacity));
+    if (pose.fill !== undefined && record.type === 'text') next.color = pose.fill;
+    else if (pose.fill !== undefined && 'fill' in record) next.fill = pose.fill;
     if (pose.stroke !== undefined && 'stroke' in record) next.stroke = pose.stroke;
     const view = next as SceneRecord;
     this.painted.set(record.id, { base: record, record: view, opacity: pose.opacity, fill: pose.fill, stroke: pose.stroke });

@@ -389,6 +389,10 @@ export class PointerController {
       }
       return true;
     }
+    if (input.key === 'Escape' && this.core.anim.previewActive) {
+      this.core.anim.preview(null);
+      return true;
+    }
     if (this.pen && this.penKey(input)) return true;
     if (input.key === 'Escape') {
       if (this.state !== 'idle') {
