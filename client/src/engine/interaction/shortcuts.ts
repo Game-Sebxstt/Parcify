@@ -57,6 +57,8 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { key: '"', shift: true, run: (c) => c.zoomToSelection() },
   { key: '0', ctrl: true, run: (c) => c.zoomTo(1) },
   { key: 'escape', run: (c) => c.escape() },
+  // Grabar: solo cuenta con la línea de tiempo abierta, y eso lo sabe quien monta el motor.
+  { key: 'k', run: (c) => c.uiCommand('toggleRecord'), edit: true },
   // Alinear y voltear como en Figma. Con ⌥ en macOS la tecla escribe otro carácter: vale por `code`.
   { key: 'a', alt: true, run: (c) => c.align(c.selection, 'left'), edit: true },
   { key: 'd', alt: true, run: (c) => c.align(c.selection, 'right'), edit: true },

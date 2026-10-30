@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Hud } from '../../engine/index.ts';
   import { m } from '../../paraglide/messages.js';
+  import { formatTime } from './timeline/model.ts';
 
   type Props = {
     // El navegador perdió el contexto WebGL y el lienzo espera a que lo devuelva.
@@ -11,9 +12,13 @@
     touch: boolean;
     // La línea o el conector seleccionado ya no admite más puntos.
     pointLimit: boolean;
+    // Grabar encendido: instante del cabezal en ms (null si no se graba todo).
+    recording: number | null;
+    // Hueco del lienzo que dejan los paneles y la línea de tiempo, en px desde cada borde.
+    area: { left: number; right: number; bottom: number };
   };
 
-  let { restoring, hud, touch, pointLimit }: Props = $props();
+  let { restoring, hud, touch, pointLimit, recording, area }: Props = $props();
 
   const snapped = $derived(hud?.kind === 'angle' && hud.snapped);
   let wasSnapped = false;
@@ -38,6 +43,22 @@
     aria-hidden="true"
   >
     {hud.text}
+  </div>
+{/if}
+
+{#if recording !== null}
+  <!-- Estado real, no decoración: sin pulso. El botón Grabar de la línea de tiempo ya lo anuncia. -->
+  <div
+    class="pointer-events-none absolute top-0 border-2 border-danger"
+    style:left="{area.left}px"
+    style:right="{area.right}px"
+    style:bottom="{area.bottom}px"
+    aria-hidden="true"
+    data-testid="recording-frame"
+  >
+    <p class="absolute top-3 left-1/2 h-6 -translate-x-1/2 rounded-full bg-danger/15 px-2.5 text-xs leading-6 font-semibold whitespace-nowrap text-danger tabular-nums">
+      {m.editor_recording_pill({ time: formatTime(recording) })}
+    </p>
   </div>
 {/if}
 

@@ -57,7 +57,10 @@ export class EditorLayout {
   rightWidth = $state<number>(RIGHT_WIDTH.initial);
   leftTab = $state<'layers' | 'animations'>('layers');
   rightView = $state<'design' | 'versions'>('design');
-  timeline = $state({ open: false, height: TIMELINE_HEIGHT.initial as number });
+  // `recording` (Grabar) y `head` (cabezal, en ms) son de la sesión: al recargar, Grabar está apagado y el cabezal en 0.
+  // Mientras `open` es true, el editor graba en `head`; cerrar la línea de tiempo deja de grabar pero conserva Grabar
+  // para la próxima vez que se abra con el botón de la barra.
+  timeline = $state({ open: false, height: TIMELINE_HEIGHT.initial as number, recording: false, head: 0 });
   conversation = $state<{ open: boolean; minimized: boolean; tab: 'team' | 'ai'; rect: LayoutRect | null }>({
     open: false,
     minimized: false,
@@ -97,7 +100,7 @@ export class EditorLayout {
     this.rightWidth = saved.rightWidth;
     this.leftTab = saved.leftTab;
     this.rightView = saved.rightView;
-    this.timeline = { ...saved.timeline };
+    this.timeline = { ...saved.timeline, recording: false, head: 0 };
     this.conversation = { ...saved.conversation };
     this.gallery = { ...saved.gallery };
   }
@@ -162,6 +165,16 @@ export class EditorLayout {
   // Ctrl/⌘+Shift+\: los dos paneles como pastillas.
   toggleMinimized() {
     this.ui = this.ui === 'minimized' ? 'normal' : 'minimized';
+  }
+
+  // Los accesos de «quiero animar esto» abren con Grabar encendido; el botón de la barra la deja como estaba.
+  openTimeline(options: { record?: boolean } = {}) {
+    this.timeline.open = true;
+    if (options.record) this.timeline.recording = true;
+  }
+
+  closeTimeline() {
+    this.timeline.open = false;
   }
 }
 

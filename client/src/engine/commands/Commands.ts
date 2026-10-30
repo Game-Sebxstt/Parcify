@@ -1,9 +1,9 @@
 import { newNodeId } from '../../shared/document/ids.js';
 import { DOCUMENT_LIMITS } from '../../shared/document/limits.js';
-import { NodeSchema, PageSchema, type FontFamily } from '../../shared/document/schema.js';
+import { NodeSchema, PageSchema, type AnimProp, type FontFamily } from '../../shared/document/schema.js';
 import type { EditorCore, Tool, UiCommandName } from '../EditorCore.ts';
 import { EDIT_TOOLS } from '../EditorCore.ts';
-import { localMatrix, localPoints, transformedAABB } from '../geometry/bounds.ts';
+import { localMatrix, localPoints, transformedAABB, worldMatrixOf } from '../geometry/bounds.ts';
 import { endpointBox, endpointsFromBox, type ConnectorEnd, type ConnectorRoute } from '../geometry/connectors.ts';
 import {
   apply,
@@ -17,6 +17,7 @@ import {
   normalizeAngle,
   rotateAround,
   scaleAround,
+  scaling,
   translation,
   type Mat,
   type Point,
@@ -43,7 +44,7 @@ import {
   type TextRecord,
 } from '../types.ts';
 import { DEFAULT_SIZE, DEFAULT_TEXT, framePreset, imageSize, newConnector, newFrame, newGroup, newImage, newLine, newShape, newText, type FramePresetId } from './defaults.ts';
-import type { RecordedChange } from './animation.ts';
+import { ANIM_GROUPS, posedRecord, TRANSFORM_PROPS, type RecordedChange } from './animation.ts';
 import { changeOfBasis, groupPatch, reexpressPatch } from './group.ts';
 import { PathCommands, transformWaypoints } from './paths.ts';
 import { onFontLoad } from '../text/fonts.ts';
@@ -125,8 +126,54 @@ export type Geometry = { x: number; y: number; w: number; h: number; rotationDeg
 // `fixed`: caja fija con este alto (y este ancho, si se da).
 export type TextBoxChange = { kind: 'width'; x: number; y: number; w: number } | { kind: 'fixed'; x: number; y: number; h: number; w?: number };
 
-// Propiedades que no se animan: con «Grabar» activo se cambian en el diseño base y se avisa.
-export type NotAnimatedKey = 'textSize';
+// Lo que no se anima: con la grabación activa se cambia en el diseño base y se avisa.
+export type NotAnimatedKey =
+  | 'textSize'
+  | 'groupSize'
+  | 'flip'
+  | 'line'
+  | 'radius'
+  | 'strokeWidth'
+  | 'strokeStyle'
+  | 'shadow'
+  | 'visibility'
+  | 'font'
+  | 'other';
+
+// Grabación con la línea de tiempo abierta en el instante `time` (ms). 'all' (Grabar): todo lo animable va a keyframes.
+// 'tracked': solo los grupos de propiedades que el nodo ya anima; el resto va al diseño base. `write` escribe los
+// keyframes; con `merge`, en el mismo paso de deshacer que lo que el cambio acaba de escribir en la base.
+export type Recorder = { time: number; mode: 'all' | 'tracked'; write: (changes: RecordedChange[], options: { merge: boolean }) => void };
+
+// Estilo que no se anima y el aviso que da (el texto alternativo no se ve y no avisa).
+const STYLE_NOTICES: Partial<Record<string, NotAnimatedKey>> = {
+  cornerRadius: 'radius',
+  strokeWidth: 'strokeWidth',
+  strokeDash: 'strokeStyle',
+  route: 'strokeStyle',
+  startCap: 'strokeStyle',
+  endCap: 'strokeStyle',
+  shadow: 'shadow',
+  visible: 'visibility',
+  fontSize: 'textSize',
+  labelFontSize: 'textSize',
+  fontFamily: 'font',
+  fontWeight: 'font',
+  italic: 'font',
+  underline: 'font',
+  strike: 'font',
+  align: 'font',
+  lineHeight: 'font',
+  autoWidth: 'font',
+  labelColor: 'font',
+  labelAlign: 'font',
+  labelVAlign: 'font',
+  fill: 'other',
+  stroke: 'other',
+  color: 'other',
+  fit: 'other',
+  clip: 'other',
+};
 export type AlignMode = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom';
 export type FlipAxis = 'h' | 'v';
 
@@ -168,10 +215,9 @@ export class Commands {
   // Ops de la transacción en curso.
   private ops: OpBuilder | null = null;
 
-  // Modo «Grabar»: mover, girar y cambiar opacidad, relleno o trazo escriben keyframes en vez de cambiar el nodo.
-  recorder: ((changes: RecordedChange[]) => void) | null = null;
-  // Se llama cuando, con «Grabar» activo, un cambio de una propiedad que no se anima va al diseño base.
-  onNotAnimated: ((key: NotAnimatedKey) => void) | null = null;
+  // Grabación activa (línea de tiempo abierta): mover, redimensionar, girar y cambiar opacidad o colores escriben
+  // keyframes en vez de cambiar el nodo. Solo se graba al confirmar, nunca en las vistas previas.
+  recorder: Recorder | null = null;
 
   // Una vista previa del panel que sigue pendiente al cambiar la selección se confirma sobre los nodos que tenía,
   // no sobre los nuevos.
@@ -742,7 +788,7 @@ export class Commands {
       this.patchNode(id, patch);
       for (const [connector, box] of connectors) this.patchNode(connector, box);
     }, options.merge ? 'merge' : 'new');
-    this.notAnimated('textSize');
+    this.notAnimated('textSize', [id], ANIM_GROUPS.scale);
   }
 
   // Auto-ancho, auto-alto o fijo, con la caja medida en la misma transacción.
@@ -768,8 +814,19 @@ export class Commands {
     });
   }
 
-  private notAnimated(key: NotAnimatedKey): void {
-    if (this.recorder) this.onNotAnimated?.(key);
+  // Con Grabar se avisa siempre. Con solo la línea de tiempo abierta, lo que no se anima va a la base como siempre: solo
+  // se avisa si alguno de `ids` ya anima `props`, porque ahí se esperaba un keyframe.
+  private notAnimated(key: NotAnimatedKey, ids: readonly string[] = [], props: readonly AnimProp[] = []): void {
+    const recorder = this.recorder;
+    if (!recorder) return;
+    if (recorder.mode === 'tracked' && !ids.some((id) => this.animates(id, props))) return;
+    this.core.notice.set({ key, n: (this.core.notice.get()?.n ?? 0) + 1 });
+  }
+
+  // El nodo tiene algún keyframe en alguna de `props`.
+  private animates(id: string, props: readonly AnimProp[]): boolean {
+    const tracks = this.core.store.animation(id)?.tracks;
+    return !!tracks && props.some((prop) => Object.keys(tracks[prop] ?? {}).length > 0);
   }
 
   // ── Transformar ──
@@ -781,14 +838,19 @@ export class Commands {
   commitTransform(ids: readonly string[], matrix: Readonly<Mat>, options: { drop?: Point } = {}): void {
     if (!this.canEdit || !this.core.activePage) return;
     const roots = this.rootIds(ids);
-    if (this.recorder && isMotion(matrix)) {
-      this.recordTransform(roots, () => matrix);
-      return;
-    }
+    const split = this.splitTransform(roots, () => matrix, null);
     const patches: Patches = new Map();
-    this.collectTransform(roots, () => matrix, {}, patches);
-    if (options.drop && isRigid(matrix)) this.dropInto(roots, options.drop, patches);
-    this.writePatches(patches);
+    if (split.base.length) {
+      this.collectTransform(split.base, () => matrix, {}, patches);
+      if (options.drop && isRigid(matrix)) this.dropInto(split.base, options.drop, patches);
+    }
+    this.writeTransform(patches, split.changes);
+  }
+
+  // Lo que va al diseño base y después, en el mismo paso de deshacer, los keyframes.
+  private writeTransform(patches: Patches, changes: RecordedChange[], step: 'new' | 'merge' = 'new'): void {
+    this.writePatches(patches, step);
+    if (changes.length) this.recorder?.write(changes, { merge: patches.size > 0 || step === 'merge' });
   }
 
   // Los nodos de `ids` sin ningún antecesor también en `ids`: son los que se transforman; el resto va con ellos.
@@ -822,7 +884,7 @@ export class Commands {
     const systems = new Map<string, Mat>();
     // Conectores cuyos extremos libres se transforman con la matriz.
     const freeEnds = new Set<string>();
-    let scaledTexts = false;
+    const scaledTexts: string[] = [];
     const parentWorldOf = (id: string) => tree.parentWorld(tree.parent(id));
     const leafPatch = (record: NodeRecord, matrix: Readonly<Mat>) => {
       const patch = transformPatch(record, matrix, parentWorldOf(record.id));
@@ -844,7 +906,7 @@ export class Commands {
       } else if (record.type === 'text' && !isRigid(matrix)) {
         const patch = leafPatch(record, matrix);
         merge(patches, record.id, { ...patch, ...this.scaledTextPatch(record.id, record, patch as Partial<TextRecord>, uniformScale(matrix)) });
-        scaledTexts = true;
+        scaledTexts.push(record.id);
       } else {
         merge(patches, record.id, leafPatch(record, matrix));
       }
@@ -943,44 +1005,88 @@ export class Commands {
       Object.assign(patch, this.cacheFor(record, moving, undefined, parent ? systems.get(parent) : undefined));
       merge(patches, id, patch);
     }
-    if (scaledTexts) this.notAnimated('textSize');
+    if (scaledTexts.length) this.notAnimated('textSize', scaledTexts, ANIM_GROUPS.scale);
   }
 
-  // Un movimiento o giro en modo «Grabar»: el desplazamiento y el giro de cada nodo, en el sistema de su padre.
-  private recordTransform(roots: readonly string[], matrixOf: (id: string) => Readonly<Mat>): void {
-    const core = this.core;
+  // Reparte una transformación con la grabación activa: los keyframes de las raíces que se graban y las raíces que van
+  // al diseño base. Sin grabación todo va a la base. Con 'tracked', una raíz se graba entera si ya anima todos los
+  // grupos principales del cambio (mainGroups); las pistas que falten, también las de posición que mueve una escala o un
+  // giro, las crea recordAt. Si falta alguno, la raíz entera va a la base. `at`: la matriz se
+  // calculó sobre lo que se ve en ese instante (el panel con la línea de tiempo abierta), así que el cambio se mide
+  // desde el nodo con su pose.
+  private splitTransform(roots: readonly string[], matrixOf: (id: string) => Readonly<Mat>, at: number | null): { changes: RecordedChange[]; base: string[] } {
+    const recorder = this.recorder;
+    if (!recorder) return { changes: [], base: [...roots] };
     const changes: RecordedChange[] = [];
+    const base: string[] = [];
     for (const id of roots) {
-      const record = core.record(id);
-      if (!record || record.type === 'connector' || core.isLocked(id)) continue;
-      const matrix = matrixOf(id);
-      const parentWorld = core.tree.parentWorld(core.tree.parent(id));
-      const inParent = parentWorld ? compose(invertMat(parentWorld), matrix, parentWorld) : ([...matrix] as Mat);
-      // Una línea guarda el giro en sus puntos: solo se graba su desplazamiento.
-      if (record.type === 'line' && !isTranslation(inParent)) continue;
-      const next = record.type === 'group' ? groupPatch(record, inParent) : transformPatch(record, matrix, parentWorld);
-      const dx = round3((next.x ?? record.x) - record.x);
-      const dy = round3((next.y ?? record.y) - record.y);
-      const rotation = record.type === 'line' ? 0 : normalizeAngle((next.rotation ?? record.rotation) - record.rotation);
-      if (dx) changes.push({ id, prop: 'offsetX', value: dx, mode: 'add' });
-      if (dy) changes.push({ id, prop: 'offsetY', value: dy, mode: 'add' });
-      if (Math.abs(rotation) > 1e-6) changes.push({ id, prop: 'rotation', value: rotation, mode: 'add' });
+      const record = this.core.record(id);
+      if (!record || this.core.isLocked(id)) continue;
+      const own = this.transformChanges(record, matrixOf(id), at);
+      if (!Array.isArray(own)) {
+        if (own.notice) this.notAnimated(own.notice, [id], TRANSFORM_PROPS);
+        base.push(id);
+      } else if (own.length && (recorder.mode === 'all' || mainGroups(own).every((group) => this.animates(id, group)))) {
+        changes.push(...own);
+      } else if (own.length) {
+        base.push(id);
+      }
     }
-    if (changes.length) this.recorder?.(changes);
+    return { changes, base };
   }
 
-  // Una matriz de mundo por raíz, en un solo paso de deshacer. Con «Grabar», los movimientos y giros van a keyframes
-  // como los de un gesto; lo demás (tamaño, volteo) se escribe.
-  private applyMatrices(matrices: ReadonlyMap<string, Readonly<Mat>>, step: 'new' | 'merge' = 'new'): void {
+  // Lo que se grabaría de una raíz: el desplazamiento de su centro y su giro en el sistema del padre y, en hojas y
+  // marcos, la escala de su caja (sx = w'/w, sy = h'/h). Si no se puede animar, el aviso que corresponde (null si el
+  // cambio va a la base sin avisar: los conectores siguen a sus nodos y un texto que se deforma ya avisa al escribirse).
+  private transformChanges(record: NodeRecord, matrix: Readonly<Mat>, at: number | null): RecordedChange[] | { notice: NotAnimatedKey | null } {
+    if (record.type === 'connector') return { notice: null };
+    if (matrix[0] * matrix[3] - matrix[1] * matrix[2] < 0) return { notice: 'flip' };
+    const id = record.id;
+    const parentWorld = this.core.tree.parentWorld(this.core.tree.parent(id));
+    const inParent = parentWorld ? compose(invertMat(parentWorld), matrix, parentWorld) : ([...matrix] as Mat);
+    if (record.type === 'line' && !isTranslation(inParent)) return { notice: 'line' };
+    if (record.type === 'group' && !isMotion(matrix)) return { notice: 'groupSize' };
+    if (record.type === 'text' && !isRigid(matrix)) return { notice: null };
+    const pose = at === null ? null : this.core.anim.poseAt(id, at);
+    const from = pose ? posedRecord(record, pose) : record;
+    const next: TransformPatch = from.type === 'group' ? groupPatch(from, inParent) : transformPatch(from, matrix, parentWorld);
+    // Hojas y marcos: se mide el centro, porque un cambio de tamaño lo mueve aunque la esquina quede quieta y el
+    // reproductor escala sobre él. Un grupo y una línea solo se desplazan desde su origen.
+    const sized = from.type !== 'group' && from.type !== 'line';
+    const w = next.w ?? from.w;
+    const h = next.h ?? from.h;
+    const dx = round3((next.x ?? from.x) - from.x + (sized ? (w - from.w) / 2 : 0));
+    const dy = round3((next.y ?? from.y) - from.y + (sized ? (h - from.h) / 2 : 0));
+    const rotation = record.type === 'line' ? 0 : normalizeAngle((next.rotation ?? from.rotation) - from.rotation);
+    const changes: RecordedChange[] = [];
+    if (dx) changes.push({ id, prop: 'offsetX', value: dx, mode: 'add' });
+    if (dy) changes.push({ id, prop: 'offsetY', value: dy, mode: 'add' });
+    if (Math.abs(rotation) > 1e-6) changes.push({ id, prop: 'rotation', value: rotation, mode: 'add' });
+    if (sized) {
+      const sx = from.w > SIZE_EPSILON ? w / from.w : 1;
+      const sy = from.h > SIZE_EPSILON ? h / from.h : 1;
+      if (Math.abs(sx - 1) > SIZE_EPSILON) changes.push({ id, prop: 'scaleX', value: sx, mode: 'multiply' });
+      if (Math.abs(sy - 1) > SIZE_EPSILON) changes.push({ id, prop: 'scaleY', value: sy, mode: 'multiply' });
+    }
+    return changes;
+  }
+
+  // Una matriz de mundo por raíz, en un solo paso de deshacer. Con la grabación activa, lo que se graba va a keyframes
+  // y lo demás se escribe. `posed`: las matrices salen de lo que se ve en el instante `at`, y `base` da las calculadas
+  // desde el diseño para lo que va a la base.
+  private applyMatrices(
+    matrices: ReadonlyMap<string, Readonly<Mat>>,
+    step: 'new' | 'merge' = 'new',
+    posed?: { at: number; base: ReadonlyMap<string, Readonly<Mat>> },
+  ): void {
     const moved = [...matrices].filter(([, matrix]) => !isIdentity(matrix)).map(([id]) => id);
     if (!moved.length) return;
-    const matrixOf = (id: string) => matrices.get(id)!;
-    const recorded = this.recorder ? moved.filter((id) => isMotion(matrixOf(id))) : [];
-    if (recorded.length) this.recordTransform(recorded, matrixOf);
-    const written = moved.filter((id) => !recorded.includes(id));
+    const split = this.splitTransform(moved, (id) => matrices.get(id)!, posed?.at ?? null);
+    const baseOf = (id: string): Readonly<Mat> => (posed ? posed.base.get(id) : matrices.get(id)) ?? identity();
+    const written = split.base.filter((id) => !isIdentity(baseOf(id)));
     const patches: Patches = new Map();
-    if (written.length) this.collectTransform(written, matrixOf, {}, patches);
-    this.writePatches(patches, step);
+    if (written.length) this.collectTransform(written, baseOf, {}, patches);
+    this.writeTransform(patches, split.changes, step);
   }
 
   // ── Geometría del panel ──
@@ -994,19 +1100,21 @@ export class Commands {
     return this.core.selection.get();
   }
 
-  // Lo que el panel muestra para `ids`; `rotationDeg` es null si los giros no coinciden (o es un conector).
-  geometryOf(ids: readonly string[] = this.core.selection.get()): Geometry | null {
+  // Lo que el panel muestra para `ids`; `rotationDeg` es null si los giros no coinciden (o es un conector). `at`: con
+  // la línea de tiempo abierta, lo que se ve en ese instante (el diseño con la pose de cada raíz).
+  geometryOf(ids: readonly string[] = this.core.selection.get(), options: { at?: number | null } = {}): Geometry | null {
+    const at = options.at ?? null;
     const records = this.panelRoots(ids).map((id) => this.core.record(id)!);
     if (!records.length) return null;
     const ref = this.referenceOf(records.map((record) => record.id));
     const single = records.length === 1 && isLeaf(records[0]!) ? records[0]! : null;
     if (single) {
-      const values = leafValues(single, ref.local(this.core.tree.worldMatrix(single)));
+      const values = leafValues(single, ref.local(this.shownWorld(single, at)));
       return roundGeometry({ x: values.x, y: values.y, w: values.w, h: values.h, rotationDeg: toDegrees(values.angle) });
     }
-    const box = this.refBox(records.map((record) => record.id), ref);
+    const box = this.refBox(records.map((record) => record.id), ref, at);
     if (isEmptyAABB(box)) return null;
-    const angles = records.map((record) => this.rootAngle(record, ref));
+    const angles = records.map((record) => this.rootAngle(record, ref, at));
     const first = angles[0] ?? null;
     const shared = first !== null && angles.every((angle) => angle !== null && Math.abs(normalizeAngle(angle - first)) < 1e-6);
     return roundGeometry({ x: box.minX, y: box.minY, w: box.maxX - box.minX, h: box.maxY - box.minY, rotationDeg: shared ? toDegrees(first) : null });
@@ -1020,7 +1128,13 @@ export class Commands {
       if (text) {
         if (text.change) this.writeTextBox(text.id, this.textResizePatch(text.id, text.change), options);
       } else {
-        this.applyMatrices(this.editableOnly(this.geometryMatrices(this.panelRoots(ids), patch)), options.merge ? 'merge' : 'new');
+        // Con la grabación activa, el valor escrito es el que se quiere ver: la matriz sale de la pose del cabezal
+        // (se graba la diferencia con lo que se ve) y, para lo que va al diseño base, del diseño.
+        const roots = this.panelRoots(ids);
+        const step = options.merge ? 'merge' : 'new';
+        const at = this.recorder?.time ?? null;
+        const matrices = this.editableOnly(this.geometryMatrices(roots, patch, at));
+        this.applyMatrices(matrices, step, at === null ? undefined : { at, base: this.editableOnly(this.geometryMatrices(roots, patch, null)) });
       }
     }
     this.clearGeometryPreview();
@@ -1054,7 +1168,7 @@ export class Commands {
       this.core.setStylePreview(preview ? { ids: [text.id], patch: preview } : null);
       return;
     }
-    const matrices = this.editableOnly(this.geometryMatrices(roots, patch));
+    const matrices = this.editableOnly(this.geometryMatrices(roots, patch, this.recorder?.time ?? null));
     const moving = [...matrices.keys()];
     const list = [...matrices.values()];
     if (!list.length) return;
@@ -1106,6 +1220,7 @@ export class Commands {
     const patches: Patches = new Map();
     this.collectTransform(editable, () => world, { preferFlipX: axis === 'h' }, patches);
     this.writePatches(patches);
+    if (patches.size) this.notAnimated('flip', editable, TRANSFORM_PROPS);
   }
 
   // Varias raíces se alinean a la caja que las contiene; una sola, al frame que la contiene (sin frame, nada). Las
@@ -1189,42 +1304,62 @@ export class Commands {
   }
 
   // Caja (en el sistema de referencia) de las raíces: un grupo cuenta por sus miembros, un frame por su caja y un
-  // conector por sus extremos.
-  private refBox(ids: readonly string[], ref: Reference): AABB {
+  // conector por sus extremos. `at`: cada raíz y lo que cuelga de ella, como se ven en ese instante.
+  private refBox(ids: readonly string[], ref: Reference, at: number | null = null): AABB {
     const core = this.core;
     const tree = core.tree;
     const page = core.activePage;
     const box = emptyAABB();
-    const add = (id: string) => {
+    const add = (id: string, carry: Readonly<Mat> | null) => {
       const record = core.record(id);
       if (!record || !page) return;
+      const world = (m: Readonly<Mat>) => (carry ? multiply(carry, m) : m);
       if (record.type === 'group') {
-        for (const child of tree.childrenOf(page, id)) add(child);
+        for (const child of tree.childrenOf(page, id)) add(child, carry);
         return;
       }
       if (record.type === 'connector') {
         const ends = core.connectorEndpoints(id);
         if (!ends) return;
-        const m = ref.local(tree.parentWorld(tree.parent(id)) ?? identity());
+        const m = ref.local(world(tree.parentWorld(tree.parent(id)) ?? identity()));
         unionAABB(box, transformedAABB([ends.from.x, ends.from.y, ends.to.x, ends.to.y], m));
         return;
       }
-      unionAABB(box, transformedAABB(localPoints(record), ref.local(tree.worldMatrix(record))));
+      unionAABB(box, transformedAABB(localPoints(record), ref.local(world(tree.worldMatrix(record)))));
     };
-    for (const id of ids) add(id);
+    for (const id of ids) {
+      const record = core.record(id);
+      if (!record) continue;
+      const shown = at === null ? null : this.shownWorld(record, at);
+      add(id, shown ? multiply(shown, invertMat(tree.worldMatrix(record))) : null);
+    }
     return box;
   }
 
-  private rootAngle(record: NodeRecord, ref: Reference): number | null {
+  private rootAngle(record: NodeRecord, ref: Reference, at: number | null = null): number | null {
     if (record.type === 'connector') return null;
-    const m = ref.local(this.core.tree.worldMatrix(record));
+    const m = ref.local(this.shownWorld(record, at));
     return record.type === 'group' ? Math.atan2(m[1], m[0]) : leafValues(record, m).angle;
+  }
+
+  // Lleva las coordenadas locales del diseño de un nodo a donde se ven en el instante `at`, con la pose de su propia
+  // animación (la de sus contenedores no cuenta): desplazado, girado y escalado sobre su centro. Sin `at` o sin
+  // pose, su matriz de mundo.
+  private shownWorld(record: NodeRecord, at: number | null): Mat {
+    const pose = at === null ? null : this.core.anim.poseAt(record.id, at);
+    if (!pose) return this.core.tree.worldMatrix(record);
+    const shown = posedRecord(record, pose);
+    const parentWorld = this.core.tree.parentWorld(this.core.tree.parent(record.id));
+    const sx = record.w > SIZE_EPSILON ? shown.w / record.w : 1;
+    const sy = record.h > SIZE_EPSILON ? shown.h / record.h : 1;
+    return multiply(worldMatrixOf(shown, parentWorld), scaling(sx, sy));
   }
 
   // Matriz de mundo de cada raíz para llegar a los valores de `patch`. Con una hoja: primero el tamaño (con la
   // esquina de su caja quieta), después el giro (sobre su centro) y después la posición. Con varias raíces o un
   // grupo, el tamaño y la posición son de la caja común y cada raíz gira sobre su propio centro.
-  private geometryMatrices(roots: readonly string[], input: GeometryPatch): Map<string, Mat> {
+  // `at`: los valores se miden sobre lo que se ve en ese instante de la línea de tiempo.
+  private geometryMatrices(roots: readonly string[], input: GeometryPatch, at: number | null = null): Map<string, Mat> {
     const result = new Map<string, Mat>();
     const patch = finiteGeometry(input);
     const records = roots.map((id) => this.core.record(id)).filter((record): record is NodeRecord => !!record);
@@ -1233,7 +1368,7 @@ export class Commands {
     const target = patch.rotationDeg === undefined ? undefined : normalizeAngle((patch.rotationDeg * Math.PI) / 180);
     const single = records.length === 1 && isLeaf(records[0]!) ? records[0]! : null;
     if (single) {
-      const m = ref.local(this.core.tree.worldMatrix(single));
+      const m = ref.local(this.shownWorld(single, at));
       const start = leafValues(single, m);
       let op = identity();
       if (patch.w !== undefined || patch.h !== undefined) {
@@ -1253,7 +1388,7 @@ export class Commands {
       result.set(single.id, ref.toWorld(op));
       return result;
     }
-    const box = this.refBox(roots, ref);
+    const box = this.refBox(roots, ref, at);
     if (isEmptyAABB(box)) return result;
     let shared = identity();
     if (patch.w !== undefined || patch.h !== undefined) {
@@ -1264,10 +1399,10 @@ export class Commands {
     }
     for (const record of records) {
       let op = shared;
-      const angle = target === undefined ? null : this.rootAngle(record, ref);
+      const angle = target === undefined ? null : this.rootAngle(record, ref, at);
       if (target !== undefined && angle !== null) {
         const turn = normalizeAngle(target - angle);
-        const own = this.refBox([record.id], ref);
+        const own = this.refBox([record.id], ref, at);
         if (Math.abs(turn) > ANGLE_EPSILON && !isEmptyAABB(own)) {
           const center = apply(shared, (own.minX + own.maxX) / 2, (own.minY + own.maxY) / 2);
           op = multiply(rotateAround(center.x, center.y, turn), shared);
@@ -1898,9 +2033,17 @@ export class Commands {
     this.writeStyle(this.styleEntries(patch, ids), options);
   }
 
+  // Con la grabación activa, lo animable que se graba va a keyframes en el mismo paso de deshacer que el resto, que se
+  // escribe primero en el diseño base.
   private writeStyle(entries: StyleEntries, options: { merge?: boolean } = {}): void {
-    if (this.recorder) entries = this.recordStyle(entries);
-    const patches = entries.flatMap(([id, own]) => this.stylePatches([id], own));
+    const { rest, changes } = this.recordStyle(entries);
+    const patches = rest.flatMap(([id, own]) => this.stylePatches([id], own));
+    this.styleNotices(patches);
+    this.writeStylePatches(patches, options);
+    if (changes.length) this.recorder?.write(changes, { merge: patches.length > 0 || options.merge === true });
+  }
+
+  private writeStylePatches(patches: Array<[string, Record<string, unknown>]>, options: { merge?: boolean }): void {
     if (!patches.length) return;
     // Un texto auto-ancho o auto-alto con otro estilo se vuelve a medir en la misma transacción (y los conectores
     // anclados a él siguen a su caja).
@@ -1921,28 +2064,45 @@ export class Commands {
     }, options.merge ? 'merge' : 'new');
   }
 
-  // En modo «Grabar», la opacidad, el relleno y el trazo van a keyframes; devuelve el resto del estilo.
-  private recordStyle(entries: StyleEntries): StyleEntries {
+  // Con la grabación activa, la opacidad, el relleno, el trazo y el color de un texto (su pista `fill`) van a keyframes;
+  // con 'tracked', solo si el nodo ya tiene esa pista. `rest`: lo que va al diseño base.
+  private recordStyle(entries: StyleEntries): { rest: StyleEntries; changes: RecordedChange[] } {
+    const recorder = this.recorder;
+    if (!recorder) return { rest: entries, changes: [] };
     const changes: RecordedChange[] = [];
-    for (const [id, patch] of entries) {
+    const rest = entries.map(([id, patch]): [string, StylePatch] => {
       const record = this.core.record(id);
-      if (!record || record.type === 'connector' || this.core.isLocked(id)) continue;
-      if (typeof patch.opacity === 'number') changes.push({ id, prop: 'opacity', value: patch.opacity, mode: 'set' });
-      if (typeof patch.fill === 'string' && typeof (record as { fill?: unknown }).fill === 'string' && record.type !== 'line') {
-        changes.push({ id, prop: 'fill', value: patch.fill, mode: 'set' });
+      if (!record || record.type === 'connector' || this.core.isLocked(id)) return [id, patch];
+      const own = { ...patch };
+      const take = (key: 'opacity' | 'fill' | 'stroke' | 'color', prop: AnimProp, value: unknown) => {
+        if (value === undefined || (recorder.mode === 'tracked' && !this.animates(id, [prop]))) return;
+        changes.push({ id, prop, value: value as number | string, mode: 'set' });
+        delete own[key];
+      };
+      const current = record as { fill?: unknown; stroke?: unknown };
+      if (typeof patch.opacity === 'number') take('opacity', 'opacity', patch.opacity);
+      if (record.type === 'text') {
+        if (typeof patch.color === 'string') take('color', 'fill', patch.color);
+      } else if (typeof patch.fill === 'string' && typeof current.fill === 'string' && record.type !== 'line') {
+        take('fill', 'fill', patch.fill);
       }
-      if (typeof patch.stroke === 'string' && typeof (record as { stroke?: unknown }).stroke === 'string') {
-        changes.push({ id, prop: 'stroke', value: patch.stroke, mode: 'set' });
+      if (typeof patch.stroke === 'string' && typeof current.stroke === 'string') take('stroke', 'stroke', patch.stroke);
+      return [id, own];
+    });
+    return { rest, changes };
+  }
+
+  // Lo que se cambió en el diseño base durante la grabación y no se anima.
+  private styleNotices(patches: ReadonlyArray<[string, Record<string, unknown>]>): void {
+    if (!this.recorder) return;
+    const byKey = new Map<NotAnimatedKey, string[]>();
+    for (const [id, own] of patches) {
+      for (const key of Object.keys(own)) {
+        const notice = STYLE_NOTICES[key];
+        if (notice) byKey.set(notice, [...(byKey.get(notice) ?? []), id]);
       }
     }
-    if (changes.length) this.recorder?.(changes);
-    return entries.map(([id, patch]) => {
-      const rest = { ...patch };
-      if (typeof patch.opacity === 'number') delete rest.opacity;
-      if (typeof patch.fill === 'string') delete rest.fill;
-      if (typeof patch.stroke === 'string') delete rest.stroke;
-      return [id, rest];
-    });
+    for (const [key, ids] of byKey) this.notAnimated(key, ids);
   }
 
   // Vista local y Awareness durante el gesto. Con `autoCommit` (por defecto) el documento se escribe tras 250 ms
@@ -2210,7 +2370,18 @@ function alignOffset(box: AABB, target: AABB, mode: AlignMode): { dx: number; dy
   }
 }
 
-// Mueve o gira sin reflejar: lo único que se puede grabar como keyframes y aplicar al origen de un grupo.
+// Grupos principales de una transformación medida: la escala si cambia el tamaño, el giro si gira y la posición solo si
+// no hace ninguna de las dos cosas. El desplazamiento del centro que produce una escala o un giro va con ellos.
+function mainGroups(changes: readonly RecordedChange[]): Array<readonly AnimProp[]> {
+  const touched = new Set<AnimProp>(changes.map((change) => change.prop));
+  const groups: Array<readonly AnimProp[]> = [];
+  if (ANIM_GROUPS.scale.some((prop) => touched.has(prop))) groups.push(ANIM_GROUPS.scale);
+  if (touched.has('rotation')) groups.push(ANIM_GROUPS.rotation);
+  if (!groups.length && ANIM_GROUPS.position.some((prop) => touched.has(prop))) groups.push(ANIM_GROUPS.position);
+  return groups;
+}
+
+// Mueve o gira sin reflejar: lo único que se aplica al origen de un grupo.
 function isMotion(m: Readonly<Mat>): boolean {
   return isRigid(m) && m[0] * m[3] - m[1] * m[2] > 0;
 }

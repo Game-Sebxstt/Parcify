@@ -4,10 +4,19 @@ import { ROOT_KEYS } from '../../shared/document/keys.js';
 import { ANIMATION_LIMITS } from '../../shared/document/limits.js';
 import { AnimationSchema } from '../../shared/document/schema.js';
 import { AnimationCommands, clampAnimValue, restValue, type KeyRef } from '../commands/animation.ts';
+import type { Recorder } from '../commands/Commands.ts';
+import { scaleAround } from '../geometry/matrix.ts';
 import type { NodeRecord } from '../types.ts';
-import { makeCore, newDoc, putNode, rect } from '../test-utils.ts';
+import { group, makeCore, newDoc, putNode, rect } from '../test-utils.ts';
 
 type Harness = ReturnType<typeof makeCore> & { keyframes: AnimationCommands };
+
+// Grabación en `time` como la conecta el motor: 'all' es Grabar y 'tracked', la línea de tiempo abierta sin Grabar.
+const recorder = (keyframes: AnimationCommands, time: number, mode: Recorder['mode'] = 'all'): Recorder => ({
+  time,
+  mode,
+  write: (changes, options) => void keyframes.recordAt(time, changes, options),
+});
 
 function replicas(count: number, seed: (doc: Y.Doc) => void): Harness[] {
   const base = newDoc();
@@ -190,7 +199,7 @@ describe('modelo de keyframes', () => {
     const id = putNode(doc, rect({ x: 10, y: 20 }));
     tick();
     const keyframes = new AnimationCommands(core);
-    core.commands.recorder = (changes) => void keyframes.recordAt(500, changes);
+    core.commands.recorder = recorder(keyframes, 500);
     core.commands.select([id]);
     core.commands.nudge(30, 0);
     tick();
@@ -240,7 +249,7 @@ describe('modelo de keyframes', () => {
       [2500, 40],
     ]);
     expect(keyframes.keyframeAtTime(id, 'offsetX', 2500)).toBe(key);
-    core.commands.recorder = (changes) => void keyframes.recordAt(4000, changes);
+    core.commands.recorder = recorder(keyframes, 4000);
     core.commands.select([id]);
     core.commands.nudge(10, 0);
     tick();
@@ -548,6 +557,247 @@ describe('edición de keyframes en lote', () => {
     expect(values).toEqual([
       [0, 1],
       [0.5, 3],
+    ]);
+  });
+});
+
+describe('grabación automática', () => {
+  // [t, v] de una pista, de menor a mayor.
+  const track = (core: ReturnType<typeof makeCore>['core'], id: string, prop: 'offsetX' | 'offsetY' | 'scaleX' | 'scaleY' | 'opacity' | 'fill' | 'rotation') =>
+    Object.values(core.store.animation(id)?.tracks[prop] ?? {})
+      .map((kf) => [kf.t, kf.v] as const)
+      .sort((a, b) => a[0] - b[0]);
+
+  function setup(node: Record<string, unknown> = rect({ x: 100, y: 20 })) {
+    const harness = makeCore();
+    const id = putNode(harness.doc, node);
+    harness.tick();
+    const keyframes = new AnimationCommands(harness.core);
+    const notices: string[] = [];
+    harness.core.notice.subscribe((notice) => {
+      if (notice) notices.push(notice.key);
+    });
+    return { ...harness, id, keyframes, notices };
+  }
+
+  it('con Grabar, redimensionar de 100 a 150 desde el lado E graba scaleX 1,5 y offsetX 25 sin tocar w (CA-5.3)', () => {
+    const { core, tick, id, keyframes } = setup(rect({ x: 0, y: 0, w: 100, h: 50 }));
+    core.commands.recorder = recorder(keyframes, 500);
+    core.commands.commitTransform([id], scaleAround(0, 0, 1.5, 1));
+    tick();
+    expect(track(core, id, 'scaleX')).toEqual([
+      [0, 1],
+      [0.5, 1.5],
+    ]);
+    expect(track(core, id, 'offsetX')).toEqual([
+      [0, 0],
+      [0.5, 25],
+    ]);
+    expect(track(core, id, 'scaleY')).toEqual([]);
+    expect(core.record(id)).toMatchObject({ x: 0, w: 100, h: 50 });
+  });
+
+  it('con Grabar, cambiar el color de un texto lo graba en su pista fill y no cambia el color (CA-5.4)', () => {
+    const { core, tick, keyframes } = setup();
+    const text = core.commands.createText({ x: 0, y: 0 })!;
+    tick();
+    const color = (core.record(text) as { color: string }).color;
+    core.commands.recorder = recorder(keyframes, 500);
+    core.commands.setStyle({ color: '#3366FFFF' }, [text]);
+    tick();
+    expect(track(core, text, 'fill')).toEqual([
+      [0, color],
+      [0.5, '#3366FFFF'],
+    ]);
+    expect((core.record(text) as { color: string }).color).toBe(color);
+  });
+
+  it('con Grabar, el radio va al diseño base y avisa una vez por cambio (CA-5.9)', () => {
+    const { core, tick, id, keyframes, notices } = setup();
+    core.commands.recorder = recorder(keyframes, 500);
+    core.commands.setStyle({ cornerRadius: 8 }, [id]);
+    tick();
+    expect(core.record(id)).toMatchObject({ cornerRadius: 8 });
+    expect(core.store.animation(id)).toBeUndefined();
+    expect(notices).toEqual(['radius']);
+  });
+
+  it('sin Grabar, la opacidad de un nodo con pista crea su keyframe y el radio y la posición van a la base (CA-5.10, CA-5.11)', () => {
+    const { core, tick, id, keyframes, notices } = setup(rect({ x: 100, y: 20, opacity: 0.8 }));
+    keyframes.addKeyframe(id, 'opacity', { t: 0, v: 1 });
+    keyframes.addKeyframe(id, 'opacity', { t: 1, v: 0.5 });
+    tick();
+    core.commands.recorder = recorder(keyframes, 300, 'tracked');
+    core.commands.setStyle({ opacity: 0.2 }, [id]);
+    tick();
+    expect(track(core, id, 'opacity')).toEqual([
+      [0, 1],
+      [0.3, 0.2],
+      [1, 0.5],
+    ]);
+    expect(core.record(id)!.opacity).toBe(0.8);
+    core.commands.setStyle({ cornerRadius: 6 }, [id]);
+    core.commands.select([id]);
+    core.commands.nudge(40, 0);
+    tick();
+    expect(core.record(id)).toMatchObject({ x: 140, cornerRadius: 6 });
+    expect(core.store.animation(id)!.tracks.offsetX).toBeUndefined();
+    // Sin Grabar no hay aviso: lo no animable va a la base como siempre.
+    expect(notices).toEqual([]);
+  });
+
+  it('sin Grabar, un movimiento de un nodo con pista de posición crea la pista del eje que faltaba', () => {
+    const { core, tick, id, keyframes } = setup();
+    keyframes.addKeyframe(id, 'offsetX', { t: 0, v: 0 });
+    keyframes.addKeyframe(id, 'offsetX', { t: 1, v: 40 });
+    tick();
+    core.commands.recorder = recorder(keyframes, 500, 'tracked');
+    core.commands.select([id]);
+    core.commands.nudge(10, 5);
+    tick();
+    expect(track(core, id, 'offsetX')).toEqual([
+      [0, 0],
+      [0.5, 30],
+      [1, 40],
+    ]);
+    expect(track(core, id, 'offsetY')).toEqual([
+      [0, 0],
+      [0.5, 5],
+    ]);
+    expect(core.record(id)).toMatchObject({ x: 100, y: 20 });
+  });
+
+  it('lo que va a la base y los keyframes del mismo cambio son un solo paso de deshacer', () => {
+    const { core, tick, id, keyframes } = setup(rect({ x: 100, y: 20, opacity: 0.8 }));
+    keyframes.addKeyframe(id, 'opacity', { t: 0, v: 1 });
+    tick();
+    core.commands.recorder = recorder(keyframes, 500, 'tracked');
+    core.commands.setStyle({ opacity: 0.3, cornerRadius: 10 }, [id]);
+    tick();
+    expect(core.record(id)).toMatchObject({ cornerRadius: 10 });
+    expect(track(core, id, 'opacity')).toHaveLength(2);
+    core.commands.undo();
+    tick();
+    expect(core.record(id)).toMatchObject({ cornerRadius: 0 });
+    expect(track(core, id, 'opacity')).toEqual([[0, 1]]);
+  });
+
+  it('con offsetX 30 en el cabezal y x 100, el panel muestra 130 y escribir 150 deja el keyframe en 50 (CA-5.16)', () => {
+    const { core, tick, id, keyframes } = setup(rect({ x: 100, y: 20, w: 100, h: 50 }));
+    keyframes.addKeyframe(id, 'offsetX', { t: 0, v: 0 });
+    keyframes.addKeyframe(id, 'offsetX', { t: 0.5, v: 30 });
+    tick();
+    expect(core.commands.geometryOf([id])!.x).toBe(100);
+    expect(core.commands.geometryOf([id], { at: 500 })!.x).toBe(130);
+    core.commands.recorder = recorder(keyframes, 500, 'tracked');
+    core.commands.setGeometry([id], { x: 150 });
+    tick();
+    expect(track(core, id, 'offsetX')).toEqual([
+      [0, 0],
+      [0.5, 50],
+    ]);
+    expect(core.record(id)!.x).toBe(100);
+    expect(core.commands.geometryOf([id], { at: 500 })!.x).toBe(150);
+  });
+
+  it('sin Grabar, redimensionar un nodo que solo anima offsetY cambia su ancho en el diseño y no crea scaleX', () => {
+    const { core, tick, id, keyframes } = setup(rect({ x: 0, y: 0, w: 100, h: 50 }));
+    keyframes.addKeyframe(id, 'offsetY', { t: 0, v: 0 });
+    keyframes.addKeyframe(id, 'offsetY', { t: 1, v: 40 });
+    tick();
+    core.commands.recorder = recorder(keyframes, 500, 'tracked');
+    core.commands.commitTransform([id], scaleAround(0, 0, 1.5, 1));
+    tick();
+    expect(core.record(id)).toMatchObject({ x: 0, w: 150 });
+    expect(track(core, id, 'scaleX')).toEqual([]);
+    expect(track(core, id, 'offsetX')).toEqual([]);
+    expect(track(core, id, 'offsetY')).toEqual([
+      [0, 0],
+      [1, 40],
+    ]);
+  });
+
+  it('con la pose a la vista, la vista previa del panel y un arrastre se pintan sobre la pose', () => {
+    const { core, sink, tick, id, keyframes } = setup(rect({ x: 100, y: 20, w: 100, h: 50 }));
+    keyframes.addKeyframe(id, 'offsetX', { t: 0, v: 0 });
+    keyframes.addKeyframe(id, 'offsetX', { t: 0.5, v: 30 });
+    tick();
+    core.anim.seek(500);
+    tick();
+    const shownX = () => sink.overrides.get(id)!.world[4];
+    expect(shownX()).toBeCloseTo(130, 6);
+    core.commands.recorder = recorder(keyframes, 500, 'tracked');
+    core.commands.select([id]);
+    core.commands.previewGeometry([id], { x: 140 });
+    tick();
+    expect(shownX()).toBeCloseTo(140, 6);
+    core.commands.commitGeometryPreview();
+    tick();
+    expect(shownX()).toBeCloseTo(140, 6);
+    const ids = [id];
+    core.setGesture({ ids, matrix: [1, 0, 0, 1, 10, 0] });
+    tick();
+    expect(shownX()).toBeCloseTo(150, 6);
+    core.setGesture({ ids, matrix: [1, 0, 0, 1, 20, 0] });
+    tick();
+    expect(shownX()).toBeCloseTo(160, 6);
+    core.setGesture(null);
+    core.commands.previewStyle({ opacity: 0.5 }, { autoCommit: false });
+    tick();
+    expect(shownX()).toBeCloseTo(140, 6);
+    expect(sink.overrides.get(id)!.record.opacity).toBe(0.5);
+  });
+
+  it('el ancho que se escribe con una escala animada es el que se ve en el cabezal', () => {
+    const { core, tick, id, keyframes } = setup(rect({ x: 0, y: 0, w: 100, h: 50 }));
+    keyframes.addKeyframe(id, 'scaleX', { t: 0.5, v: 1.5 });
+    tick();
+    expect(core.commands.geometryOf([id], { at: 500 })).toMatchObject({ x: -25, w: 150 });
+    core.commands.recorder = recorder(keyframes, 500, 'tracked');
+    core.commands.setGeometry([id], { w: 200 });
+    tick();
+    expect(track(core, id, 'scaleX')).toEqual([[0.5, 2]]);
+    // La esquina izquierda que se ve no se mueve: el centro se desplaza la mitad de lo que crece.
+    expect(core.commands.geometryOf([id], { at: 500 })).toMatchObject({ x: -25, w: 200 });
+    expect(core.record(id)).toMatchObject({ x: 0, w: 100 });
+  });
+
+  it('un grupo que se redimensiona va a la base y avisa; uno que se mueve se graba', () => {
+    const { core, doc, tick, keyframes, notices } = setup();
+    const container = putNode(doc, group({ x: 0, y: 0 }));
+    putNode(doc, rect({ parentId: container, x: 0, y: 0 }));
+    tick();
+    core.commands.recorder = recorder(keyframes, 500);
+    core.commands.commitTransform([container], scaleAround(0, 0, 2, 2));
+    tick();
+    expect(core.store.animation(container)).toBeUndefined();
+    expect(notices).toEqual(['groupSize']);
+    core.commands.commitTransform([container], [1, 0, 0, 1, 15, 0]);
+    tick();
+    expect(track(core, container, 'offsetX')).toEqual([
+      [0, 0],
+      [0.5, 15],
+    ]);
+  });
+
+  it('las vistas previas no graban: solo lo hace el commit', () => {
+    const { core, tick, id, keyframes } = setup();
+    core.commands.recorder = recorder(keyframes, 500);
+    core.commands.select([id]);
+    core.commands.previewGeometry([id], { x: 300 });
+    core.commands.previewStyle({ opacity: 0.4 }, { autoCommit: false });
+    tick();
+    expect(core.store.animation(id)).toBeUndefined();
+    core.commands.commitGeometryPreview();
+    core.commands.commitStyle();
+    tick();
+    expect(track(core, id, 'offsetX')).toEqual([
+      [0, 0],
+      [0.5, 200],
+    ]);
+    expect(track(core, id, 'opacity')).toEqual([
+      [0, 1],
+      [0.5, 0.4],
     ]);
   });
 });

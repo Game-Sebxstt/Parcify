@@ -17,6 +17,7 @@
   import { ANIMATION_LIMITS } from '../../../shared/document/limits.js';
   import type { Animation, AnimProp, Keyframe } from '../../../shared/document/schema.js';
   import { showToast } from '../../../ui/toast.svelte.ts';
+  import { getEditorLayout } from '../../../lib/editor-layout.svelte.ts';
   import { kindLabel } from '../kinds.ts';
   import ToolButton from '../ToolButton.svelte';
   import AiAnimate from './AiAnimate.svelte';
@@ -75,10 +76,12 @@
   let pageId = $state<string | null>(null);
   let selection = $state.raw<readonly string[]>([]);
   let player = $state.raw<AnimationState>({ status: 'stopped', time: 0, duration: 0, preview: false });
-  let head = $state(0);
+  // El cabezal y Grabar viven en la maqueta del editor, que los lleva al motor: desmontar el panel no los pierde.
+  const layout = getEditorLayout();
+  const head = $derived(layout.timeline.head);
+  const recording = $derived(layout.timeline.recording);
   let speed = $state<number>(1);
   let repeat = $state(false);
-  let recording = $state(false);
   let zoom = $state(0.25);
   let fitted = false;
   let scroll = $state(0);
@@ -106,17 +109,20 @@
         source.anim.state.subscribe(onPlayer),
         source.core.aiAnimations.subscribe((value) => (proposed = value)),
       ];
-      return () => {
-        unsubscribe.forEach((run) => run());
-        source.anim.record(null);
-      };
+      return () => unsubscribe.forEach((run) => run());
     });
   });
 
   // El cabezal es local; solo sigue al reproductor mientras reproduce y en el frame en que termina.
   function onPlayer(state: AnimationState) {
     player = state;
-    if (state.status === 'playing' || wasPlaying) head = state.time;
+    if (state.status === 'playing' || wasPlaying) layout.timeline.head = state.time;
+    // Al parar o pausar, las vistas vuelven al documento: con la línea de tiempo abierta se vuelve a la pose del cabezal.
+    if (wasPlaying && state.status !== 'playing' && !state.preview) {
+      queueMicrotask(() => {
+        if (open && player.status !== 'playing') engine.anim.seek(layout.timeline.head);
+      });
+    }
     wasPlaying = state.status === 'playing';
   }
 
@@ -192,15 +198,13 @@
     });
   });
 
-  $effect(() => {
-    engine.anim.record(recording && !readOnly && !playing ? head : null);
-  });
-
-  // Al grabar, la vista sigue mostrando la pose del cabezal aunque la duración cambie con los keyframes nuevos.
+  // Con la línea de tiempo abierta, el lienzo muestra la pose del cabezal (lo que el panel de propiedades enseña y lo
+  // que se graba), también cuando la duración cambia con los keyframes nuevos.
   $effect(() => {
     void version;
+    if (!open) return;
     untrack(() => {
-      if (recording && !playing) engine.anim.seek(head);
+      if (!playing && !player.preview) engine.anim.seek(head);
     });
   });
 
@@ -208,7 +212,7 @@
   $effect(() => {
     if (!proposed) return;
     untrack(() => {
-      recording = false;
+      layout.timeline.recording = false;
       editing = null;
     });
   });
@@ -217,7 +221,6 @@
     if (open) return;
     untrack(() => {
       aiOpen = false;
-      recording = false;
       editing = null;
       engine.anim.stop();
     });
@@ -303,8 +306,8 @@
   }
 
   function setHead(ms: number) {
-    head = Math.max(0, Math.min(span, Math.round(ms)));
-    engine.anim.seek(head);
+    layout.timeline.head = Math.max(0, Math.min(span, Math.round(ms)));
+    engine.anim.seek(layout.timeline.head);
   }
 
   function togglePlay() {
@@ -317,17 +320,17 @@
   }
 
   function rewind() {
-    head = 0;
+    layout.timeline.head = 0;
     scroll = 0;
     engine.anim.stop();
-    if (recording) engine.anim.seek(0);
+    engine.anim.seek(0);
   }
 
   function toggleRecord() {
     if (readOnly) return;
-    recording = !recording;
-    if (recording) {
-      if (playing) engine.anim.pause();
+    layout.timeline.recording = !recording;
+    if (layout.timeline.recording && playing) {
+      engine.anim.pause();
       engine.anim.seek(head);
     }
   }
@@ -543,13 +546,17 @@
     event.preventDefault();
   }
 
-  // Espacio reproduce o pausa con el foco en cualquier parte del panel salvo en un control que ya lo usa.
+  // Espacio reproduce o pausa y K enciende o apaga Grabar, con el foco en cualquier parte del panel salvo en un
+  // control que ya usa la tecla.
   function onPanelKey(event: KeyboardEvent) {
-    if (event.key !== ' ' || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const record = event.key.toLowerCase() === 'k' && !event.shiftKey;
+    if (event.key !== ' ' && !record) return;
     const target = event.target as HTMLElement;
-    if (target.closest('button, input, select, textarea, [role="dialog"]')) return;
+    if (target.closest(record ? 'input, textarea, [role="dialog"]' : 'button, input, select, textarea, [role="dialog"]')) return;
     event.preventDefault();
-    togglePlay();
+    if (record) toggleRecord();
+    else togglePlay();
   }
 
   function dragStart(event: PointerEvent, row: TrackRow, kf: TimelineKeyframe) {
@@ -631,11 +638,12 @@
         onclick={toggleRecord}
         class={[
           'ml-1 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-xs font-semibold',
-          recording ? 'bg-danger text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
+          recording ? 'bg-danger/15 text-danger' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
         ].join(' ')}
+        aria-keyshortcuts="K"
         data-testid="timeline-record"
       >
-        <span aria-hidden="true" class={['size-2 rounded-full', recording ? 'bg-ink' : 'bg-danger'].join(' ')}></span>
+        <span aria-hidden="true" class="size-2 rounded-full bg-danger"></span>
         {m.timeline_record()}
       </button>
     {/if}

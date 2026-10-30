@@ -12,11 +12,11 @@
   import FlipVertical from './icons/FlipVertical.svelte';
   import PanelButton from './PanelButton.svelte';
   import Section from './Section.svelte';
-  import { shared, type CommitMeta, type PanelEdits } from './panel.ts';
+  import { shared, type CommitMeta, type PanelEdits, type Posed } from './panel.ts';
 
-  type Props = { engine: Engine; records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean };
+  type Props = { engine: Engine; records: readonly NodeRecord[]; edits: PanelEdits; posed: Posed; readonly: boolean };
 
-  let { engine, records, edits, readonly }: Props = $props();
+  let { engine, records, edits, posed, readonly }: Props = $props();
 
   // Límites de §2.16.
   const POSITION = 1e6;
@@ -25,10 +25,12 @@
   type Rounded = Extract<NodeRecord, { type: 'rect' | 'image' }>;
 
   const ids = $derived(records.map((record) => record.id));
-  // geometryOf lee el árbol: se vuelve a pedir cada vez que cambian los registros de la selección.
+  // geometryOf lee el árbol: se vuelve a pedir cada vez que cambian los registros de la selección, el cabezal o las
+  // animaciones. Con la línea de tiempo abierta da lo que se ve en el cabezal.
   const geometry = $derived.by(() => {
     void records;
-    return engine.commands.geometryOf(ids);
+    void posed.version;
+    return engine.commands.geometryOf(ids, { at: posed.at });
   });
   // Un conector solo se mueve: no gira ni cambia de tamaño desde el panel.
   const onlyConnectors = $derived(records.every((record) => record.type === 'connector'));

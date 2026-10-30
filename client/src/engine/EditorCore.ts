@@ -1,11 +1,12 @@
 import type { PresenceState } from '../shared/document/keys.js';
 import type { AnimationPlan } from '../shared/ai/animation.js';
 import type { AssistantPlan, CanvasSummaryNode } from '../shared/ai/assistant.js';
-import type { Animation } from '../shared/document/schema.js';
+import type { Animation, AnimProp } from '../shared/document/schema.js';
 import { canvasSummary, resolvePlan } from './ai/plan.ts';
 import { AI_PREVIEW_COLOR, buildPreview } from './ai/preview.ts';
 import { AnimationPlayer } from './anim/AnimationPlayer.ts';
-import { Commands } from './commands/Commands.ts';
+import { posedRecord } from './commands/animation.ts';
+import { Commands, type NotAnimatedKey } from './commands/Commands.ts';
 import type { DocumentBackend } from './doc/backend.ts';
 import { DocWriter } from './doc/DocWriter.ts';
 import type { DocBatch, TextSessionState } from './doc/protocol.ts';
@@ -198,7 +199,9 @@ export type CoreOptions = {
 // centro); entonces `matrix` no se usa y la presencia no recibe el gesto.
 export type GesturePreview = { ids: readonly string[]; matrix: Mat; matrices?: ReadonlyMap<string, Mat>; snapGuides?: OverlayModel['guides'] };
 
-export type UiCommandName = 'hideUi' | 'minimizeUi';
+export type UiCommandName = 'hideUi' | 'minimizeUi' | 'toggleRecord';
+// Un cambio grabado como keyframes (`mode` de la grabación, `time` en ms), para anunciarlo.
+export type RecordedNotice = { props: readonly AnimProp[]; time: number; mode: 'all' | 'tracked'; n: number };
 export type UiCommand = { name: UiCommandName; n: number };
 
 export class EditorCore {
@@ -241,6 +244,11 @@ export class EditorCore {
   // Atajos que cambian la interfaz y no el documento (ocultar o minimizar los paneles): los atiende quien monta el
   // motor. `n` sube con cada pulsación para que dos seguidas iguales también avisen.
   readonly uiCommand = new Store<UiCommand | null>(null);
+  // Con la grabación activa, un cambio que no se anima fue al diseño base: quien monta el motor lo avisa. `n` sube con
+  // cada aviso.
+  readonly notice = new Store<{ key: NotAnimatedKey; n: number } | null>(null);
+  // Último cambio grabado como keyframes.
+  readonly recorded = new Store<RecordedNotice | null>(null);
   // Caja en pantalla de la selección para anclar la barra contextual. Vale null sin selección, durante los gestos,
   // la marquesina, la edición de texto y hasta SELECTION_BAR_SETTLE_MS después del último cambio de cámara. Solo
   // se publica desde el frame, así que cambia como mucho una vez por frame.
@@ -311,6 +319,8 @@ export class EditorCore {
   // Poses de la reproducción y nodos cuya vista previa es ahora la de la animación (un gesto tiene prioridad).
   private animPoses: ReadonlyMap<string, ViewOverride> = new Map();
   private readonly animOwned = new Set<string>();
+  // Algún nodo del gesto local se pinta sobre su pose: su grupo lleva una matriz propia y cada frame se recalcula.
+  private gesturePosed = false;
   private overridesDirty = false;
   private overlayDirty = true;
   private remoteDirty = true;
@@ -1665,7 +1675,20 @@ export class EditorCore {
     this.requestFrame();
   }
 
-  // Calcula la vista de un nodo bajo una matriz de gesto (en mundo).
+  // previewUnder sobre lo que se ve: con la pose de la línea de tiempo a la vista, el gesto se aplica al nodo posado
+  // (world = M · mundo posado), que es lo que mide el panel y lo que graba el commit.
+  private posedPreview(record: SceneRecord, matrix: Readonly<Mat>, count: number, key: string): ViewOverride {
+    const view = this.animPoses.get(record.id);
+    const pose = view?.gesture ? this.anim.poseAt(record.id, this.anim.state.get().time) : null;
+    if (!view?.gesture || !pose) return this.previewUnder(record, matrix, count, key);
+    if (key === 'local' || key.startsWith('local:')) this.gesturePosed = true;
+    const preview = this.previewUnder(posedRecord(view.record, pose) as SceneRecord, matrix, count, key);
+    if (preview.redraw) return preview;
+    // Agrupado, la capa de dibujo parte de la matriz del documento: el grupo lleva también la de la pose.
+    const own = multiply(matrix, view.gesture.matrix);
+    return { record: view.record, world: multiply(own, this.tree.worldMatrix(record)), redraw: view.redraw, gesture: { key: `${key}:anim:${record.id}`, matrix: own } };
+  }
+
   // Calcula la vista de un nodo bajo una matriz de gesto (en mundo). Si el dibujo no cambia (mover, girar, o
   // redimensionar más de 50 nodos), la vista conserva su matriz y la capa de dibujo aplica el gesto al grupo.
   previewUnder(record: SceneRecord, matrix: Readonly<Mat>, count: number, key: string): ViewOverride {
@@ -1705,7 +1728,8 @@ export class EditorCore {
       !previous.matrices &&
       isTranslation(this.gesture.matrix) &&
       isTranslation(previous.matrix) &&
-      !this.stylePreview
+      !this.stylePreview &&
+      !this.gesturePosed
     ) {
       this.sink.setGroupMatrix('local', this.gesture.matrix);
       this.gestureMatrices.set('local', this.gesture.matrix);
@@ -1717,6 +1741,7 @@ export class EditorCore {
     this.fixedTerminals.from.clear();
     this.fixedTerminals.to.clear();
     if (!this.gesture) this.previewRecords.clear();
+    this.gesturePosed = false;
     const desired = new Map<string, ViewOverride>();
     this.gestureKeyOf.clear();
     this.gestureMatrices.clear();
@@ -1753,7 +1778,7 @@ export class EditorCore {
       this.gestureMatrices.set(key, state.gesture.matrix);
       for (const id of ids) {
         const record = collect(id, key, state.gesture.matrix);
-        if (record) desired.set(id, this.previewUnder(record, state.gesture.matrix, ids.length, key));
+        if (record) desired.set(id, this.posedPreview(record, state.gesture.matrix, ids.length, key));
       }
     }
     if (this.gesture) {
@@ -1764,7 +1789,7 @@ export class EditorCore {
         const key = matrices ? `local:${id}` : 'local';
         this.gestureMatrices.set(key, own);
         const record = collect(id, key, own);
-        if (record) desired.set(id, this.previewUnder(record, own, ids.length, key));
+        if (record) desired.set(id, this.posedPreview(record, own, ids.length, key));
       }
     }
     for (const id of affected) {
@@ -1798,7 +1823,9 @@ export class EditorCore {
       for (const id of this.stylePreview.ids) {
         const record = this.selectable(id);
         if (!record) continue;
-        const base = desired.get(id);
+        // Sin gesto, la vista previa se pinta sobre la pose de la línea de tiempo si la hay.
+        const pose = this.animPoses.get(id);
+        const base = desired.get(id) ?? pose;
         const own = { ...this.stylePreview.patch, ...this.stylePreview.each?.get(id) };
         const next = { ...(base?.record ?? record), ...own } as SceneRecord;
         if (next.type === 'connector') {
@@ -1807,7 +1834,9 @@ export class EditorCore {
         }
         // Las vistas previas de puntos de línea cambian la caja: la matriz se recalcula.
         const geometric = GEOMETRY_KEYS.some((key) => key in own);
-        desired.set(id, { record: next, world: base && !geometric ? base.world : this.tree.worldMatrix(next), redraw: true });
+        const posedBy = base === pose ? pose?.gesture?.matrix : undefined;
+        const world = base && !geometric ? base.world : posedBy ? multiply(posedBy, this.tree.worldMatrix(next)) : this.tree.worldMatrix(next);
+        desired.set(id, { record: next, world, redraw: true });
       }
     }
 

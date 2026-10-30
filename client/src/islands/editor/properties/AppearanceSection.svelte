@@ -10,20 +10,27 @@
   import { MOD_ARIA, MOD_KEY } from '../layout/ui-keys.ts';
   import PanelButton from './PanelButton.svelte';
   import Section from './Section.svelte';
-  import { shared, type PanelEdits } from './panel.ts';
+  import { shared, type PanelEdits, type Posed } from './panel.ts';
 
   type Props = {
     engine: Engine;
     records: readonly NodeRecord[];
     edits: PanelEdits;
+    // Con la línea de tiempo abierta, la opacidad es la que se ve en el cabezal.
+    posed: Posed;
     // Solo lectura por permisos: sin botones. Con todo bloqueado, el candado sigue para poder desbloquear.
     readOnly: boolean;
     locked: boolean;
   };
 
-  let { engine, records, edits, readOnly, locked }: Props = $props();
+  let { engine, records, edits, posed, readOnly, locked }: Props = $props();
 
-  const opacity = $derived(shared(records, (record) => Math.round(record.opacity * 100)));
+  const opacity = $derived.by(() => {
+    void posed.version;
+    const at = posed.at;
+    const shown = (record: NodeRecord) => (at === null ? undefined : engine.anim.poseAt(record.id, at)?.opacity);
+    return shared(records, (record) => Math.round(Math.min(1, Math.max(0, shown(record) ?? record.opacity)) * 100));
+  });
   const visible = $derived(records.every((record) => record.visible));
   const ownLocked = $derived(records.every((record) => record.locked));
   // El bloqueo viene de un grupo o un marco antecesor: el candado propio no lo quita.

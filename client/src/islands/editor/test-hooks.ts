@@ -23,8 +23,8 @@ export type ParcifyTestHooks = {
   // Animaciones del documento por nodo y estado del reproductor local.
   animations(): Record<string, Animation>;
   player(): AnimationState | null;
-  // Posición (traslación de la matriz de mundo) y opacidad con que se pinta la vista de un nodo.
-  view(id: string): { x: number; y: number; opacity: number } | null;
+  // Posición (traslación de la matriz de mundo), opacidad y, en los textos, color con que se pinta la vista de un nodo.
+  view(id: string): { x: number; y: number; opacity: number; color?: string } | null;
   // Último modelo del overlay dibujado (selección, tiradores, guías).
   overlayModel(): OverlayModel | null;
   // Tamaño en CSS px con que trabaja la cámara.
@@ -101,7 +101,9 @@ export function installTestHooks(getEngine: () => Engine | null, getCollab: () =
     player: () => getEngine()?.anim.state.get() ?? null,
     view: (id) => {
       const view = getEngine()?.renderer.viewOf(id);
-      return view ? { x: view.world[4], y: view.world[5], opacity: view.record.opacity } : null;
+      if (!view) return null;
+      const color = view.record.type === 'text' ? view.record.color : undefined;
+      return { x: view.world[4], y: view.world[5], opacity: view.record.opacity, ...(color ? { color } : {}) };
     },
     overlayModel: () => getEngine()?.renderer.lastOverlay ?? null,
     cameraSize: () => {

@@ -15,8 +15,10 @@
     type FramePresetId,
     type Hud,
     type NodeRecord,
+    type NotAnimatedKey,
     type PageRecord,
     type PointerKind,
+    type RecordedNotice,
     type ScreenRect,
     type Tool,
     type UiCommand,
@@ -60,6 +62,7 @@
   import { EditorLayout, setEditorLayout } from '../lib/editor-layout.svelte.ts';
   import { Viewport } from '../lib/viewport.svelte.ts';
   import type TimelinePanel from './editor/timeline/TimelinePanel.svelte';
+  import { formatTime, propLabel } from './editor/timeline/model.ts';
   import type AiPanelComponent from './editor/ai/AiPanel.svelte';
   import { loadAiFeatures, type AiFeatures } from '../lib/ai.ts';
   import { loadWorkspaces } from '../lib/workspaces.svelte.ts';
@@ -122,6 +125,11 @@
   let Timeline = $state.raw<typeof TimelinePanel | null>(null);
   let timelineLoading = $state(false);
   let timelineFocus = $state(0);
+  // Mientras se reproduce (o hay una propuesta de la IA en vista previa) no se graba: lo que se ve no es el cabezal.
+  let animPlaying = $state(false);
+  let aiProposed = $state(false);
+  // Lo que anuncia el lector de pantalla al grabar un keyframe sin Grabar (el borde ya marca Grabar).
+  let recordAnnouncement = $state('');
   let chatOpen = $state(false);
   let chatUnread = $state(0);
   // Funciones de IA con modelo configurado; el panel se descarga la primera vez que se abre.
@@ -181,6 +189,23 @@
 
   $effect(() => {
     engine?.setViewInsets(insets);
+  });
+
+  // Se graba solo con la línea de tiempo abierta y sin presentar. Grabar encendido graba todo lo animable; apagado,
+  // solo lo que ya está animado.
+  const recordingAt = $derived(
+    layout.timeline.open && Timeline && !presenting && !engineReadOnly && !animPlaying && !aiProposed ? layout.timeline.head : null,
+  );
+  const recordMode = $derived(layout.timeline.recording ? 'all' : 'tracked');
+  // Cada aviso de «no se anima» sale una vez por propiedad mientras dura la misma grabación.
+  let shownNotices: NotAnimatedKey[] = [];
+  let recordSession = '';
+
+  $effect(() => {
+    const session = recordingAt === null ? '' : recordMode;
+    if (session !== recordSession) shownNotices = [];
+    recordSession = session;
+    engine?.anim.record(recordingAt, recordMode);
   });
 
   // La barra contextual no pisa los paneles abiertos, las pastillas de arriba ni las barras de abajo.
@@ -422,6 +447,10 @@
       created.contextState.subscribe((value) => (contextState = value)),
       created.inputProfile.subscribe((value) => (inputKind = value.kind)),
       created.core.uiCommand.subscribe(onUiCommand),
+      created.anim.state.subscribe((value) => (animPlaying = value.status === 'playing')),
+      created.core.aiAnimations.subscribe((value) => (aiProposed = value !== null)),
+      created.anim.notice.subscribe(onNotAnimated),
+      created.anim.recorded.subscribe(onRecorded),
       created.core.presence.onRemoteChange(() => {
         people = collaborators(created, user.id);
         typingNames = typingPeople(created, user.id);
@@ -444,7 +473,35 @@
   function onUiCommand(command: UiCommand | null) {
     if (!command) return;
     if (command.name === 'hideUi') hideInterface();
-    else layout.toggleMinimized();
+    else if (command.name === 'minimizeUi') layout.toggleMinimized();
+    else if (layout.timeline.open && !engineReadOnly && !aiProposed) layout.timeline.recording = !layout.timeline.recording;
+  }
+
+  const NOT_ANIMATED: Record<NotAnimatedKey, () => string> = {
+    textSize: m.editor_not_animated_text_size,
+    groupSize: m.editor_not_animated_group_size,
+    flip: m.editor_not_animated_flip,
+    line: m.editor_not_animated_line,
+    radius: m.editor_not_animated_radius,
+    strokeWidth: m.editor_not_animated_stroke_width,
+    strokeStyle: m.editor_not_animated_stroke_style,
+    shadow: m.editor_not_animated_shadow,
+    visibility: m.editor_not_animated_visibility,
+    font: m.editor_not_animated_font,
+    other: m.editor_not_animated_other,
+  };
+
+  // El toast vive en una región aria-live: lo leen también los lectores de pantalla.
+  function onNotAnimated(notice: { key: NotAnimatedKey; n: number } | null) {
+    if (!notice || shownNotices.includes(notice.key)) return;
+    shownNotices = [...shownNotices, notice.key];
+    showToast({ message: NOT_ANIMATED[notice.key]() });
+  }
+
+  // Sin Grabar no hay borde que avise: cada cambio grabado se anuncia una vez.
+  function onRecorded(recorded: RecordedNotice | null) {
+    if (!recorded || recorded.mode !== 'tracked') return;
+    recordAnnouncement = m.editor_keyframe_recorded({ props: recorded.props.map(propLabel).join(', '), time: formatTime(recorded.time) });
   }
 
   function hideInterface() {
@@ -782,8 +839,8 @@
     chatOpen = false;
   }
 
-  // focus: «Animar…» lleva el foco a la fila de lo seleccionado.
-  async function openTimeline(focus: boolean) {
+  // focus: «Animar…» lleva el foco a la fila de lo seleccionado. record: los accesos de «animar esto» encienden Grabar.
+  async function openTimeline(focus: boolean, record = false) {
     if (!Timeline) {
       if (timelineLoading) return;
       timelineLoading = true;
@@ -796,12 +853,12 @@
         timelineLoading = false;
       }
     }
-    layout.timeline.open = true;
+    layout.openTimeline({ record: record && !engineReadOnly });
     if (focus) timelineFocus += 1;
   }
 
   function toggleTimeline() {
-    if (timelineOpen) layout.timeline.open = false;
+    if (timelineOpen) layout.closeTimeline();
     else void openTimeline(false);
   }
 </script>
@@ -915,8 +972,11 @@
       hud={presenting ? null : hud}
       touch={inputKind === 'touch'}
       pointLimit={pointLimit && !presenting && !hideUi}
+      recording={recordingAt !== null && recordMode === 'all' ? recordingAt : null}
+      area={{ left: barsLeft, right: barsRight, bottom: bottomEdge }}
     />
     <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
+    <div class="sr-only" aria-live="polite" aria-atomic="true" data-testid="record-announcer">{recordAnnouncement}</div>
     <input
       bind:this={replaceInput}
       type="file"
@@ -1023,6 +1083,7 @@
           gallery={galleryOpen}
           {timelineOpen}
           {timelineLoading}
+          recording={recordingAt !== null && recordMode === 'all'}
           {aiAvailable}
           {aiOpen}
           onselect={(next, locked) => engine?.commands.setTool(next, { locked: locked === true })}
@@ -1074,7 +1135,7 @@
           aiAnimation={!!aiFeatures?.animation && !engineReadOnly}
           open={timelineOpen}
           focusRequest={timelineFocus}
-          onclose={() => (layout.timeline.open = false)}
+          onclose={() => layout.closeTimeline()}
         />
       </div>
     {/if}
@@ -1167,7 +1228,7 @@
         request={menu}
         readOnly={engineReadOnly}
         onclose={closeMenu}
-        onanimate={() => void openTimeline(true)}
+        onanimate={() => void openTimeline(true, true)}
         oncopypng={copyAsPng}
         onexport={() => (exportOpen = true)}
         onrename={(id) => void leftPanel?.rename(id)}

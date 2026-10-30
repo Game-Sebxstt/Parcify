@@ -15,7 +15,7 @@
     gallery: boolean;
     timelineOpen: boolean;
     timelineLoading: boolean;
-    // Punto danger de «grabando»: lo enciende T5.2 (Grabar); hasta entonces nadie lo pasa.
+    // Punto danger mientras se graba (Grabar encendido con la línea de tiempo abierta).
     recording?: boolean;
     aiAvailable: boolean;
     aiOpen: boolean;

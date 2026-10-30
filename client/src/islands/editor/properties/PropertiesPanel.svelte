@@ -15,6 +15,7 @@
   import StrokeSection from './StrokeSection.svelte';
   import TextSection from './TextSection.svelte';
   import { PanelEdits, pageColors, PRESET_LABELS } from './panel.ts';
+  import { getEditorLayout } from '../../../lib/editor-layout.svelte.ts';
 
   type Props = {
     engine: Engine;
@@ -37,6 +38,10 @@
     () => ids,
   );
   const nodeCount = $derived(fromStore(engine.state.nodeCount));
+  // Con la línea de tiempo abierta, la posición, el tamaño, el giro y la opacidad son lo que se ve en el cabezal.
+  const layout = getEditorLayout();
+  const animations = $derived(fromStore(engine.anim.version));
+  const posed = $derived({ at: layout.timeline.open ? layout.timeline.head : null, version: animations.current });
   // Todo bloqueado (también por un grupo o un marco): los campos se ven pero no se editan.
   const locked = $derived(records.length > 0 && records.every((record) => engine.core.isLocked(record.id)));
   const fieldsReadonly = $derived(readOnly || locked);
@@ -76,8 +81,8 @@
     {#if !fieldsReadonly}
       <AlignSection {engine} {records} />
     {/if}
-    <LayoutSection {engine} {records} {edits} readonly={fieldsReadonly} />
-    <AppearanceSection {engine} {records} {edits} {readOnly} {locked} />
+    <LayoutSection {engine} {records} {edits} {posed} readonly={fieldsReadonly} />
+    <AppearanceSection {engine} {records} {edits} {posed} {readOnly} {locked} />
     <FrameSection {engine} {records} {edits} readonly={fieldsReadonly} />
     <ImageSection {records} {edits} readonly={fieldsReadonly} />
     <FillSection {records} {edits} readonly={fieldsReadonly} {colors} />

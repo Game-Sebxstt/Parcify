@@ -113,8 +113,8 @@ test('timeline: dos keyframes con el teclado, reproducir hasta el final, sincron
   // Bea ve los dos keyframes.
   await expect.poll(() => offsetX(bea, rect.id)).toEqual(expected);
 
-  // Con el cabezal al inicio, Espacio reproduce: la vista pasa por valores intermedios, llega a +100 px en el último
-  // frame y después vuelve al documento.
+  // Con el cabezal al inicio, Espacio reproduce: la vista pasa por valores intermedios y llega a +100 px en el último
+  // frame. Con la línea de tiempo abierta se queda en la pose del cabezal, que ha llegado al final.
   await head.focus();
   await page.keyboard.press('Home');
   await expect(head).toHaveAttribute('aria-valuenow', '0');
@@ -132,7 +132,8 @@ test('timeline: dos keyframes con el teclado, reproducir hasta el final, sincron
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.__parcifyTest!.player()?.status)).toBe('playing');
   await expect.poll(() => page.evaluate(() => window.__parcifyTest!.player()), { timeout: 15_000 }).toMatchObject({ status: 'paused', time: 1000, duration: 1000 });
-  await expect.poll(async () => (await page.evaluate((id) => window.__parcifyTest!.view(id), rect.id))?.x).toBeCloseTo(rect.x, 3);
+  await expect(head).toHaveAttribute('aria-valuenow', '1000');
+  await expect.poll(async () => (await page.evaluate((id) => window.__parcifyTest!.view(id), rect.id))?.x).toBeCloseTo(rect.x + 100, 3);
   const samples = await page.evaluate(() => (window as unknown as { __samples: number[] }).__samples);
   expect(Math.max(...samples) - rect.x).toBeCloseTo(100, 1);
   expect(samples.some((x) => x - rect.x > 5 && x - rect.x < 95)).toBe(true);
@@ -180,4 +181,175 @@ test('timeline: dos keyframes con el teclado, reproducir hasta el final, sincron
   expect(await audit(page)).toEqual([]);
 
   await otherContext.close();
+});
+
+const track = async (page: Page, id: string, prop: string) =>
+  Object.values((await animation(page, id))?.tracks[prop] ?? {})
+    .map((kf) => ({ t: kf.t, v: kf.v }))
+    .sort((a, b) => a.t - b.t);
+const record = async (page: Page, id: string) => (await nodes(page)).find((node) => node.id === id) as unknown as Record<string, number>;
+
+test('grabación: lo animado graba sin Grabar, Grabar graba todo y cerrar la línea de tiempo vuelve al diseño (CA-5.2, 5.3, 5.8 a 5.11, 5.16)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const account = await createVerifiedAccount(page.request, `grabar-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Grabación');
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 60, y: box.y + box.height / 2 - 120 };
+  await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
+  await drag(page, origin, { x: origin.x + 120, y: origin.y + 80 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  const rect = (await nodes(page))[0]!;
+  const properties = page.getByTestId('properties-panel');
+  const frame = page.getByTestId('recording-frame');
+
+  // Línea de tiempo abierta con el botón de la barra: Grabar apagado y sin borde.
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
+  const panel = page.getByTestId('timeline');
+  const head = panel.getByRole('slider', { name: 'Cabezal' });
+  const moveHead = async (ms: number) => {
+    await head.focus();
+    await page.keyboard.press('Home');
+    for (let i = 0; i < ms / 100; i++) await page.keyboard.press('Shift+ArrowRight');
+    await expect(head).toHaveAttribute('aria-valuenow', String(ms));
+  };
+  await moveHead(500);
+  await expect(frame).toHaveCount(0);
+
+  // Sin pistas de posición, mover cambia el diseño (CA-5.11).
+  await canvas.focus();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection())).toEqual([rect.id]);
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect.poll(async () => (await record(page, rect.id)).x).toBeCloseTo(rect.x + 10, 3);
+  expect(await animation(page, rect.id)).toBeNull();
+
+  // Con una pista de opacidad y Grabar apagado, la opacidad del panel crea el keyframe en el cabezal y no cambia el
+  // diseño (CA-5.10).
+  const grid = panel.getByRole('grid', { name: 'Línea de tiempo' });
+  await grid.getByRole('rowheader', { name: 'Opacidad' }).click();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => track(page, rect.id, 'opacity')).toEqual([{ t: 0.5, v: 1 }]);
+  await moveHead(300);
+  const opacity = properties.getByTestId('props-opacity');
+  await opacity.fill('40');
+  await opacity.press('Enter');
+  await expect.poll(() => track(page, rect.id, 'opacity')).toEqual([
+    { t: 0.3, v: 0.4 },
+    { t: 0.5, v: 1 },
+  ]);
+  expect((await record(page, rect.id)).opacity).toBe(1);
+  await expect(page.getByTestId('record-announcer')).toHaveText('Keyframe de Opacidad en 0,30 s');
+
+  // K enciende Grabar: borde y píldora. Mover 100 px crea offsetX 0 → 100 en el cabezal, y volver a moverla en el
+  // mismo instante actualiza ese keyframe (CA-5.2).
+  await moveHead(500);
+  await canvas.focus();
+  await page.keyboard.press('k');
+  await expect(frame).toBeVisible();
+  await expect(frame).toContainText('Grabando · 0,50 s');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
+  await expect.poll(() => track(page, rect.id, 'offsetX')).toEqual([
+    { t: 0, v: 0 },
+    { t: 0.5, v: 50 },
+  ]);
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
+  await expect.poll(() => track(page, rect.id, 'offsetX')).toEqual([
+    { t: 0, v: 0 },
+    { t: 0.5, v: 100 },
+  ]);
+  expect((await record(page, rect.id)).x).toBeCloseTo(rect.x + 10, 3);
+
+  // Ancho de 120 a 180 con Grabar: scaleX 1,5 en el cabezal y el centro 30 px más allá; el diseño sigue en 120 (CA-5.3).
+  const width = properties.getByTestId('props-w');
+  await width.fill('180');
+  await width.press('Enter');
+  await expect.poll(() => track(page, rect.id, 'scaleX')).toEqual([
+    { t: 0, v: 1 },
+    { t: 0.5, v: 1.5 },
+  ]);
+  await expect.poll(() => track(page, rect.id, 'offsetX')).toEqual([
+    { t: 0, v: 0 },
+    { t: 0.5, v: 130 },
+  ]);
+  expect((await record(page, rect.id)).w).toBe(120);
+
+  // El radio no se anima: va al diseño y se avisa (CA-5.9).
+  const radius = properties.getByTestId('props-radius');
+  await radius.fill('8');
+  await radius.press('Enter');
+  await expect.poll(async () => (await record(page, rect.id)).cornerRadius).toBe(8);
+  await expect(page.getByRole('status').filter({ hasText: 'El radio no se anima: se ha cambiado el diseño' })).toBeVisible();
+
+  // Grabar apagado: X muestra lo que se ve en el cabezal (el diseño más 130 de desplazamiento, con la caja escalada
+  // sobre su centro) y escribir otra X graba la diferencia (CA-5.16).
+  await canvas.focus();
+  await page.keyboard.press('k');
+  await expect(frame).toHaveCount(0);
+  const x = properties.getByTestId('props-x');
+  const shown = rect.x + 10 + 130 - 30;
+  await expect(x).toHaveValue(String(shown));
+  await x.fill(String(shown + 50));
+  await x.press('Enter');
+  await expect.poll(() => track(page, rect.id, 'offsetX')).toEqual([
+    { t: 0, v: 0 },
+    { t: 0.5, v: 180 },
+  ]);
+  expect((await record(page, rect.id)).x).toBeCloseTo(rect.x + 10, 3);
+  await expect(x).toHaveValue(String(shown + 50));
+
+  // Cerrar la línea de tiempo con Grabar encendido apaga la grabación: mover cambia x aunque haya pista offsetX (CA-5.8).
+  await canvas.focus();
+  await page.keyboard.press('k');
+  await expect(frame).toBeVisible();
+  await panel.getByRole('button', { name: 'Ocultar la línea de tiempo' }).click();
+  await expect(frame).toHaveCount(0);
+  await canvas.focus();
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect.poll(async () => (await record(page, rect.id)).x).toBeCloseTo(rect.x + 20, 3);
+  expect(await track(page, rect.id, 'offsetX')).toEqual([
+    { t: 0, v: 0 },
+    { t: 0.5, v: 180 },
+  ]);
+});
+
+test('grabación: con Grabar, el color de un texto va a su pista fill sin cambiar el diseño (CA-5.4)', async ({ page }) => {
+  test.setTimeout(90_000);
+  const account = await createVerifiedAccount(page.request, `grabar-texto-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Texto grabado');
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  await canvas.focus();
+  await page.keyboard.press('t');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 120);
+  await page.keyboard.type('Hola');
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  const text = (await nodes(page))[0]!;
+  const color = (await record(page, text.id)).color as unknown as string;
+
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
+  const head = page.getByTestId('timeline').getByRole('slider', { name: 'Cabezal' });
+  await head.focus();
+  await page.keyboard.press('End');
+  await canvas.focus();
+  await page.keyboard.press('k');
+  await expect(page.getByTestId('recording-frame')).toBeVisible();
+  const hex = page.getByTestId('props-text-color-hex');
+  await hex.fill('3366FF');
+  await hex.press('Enter');
+  await expect.poll(() => track(page, text.id, 'fill')).toEqual([
+    { t: 0, v: color },
+    { t: 1, v: '#3366FFFF' },
+  ]);
+  expect((await record(page, text.id)).color).toBe(color);
+  // El lienzo pinta el color de la pista: el nuevo en el cabezal y el de partida en 0.
+  const shown = async () => (await page.evaluate((id) => window.__parcifyTest!.view(id), text.id))?.color;
+  await expect.poll(shown).toBe('#3366FFFF');
+  await head.focus();
+  await page.keyboard.press('Home');
+  await expect.poll(shown).toBe(color);
 });

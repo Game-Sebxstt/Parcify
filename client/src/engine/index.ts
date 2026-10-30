@@ -2,8 +2,9 @@ import type { Animation } from '../shared/document/schema.js';
 import type { AnimationState } from './anim/AnimationPlayer.ts';
 import type { AssetResolver } from './assets/AssetResolver.ts';
 import { AnimationCommands } from './commands/animation.ts';
-import type { Commands } from './commands/Commands.ts';
-import { EditorCore, type ActiveVertex, type EngineUser, type FrameStats, type TextEditing, type Tool } from './EditorCore.ts';
+import type { Commands, NotAnimatedKey } from './commands/Commands.ts';
+import type { Pose } from './anim/timeline.ts';
+import { EditorCore, type ActiveVertex, type EngineUser, type FrameStats, type RecordedNotice, type TextEditing, type Tool } from './EditorCore.ts';
 import { ClipboardController, type ClipboardSource } from './interaction/clipboard.ts';
 import { bindDom, type ContextMenuRequest } from './interaction/dom.ts';
 import type { CameraState, ViewInsets } from './render/Camera.ts';
@@ -16,7 +17,8 @@ import type { InputProfile } from './interaction/input/profile.ts';
 import { TextEditor } from './text/TextEditor.ts';
 import type { NodeRecord } from './types.ts';
 
-export type { Tool, EngineUser, FrameStats, TextEditing, UiCommand, UiCommandName, ScreenRect, Hud, ActiveVertex } from './EditorCore.ts';
+export type { Tool, EngineUser, FrameStats, TextEditing, UiCommand, UiCommandName, ScreenRect, Hud, ActiveVertex, RecordedNotice } from './EditorCore.ts';
+export type { Pose } from './anim/timeline.ts';
 export { DirectBackend, LinkBackend, type DocumentBackend } from './doc/backend.ts';
 export type { NodeRecord } from './types.ts';
 export type { PageRecord } from './model/DocumentStore.ts';
@@ -42,7 +44,7 @@ export {
 export { ANIMATION_PRESETS, PRESETS, type AnimationPresetId } from './anim/presets.ts';
 export { EASING_CURVES, easingFn } from './anim/easing.ts';
 export { compileAnimation, effectiveDuration, poseAtProgress, COLOR_PROPS } from './anim/timeline.ts';
-export type { StylePatch, StyleEach, InsertableImage, GeometryPatch, Geometry, AlignMode, FlipAxis, NotAnimatedKey } from './commands/Commands.ts';
+export type { StylePatch, StyleEach, InsertableImage, GeometryPatch, Geometry, AlignMode, FlipAxis, NotAnimatedKey, Recorder } from './commands/Commands.ts';
 export { textSizeMode, type TextSizeMode } from './text/resize.ts';
 export { AssetResolver } from './assets/AssetResolver.ts';
 export { LOCAL_ORIGIN, AI_ORIGIN } from './origins.ts';
@@ -117,8 +119,16 @@ export type EngineAnimation = {
   setSpeed(speed: number): void;
   // Al llegar al final vuelve a empezar.
   setRepeat(repeat: boolean): void;
-  // Modo «Grabar» en el instante `time` (ms); null lo apaga.
-  record(time: number | null): void;
+  // Grabación con la línea de tiempo abierta y el cabezal en `time` (ms); null la apaga (línea de tiempo cerrada).
+  // 'all' (Grabar): todo lo animable crea o actualiza keyframes. 'tracked': solo lo que el nodo ya anima; el resto va
+  // al diseño base. Solo se graba al confirmar un cambio.
+  record(time: number | null, mode?: 'all' | 'tracked'): void;
+  // Pose de un nodo en el instante `time` (ms), o null si no está animado.
+  poseAt(id: string, time: number): Pose | null;
+  // Un cambio que no se anima fue al diseño base durante la grabación.
+  notice: Readable<{ key: NotAnimatedKey; n: number } | null>;
+  // Último cambio grabado como keyframes.
+  recorded: Readable<RecordedNotice | null>;
   // Modo Presentar: solo reproduce las animaciones que pasan el filtro y mantiene la pose final; null lo apaga.
   present(filter: ((id: string, animation: Animation) => boolean) | null): void;
   // Vista previa en el lienzo de las animaciones de `ids` (página activa), sin la línea de tiempo: al terminar, el
@@ -216,9 +226,24 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
       stop: () => core.anim.stop(),
       setSpeed: (speed) => core.anim.setSpeed(speed),
       setRepeat: (repeat) => core.anim.setRepeat(repeat),
-      record: (time) => {
-        core.commands.recorder = time === null ? null : (changes) => void keyframes.recordAt(time, changes);
+      record: (time, mode = 'all') => {
+        if (time === null) {
+          core.commands.recorder = null;
+          return;
+        }
+        core.commands.recorder = {
+          time,
+          mode,
+          write: (changes, options) => {
+            if (!keyframes.recordAt(time, changes, options)) return;
+            const props = [...new Set(changes.map((change) => change.prop))];
+            core.recorded.set({ props, time, mode, n: (core.recorded.get()?.n ?? 0) + 1 });
+          },
+        };
       },
+      poseAt: (id, time) => core.anim.poseAt(id, time),
+      notice: core.notice.readonly(),
+      recorded: core.recorded.readonly(),
       present: (filter) => core.anim.present(filter),
       preview: (ids) => core.anim.preview(ids),
       state: core.anim.state.readonly(),

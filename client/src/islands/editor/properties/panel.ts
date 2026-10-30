@@ -16,6 +16,10 @@ export const PRESET_LABELS: Record<FramePresetId, () => string> = {
 // Lo que emiten ScrubInput y ColorPicker al confirmar: `merge` funde el paso con el anterior (↑/↓ seguidas).
 export type CommitMeta = { merge: boolean };
 
+// Instante del cabezal cuya pose muestra el panel (null con la línea de tiempo cerrada) y la versión de las
+// animaciones, para volver a leerla cuando cambian.
+export type Posed = { at: number | null; version: number };
+
 // Valor compartido por los registros que tienen la propiedad: `mixed` si no coinciden.
 export function shared<R extends NodeRecord, T>(records: readonly R[], read: (record: R) => T | undefined): { value: T | undefined; mixed: boolean } {
   let value: T | undefined;

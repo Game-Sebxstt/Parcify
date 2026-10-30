@@ -155,6 +155,33 @@ export function poseValue(pose: Pose, prop: AnimProp): number | string | null {
   }
 }
 
+// Pistas que se graban juntas: con la línea de tiempo abierta y Grabar apagado, un cambio de un grupo se graba si el
+// nodo ya tiene pista en alguna de sus propiedades. En los textos, el color de la letra va en `fill`.
+export const ANIM_GROUPS = {
+  position: ['offsetX', 'offsetY'],
+  scale: ['scale', 'scaleX', 'scaleY'],
+  rotation: ['rotation'],
+  opacity: ['opacity'],
+  fill: ['fill'],
+  stroke: ['stroke'],
+} as const satisfies Record<string, readonly AnimProp[]>;
+
+export const TRANSFORM_PROPS: readonly AnimProp[] = [...ANIM_GROUPS.position, ...ANIM_GROUPS.scale, ...ANIM_GROUPS.rotation];
+
+// El nodo con la pose aplicada, tal como lo pinta el reproductor: desplazado, girado y, en las hojas y los marcos,
+// con la escala sobre el centro llevada a su caja. Una línea guarda el giro en sus puntos y un grupo no tiene caja
+// propia: solo se desplazan (y el grupo gira).
+export function posedRecord(record: NodeRecord, pose: Pose): NodeRecord {
+  const x = record.x + pose.dx;
+  const y = record.y + pose.dy;
+  if (record.type === 'line') return { ...record, x, y };
+  const rotation = record.rotation + pose.rotation;
+  if (record.type === 'group') return { ...record, x, y, rotation };
+  const w = record.w * Math.max(0, pose.scale * pose.sx);
+  const h = record.h * Math.max(0, pose.scale * pose.sy);
+  return { ...record, x: x + (record.w - w) / 2, y: y + (record.h - h) / 2, w, h, rotation } as NodeRecord;
+}
+
 // ── Borrador de las pistas de un nodo para la edición en lote ──
 //
 // Los keyframes se editan en ms absolutos del timeline. Al cerrar el borrador, la primera iteración se amplía para
@@ -653,8 +680,9 @@ export class AnimationCommands {
 
   // Modo «Grabar»: cada cambio crea o actualiza el keyframe de su pista en el instante `time` (ms), todo en una
   // transacción. Una pista nueva que no empieza en 0 recibe también un keyframe en 0 con el valor de partida. Si
-  // `time` cae fuera de la primera iteración de un nodo, se amplía en la misma transacción.
-  recordAt(time: number, changes: readonly RecordedChange[]): boolean {
+  // `time` cae fuera de la primera iteración de un nodo, se amplía en la misma transacción. `merge`: se funde con el
+  // paso de deshacer anterior (lo que el mismo cambio acaba de escribir en el diseño base).
+  recordAt(time: number, changes: readonly RecordedChange[], options: { merge?: boolean } = {}): boolean {
     if (!this.canEdit || !changes.length) return false;
     const byNode = new Map<string, RecordedChange[]>();
     for (const change of changes) byNode.set(change.id, [...(byNode.get(change.id) ?? []), change]);
@@ -698,7 +726,7 @@ export class AnimationCommands {
       fits.set(id, fit);
     }
     if (!writes.length) return false;
-    return this.transact((w) => {
+    return this.core.writer.transact({ step: options.merge ? 'merge' : 'new' }, (w) => {
       for (const id of created) if (!fits.get(id)?.changed) w.ensureAnimation(id, DEFAULT_ANIMATION);
       for (const [id, fit] of fits) writeFit(w, id, fit);
       for (const write of writes) w.setKeyframe(write.id, write.prop, write.key, write.keyframe);
