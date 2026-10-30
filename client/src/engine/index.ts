@@ -86,6 +86,8 @@ export type EngineState = {
   activeVertex: Readable<ActiveVertex | null>;
   // La línea o el conector seleccionado no admite más puntos.
   pointLimit: Readable<boolean>;
+  // Puntos fijados de la línea que dibuja la Pluma (0 sin línea en curso).
+  penPoints: Readable<number>;
 };
 
 // Reproducción local de las animaciones de la página activa (tiempos en ms) y comandos de keyframes.
@@ -222,6 +224,7 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
       following: core.following.readonly(),
       activeVertex: core.activeVertex.readonly(),
       pointLimit: core.pointLimit.readonly(),
+      penPoints: core.penPoints.readonly(),
     },
     setReadOnly: (readOnly) => core.setReadOnly(readOnly),
     assetReady: (assetId) => {

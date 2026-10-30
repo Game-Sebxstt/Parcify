@@ -281,3 +281,49 @@ test('conector en codo: el tramo se desplaza y se conserva al mover los nodos; r
   await expect.poll(async () => 'waypoints' in ((await pathNode(page, cid)) ?? {})).toBe(false);
   await expect(page.getByTestId('props-route-reset')).toHaveCount(0);
 });
+
+test('Pluma: 3 clics y Enter crean una línea de 3 puntos; Esc con un punto no crea nada; Shift ajusta a 45° (CA-1.8)', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `pluma-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 150, y: box.y + box.height / 2 - 80 };
+  const lines = async () => (await nodes(page)).filter((node) => node.type === 'line') as PathNode[];
+
+  // Esc con un solo punto: no se crea nada.
+  await canvas.focus();
+  await page.keyboard.press('p');
+  await page.mouse.click(origin.x, origin.y);
+  await expect.poll(() => page.evaluate(() => window.__parcifyTest!.overlayModel()?.pen?.points.length ?? 0)).toBe(1);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  expect(await lines()).toHaveLength(0);
+
+  // Tres clics y Enter: una línea de 3 puntos sin puntas, seleccionada.
+  await page.mouse.click(origin.x, origin.y);
+  await page.mouse.click(origin.x + 120, origin.y + 40);
+  await page.mouse.click(origin.x + 240, origin.y);
+  await expect(page.getByTestId('pen-finish')).toBeEnabled();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await lines()).length).toBe(1);
+  const line = (await lines())[0]! as PathNode & { startCap?: string; endCap?: string };
+  expect(line.points).toHaveLength(3);
+  expect(line).toMatchObject({ startCap: 'none', endCap: 'none' });
+  await expect.poll(() => page.evaluate(() => [...window.__parcifyTest!.selection()])).toEqual([line.id]);
+
+  // Con Shift, el segundo punto queda a 45° del primero.
+  await canvas.focus();
+  await page.keyboard.press('p');
+  const start = { x: origin.x, y: origin.y + 100 };
+  await page.mouse.click(start.x, start.y);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(start.x + 100, start.y + 80);
+  await page.keyboard.up('Shift');
+  await page.mouse.dblclick(start.x + 220, start.y + 40);
+  await expect.poll(async () => (await lines()).length).toBe(2);
+  const snapped = (await lines()).find((node) => node.id !== line.id)!;
+  const [p0, p1] = snapped.points! as [number[], number[]];
+  const angle = (Math.atan2(p1[1]! - p0[1]!, p1[0]! - p0[0]!) * 180) / Math.PI;
+  expect(Math.abs(angle - 45)).toBeLessThan(0.01);
+});

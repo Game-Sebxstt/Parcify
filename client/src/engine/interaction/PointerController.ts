@@ -1,6 +1,6 @@
 import { DOCUMENT_LIMITS } from '../../shared/document/limits.js';
 import { newConnector, newFrame, newLine, newShape, DEFAULT_SIZE } from '../commands/defaults.ts';
-import { linePointsInParent, linePointsPatch, storedWaypoints, waypointPoints } from '../commands/paths.ts';
+import { linePointsInParent, linePointsPatch, polylineRecord, storedWaypoints, waypointPoints } from '../commands/paths.ts';
 import type { AnchorTarget, EditorCore, Tool } from '../EditorCore.ts';
 import { isAnchorable, SNAP_THRESHOLD_PX } from '../EditorCore.ts';
 import { anchorAt, anchorTerminal, dragElbowSegment, insertWaypoint, moveWaypoint, NAMED_ANCHORS, routeStart, type ConnectorEnd } from '../geometry/connectors.ts';
@@ -39,7 +39,20 @@ export type PointerInput = {
   pressure: number;
 };
 
-export type PointerState = 'idle' | 'pressing' | 'dragging' | 'marquee' | 'resizing' | 'rotating' | 'creating' | 'panning' | 'point' | 'segment' | 'radius';
+// pen: pulsación con la Pluma; al soltar añade un punto (o termina la línea). La línea en curso dura entre pulsaciones.
+export type PointerState =
+  | 'idle'
+  | 'pressing'
+  | 'dragging'
+  | 'marquee'
+  | 'resizing'
+  | 'rotating'
+  | 'creating'
+  | 'panning'
+  | 'point'
+  | 'segment'
+  | 'radius'
+  | 'pen';
 
 // viaBox: se pulsó en un hueco dentro de la caja de la selección; arrastrar mueve la selección y un clic es un clic en vacío.
 // rotate: `corner` es la esquina de la zona de giro (null con el tirador del dedo), para orientar el cursor.
@@ -59,6 +72,7 @@ type PressTarget =
   | { kind: 'insert'; id: string; segment: number; mid: number; vertices: number }
   | { kind: 'segment'; id: string; index: number; route: readonly number[]; horizontal: boolean }
   | { kind: 'create'; tool: Tool }
+  | { kind: 'pen' }
   | { kind: 'pan' };
 
 export type PressKind = PressTarget['kind'];
@@ -97,8 +111,18 @@ export class PointerController {
   private lastClick: { id: string | null; x: number; y: number; time: number } | null = null;
   // Con el dedo, la selección que dejaría la pulsación se aplica al pasar el umbral o al soltar, no al tocar.
   private pendingSelect: string[] | null = null;
+  // Línea de la Pluma: puntos fijados en mundo, el siguiente (que sigue al puntero) y si el puntero está sobre el último.
+  private pen: { points: Point[]; next: Point | null; closing: boolean } | null = null;
+  private lastPenClick: { x: number; y: number; time: number } | null = null;
 
-  constructor(private readonly core: EditorCore) {}
+  constructor(private readonly core: EditorCore) {
+    // Al dejar la Pluma (también al pasar a solo lectura) o cambiar de página, lo que quede de la línea se descarta;
+    // setTool ya la ha creado si tenía 2 puntos o más.
+    core.tool.subscribe((tool) => {
+      if (tool !== 'pen') this.discardPen();
+    });
+    core.pageId.subscribe(() => this.discardPen());
+  }
 
   private get tool(): Tool {
     return this.core.tool.get();
@@ -140,6 +164,14 @@ export class PointerController {
     }
     if (input.button !== 0) {
       this.down = null;
+      return;
+    }
+
+    if (this.tool === 'pen') {
+      if (this.readOnly) return;
+      this.target = { kind: 'pen' };
+      this.state = 'pen';
+      this.penMove(input);
       return;
     }
 
@@ -240,6 +272,9 @@ export class PointerController {
       case 'creating':
         this.finishCreate(input);
         break;
+      case 'pen':
+        this.penClick(input);
+        break;
       case 'point':
       case 'segment':
         if (target?.kind === 'point' || target?.kind === 'segment') {
@@ -274,6 +309,12 @@ export class PointerController {
     if (this.state === 'marquee') this.core.setMarquee(null);
     if (this.state === 'creating') this.core.setCreating(null);
     if (this.state === 'point' || this.state === 'segment' || this.state === 'radius') this.core.setStylePreview(null);
+    // Una pulsación anulada (dos dedos, pointercancel) no deja el tramo que seguía al puntero.
+    if (this.state === 'pen' && this.pen) {
+      this.pen.next = null;
+      this.pen.closing = false;
+      this.showPen();
+    }
     this.reset();
   }
 
@@ -329,6 +370,7 @@ export class PointerController {
       }
       return true;
     }
+    if (this.pen && this.penKey(input)) return true;
     if (input.key === 'Escape') {
       if (this.state !== 'idle') {
         this.cancel();
@@ -377,6 +419,7 @@ export class PointerController {
     this.moved = false;
     switch (this.state) {
       case 'idle':
+        if (this.pen) this.penMove(input);
         this.updateHover(input);
         return;
       case 'pressing':
@@ -542,6 +585,7 @@ export class PointerController {
       case 'create':
         this.state = 'creating';
         return;
+      case 'pen':
       case 'pan':
         return;
     }
@@ -579,6 +623,8 @@ export class PointerController {
         return this.moveSegment(input);
       case 'radius':
         return this.moveRadius(input);
+      case 'pen':
+        return this.penMove(input);
     }
   }
 
@@ -773,6 +819,131 @@ export class PointerController {
       this.core.commands.createShape(tool as BasicShapeType, this.createBox(input, down));
     }
     this.core.commands.finishTool();
+  }
+
+  // ── Pluma ──
+
+  // Teclas con una línea de la Pluma en curso. Enter termina (con 2 puntos o más); Esc termina con 2 o más y descarta
+  // con 1; Supr y Retroceso quitan el último punto en vez de borrar la selección.
+  private penKey(input: KeyInput): boolean {
+    const plain = !input.ctrl && !input.alt;
+    if (input.key === 'Escape') {
+      if (this.state !== 'idle') this.cancel();
+      if ((this.pen?.points.length ?? 0) >= 2) this.finishPen();
+      else this.discardPen();
+      return true;
+    }
+    if (input.key === 'Enter' && plain) {
+      if (this.state === 'idle') this.finishPen();
+      return true;
+    }
+    if ((input.key === 'Backspace' || input.key === 'Delete') && plain) {
+      if (this.state === 'idle') this.removeLastPenPoint();
+      return true;
+    }
+    return false;
+  }
+
+  // Punto de la Pluma bajo el puntero; con Shift, a 45° del último fijado.
+  private penAt(input: PointerInput): Point {
+    const world = this.world(input);
+    const last = this.pen?.points.at(-1);
+    return input.shift && last ? snapAngle(last, world) : world;
+  }
+
+  // El puntero está sobre el último punto fijado: un clic ahí termina la línea.
+  private onLastPenPoint(input: PointerInput): boolean {
+    const last = this.pen?.points.at(-1);
+    if (!last) return false;
+    const screen = this.core.camera.worldToScreen(last.x, last.y);
+    return Math.hypot(screen.x - input.x, screen.y - input.y) <= this.profile.handleHit / 2;
+  }
+
+  private penMove(input: PointerInput): void {
+    const pen = this.pen;
+    if (!pen) return;
+    const closing = this.onLastPenPoint(input);
+    pen.next = closing ? null : this.penAt(input);
+    pen.closing = closing;
+    this.showPen();
+  }
+
+  // Cada clic (o toque) fija un punto. Un doble clic o un clic sobre el último punto terminan la línea; llegar al
+  // máximo de puntos también.
+  private penClick(input: PointerInput): void {
+    const now = performance.now();
+    const last = this.lastPenClick;
+    this.lastPenClick = { x: input.x, y: input.y, time: now };
+    if (this.pen && (this.onLastPenPoint(input) || (last && this.isDoubleClick(last, input, now)))) {
+      this.lastPenClick = null;
+      this.finishPen();
+      return;
+    }
+    if (!this.pen) {
+      this.core.setSelection([]);
+      this.pen = { points: [], next: null, closing: false };
+    }
+    const pen = this.pen;
+    pen.points.push(this.penAt(input));
+    pen.next = null;
+    pen.closing = true;
+    if (pen.points.length >= DOCUMENT_LIMITS.maxPoints) {
+      this.finishPen();
+      return;
+    }
+    this.showPen();
+  }
+
+  private removeLastPenPoint(): void {
+    const pen = this.pen;
+    if (!pen) return;
+    pen.points.pop();
+    if (!pen.points.length) {
+      this.discardPen();
+      return;
+    }
+    pen.closing = false;
+    this.showPen();
+  }
+
+  // La línea se ve como una línea en creación, con el tramo que sigue al puntero; sus puntos, en el overlay.
+  private showPen(): void {
+    const pen = this.pen;
+    const page = this.core.activePage;
+    if (!pen || !page) return;
+    const points = pen.next ? [...pen.points, pen.next] : pen.points;
+    if (points.length >= 2) {
+      const base = { id: '__creating', pageId: page, parentId: null, index: 'a0', createdBy: this.core.user.id };
+      this.core.setCreating(polylineRecord(base, points.map((p) => [p.x, p.y] as const)));
+    } else {
+      this.core.setCreating(null);
+    }
+    this.core.setPenDraft({ points: pen.points, closing: pen.closing });
+  }
+
+  // Termina la línea de la Pluma si tiene 2 puntos o más y vuelve a Seleccionar (salvo herramienta bloqueada). Con
+  // menos, no hace nada y la línea sigue en curso.
+  finishPen(): boolean {
+    if ((this.pen?.points.length ?? 0) < 2) return false;
+    const id = this.commitPen();
+    this.core.commands.finishTool();
+    return id !== null;
+  }
+
+  // Crea la línea en curso si tiene 2 puntos o más y la quita; no cambia de herramienta.
+  commitPen(): string | null {
+    const pen = this.pen;
+    if (!pen) return null;
+    this.discardPen();
+    return pen.points.length >= 2 ? this.core.commands.createPolyline(pen.points) : null;
+  }
+
+  discardPen(): void {
+    if (!this.pen) return;
+    this.pen = null;
+    this.lastPenClick = null;
+    this.core.setCreating(null);
+    this.core.setPenDraft(null);
   }
 
   // Crea el texto, vuelve a la herramienta de selección (salvo bloqueo) y abre el editor.

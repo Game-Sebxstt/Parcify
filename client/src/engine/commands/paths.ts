@@ -1,6 +1,7 @@
 import { DOCUMENT_LIMITS } from '../../shared/document/limits.js';
 import { NodeSchema } from '../../shared/document/schema.js';
 import type { EditorCore } from '../EditorCore.ts';
+import { DEFAULT_STROKE } from './defaults.ts';
 import { localMatrix } from '../geometry/bounds.ts';
 import { removeWaypoint } from '../geometry/connectors.ts';
 import { apply, type Mat, type Point } from '../geometry/matrix.ts';
@@ -16,7 +17,12 @@ export type PathHost = {
   write(patches: ReadonlyArray<[string, Patch]>): void;
   connectorBoxPatches(changed: ReadonlyMap<string, NodeRecord>): Array<[string, Patch]>;
   cacheFor(record: ConnectorRecord): Patch;
+  // Crea un nodo en `at` (mundo), dentro del marco que haya debajo, y lo selecciona. `build` recibe la base del nodo y
+  // el paso del mundo al sistema de su padre; devuelve el id o null si no se puede crear o el nodo no es válido.
+  create(at: Point, build: (base: NodeBase, toLocal: (p: Point) => Point) => NodeRecord): string | null;
 };
+
+export type NodeBase = Pick<LineRecord, 'id' | 'pageId' | 'parentId' | 'index' | 'createdBy'>;
 
 const round3 = (value: number) => Math.round(Math.max(-DOCUMENT_LIMITS.maxCoordinate, Math.min(DOCUMENT_LIMITS.maxCoordinate, value)) * 1000) / 1000;
 
@@ -62,6 +68,31 @@ export function linePointsPatch(absolute: ReadonlyArray<readonly [number, number
   };
 }
 
+// Polilínea de la Pluma con estos puntos (en el sistema del padre), sin puntas.
+export function polylineRecord(base: NodeBase, absolute: ReadonlyArray<readonly [number, number]>): LineRecord {
+  const { x, y, w, h, points } = linePointsPatch(absolute) as Pick<LineRecord, 'x' | 'y' | 'w' | 'h' | 'points'>;
+  return {
+    ...base,
+    type: 'line',
+    x: round3(x),
+    y: round3(y),
+    w: round3(w),
+    h: round3(h),
+    rotation: 0,
+    opacity: 1,
+    visible: true,
+    locked: false,
+    fill: null,
+    stroke: DEFAULT_STROKE,
+    strokeWidth: 2,
+    strokeDash: 'solid',
+    shadow: null,
+    points: storedWaypoints(points),
+    startCap: 'none',
+    endCap: 'none',
+  };
+}
+
 function samePairs(a: ReadonlyArray<readonly [number, number]> | undefined, b: ReadonlyArray<readonly [number, number]> | undefined): boolean {
   if (!a?.length || !b?.length) return !a?.length && !b?.length;
   return a.length === b.length && a.every((p, i) => p[0] === b[i]![0] && p[1] === b[i]![1]);
@@ -77,6 +108,16 @@ export class PathCommands {
     const record = this.host.core.record(id);
     if (!this.host.canEdit() || record?.type !== type || this.host.core.isLocked(id)) return null;
     return record as Extract<NodeRecord, { type: T }>;
+  }
+
+  // Línea de la Pluma por estos puntos (en mundo), redondeados a 0,001. Entra en el marco que haya bajo el centro de
+  // su caja, como las demás formas. null con menos de 2 puntos o más de los permitidos.
+  createPolyline(points: ReadonlyArray<Point>): string | null {
+    if (points.length < 2 || points.length > DOCUMENT_LIMITS.maxPoints) return null;
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const center = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+    return this.host.create(center, (base, toLocal) => polylineRecord(base, storedWaypoints(points.map(toLocal))));
   }
 
   // `absolute`: los puntos en el sistema del padre.

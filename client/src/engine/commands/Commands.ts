@@ -164,6 +164,15 @@ export class Commands {
         }),
       connectorBoxPatches: (changed) => this.connectorBoxPatches(changed),
       cacheFor: (record) => this.cacheFor(record),
+      create: (at, build) => {
+        if (!this.creationAllowed()) return null;
+        const id = newNodeId();
+        const place = this.placeAt(at);
+        const record = build(this.base(id, place.parentId, place.index), place.toLocal);
+        if (!NodeSchema.safeParse(record).success) return null;
+        this.writeCreated(record, place.reindexed);
+        return id;
+      },
     });
     const flush = () => {
       if (this.pendingStyle) this.commitStyle();
@@ -254,8 +263,10 @@ export class Commands {
   // ── Herramientas y selección ──
 
   // `locked` deja la herramienta activa después de crear; cualquier otro cambio de herramienta la desbloquea.
+  // Salir de la Pluma con una línea a medias la crea si tiene 2 puntos o más.
   setTool(tool: Tool, opts: { locked?: boolean } = {}): void {
     if (!this.canEdit && EDIT_TOOLS.has(tool)) return;
+    if (tool !== 'pen') this.core.controller.commitPen();
     this.core.toolLocked.set(tool !== 'select' && tool !== 'hand' && opts.locked === true);
     this.core.tool.set(tool);
     this.core.controller.cancel();
@@ -269,6 +280,17 @@ export class Commands {
   // Al terminar de crear: vuelve a Seleccionar salvo que la herramienta esté bloqueada.
   finishTool(): void {
     if (!this.core.toolLocked.get()) this.setTool('select');
+  }
+
+  // «Terminar» de la Pluma: crea la línea si tiene 2 puntos o más.
+  finishPen(): boolean {
+    return this.core.controller.finishPen();
+  }
+
+  // «Cancelar» de la Pluma: descarta la línea en curso y vuelve a Seleccionar.
+  cancelPen(): void {
+    this.core.controller.discardPen();
+    this.setTool('select');
   }
 
   // Enter con un solo texto o forma seleccionada abre su texto para editar.
@@ -1075,6 +1097,11 @@ export class Commands {
   }
 
   // ── Recorridos (engine/commands/paths.ts) ──
+
+  // Línea sin puntas por estos puntos (en mundo): la que dibuja la Pluma.
+  createPolyline(points: ReadonlyArray<Point>): string | null {
+    return this.paths.createPolyline(points);
+  }
 
   // Puntos de una línea en el sistema de su padre.
   setLinePoints(id: string, absolute: ReadonlyArray<readonly [number, number]>): void {

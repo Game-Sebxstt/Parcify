@@ -83,6 +83,7 @@
   let hud = $state.raw<Hud | null>(null);
   let activeVertex = $state.raw<ActiveVertex | null>(null);
   let pointLimit = $state(false);
+  let penPoints = $state(0);
   let history = $state({ canUndo: false, canRedo: false });
   let zoom = $state(1);
   let engineReadOnly = $state(true);
@@ -407,6 +408,7 @@
       created.core.hud.subscribe((value) => (hud = value)),
       created.state.activeVertex.subscribe((value) => (activeVertex = value)),
       created.state.pointLimit.subscribe((value) => (pointLimit = value)),
+      created.state.penPoints.subscribe((value) => (penPoints = value)),
       created.state.history.subscribe((value) => (history = value)),
       created.state.zoom.subscribe((value) => (zoom = value)),
       created.state.readOnly.subscribe((value) => (engineReadOnly = value)),
@@ -922,7 +924,7 @@
       onchange={onReplacementPicked}
       data-testid="replace-image-input"
     />
-    {#if engine && container && selection.length > 0 && !hideUi && !engineReadOnly}
+    {#if engine && container && (selection.length > 0 || tool === 'pen') && !hideUi && !engineReadOnly}
       <ContextBar
         {engine}
         records={selection}
@@ -932,6 +934,7 @@
         avoid={contextAvoid}
         touch={inputKind === 'touch'}
         vertex={activeVertex}
+        pen={tool === 'pen' ? penPoints : null}
         onmore={openMoreMenu}
         onreplaceimage={pickReplacement}
         onescape={() => container?.focus({ preventScroll: true })}

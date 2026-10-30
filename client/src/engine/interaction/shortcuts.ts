@@ -20,6 +20,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { key: 'l', shift: true, run: tool('arrow'), edit: true },
   { key: 't', run: tool('text'), edit: true },
   { key: 'c', run: tool('connector'), edit: true },
+  { key: 'p', run: tool('pen'), edit: true },
   { key: 'f', run: tool('frame'), edit: true },
   { key: 'enter', run: (c) => void c.enterSelection() },
   { key: 'enter', shift: true, run: (c) => void c.selectParent() },

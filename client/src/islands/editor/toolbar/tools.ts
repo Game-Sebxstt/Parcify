@@ -6,6 +6,7 @@ import Hand from '@lucide/svelte/icons/hand';
 import Hexagon from '@lucide/svelte/icons/hexagon';
 import MousePointer from '@lucide/svelte/icons/mouse-pointer-2';
 import MoveUpRight from '@lucide/svelte/icons/move-up-right';
+import PenTool from '@lucide/svelte/icons/pen-tool';
 import Slash from '@lucide/svelte/icons/slash';
 import Square from '@lucide/svelte/icons/square';
 import Star from '@lucide/svelte/icons/star';
@@ -40,6 +41,7 @@ export const TOOLS: readonly ToolItem[] = [
   { id: 'line', group: 'lines', label: m.editor_tool_line_name, icon: Slash, shortcut: 'L' },
   { id: 'arrow', group: 'lines', label: m.editor_tool_arrow_name, icon: MoveUpRight, shortcut: 'Shift+L' },
   { id: 'connector', group: 'lines', label: m.editor_tool_connector_name, icon: Waypoints, shortcut: 'C' },
+  { id: 'pen', group: 'lines', label: m.editor_tool_pen_name, icon: PenTool, shortcut: 'P' },
   { id: 'text', group: 'text', label: m.editor_tool_text_name, icon: Type, shortcut: 'T' },
 ];
 

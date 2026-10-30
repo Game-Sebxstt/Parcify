@@ -23,6 +23,7 @@ export class OverlayLayer {
   private readonly guides = new Graphics();
   private readonly extras = new Graphics();
   private readonly anchor = new Graphics();
+  private readonly pen = new Graphics();
   // Un contexto por tamaño de tirador: todos los cuadrados de un tamaño comparten la misma geometría.
   private readonly handleContexts = new Map<number, GraphicsContext>();
   private readonly handlePool: Graphics[] = [];
@@ -31,12 +32,13 @@ export class OverlayLayer {
   private drawnHover: OverlayModel['hover'] | undefined = undefined;
   private drawnMarquee: OverlayModel['marquee'] | undefined = undefined;
   private drawnAnchor: OverlayModel['anchorTarget'] | undefined = undefined;
+  private drawnPen: { points: Point[]; closing: boolean; size: number } | null | undefined = undefined;
 
   constructor() {
     this.container.eventMode = 'none';
     this.container.interactiveChildren = false;
     this.selection.addChild(this.frame, this.handles, this.marks);
-    this.container.addChild(this.guides, this.extras, this.anchor, this.selection);
+    this.container.addChild(this.guides, this.extras, this.anchor, this.selection, this.pen);
   }
 
   draw(model: OverlayModel): void {
@@ -63,6 +65,13 @@ export class OverlayLayer {
       this.drawAnchor(model.anchorTarget);
     }
 
+    const size = model.profile.handleDraw;
+    const drawn = this.drawnPen;
+    if (drawn === undefined || !samePen(drawn, model.pen, size)) {
+      this.drawnPen = model.pen && { points: model.pen.points.map((p) => ({ x: p.x, y: p.y })), closing: model.pen.closing, size };
+      this.drawPen(model.pen, size);
+    }
+
     this.selection.position.set(model.selectionOffset.x, model.selectionOffset.y);
     if (model.selectionKey !== null && model.selectionKey === this.selectionKey) return;
     this.selectionKey = model.selectionKey;
@@ -77,6 +86,16 @@ export class OverlayLayer {
       g.circle(p.x, p.y, (i === target.active ? ACTIVE_ANCHOR_PX : ANCHOR_PX) / 2);
     });
     if (target.anchors.length) g.fill({ color: SAGE, alpha: 1 }).stroke({ width: 1, color: SURFACE, alpha: 1 });
+  }
+
+  // Vértices de la línea de la Pluma como los de una línea seleccionada; el último, relleno si un clic la terminaría.
+  private drawPen(pen: OverlayModel['pen'], size: number): void {
+    const g = this.pen.clear();
+    if (!pen) return;
+    pen.points.forEach((p, i) => {
+      const fill = pen.closing && i === pen.points.length - 1 ? ACCENT : WHITE;
+      g.circle(p.x, p.y, size / 2).fill({ color: fill, alpha: 1 }).stroke({ width: 1.5, color: ACCENT, alpha: 1 });
+    });
   }
 
   private drawSelection(model: OverlayModel): void {
@@ -191,6 +210,11 @@ function samePoints(a: readonly Point[] | null, b: readonly Point[] | null): boo
 function sameBox(a: OverlayModel['marquee'], b: OverlayModel['marquee']): boolean {
   if (!a || !b) return a === b;
   return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+}
+
+function samePen(a: { points: Point[]; closing: boolean; size: number } | null, b: OverlayModel['pen'], size: number): boolean {
+  if (!a || !b) return a === b;
+  return a.size === size && a.closing === b.closing && samePoints(a.points, b.points);
 }
 
 function sameAnchor(a: OverlayModel['anchorTarget'], b: OverlayModel['anchorTarget']): boolean {

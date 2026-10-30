@@ -72,9 +72,9 @@ import {
   type SceneRecord,
 } from './types.ts';
 
-export type Tool = 'select' | 'hand' | BasicShapeType | 'line' | 'arrow' | 'connector' | 'text' | 'frame';
+export type Tool = 'select' | 'hand' | BasicShapeType | 'line' | 'arrow' | 'connector' | 'pen' | 'text' | 'frame';
 
-export const EDIT_TOOLS: ReadonlySet<Tool> = new Set(['rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc', 'line', 'arrow', 'connector', 'text', 'frame']);
+export const EDIT_TOOLS: ReadonlySet<Tool> = new Set(['rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc', 'line', 'arrow', 'connector', 'pen', 'text', 'frame']);
 
 // Tras este tiempo sin mover la cámara se decide el nivel de detalle de las imágenes.
 export const CAMERA_SETTLE_MS = 200;
@@ -250,6 +250,8 @@ export class EditorCore {
   readonly activeVertex = new Store<ActiveVertex | null>(null, (a, b) => a === b || (!!a && !!b && a.id === b.id && a.index === b.index));
   // La línea o el conector seleccionado llegó al máximo de puntos (512) o de waypoints (64): ya no hay puntos medios.
   readonly pointLimit = new Store(false);
+  // Puntos fijados de la línea que dibuja la Pluma (0 sin línea en curso).
+  readonly penPoints = new Store(0);
 
   // Grupo en el que se ha entrado con doble clic: sus hijos se seleccionan directamente.
   scope: string | null = null;
@@ -361,6 +363,8 @@ export class EditorCore {
   // si lo hay, el punto medio que tiene debajo.
   private lineHover: { id: string; mid: number | null } | null = null;
   private anchorTarget: AnchorTarget | null = null;
+  // Puntos fijados de la Pluma, en mundo; `closing`: el puntero está sobre el último y un clic terminaría la línea.
+  private penDraft: { points: Point[]; closing: boolean } | null = null;
   // Ángulo que muestra la píldora mientras se gira.
   private rotationReadout: { angle: number; snapped: boolean } | null = null;
   private lastSelectionModel: OverlayModel['selection'] = null;
@@ -1591,6 +1595,13 @@ export class EditorCore {
     this.markOverlayDirty();
   }
 
+  // Puntos de la línea que dibuja la Pluma, para marcarlos en el overlay (la línea se ve con setCreating).
+  setPenDraft(draft: { points: readonly Point[]; closing: boolean } | null): void {
+    this.penDraft = draft && { points: draft.points.map((p) => ({ x: p.x, y: p.y })), closing: draft.closing };
+    this.penPoints.set(draft?.points.length ?? 0);
+    this.markOverlayDirty();
+  }
+
   setRotationReadout(readout: { angle: number; snapped: boolean } | null): void {
     const same = readout === this.rotationReadout || (!!readout && !!this.rotationReadout && readout.angle === this.rotationReadout.angle && readout.snapped === this.rotationReadout.snapped);
     if (same) return;
@@ -1914,6 +1925,10 @@ export class EditorCore {
     const model: OverlayModel = {
       profile: { handleDraw: profile.handleDraw, showHoverOnly: profile.showHoverOnly },
       anchorTarget: this.anchorTargetModel(),
+      pen: this.penDraft && {
+        points: this.penDraft.points.map((p) => this.camera.worldToScreen(p.x, p.y)),
+        closing: this.penDraft.closing,
+      },
       selection: null,
       selectionKey,
       selectionOffset: moving ? { x: gestureMatrix[4] * zoom, y: gestureMatrix[5] * zoom } : { x: 0, y: 0 },

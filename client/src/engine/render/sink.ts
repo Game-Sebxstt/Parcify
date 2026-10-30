@@ -46,6 +46,8 @@ export type OverlayModel = {
   };
   // Nodo al que se va a pegar el extremo de un conector: su contorno y sus anclas.
   anchorTarget: { outline: Point[]; anchors: Point[]; active: number | null } | null;
+  // Puntos fijados de la línea que dibuja la Pluma; `closing`: un clic en el último terminaría la línea.
+  pen: { points: Point[]; closing: boolean } | null;
   // Mientras la selección solo se traslada, la clave no cambia y el dibujo se desplaza con este offset.
   selectionKey: string | null;
   selectionOffset: Point;

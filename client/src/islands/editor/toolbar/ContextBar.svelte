@@ -10,6 +10,7 @@
   import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
   import ALargeSmall from '@lucide/svelte/icons/a-large-small';
   import Bold from '@lucide/svelte/icons/bold';
+  import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import CircleMinus from '@lucide/svelte/icons/circle-minus';
   import CornerDownRight from '@lucide/svelte/icons/corner-down-right';
@@ -26,6 +27,7 @@
   import TextAlignStart from '@lucide/svelte/icons/text-align-start';
   import TextCursorInput from '@lucide/svelte/icons/text-cursor-input';
   import Ungroup from '@lucide/svelte/icons/ungroup';
+  import X from '@lucide/svelte/icons/x';
   import type { Snippet } from 'svelte';
   import {
     FRAME_PRESETS,
@@ -66,12 +68,16 @@
     touch: boolean;
     // Vértice marcado de la línea o el conector seleccionado: la barra ofrece «Eliminar punto».
     vertex: ActiveVertex | null;
+    // Con la Pluma activa, los puntos fijados de la línea en curso: la barra ofrece «Terminar» y «Cancelar», encima de
+    // la barra de herramientas, y no sigue a la selección.
+    pen: number | null;
     onmore: (at: { clientX: number; clientY: number }) => void;
     onreplaceimage: (id: string) => void;
+    // Devuelve el foco al lienzo.
     onescape: () => void;
   };
 
-  let { engine, records, rect, container, locked, avoid, touch, vertex, onmore, onreplaceimage, onescape }: Props = $props();
+  let { engine, records, rect, container, locked, avoid, touch, vertex, pen, onmore, onreplaceimage, onescape }: Props = $props();
 
   const GAP = 12;
   // Con el dedo hay un tirador de giro 24 px por encima de la caja (círculo de 14 px): la barra queda por encima.
@@ -80,13 +86,14 @@
   const DEFAULT_FILL = '#D9D9D9FF';
   const DEFAULT_STROKE = '#EEF2F6FF';
 
-  type Kind = 'shape' | 'text' | 'line' | 'image' | 'frame' | 'group' | 'multi' | 'locked';
+  type Kind = 'shape' | 'text' | 'line' | 'image' | 'frame' | 'group' | 'multi' | 'locked' | 'pen';
   type Single<T extends NodeRecord['type']> = Extract<NodeRecord, { type: T }>;
   type Shape = Single<'rect' | 'ellipse' | 'triangle' | 'diamond' | 'star' | 'polygon' | 'arc'>;
   type Fit = Single<'image'>['fit'];
 
   const kind = $derived.by((): Kind => {
-    if (locked) return 'locked';
+    if (pen !== null) return 'pen';
+    if (locked || !records.length) return 'locked';
     if (records.length > 1) return 'multi';
     const type = records[0]!.type;
     if (SHAPES.has(type)) return 'shape';
@@ -94,7 +101,7 @@
     if (type === 'text' || type === 'image' || type === 'frame' || type === 'group') return type;
     return 'locked';
   });
-  const gap = $derived(touch && kind !== 'line' && kind !== 'locked' ? TOUCH_GAP : GAP);
+  const gap = $derived(touch && kind !== 'line' && kind !== 'locked' && kind !== 'pen' ? TOUCH_GAP : GAP);
   const single = $derived(records.length === 1 ? records[0]! : null);
   const shape = $derived(single && SHAPES.has(single.type) ? (single as Shape) : null);
   const text = $derived(single?.type === 'text' ? single : null);
@@ -114,7 +121,10 @@
     if (rect) last = rect;
     return rect ?? last;
   });
-  const visible = $derived(rect !== null || focusInside);
+  const visible = $derived(kind === 'pen' || rect !== null || focusInside);
+
+  let viewportWidth = $state(0);
+  let viewportHeight = $state(0);
 
   // Se recoloca cuando el motor publica otra caja, cambian los márgenes o cambia el contenido (y con él el ancho).
   function place(el: HTMLElement) {
@@ -123,6 +133,14 @@
     const offset = gap;
     void kind;
     void vertex;
+    void pen;
+    if (kind === 'pen') {
+      // Fija encima de la barra de herramientas, centrada en el hueco entre los paneles: no salta con cada punto.
+      const width = Math.max(0, viewportWidth - padding.left - padding.right);
+      const strip = { x: padding.left, y: viewportHeight - padding.bottom, width, height: 0 };
+      void placeOverCanvas(el, strip, { placement: 'top', gap: 0, padding, hidePadding: 0 });
+      return;
+    }
     if (!target) return;
     const box = container.getBoundingClientRect();
     void placeOverCanvas(el, { x: box.left + target.x, y: box.top + target.y, width: target.width, height: target.height }, {
@@ -290,6 +308,8 @@
   const NONE = `linear-gradient(to top right, transparent calc(50% - 0.75px), var(--color-ink-muted) 50%, transparent calc(50% + 0.75px)), ${CHECKER}`;
 </script>
 
+<svelte:window bind:innerWidth={viewportWidth} bind:innerHeight={viewportHeight} />
+
 <!-- Tooltip al pasar el ratón por encima de un control que ya abre su propio popover o menú. -->
 {#snippet hint(text: string, content: Snippet)}
   <Tooltip {text} side="top">
@@ -364,7 +384,7 @@
   bind:this={bar}
   role="toolbar"
   tabindex="-1"
-  aria-label={m.editor_context_bar()}
+  aria-label={kind === 'pen' ? m.editor_pen_bar() : m.editor_context_bar()}
   aria-orientation="horizontal"
   data-testid="context-bar"
   data-kind={kind}
@@ -378,7 +398,45 @@
   onkeydown={onKeydown}
   {@attach place}
 >
-  {#if kind === 'shape' && shape}
+  {#if kind === 'pen'}
+    <span class="px-2 text-ui text-ink-muted" data-testid="pen-hint">{touch ? m.editor_pen_hint_touch() : m.editor_pen_hint()}</span>
+    {@render separator()}
+    <Tooltip text={m.editor_pen_finish_hint()} kbd="Enter" side="top">
+      {#snippet children(props)}
+        <button
+          {...props}
+          type="button"
+          disabled={(pen ?? 0) < 2}
+          class={[TRIGGER, 'px-2 font-semibold text-coral disabled:cursor-default disabled:text-ink-muted disabled:opacity-60 disabled:hover:bg-transparent']}
+          data-testid="pen-finish"
+          onclick={() => {
+            commands.finishPen();
+            onescape();
+          }}
+        >
+          <Check size={16} aria-hidden="true" />
+          {m.editor_pen_finish()}
+        </button>
+      {/snippet}
+    </Tooltip>
+    <Tooltip text={m.editor_pen_cancel_hint()} side="top">
+      {#snippet children(props)}
+        <button
+          {...props}
+          type="button"
+          class={[TRIGGER, 'px-2 text-ink']}
+          data-testid="pen-cancel"
+          onclick={() => {
+            commands.cancelPen();
+            onescape();
+          }}
+        >
+          <X size={16} aria-hidden="true" />
+          {m.editor_pen_cancel()}
+        </button>
+      {/snippet}
+    </Tooltip>
+  {:else if kind === 'shape' && shape}
     {@render fillPicker(shape.fill)}
     {@render strokePicker(shape.stroke)}
     {#if shape.type === 'rect'}
@@ -553,10 +611,12 @@
       <Group size={16} aria-hidden="true" />
     </ToolButton>
   {/if}
-  {#if kind !== 'locked'}
-    {@render separator()}
+  {#if kind !== 'pen'}
+    {#if kind !== 'locked'}
+      {@render separator()}
+    {/if}
+    <ToolButton variant="tool" size="sm" side="top" label={m.editor_context_more_label()} tip={m.editor_context_more()} testid="context-more" onclick={more}>
+      <Ellipsis size={16} aria-hidden="true" />
+    </ToolButton>
   {/if}
-  <ToolButton variant="tool" size="sm" side="top" label={m.editor_context_more_label()} tip={m.editor_context_more()} testid="context-more" onclick={more}>
-    <Ellipsis size={16} aria-hidden="true" />
-  </ToolButton>
 </div>
