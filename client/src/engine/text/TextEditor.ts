@@ -1,3 +1,4 @@
+import type { StylePatch } from '../commands/Commands.ts';
 import type { EditorCore, TextEditing } from '../EditorCore.ts';
 import type { TextSessionState } from '../doc/protocol.ts';
 import { parseColor } from '../render/color.ts';
@@ -69,6 +70,8 @@ class Session {
   // Último valor escrito en el DOM por render().
   private rendered: string;
   private transformKey = '';
+  // Última selección local dentro del editor, para devolverla al recuperar el foco.
+  private kept = { anchor: 0, head: 0 };
 
   constructor(
     private readonly core: EditorCore,
@@ -96,8 +99,11 @@ class Session {
       border: '0',
       outline: 'none',
       background: 'transparent',
+      // Mismo reparto en líneas que el lienzo (textStyleOf). Lo que mida de más por subpíxeles se ve, no se corta.
       whiteSpace: 'pre-wrap',
       overflowWrap: 'anywhere',
+      letterSpacing: '0px',
+      overflow: 'visible',
       transformOrigin: '0 0',
       minWidth: '1px',
       cursor: 'text',
@@ -121,7 +127,9 @@ class Session {
     this.listen(element, 'compositionstart', this.onCompositionStart);
     this.listen(element, 'compositionend', this.onCompositionEnd);
     this.listen(element, 'keydown', this.onKeyDown as EventListener);
+    this.listen(element, 'focus', this.onFocus);
     this.listen(document, 'selectionchange', this.onSelectionChange);
+    if (typeof window !== 'undefined' && window.visualViewport) this.listen(window.visualViewport, 'resize', this.revealCaret);
     this.cleanups.push(core.onTextState((state, applied) => this.onState(state, applied)));
     this.cleanups.push(core.onFrame(() => this.position()));
 
@@ -190,10 +198,17 @@ class Session {
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
     const ctrl = event.ctrlKey || event.metaKey;
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' || (ctrl && event.key === 'Enter')) {
       event.preventDefault();
       event.stopPropagation();
-      this.core.stopTextEdit();
+      this.exit();
+      return;
+    }
+    const key = event.key.toLowerCase();
+    if (ctrl && !event.altKey && !event.shiftKey && (key === 'b' || key === 'i' || key === 'u')) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.toggleStyle(key);
       return;
     }
     if (ctrl && !event.altKey && (event.key.toLowerCase() === 'z' || event.key.toLowerCase() === 'y')) {
@@ -208,21 +223,56 @@ class Session {
     if (this.applying || this.composing || document.activeElement !== this.element) return;
     const range = this.offsets();
     if (!range) return;
+    this.kept = { anchor: range.anchor, head: range.head };
     this.model.caret(range.anchor, range.head);
   };
 
-  private afterLocalChange(): void {
-    this.fit();
-    this.position();
-    this.drawCarets();
+  // El foco vuelve desde la barra contextual (un desplegable, el color): el caret sigue donde estaba.
+  private readonly onFocus = () => {
+    if (this.offsets()) return;
+    const length = this.textNode.length;
+    this.select(Math.min(this.kept.anchor, length), Math.min(this.kept.head, length));
+  };
+
+  // Esc o Ctrl/⌘+Enter: confirma y deja el nodo seleccionado (si al quedar vacío se borró, no queda nada).
+  private exit(): void {
+    const id = this.id;
+    this.core.stopTextEdit();
+    if (this.core.record(id)) this.core.setSelection([id]);
   }
 
-  // Un texto crece con lo que se escribe: su caja en el documento sigue al editor.
-  private fit(): void {
+  // Ctrl/⌘+B alterna el peso 400↔700, +I la cursiva y +U el subrayado, en todo el texto (no hay estilos por rango).
+  private toggleStyle(key: 'b' | 'i' | 'u'): void {
     const record = this.core.store.get(this.id);
     if (record?.type !== 'text') return;
-    this.core.commands.fitText(this.id, { h: this.element.offsetHeight, ...(record.autoWidth ? { w: this.element.offsetWidth } : {}) });
+    const patch: StylePatch =
+      key === 'b' ? { fontWeight: record.fontWeight >= 600 ? 400 : 700 } : key === 'i' ? { italic: !record.italic } : { underline: !record.underline };
+    this.core.commands.setStyle(patch, [this.id]);
   }
+
+  private afterLocalChange(): void {
+    // La caja la mide siempre measureTextBox, con lo que se ve en el editor; el DOM solo da el caret y la entrada.
+    this.core.commands.remeasureText(this.id, this.model.value);
+    this.position();
+    this.drawCarets();
+    this.revealCaret();
+  }
+
+  // Con el teclado virtual abierto, el caret no debe quedar debajo de él: la cámara sube lo que falte.
+  private readonly revealCaret = () => {
+    const viewport = typeof window === 'undefined' ? null : window.visualViewport;
+    // Solo con algo tapando la parte de abajo de la ventana (el teclado): en escritorio la cámara no se mueve sola.
+    if (!viewport || document.activeElement !== this.element || viewport.height >= window.innerHeight - 1) return;
+    const head = this.offsets()?.head ?? this.textNode.length;
+    const caret = this.caretRect(head);
+    if (!caret) return;
+    const limit = viewport.offsetTop + viewport.height - 16;
+    const overflow = caret.top + caret.height - limit;
+    if (overflow <= 0) return;
+    this.core.markUserCamera();
+    this.core.camera.panBy(0, -(overflow + 24));
+    this.core.requestFrame();
+  };
 
   // ── Estado del host (cambios de los demás, deshacer) ──
 
@@ -357,7 +407,8 @@ class Session {
     const selection = document.getSelection();
     if (!selection) return;
     const length = this.textNode.length;
-    selection.setBaseAndExtent(this.textNode, Math.min(anchor, length), this.textNode, Math.min(head, length));
+    this.kept = { anchor: Math.min(anchor, length), head: Math.min(head, length) };
+    selection.setBaseAndExtent(this.textNode, this.kept.anchor, this.textNode, this.kept.head);
   }
 
   // ── Posición y estilo ──

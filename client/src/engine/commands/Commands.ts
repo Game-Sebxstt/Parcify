@@ -40,11 +40,14 @@ import {
   type ContainerRecord,
   type FrameRecord,
   type NodeRecord,
+  type TextRecord,
 } from '../types.ts';
 import { DEFAULT_SIZE, DEFAULT_TEXT, framePreset, imageSize, newConnector, newFrame, newGroup, newImage, newLine, newShape, newText, type FramePresetId } from './defaults.ts';
 import type { RecordedChange } from './animation.ts';
 import { changeOfBasis, groupPatch, reexpressPatch } from './group.ts';
 import { PathCommands, transformWaypoints } from './paths.ts';
+import { onFontLoad } from '../text/fonts.ts';
+import { measureTextBox } from '../text/measure.ts';
 import type { AssistantPlan } from '../../shared/ai/assistant.js';
 import { resolvePlan, type PlanView } from '../ai/plan.ts';
 
@@ -138,9 +141,16 @@ const PASTE_WRAP_CHARS = 60;
 const PASTE_TEXT_WIDTH = 480;
 // Ancho medio de un carácter respecto al tamaño de la fuente, para estimar la caja antes de pintarlo.
 const TEXT_CHAR_RATIO = 0.55;
+// La segunda medida de un texto, cuando carga su fuente, solo se escribe con su edición abierta o hasta tantos ms
+// después del cambio que la pidió.
+const REMEASURE_MS = 2000;
 
 export class Commands {
   private styleTimer: ReturnType<typeof setTimeout> | null = null;
+  // Textos que este cliente cambió (estilo o contenido) sin poder medirlos porque su fuente no había cargado: id →
+  // performance.now() del cambio. Solo el cliente autor vuelve a medir; los demás pintan la caja guardada.
+  private readonly pendingRemeasure = new Map<string, number>();
+  private readonly unsubscribeFonts: () => void;
   private pendingStyle: { ids: string[]; each: Map<string, StylePatch> } | null = null;
   private pendingGeometry: { ids: string[]; patch: GeometryPatch } | null = null;
   private readonly unsubscribeSelection: () => void;
@@ -184,6 +194,7 @@ export class Commands {
       if (this.ops) queueMicrotask(flush);
       else flush();
     });
+    this.unsubscribeFonts = onFontLoad(() => this.remeasurePending());
   }
 
   get canEdit(): boolean {
@@ -538,9 +549,59 @@ export class Commands {
     if (!this.creationAllowed()) return null;
     const id = newNodeId();
     const place = this.placeAt(at);
-    const record = newText(this.base(id, place.parentId, place.index), place.toLocal(at), width);
+    const created = newText(this.base(id, place.parentId, place.index), place.toLocal(at), width);
+    const record = { ...created, ...this.textBoxPatch(created, this.textBox(id, created, '')) };
     this.writeCreated(record, place.reindexed, '');
     return id;
+  }
+
+  // Caja medida de un texto con este registro y este contenido, según su modo: en auto-ancho, w y h; con ancho fijo,
+  // solo h; con fixedHeight, solo w (en auto-ancho). null si no hay nada que medir o aún no se puede: si es por la
+  // fuente, el texto queda pendiente y se vuelve a medir cuando cargue.
+  private textBox(id: string, record: TextRecord, content: string): { w?: number; h?: number } | null {
+    if (!record.autoWidth && record.fixedHeight) return null;
+    const box = measureTextBox(record, content);
+    if (!box) {
+      this.pendingRemeasure.set(id, performance.now());
+      return null;
+    }
+    this.pendingRemeasure.delete(id);
+    return { ...(record.autoWidth ? { w: box.w } : {}), ...(record.fixedHeight ? {} : { h: box.h }) };
+  }
+
+  // Lo que cambia de la caja guardada, redondeado hacia arriba y dentro de los límites del documento.
+  private textBoxPatch(record: TextRecord, size: { w?: number; h?: number } | null): { w?: number; h?: number } {
+    const patch: { w?: number; h?: number } = {};
+    if (!size) return patch;
+    const round = (value: number) => Math.max(1, Math.min(DOCUMENT_LIMITS.maxSize, Math.ceil(value)));
+    if (size.w !== undefined && Math.abs(round(size.w) - record.w) >= 1) patch.w = round(size.w);
+    if (size.h !== undefined && Math.abs(round(size.h) - record.h) >= 1) patch.h = round(size.h);
+    return patch;
+  }
+
+  // Vuelve a medir un texto con su contenido actual y escribe la caja fundida con el paso de deshacer anterior (la
+  // escritura o el cambio de estilo que la pidió).
+  // `content`: lo que se ve en el editor, que va por delante del documento mientras el host confirma la escritura.
+  remeasureText(id: string, content: string = this.core.store.text(id)): void {
+    const record = this.core.record(id);
+    if (!this.canEdit || record?.type !== 'text') return;
+    const size = this.textBox(id, record, content);
+    if (size) this.fitText(id, size);
+  }
+
+  // Ha cargado una fuente: los textos pendientes se miden si su edición sigue abierta o el cambio es reciente; los
+  // demás se descartan (su caja guardada sigue valiendo y se corregirá en la siguiente edición).
+  private remeasurePending(): void {
+    if (!this.pendingRemeasure.size) return;
+    const now = performance.now();
+    const editing = this.core.editingText.get()?.id;
+    for (const [id, at] of [...this.pendingRemeasure]) {
+      this.pendingRemeasure.delete(id);
+      if (id !== editing && now - at >= REMEASURE_MS) continue;
+      this.remeasureText(id);
+      // Otra fuente que aún no ha cargado: sigue pendiente desde el cambio original.
+      if (this.pendingRemeasure.has(id)) this.pendingRemeasure.set(id, at);
+    }
   }
 
   // Garantiza que el nodo tiene su texto (el texto interior de una forma se crea al editarlo por primera vez).
@@ -581,14 +642,12 @@ export class Commands {
     }
   }
 
-  // Ajusta la caja de un texto a lo que ocupa mientras se escribe; se funde con el paso de deshacer de la escritura.
-  fitText(id: string, size: { w?: number; h: number }): void {
+  // Escribe la caja medida de un texto; se funde con el paso de deshacer de la escritura. Con fixedHeight el alto no
+  // cambia nunca.
+  fitText(id: string, size: { w?: number; h?: number }): void {
     const record = this.core.record(id);
     if (!this.canEdit || record?.type !== 'text') return;
-    const patch: Record<string, unknown> = {};
-    const round = (value: number) => Math.max(1, Math.min(DOCUMENT_LIMITS.maxSize, Math.ceil(value)));
-    if (size.w !== undefined && Math.abs(round(size.w) - record.w) >= 1) patch.w = round(size.w);
-    if (Math.abs(round(size.h) - record.h) >= 1) patch.h = round(size.h);
+    const patch = this.textBoxPatch(record, record.fixedHeight ? { ...(size.w !== undefined ? { w: size.w } : {}) } : size);
     if (!Object.keys(patch).length) return;
     const connectors = this.connectorBoxPatches(new Map([[id, { ...record, ...patch } as NodeRecord]]));
     this.transact(() => {
@@ -1686,8 +1745,22 @@ export class Commands {
     if (this.recorder) entries = this.recordStyle(entries);
     const patches = entries.flatMap(([id, own]) => this.stylePatches([id], own));
     if (!patches.length) return;
+    // Un texto auto-ancho o auto-alto con otro estilo se vuelve a medir en la misma transacción (y los conectores
+    // anclados a él siguen a su caja).
+    const boxes = new Map<string, NodeRecord>();
+    for (const [id, own] of patches) {
+      const record = this.core.record(id);
+      if (record?.type !== 'text') continue;
+      const next = { ...record, ...own } as TextRecord;
+      const box = this.textBoxPatch(next, this.textBox(id, next, this.core.store.text(id)));
+      if (box.w === undefined && box.h === undefined) continue;
+      Object.assign(own, box);
+      boxes.set(id, { ...next, ...box });
+    }
+    const connectors = boxes.size ? this.connectorBoxPatches(boxes) : [];
     this.transact(() => {
       for (const [id, own] of patches) this.patchNode(id, own);
+      for (const [connector, box] of connectors) this.patchNode(connector, box);
     }, options.merge ? 'merge' : 'new');
   }
 
@@ -1871,9 +1944,14 @@ export class Commands {
     const perLine = Math.max(1, Math.floor(PASTE_TEXT_WIDTH / charWidth));
     let rows = 0;
     for (const line of lines) rows += wrap ? Math.max(1, Math.ceil(line.length / perLine)) : 1;
-    const w = wrap ? PASTE_TEXT_WIDTH : Math.max(8, Math.ceil(longest * charWidth));
-    const h = Math.min(DOCUMENT_LIMITS.maxSize, Math.ceil(rows * DEFAULT_TEXT.fontSize * DEFAULT_TEXT.lineHeight));
     const id = newNodeId();
+    // La estimación por caracteres solo vale mientras no se pueda medir (la fuente sin cargar): queda pendiente.
+    const estimate = {
+      w: wrap ? PASTE_TEXT_WIDTH : Math.max(8, Math.ceil(longest * charWidth)),
+      h: Math.min(DOCUMENT_LIMITS.maxSize, Math.ceil(rows * DEFAULT_TEXT.fontSize * DEFAULT_TEXT.lineHeight)),
+    };
+    const probe = { ...newText(this.base(id, null, 'a0'), { x: 0, y: 0 }, wrap ? estimate.w : null), ...estimate };
+    const { w, h } = { ...estimate, ...this.textBoxPatch(probe, this.textBox(id, probe, content)) };
     const place = this.placeAt(at);
     const corner = place.toLocal({ x: at.x - w / 2, y: at.y - h / 2 });
     const record = { ...newText(this.base(id, place.parentId, place.index), corner, wrap ? w : null), w, h };
@@ -1884,6 +1962,8 @@ export class Commands {
 
   destroy(): void {
     this.unsubscribeSelection();
+    this.unsubscribeFonts();
+    this.pendingRemeasure.clear();
     if (this.styleTimer) clearTimeout(this.styleTimer);
     this.styleTimer = null;
   }

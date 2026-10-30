@@ -1,7 +1,26 @@
-import { CanvasTextMetrics, Container, Graphics, Text, TextStyle, type TextStyleFontWeight } from 'pixi.js';
+import { CanvasTextMetrics, Container, Graphics, Text, TextStyle, type TextStyleFontWeight, type TextStyleOptions } from 'pixi.js';
 import { cssFamily, fontReady, loadFont } from '../../text/fonts.ts';
 import { ALIGN_FACTOR, cappedResolution, layoutKey, LONG_TEXT_CHARS, type TextLayout } from '../../text/layout.ts';
 import { parseColor } from '../color.ts';
+
+// El estilo con el que se pinta un texto. measureTextBox mide con este mismo estilo, así que la caja guardada y lo
+// pintado coinciden.
+export function textStyleOf(layout: TextLayout): TextStyleOptions {
+  return {
+    fontFamily: cssFamily(layout.family),
+    fontSize: layout.size,
+    fontWeight: String(layout.weight) as TextStyleFontWeight,
+    fontStyle: layout.italic ? 'italic' : 'normal',
+    fill: parseColor(layout.color).color,
+    align: layout.align,
+    lineHeight: layout.size * layout.lineHeight,
+    whiteSpace: 'pre',
+    breakWords: true,
+    wordWrap: layout.wrapWidth !== null,
+    wordWrapWidth: layout.wrapWidth ?? 0,
+    padding: Math.ceil(layout.size * 0.2),
+  };
+}
 
 // Un Text de Pixi (canvas) por nodo con texto, más el subrayado y el tachado. La resolución sigue al zoom
 // con el tope de textura por lado; el contenido nunca se interpreta como marcado.
@@ -52,17 +71,7 @@ export class TextView {
     this.key = key;
     const { color, alpha } = parseColor(layout.color);
     const lineHeight = layout.size * layout.lineHeight;
-    const style = this.text.style;
-    style.fontFamily = cssFamily(layout.family);
-    style.fontSize = layout.size;
-    style.fontWeight = String(layout.weight) as TextStyleFontWeight;
-    style.fontStyle = layout.italic ? 'italic' : 'normal';
-    style.fill = color;
-    style.align = layout.align;
-    style.lineHeight = lineHeight;
-    style.wordWrap = layout.wrapWidth !== null;
-    style.wordWrapWidth = layout.wrapWidth ?? 0;
-    style.padding = Math.ceil(layout.size * 0.2);
+    Object.assign(this.text.style, textStyleOf(layout));
     this.text.text = layout.content;
     this.text.alpha = alpha;
 

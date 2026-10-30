@@ -128,7 +128,9 @@ export function bindDom(core: EditorCore, container: HTMLElement, clipboard: Cli
     } catch {
       // Los eventos sintéticos no tienen un puntero activo que capturar.
     }
-    if (event.button === 1) event.preventDefault();
+    // Con el dedo, sin los eventos de ratón de compatibilidad: su mousedown llevaría el foco al lienzo después de que el
+    // toque abriera el editor de texto, y el teclado virtual se cerraría.
+    if (event.button === 1 || lastDownKind === 'touch') event.preventDefault();
     router.down(toInput(event));
     if (!keepTextFocus && document.activeElement !== container) container.focus({ preventScroll: true });
   };

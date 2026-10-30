@@ -84,6 +84,8 @@
   let activeVertex = $state.raw<ActiveVertex | null>(null);
   let pointLimit = $state(false);
   let penPoints = $state(0);
+  // Se escribe un nodo de texto (no el texto interior de una forma): la barra contextual no le quita el foco.
+  let editingText = $state(false);
   let history = $state({ canUndo: false, canRedo: false });
   let zoom = $state(1);
   let engineReadOnly = $state(true);
@@ -409,6 +411,7 @@
       created.state.activeVertex.subscribe((value) => (activeVertex = value)),
       created.state.pointLimit.subscribe((value) => (pointLimit = value)),
       created.state.penPoints.subscribe((value) => (penPoints = value)),
+      created.state.editingText.subscribe((value) => (editingText = value?.kind === 'text')),
       created.state.history.subscribe((value) => (history = value)),
       created.state.zoom.subscribe((value) => (zoom = value)),
       created.state.readOnly.subscribe((value) => (engineReadOnly = value)),
@@ -935,6 +938,7 @@
         touch={inputKind === 'touch'}
         vertex={activeVertex}
         pen={tool === 'pen' ? penPoints : null}
+        editing={editingText}
         onmore={openMoreMenu}
         onreplaceimage={pickReplacement}
         onescape={() => container?.focus({ preventScroll: true })}

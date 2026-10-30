@@ -27,6 +27,9 @@ import { containsAABB, type AABB, type BasicShapeType, type NodeRecord } from '.
 import type { InputProfile, PointerKind } from './input/profile.ts';
 import { findShortcut, type KeyInput } from './shortcuts.ts';
 
+// Con la herramienta T, un arrastre que deja una caja de al menos tanto ancho en pantalla crea un texto de ancho fijo.
+export const TEXT_MIN_DRAG_PX = 24;
+
 export type PointerInput = {
   x: number;
   y: number;
@@ -801,7 +804,10 @@ export class PointerController {
     if (tool === 'text') {
       this.core.setMarquee(null);
       const box = this.createBox({ ...input, shift: false, alt: false }, down);
-      this.createText({ x: box.x, y: box.y }, box.w);
+      // Una caja estrecha en pantalla es un clic que se ha movido: auto-ancho donde empezó.
+      const fixed = Math.abs(input.x - down.x) >= TEXT_MIN_DRAG_PX;
+      if (fixed) this.createText({ x: box.x, y: box.y }, box.w);
+      else this.createText(this.world(down), null);
       return;
     }
     if (tool === 'connector') {
@@ -984,6 +990,12 @@ export class PointerController {
         if (!this.core.enter(target.id, input.x, input.y)) this.core.startTextEdit(target.id);
       }
     } else if (target.kind === 'empty' && !input.shift) {
+      // Doble clic en vacío (también el segundo clic tras uno en el hueco de la selección): un texto en ese punto.
+      if (last?.id === null && this.isDoubleClick(last, input, now) && !this.readOnly) {
+        this.lastClick = null;
+        this.createText(this.world(input), null);
+        return;
+      }
       this.lastClick = { id: null, x: input.x, y: input.y, time: now };
     } else {
       this.lastClick = null;

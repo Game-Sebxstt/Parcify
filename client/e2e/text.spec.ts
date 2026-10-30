@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { canvasGap } from './helpers/canvas.ts';
 import { joinWorkspace } from './helpers/invite.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
+import { doubleTap, pinch, twoFingerPan } from './helpers/touch.ts';
 
-type Node = { id: string; type: string; x: number; y: number; w: number; h: number };
+type Node = { id: string; type: string; x: number; y: number; w: number; h: number; autoWidth?: boolean; fontSize?: number; fontWeight?: number };
 
 const nodes = (page: Page) => page.evaluate(() => window.__parcifyTest!.nodes() as unknown as Node[]);
 const texts = (page: Page) => page.evaluate(() => window.__parcifyTest!.texts());
@@ -92,4 +94,184 @@ test('un texto vacío se borra al salir', async ({ page }) => {
   await expect.poll(async () => (await nodes(page)).length).toBe(1);
   await page.keyboard.press('Escape');
   await expect.poll(async () => (await nodes(page)).length).toBe(0);
+});
+
+const textNodes = async (page: Page) => (await nodes(page)).filter((n) => n.type === 'text');
+const editorBox = (page: Page) => page.getByRole('textbox', { name: 'Texto', exact: true });
+// Píxeles de pantalla por unidad de la página.
+const zoomOf = async (page: Page) => {
+  const [a, b] = await Promise.all([toPage(page, 0, 0), toPage(page, 100, 0)]);
+  return (b.x - a.x) / 100;
+};
+
+async function openNew(page: Page, label: string) {
+  const account = await createVerifiedAccount(page.request, `${label}-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const gap = await canvasGap(page);
+  return { canvas: page.getByRole('application', { name: 'Lienzo del proyecto' }), center: { x: gap.x + gap.width / 2, y: gap.y + gap.height / 2 } };
+}
+
+test('T: un clic crea auto-ancho y un arrastre de 200 px, ancho fijo con w = 200/zoom (CA-4.1)', async ({ page }) => {
+  const { canvas, center } = await openNew(page, 'text-create');
+  await canvas.focus();
+  await page.keyboard.press('t');
+  await page.mouse.click(center.x - 200, center.y - 80);
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.type('Clic');
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await textNodes(page)).length).toBe(1);
+  expect((await textNodes(page))[0]!.autoWidth).toBe(true);
+
+  await canvas.focus();
+  await page.keyboard.press('t');
+  const from = { x: center.x - 200, y: center.y + 20 };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 100, from.y + 20, { steps: 4 });
+  await page.mouse.move(from.x + 200, from.y + 40, { steps: 4 });
+  await page.mouse.up();
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.type('Arrastre');
+  const fixedNode = async () => (await textNodes(page)).find((n) => n.autoWidth === false)!;
+  await expect.poll(async () => (await fixedNode())?.h ?? 0).toBeGreaterThan(0);
+  const oneLine = (await fixedNode()).h;
+  // Con ancho fijo, Enter al final suma una línea a la caja antes de escribir nada en ella.
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await fixedNode()).h).toBeGreaterThan(oneLine * 1.6);
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await textNodes(page)).length).toBe(2);
+  const fixed = await fixedNode();
+  expect(fixed.w).toBeCloseTo(200 / (await zoomOf(page)), 0);
+
+  // Un arrastre que pasa el umbral pero deja menos de 24 px de ancho crea un texto auto-ancho.
+  await canvas.focus();
+  await page.keyboard.press('t');
+  const narrow = { x: center.x + 120, y: center.y - 80 };
+  await page.mouse.move(narrow.x, narrow.y);
+  await page.mouse.down();
+  await page.mouse.move(narrow.x + 8, narrow.y + 20, { steps: 4 });
+  await page.mouse.move(narrow.x + 15, narrow.y + 40, { steps: 4 });
+  await page.mouse.up();
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.type('Estrecho');
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await textNodes(page)).length).toBe(3);
+  expect((await textNodes(page)).filter((n) => n.autoWidth === true)).toHaveLength(2);
+});
+
+test('doble clic en vacío crea un texto y Esc sin escribir no lo deja; entrar y salir no cambia la caja (CA-4.6, CA-4.8)', async ({ page }) => {
+  const { center } = await openNew(page, 'text-dblclick');
+  await page.mouse.dblclick(center.x, center.y);
+  await expect.poll(() => editing(page)).not.toBeNull();
+  await expect(editorBox(page)).toBeFocused();
+  await expect.poll(async () => (await textNodes(page)).length).toBe(1);
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await nodes(page)).length).toBe(0);
+
+  await page.mouse.dblclick(center.x - 100, center.y);
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.type('Una línea\ny otra');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => editing(page)).toBeNull();
+  const [before] = await textNodes(page);
+  // Esc deja el texto seleccionado.
+  expect(await page.evaluate(() => window.__parcifyTest!.selection())).toEqual([before!.id]);
+  const at = await toPage(page, before!.x + before!.w / 2, before!.y + before!.h / 2);
+  await page.mouse.dblclick(at.x, at.y);
+  await expect.poll(() => editing(page)).toBe(before!.id);
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => editing(page)).toBeNull();
+  const [after] = await textNodes(page);
+  expect({ w: after!.w, h: after!.h }).toEqual({ w: before!.w, h: before!.h });
+});
+
+test('cambiar el tamaño de 16 a 32 en el panel mide w y h en un solo paso; Ctrl+B alterna el peso al escribir (CA-4.5)', async ({ page }) => {
+  const { canvas, center } = await openNew(page, 'text-style');
+  await canvas.focus();
+  await page.keyboard.press('t');
+  await page.mouse.click(center.x - 150, center.y - 40);
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.type('Hola mundo');
+  // Ctrl+B durante la edición: el peso pasa a 700 y vuelve a 400, y la edición sigue abierta.
+  await page.keyboard.press('Control+b');
+  await expect.poll(async () => (await textNodes(page))[0]!.fontWeight).toBe(700);
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.press('Control+b');
+  await expect.poll(async () => (await textNodes(page))[0]!.fontWeight).toBe(400);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => editing(page)).toBeNull();
+
+  const size = page.getByTestId('properties-panel').getByTestId('props-font-size');
+  await size.fill('16');
+  await size.press('Enter');
+  await expect.poll(async () => (await textNodes(page))[0]!.fontSize).toBe(16);
+  const small = (await textNodes(page))[0]!;
+  await size.fill('32');
+  await size.press('Enter');
+  await expect.poll(async () => (await textNodes(page))[0]!.fontSize).toBe(32);
+  const big = (await textNodes(page))[0]!;
+  expect(big.w / small.w).toBeGreaterThan(1.8);
+  expect(big.w / small.w).toBeLessThan(2.2);
+  expect(big.h / small.h).toBeGreaterThan(1.8);
+  expect(big.h / small.h).toBeLessThan(2.2);
+  // Un solo paso de deshacer devuelve el tamaño y la caja a la vez.
+  await canvas.focus();
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await textNodes(page))[0]!.fontSize).toBe(16);
+  const undone = (await textNodes(page))[0]!;
+  expect({ w: undone.w, h: undone.h }).toEqual({ w: small.w, h: small.h });
+});
+
+test('doble clic en el hueco de una selección múltiple: el primer clic la vacía y el segundo crea un texto (CA-4.9)', async ({ page }) => {
+  const { canvas, center } = await openNew(page, 'text-gap');
+  for (const dx of [-220, 100]) {
+    await canvas.focus();
+    await page.keyboard.press('r');
+    await page.mouse.move(center.x + dx, center.y - 60);
+    await page.mouse.down();
+    await page.mouse.move(center.x + dx + 60, center.y - 20, { steps: 4 });
+    await page.mouse.move(center.x + dx + 120, center.y + 20, { steps: 4 });
+    await page.mouse.up();
+  }
+  await expect.poll(async () => (await nodes(page)).length).toBe(2);
+  await canvas.focus();
+  await page.keyboard.press('Control+a');
+  await expect.poll(async () => (await page.evaluate(() => window.__parcifyTest!.selection())).length).toBe(2);
+  const hole = { x: center.x - 40, y: center.y - 20 };
+  await page.mouse.click(hole.x, hole.y);
+  await expect.poll(async () => (await page.evaluate(() => window.__parcifyTest!.selection())).length).toBe(0);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
+  await canvas.focus();
+  await page.keyboard.press('Control+a');
+  await expect.poll(async () => (await page.evaluate(() => window.__parcifyTest!.selection())).length).toBe(2);
+  await page.mouse.dblclick(hole.x, hole.y);
+  await expect.poll(async () => (await textNodes(page)).length).toBe(1);
+  await expect(editorBox(page)).toBeFocused();
+});
+
+test('móvil @touch: abrir la edición enfoca el texto; dos dedos no la cierran y un toque fuera sí (CA-4.7, CA-4.10)', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Solo en el proyecto mobile');
+  const { center } = await openNew(page, 'text-touch');
+  await doubleTap(page, { x: center.x - 80, y: center.y - 60 });
+  await expect.poll(() => editing(page)).not.toBeNull();
+  await expect(editorBox(page)).toBeFocused();
+  await page.keyboard.type('Hola');
+  await expect.poll(async () => Object.values(await texts(page))).toEqual(['Hola']);
+
+  await pinch(page, { x: center.x, y: center.y + 80 }, 80, 200);
+  await page.waitForTimeout(150);
+  await expect.poll(() => editing(page)).not.toBeNull();
+  await expect(editorBox(page)).toBeFocused();
+  await twoFingerPan(page, { x: center.x, y: center.y + 80 }, { x: 40, y: 30 });
+  await page.waitForTimeout(150);
+  await expect(editorBox(page)).toBeFocused();
+
+  const editor = (await editorBox(page).boundingBox())!;
+  await page.touchscreen.tap(center.x + 60, editor.y + editor.height + 160);
+  await expect.poll(() => editing(page)).toBeNull();
+  await expect(editorBox(page)).toHaveCount(0);
 });

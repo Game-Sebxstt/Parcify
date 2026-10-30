@@ -41,6 +41,7 @@
   } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import { cssFamily } from '../../../engine/text/fonts.ts';
+  import { TEXT_EDITOR_ATTR } from '../../../engine/text/TextEditor.ts';
   import { FONT_FAMILIES, type FontFamily } from '../../../shared/document/schema.js';
   import { placeOverCanvas } from '../../../ui/anchor.ts';
   import { CHECKER, topColors } from '../../../ui/color.ts';
@@ -71,13 +72,15 @@
     // Con la Pluma activa, los puntos fijados de la línea en curso: la barra ofrece «Terminar» y «Cancelar», encima de
     // la barra de herramientas, y no sigue a la selección.
     pen: number | null;
+    // Se está escribiendo el texto seleccionado: los controles no le quitan el foco y, tras usarlos, vuelve al texto.
+    editing: boolean;
     onmore: (at: { clientX: number; clientY: number }) => void;
     onreplaceimage: (id: string) => void;
     // Devuelve el foco al lienzo.
     onescape: () => void;
   };
 
-  let { engine, records, rect, container, locked, avoid, touch, vertex, pen, onmore, onreplaceimage, onescape }: Props = $props();
+  let { engine, records, rect, container, locked, avoid, touch, vertex, pen, editing, onmore, onreplaceimage, onescape }: Props = $props();
 
   const GAP = 12;
   // Con el dedo hay un tirador de giro 24 px por encima de la caja (círculo de 14 px): la barra queda por encima.
@@ -113,6 +116,26 @@
   const preview = (patch: StylePatch) => commands.previewStyle(patch, { autoCommit: false });
   const commit = (patch: StylePatch) => commands.setStyle(patch);
   const cancel = () => commands.cancelPreview();
+
+  // Durante la edición, el foco vuelve al texto cuando el desplegable o el selector que lo tenía ya lo ha devuelto.
+  function refocusText() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (editing) container.querySelector<HTMLElement>(`[${TEXT_EDITOR_ATTR}]`)?.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  // Un control de un solo toque (B, I, alineación, familia): escribe y, si se estaba escribiendo, sigue escribiendo.
+  function apply(patch: StylePatch) {
+    commit(patch);
+    if (editing) refocusText();
+  }
+
+  // Durante la edición, pulsar un botón de la barra no quita el foco al texto (los campos sí lo toman).
+  function onMousedown(event: MouseEvent) {
+    if (editing && !(event.target instanceof HTMLInputElement)) event.preventDefault();
+  }
 
   // Mientras la cámara se mueve la barra se oculta; si el foco está dentro, se queda donde estaba hasta que vuelva.
   let focusInside = $state(false);
@@ -161,7 +184,8 @@
     // Esc solo saca el foco de la barra: sin cortarlo aquí, el atajo del lienzo vaciaría también la selección.
     event.preventDefault();
     event.stopPropagation();
-    onescape();
+    if (editing) refocusText();
+    else onescape();
   }
 
   let bar = $state<HTMLElement | null>(null);
@@ -238,7 +262,7 @@
       label: item.label(),
       icon: item.icon,
       checked: text?.align === item.id,
-      onSelect: () => commit({ align: item.id }),
+      onSelect: () => apply({ align: item.id }),
     })),
   );
   const capItems = $derived.by<MenuEntry[]>(() => {
@@ -396,6 +420,7 @@
   onfocusin={() => (focusInside = true)}
   onfocusout={onFocusOut}
   onkeydown={onKeydown}
+  onmousedown={onMousedown}
   {@attach place}
 >
   {#if kind === 'pen'}
@@ -465,7 +490,7 @@
       value={text.fontFamily}
       label={m.editor_props_font()}
       testid="context-font"
-      onValueChange={(value) => commit({ fontFamily: value as FontFamily })}
+      onValueChange={(value) => apply({ fontFamily: value as FontFamily })}
     />
     <ScrubInput
       class="mx-1 w-13"
@@ -486,11 +511,22 @@
       side="top"
       label={m.editor_props_weight_700()}
       pressed={text.fontWeight >= 600}
-      onclick={() => commit({ fontWeight: text.fontWeight >= 600 ? 400 : 700 })}
+      kbd={`${MOD_KEY}+B`}
+      ariaKeys={`${MOD_ARIA}+B`}
+      onclick={() => apply({ fontWeight: text.fontWeight >= 600 ? 400 : 700 })}
     >
       <Bold size={16} aria-hidden="true" />
     </ToolButton>
-    <ToolButton variant="tool" size="sm" side="top" label={m.editor_props_italic()} pressed={text.italic} onclick={() => commit({ italic: !text.italic })}>
+    <ToolButton
+      variant="tool"
+      size="sm"
+      side="top"
+      label={m.editor_props_italic()}
+      kbd={`${MOD_KEY}+I`}
+      ariaKeys={`${MOD_ARIA}+I`}
+      pressed={text.italic}
+      onclick={() => apply({ italic: !text.italic })}
+    >
       <Italic size={16} aria-hidden="true" />
     </ToolButton>
     {#snippet alignMenu()}

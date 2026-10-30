@@ -765,7 +765,8 @@ export class EditorCore {
       this.gesture !== null ||
       this.marquee !== null ||
       this.creating !== null ||
-      this.editingText.get() !== null ||
+      // Mientras se escribe un texto, la barra sigue con sus controles; el texto interior de una forma la oculta.
+      (this.editingText.get() !== null && this.editingText.get()?.kind !== 'text') ||
       (state !== 'idle' && state !== 'pressing');
     if (!ids.length || busy) {
       this.barKey = null;

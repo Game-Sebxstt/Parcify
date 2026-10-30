@@ -30,6 +30,23 @@ export function cssFamily(family: FontFamily): string {
 
 const loads = new Map<string, Promise<void>>();
 const ready = new Set<string>();
+const listeners = new Set<() => void>();
+let documentReady = false;
+
+// Avisa cada vez que termina de cargar un estilo de fuente (o falla, y se pinta con la de reserva) y cuando
+// document.fonts.ready se resuelve por primera vez. Quien midió con una fuente sin cargar vuelve a medir.
+export function onFontLoad(listener: () => void): () => void {
+  listeners.add(listener);
+  if (!documentReady && available()) {
+    documentReady = true;
+    void document.fonts.ready.then(notify);
+  }
+  return () => listeners.delete(listener);
+}
+
+function notify(): void {
+  for (const listener of [...listeners]) listener();
+}
 
 const available = () => typeof FontFace !== 'undefined' && typeof document !== 'undefined' && 'fonts' in document;
 
@@ -61,10 +78,12 @@ export function loadFont(family: FontFamily, italic: boolean): Promise<void> {
   ).then(
     () => {
       ready.add(key);
+      notify();
     },
     // Si no carga, se pinta con la fuente por defecto en vez de esperar para siempre.
     () => {
       ready.add(key);
+      notify();
     },
   );
   loads.set(key, load);
