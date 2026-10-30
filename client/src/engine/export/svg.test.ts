@@ -83,7 +83,8 @@ describe('serializeSvg', () => {
 
   it('línea con flecha y conector en coordenadas de mundo', () => {
     const line = svgOf([item(shape('line', { points: [[0, 0], [100, 0]], startCap: 'none', endCap: 'arrow', fill: null }))]);
-    expect(line.match(/<path /g)).toHaveLength(2);
+    expect(line.match(/<path /g)).toHaveLength(1);
+    expect(line.match(/<polyline /g)).toHaveLength(1);
     const connector = record('connector', {
       ...style,
       from: { x: 0, y: 0 },
@@ -94,8 +95,10 @@ describe('serializeSvg', () => {
       path: [5, 5, 55, 55],
     });
     const svg = svgOf([item(connector)]);
-    expect(svg).toContain('<path d="M5 5L55 55"');
-    expect(svg).toContain('<circle cx="5" cy="5"');
+    // Tramo de 70,71 con grosor 2: L = 16. El círculo (r = 6,67) toca el inicio y el trazo se recorta 12 y 14,4.
+    expect(svg).toContain('<path d="M13.49 13.49L44.82 44.82"');
+    expect(svg).toContain('<circle cx="9.71" cy="9.71" r="6.67"');
+    expect(svg).toContain('<polygon points="55,55 ');
     expect(svg).not.toContain('translate(10 20)');
   });
 

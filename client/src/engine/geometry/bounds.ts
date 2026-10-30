@@ -1,3 +1,4 @@
+import { arrowheadPadding } from './arrowheads.ts';
 import { multiply, translation, type Mat } from './matrix.ts';
 import { emptyAABB, type AABB, type NodeRecord } from '../types.ts';
 
@@ -28,7 +29,7 @@ export function paintPadding(record: NodeRecord): number {
   let pad = 0;
   if ('strokeWidth' in record && record.stroke) pad = record.strokeWidth / 2;
   if ((record.type === 'line' || record.type === 'connector') && (record.startCap !== 'none' || record.endCap !== 'none')) {
-    pad = Math.max(pad, record.strokeWidth * 3);
+    pad = Math.max(pad, arrowheadPadding(record.strokeWidth));
   }
   if ('shadow' in record && record.shadow) {
     pad += Math.max(Math.abs(record.shadow.x), Math.abs(record.shadow.y)) + record.shadow.blur;

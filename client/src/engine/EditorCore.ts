@@ -1018,7 +1018,18 @@ export class EditorCore {
       this.terminalOf(record, record.from, 'from', moving, replaced),
       this.terminalOf(record, record.to, 'to', moving, replaced),
       record.route,
+      this.worldWaypoints(record, moving),
     );
+  }
+
+  // Los waypoints se guardan en el sistema del padre, como los extremos libres, y se mueven con el gesto del conector.
+  private worldWaypoints(record: ConnectorRecord, moving?: MovingLookup): Point[] | undefined {
+    const waypoints = record.waypoints;
+    if (!waypoints?.length) return undefined;
+    const parent = this.tree.parentWorld(this.tree.parent(record.id));
+    const matrix = moving?.(record.id);
+    const world = parent && matrix ? multiply(matrix, parent) : (matrix ?? parent);
+    return waypoints.map(([x, y]) => (world ? apply(world, x, y) : { x, y }));
   }
 
   // Recorrido de un conector tal como se pinta ahora mismo (con la vista previa de un gesto si la hay).

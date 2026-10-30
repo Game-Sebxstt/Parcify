@@ -1,4 +1,5 @@
 import type { AssetVariant } from '../assets/AssetResolver.ts';
+import { decorateLine } from '../geometry/arrowheads.ts';
 import { FULL_CROP, imagePlacement } from '../geometry/image.ts';
 import type { Mat } from '../geometry/matrix.ts';
 import { arcPolygon, arcSweep, dashPattern, ellipsePolygon, outline } from '../geometry/shapes.ts';
@@ -122,37 +123,23 @@ class SvgWriter {
     }
   }
 
+  // Mismo trazo y mismas puntas que el lienzo (`decorateLine`).
   private line(record: LineRecord | ConnectorRecord, points: readonly number[]): string {
     if (!record.stroke || record.strokeWidth <= 0 || points.length < 4) return '';
     const width = record.strokeWidth;
     const color = paint(record.stroke, 'stroke');
+    const fill = paint(record.stroke, 'fill');
     const pattern = dashPattern(record.strokeDash, width);
     const dash = pattern ? ` stroke-dasharray="${num(pattern[0])} ${num(pattern[1])}"` : '';
-    let out = `<path d="${pathData(points, false)}" fill="none" ${color} stroke-width="${num(width)}" stroke-linecap="round" stroke-linejoin="round"${dash}/>`;
-    const n = points.length / 2;
-    const at = (i: number) => [points[i * 2]!, points[i * 2 + 1]!] as const;
-    const size = Math.max(8, width * 4);
-    for (const [cap, tip, prev] of [
-      [record.startCap, at(0), at(1)],
-      [record.endCap, at(n - 1), at(n - 2)],
-    ] as const) {
-      const angle = Math.atan2(tip[1] - prev[1], tip[0] - prev[0]);
-      const [tx, ty] = tip;
-      const back = (spread: number) => [tx - size * Math.cos(angle - spread), ty - size * Math.sin(angle - spread), tx - size * Math.cos(angle + spread), ty - size * Math.sin(angle + spread)];
-      if (cap === 'arrow') {
-        const [ax, ay, bx, by] = back(Math.PI / 6);
-        out += `<path d="${pathData([ax!, ay!, tx, ty, bx!, by!], false)}" fill="none" ${color} stroke-width="${num(width)}" stroke-linecap="round" stroke-linejoin="round"/>`;
-      } else if (cap === 'bar') {
-        const half = size / 2;
-        const nx = -Math.sin(angle) * half;
-        const ny = Math.cos(angle) * half;
-        out += `<path d="${pathData([tx + nx, ty + ny, tx - nx, ty - ny], false)}" fill="none" ${color} stroke-width="${num(width)}" stroke-linecap="round"/>`;
-      } else if (cap === 'triangle') {
-        const [ax, ay, bx, by] = back(Math.PI / 7);
-        out += `<path d="${pathData([tx, ty, ax!, ay!, bx!, by!], true)}" ${paint(record.stroke, 'fill')}/>`;
-      } else if (cap === 'circle') {
-        out += `<circle cx="${num(tx)}" cy="${num(ty)}" r="${num(Math.max(3, width * 1.6))}" ${paint(record.stroke, 'fill')}/>`;
-      }
+    const cap = record.strokeDash === 'dashed' ? 'butt' : 'round';
+    const { path, heads } = decorateLine(record, points);
+    let out = path.length >= 4 ? `<path d="${pathData(path, false)}" fill="none" ${color} stroke-width="${num(width)}" stroke-linecap="${cap}" stroke-linejoin="round"${dash}/>` : '';
+    for (const head of heads) {
+      const list = head.points.map((p) => `${num(p.x)},${num(p.y)}`).join(' ');
+      if (head.type === 'polyline' || head.type === 'segment') {
+        out += `<polyline points="${list}" fill="none" ${color} stroke-width="${num(width)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      } else if (head.type === 'polygon') out += `<polygon points="${list}" ${fill}/>`;
+      else out += `<circle cx="${num(head.points[0]!.x)}" cy="${num(head.points[0]!.y)}" r="${num(head.radius ?? 0)}" ${fill}/>`;
     }
     return out;
   }

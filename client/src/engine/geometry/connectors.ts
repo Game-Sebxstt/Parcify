@@ -17,6 +17,9 @@ export type NamedAnchor = (typeof NAMED_ANCHORS)[number];
 // Distancia mínima entre la salida de un codo y el nodo cuando los dos extremos miran al mismo lado.
 export const ELBOW_MARGIN = 24;
 export const CURVE_SEGMENTS = 32;
+// Curva con waypoints: tramos por vano y tope de puntos del recorrido entero.
+export const CURVE_SPAN_SEGMENTS = 16;
+export const MAX_ROUTE_POINTS = 128;
 
 const NORMALS: Record<NamedAnchor, Point | null> = {
   top: { x: 0, y: -1 },
@@ -119,8 +122,14 @@ function directions(start: Terminal, end: Terminal): [Point, Point] {
   return [ds, de];
 }
 
-// Recorrido del conector en mundo, como polilínea plana [x0, y0, x1, y1, …].
-export function routePoints(start: Terminal, end: Terminal, route: ConnectorRoute): number[] {
+// Recorrido del conector en mundo, como polilínea plana [x0, y0, x1, y1, …]. Los `waypoints` llegan en mundo; sin
+// ellos el recorrido es el automático de siempre.
+export function routePoints(start: Terminal, end: Terminal, route: ConnectorRoute, waypoints?: readonly Point[]): number[] {
+  if (waypoints?.length) {
+    if (route === 'straight') return [start.x, start.y, ...waypoints.flatMap((p) => [p.x, p.y]), end.x, end.y];
+    if (route === 'curved') return splineRoute(start, end, waypoints);
+    return elbowThrough(start, end, waypoints);
+  }
   if (route === 'straight') return [start.x, start.y, end.x, end.y];
   const [ds, de] = directions(start, end);
   if (route === 'curved') return curvedRoute(start, end, ds, de);
@@ -193,8 +202,366 @@ function curvedRoute(s: Terminal, e: Terminal, ds: Point, de: Point): number[] {
   return points;
 }
 
-// Quita puntos repetidos y los intermedios alineados con sus vecinos.
-function simplify(points: number[]): number[] {
+// Spline Catmull-Rom centrípeta (α = 0,5) que pasa por el inicio, los waypoints y el final. En un extremo con ancla
+// la tangente es la normal del lado (sale hacia fuera y llega desde fuera); en uno libre, la del primer vano.
+function splineRoute(s: Terminal, e: Terminal, waypoints: readonly Point[]): number[] {
+  const knots: Point[] = [];
+  for (const p of [s, ...waypoints, e]) {
+    const last = knots[knots.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1e-9) knots.push({ x: p.x, y: p.y });
+  }
+  if (knots.length < 2) return [s.x, s.y, e.x, e.y];
+  const spans = knots.length - 1;
+  const steps = Math.max(1, Math.min(CURVE_SPAN_SEGMENTS, Math.floor((MAX_ROUTE_POINTS - 1) / spans)));
+  // Intervalo de parámetro de cada vano: la raíz de su longitud.
+  const dt: number[] = [];
+  for (let i = 0; i < spans; i++) dt.push(Math.sqrt(Math.hypot(knots[i + 1]!.x - knots[i]!.x, knots[i + 1]!.y - knots[i]!.y)));
+  // Velocidad en cada nudo por unidad de parámetro.
+  const velocity: Point[] = knots.map((p, i) => {
+    if (i === 0 || i === spans) {
+      const span = i === 0 ? 0 : spans - 1;
+      const a = knots[span]!;
+      const b = knots[span + 1]!;
+      const speed = Math.hypot(b.x - a.x, b.y - a.y) / dt[span]!;
+      const dir = i === 0 ? s.dir : e.dir && { x: -e.dir.x, y: -e.dir.y };
+      if (dir) return { x: dir.x * speed, y: dir.y * speed };
+      return { x: (b.x - a.x) / dt[span]!, y: (b.y - a.y) / dt[span]! };
+    }
+    const prev = knots[i - 1]!;
+    const next = knots[i + 1]!;
+    const d0 = dt[i - 1]!;
+    const d1 = dt[i]!;
+    return {
+      x: (p.x - prev.x) / d0 - (next.x - prev.x) / (d0 + d1) + (next.x - p.x) / d1,
+      y: (p.y - prev.y) / d0 - (next.y - prev.y) / (d0 + d1) + (next.y - p.y) / d1,
+    };
+  });
+  const out = [knots[0]!.x, knots[0]!.y];
+  for (let i = 0; i < spans; i++) {
+    const a = knots[i]!;
+    const b = knots[i + 1]!;
+    const ma = { x: velocity[i]!.x * dt[i]!, y: velocity[i]!.y * dt[i]! };
+    const mb = { x: velocity[i + 1]!.x * dt[i]!, y: velocity[i + 1]!.y * dt[i]! };
+    for (let k = 1; k <= steps; k++) {
+      const t = k / steps;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const h00 = 2 * t3 - 3 * t2 + 1;
+      const h10 = t3 - 2 * t2 + t;
+      const h01 = -2 * t3 + 3 * t2;
+      const h11 = t3 - t2;
+      out.push(h00 * a.x + h10 * ma.x + h01 * b.x + h11 * mb.x, h00 * a.y + h10 * ma.y + h01 * b.y + h11 * mb.y);
+    }
+  }
+  return out;
+}
+
+type Axis = 'x' | 'y';
+
+// Por debajo de esta diferencia (en mundo) dos puntos se consideran alineados: los waypoints se guardan redondeados.
+const ALIGN_EPSILON = 0.01;
+
+const otherAxis = (axis: Axis): Axis => (axis === 'x' ? 'y' : 'x');
+const axisNameOf = (vector: Point): Axis => (Math.abs(vector.x) >= Math.abs(vector.y) ? 'x' : 'y');
+
+// Dirección (unidad ortogonal) del primer y del último movimiento de `orthLink(from, to, axis)`; null si no se mueve.
+function linkMoves(from: Point, to: Point, axis: Axis): { first: Point; last: Point } | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const alignedX = Math.abs(dx) < ALIGN_EPSILON;
+  const alignedY = Math.abs(dy) < ALIGN_EPSILON;
+  if (alignedX && alignedY) return null;
+  const alongX = { x: Math.sign(dx), y: 0 };
+  const alongY = { x: 0, y: Math.sign(dy) };
+  if (alignedX) return { first: alongY, last: alongY };
+  if (alignedY) return { first: alongX, last: alongX };
+  return axis === 'x' ? { first: alongX, last: alongY } : { first: alongY, last: alongX };
+}
+
+// Enlaza `from` con `to` en ortogonal: si no están alineados añade un codo, moviéndose primero por `axis`.
+// Devuelve el eje por el que se llega a `to` (null si no hubo movimiento).
+function orthLink(out: number[], from: Point, to: Point, axis: Axis): Axis | null {
+  const dx = Math.abs(to.x - from.x);
+  const dy = Math.abs(to.y - from.y);
+  if (dx < ALIGN_EPSILON && dy < ALIGN_EPSILON) return null;
+  if (dx < ALIGN_EPSILON) {
+    out.push(to.x, to.y);
+    return 'y';
+  }
+  if (dy < ALIGN_EPSILON) {
+    out.push(to.x, to.y);
+    return 'x';
+  }
+  if (axis === 'x') out.push(to.x, from.y, to.x, to.y);
+  else out.push(from.x, to.y, to.x, to.y);
+  return otherAxis(axis);
+}
+
+const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y;
+
+// Direcciones (unidad por eje) de los tramos con longitud de una polilínea plana.
+function moveDirections(points: readonly number[]): Point[] {
+  const out: Point[] = [];
+  for (let i = 2; i + 1 < points.length; i += 2) {
+    const dx = points[i]! - points[i - 2]!;
+    const dy = points[i + 1]! - points[i - 1]!;
+    if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) continue;
+    out.push({ x: Math.sign(dx), y: Math.sign(dy) });
+  }
+  return out;
+}
+
+// Sin medias vueltas: ningún tramo va en sentido contrario al anterior (ni al `incoming`, si llega). `first` y
+// `last` son el sentido que tienen que llevar el primer y el último movimiento, si se pide.
+function clean(points: readonly number[], options: { incoming?: Point | null; first?: Point | null; last?: Point | null }): boolean {
+  const moves = moveDirections(points);
+  if (options.first && !(moves.length > 0 && dot(moves[0]!, options.first) > 0)) return false;
+  if (options.last && !(moves.length > 0 && dot(moves[moves.length - 1]!, options.last) > 0)) return false;
+  let previous = options.incoming ?? null;
+  for (const move of moves) {
+    if (previous && dot(previous, move) < 0) return false;
+    previous = move;
+  }
+  return true;
+}
+
+const withCoord = (p: Point, axis: Axis, value: number): Point => (axis === 'x' ? { x: value, y: p.y } : { x: p.x, y: value });
+
+function linked(from: Point, to: Point, axis: Axis): Point[] {
+  const flat: number[] = [];
+  orthLink(flat, from, to, axis);
+  const out: Point[] = [];
+  for (let i = 0; i + 1 < flat.length; i += 2) out.push({ x: flat[i]!, y: flat[i + 1]! });
+  return out;
+}
+
+// Recorridos ortogonales de `from` a `to` (sin incluir `from`) que entran en `to` en contra de `outward`, de menos a
+// más vueltas: enlace directo, por el punto a ELBOW_MARGIN, en Z, en U por fuera de la caja del nodo y saliendo
+// antes por la normal. Quien los usa se queda con el primero que no da media vuelta.
+function approaches(from: Point, to: Point, outward: Point, bounds?: Bounds): Point[][] {
+  const normal = axisNameOf(outward);
+  const side = otherAxis(normal);
+  const t1 = { x: to.x + outward.x * ELBOW_MARGIN, y: to.y + outward.y * ELBOW_MARGIN };
+  const list: Point[][] = [];
+  for (const axis of ['x', 'y'] as const) {
+    list.push(linked(from, to, axis));
+    list.push([...linked(from, t1, axis), to]);
+  }
+  const mid = withCoord(from, side, (from[side] + t1[side]) / 2);
+  list.push([mid, ...linked(mid, t1, normal), to]);
+  const low = bounds ? (side === 'x' ? bounds.minX : bounds.minY) : to[side];
+  const high = bounds ? (side === 'x' ? bounds.maxX : bounds.maxY) : to[side];
+  for (const sign of [1, -1]) {
+    const c = sign > 0 ? Math.max(from[side], high) + ELBOW_MARGIN : Math.min(from[side], low) - ELBOW_MARGIN;
+    list.push([withCoord(from, side, c), withCoord(t1, side, c), t1, to]);
+  }
+  const n0 = outward[normal] > 0 ? Math.max(from[normal] + ELBOW_MARGIN, t1[normal]) : Math.min(from[normal] - ELBOW_MARGIN, t1[normal]);
+  list.push([withCoord(from, normal, n0), withCoord(to, normal, n0), to]);
+  return list;
+}
+
+const flatLength = (points: readonly number[]) => {
+  let total = 0;
+  for (let i = 2; i + 1 < points.length; i += 2) total += Math.abs(points[i]! - points[i - 2]!) + Math.abs(points[i + 1]! - points[i - 1]!);
+  return total;
+};
+
+// De los recorridos, el de menos puntos (y después el más corto) que pasa `clean`; null si ninguno.
+function bestClean(candidates: number[][], options: Parameters<typeof clean>[1]): number[] | null {
+  let best: number[] | null = null;
+  for (const candidate of candidates) {
+    const route = simplify(candidate, true);
+    if (!clean(route, options)) continue;
+    if (!best || route.length < best.length || (route.length === best.length && flatLength(route) < flatLength(best))) best = route;
+  }
+  return best;
+}
+
+// Codo que pasa por cada waypoint. Cada waypoint es un vértice: se sale de él por el eje contrario al de llegada.
+// Un extremo con ancla sale hacia fuera de su lado y llega desde fuera. Si el enlace directo no lo cumple, pasa por
+// un punto a ELBOW_MARGIN del extremo en su normal y, si así diera media vuelta, rodea el nodo en U.
+function elbowThrough(s: Terminal, e: Terminal, waypoints: readonly Point[]): number[] {
+  const first = waypoints[0]!;
+  const outward = s.dir ? axisOf(s.dir) : null;
+  const departures: Point[][] = [];
+  let axis: Axis = s.dir ? axisNameOf(s.dir) : axisNameOf({ x: first.x - s.x, y: first.y - s.y });
+  {
+    let cursor: Point = { x: s.x, y: s.y };
+    const path: Point[] = [];
+    const moves = linkMoves(cursor, first, axis);
+    if (outward && (!moves || dot(moves.first, outward) <= 0)) {
+      cursor = { x: s.x + outward.x * ELBOW_MARGIN, y: s.y + outward.y * ELBOW_MARGIN };
+      path.push(cursor);
+      axis = otherAxis(axisNameOf(outward));
+    }
+    departures.push([...path, ...linked(cursor, first, axis)]);
+  }
+  if (outward) {
+    // La salida es la inversa de una llegada desde el primer waypoint hasta el inicio.
+    for (const reverse of approaches(first, s, outward, s.bounds)) departures.push([...reverse.slice(0, -1).reverse(), first]);
+  } else departures.push(linked(s, first, otherAxis(axis)));
+  const inward = e.dir ? { x: -axisOf(e.dir).x, y: -axisOf(e.dir).y } : null;
+  let fallback: number[] | null = null;
+  for (const departure of departures) {
+    const out = [s.x, s.y, ...departure.flatMap((p) => [p.x, p.y])];
+    const route = simplify(continueThrough(out, waypoints, e, axis), true);
+    if (clean(route, { first: outward, last: inward })) return route;
+    fallback ??= route;
+  }
+  return fallback!;
+}
+
+// Dirección del último tramo con longitud; null si no hay ninguno.
+const lastMove = (points: readonly number[]): Point | null => moveDirections(points).at(-1) ?? null;
+
+// Sigue el recorrido `out`, que ya llega al primer waypoint, por los demás y hasta el final. `initialAxis` es el eje
+// de salida del primer waypoint si no se llegó a él con ningún movimiento.
+function continueThrough(out: number[], waypoints: readonly Point[], e: Terminal, initialAxis: Axis): number[] {
+  const incoming = lastMove(out);
+  let axis: Axis = incoming ? otherAxis(axisNameOf(incoming)) : initialAxis;
+  let cursor = waypoints[0]!;
+  for (const wp of waypoints.slice(1)) {
+    const arrival = orthLink(out, cursor, wp, axis);
+    if (arrival) axis = otherAxis(arrival);
+    cursor = wp;
+  }
+  arrive(out, cursor, axis, e);
+  return out;
+}
+
+function arrive(out: number[], cursor: Point, axis: Axis, e: Terminal): void {
+  if (!e.dir) {
+    orthLink(out, cursor, e, axis);
+    return;
+  }
+  const outward = axisOf(e.dir);
+  const inward = { x: -outward.x, y: -outward.y };
+  const incoming = lastMove(out);
+  // Primero por el eje que toca; si así se entraría por otro lado, por el contrario (el waypoint deja de ser codo),
+  // siempre que no haya que volver sobre el último tramo.
+  for (const candidate of [axis, otherAxis(axis)]) {
+    const moves = linkMoves(cursor, e, candidate);
+    if (moves && dot(moves.last, inward) > 0 && !(incoming && dot(moves.first, incoming) < 0)) {
+      orthLink(out, cursor, e, candidate);
+      return;
+    }
+  }
+  const e1 = { x: e.x + outward.x * ELBOW_MARGIN, y: e.y + outward.y * ELBOW_MARGIN };
+  const normalAxis = axisNameOf(outward);
+  const tail = [cursor.x, cursor.y];
+  if (axis === normalAxis) orthLink(tail, cursor, e1, normalAxis);
+  else {
+    // Hay que salir por el eje perpendicular a la normal y llegar a e1 por ese mismo eje: un codo en Z.
+    const mid = axis === 'x' ? { x: (cursor.x + e1.x) / 2, y: cursor.y } : { x: cursor.x, y: (cursor.y + e1.y) / 2 };
+    tail.push(mid.x, mid.y);
+    orthLink(tail, mid, e1, normalAxis);
+  }
+  tail.push(e.x, e.y);
+  const options = { incoming, last: inward };
+  const chosen = clean(simplify(tail, true), options)
+    ? tail
+    : (bestClean(
+        approaches(cursor, e, outward, e.bounds).map((path) => [cursor.x, cursor.y, ...path.flatMap((p) => [p.x, p.y])]),
+        options,
+      ) ?? tail);
+  out.push(...chosen.slice(2));
+}
+
+// Waypoints nuevos de un codo al desplazar `delta` en perpendicular el tramo `segment` de su recorrido `route`
+// (en mundo). Si el tramo toca un extremo, antes se parte a ELBOW_MARGIN de él para que la salida siga igual. Un
+// tramo vecino que toca un extremo conserva su sentido y al menos min(ELBOW_MARGIN, su longitud), para que la
+// salida o la llegada no se den la vuelta.
+export function dragElbowSegment(route: readonly number[], segment: number, delta: number): Point[] {
+  const points: Point[] = [];
+  for (let i = 0; i + 1 < route.length; i += 2) points.push({ x: route[i]!, y: route[i + 1]! });
+  const count = points.length;
+  if (segment < 0 || segment >= count - 1) return points.slice(1, -1);
+  const a = points[segment]!;
+  const b = points[segment + 1]!;
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  const horizontal = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);
+  delta = limitElbowDrag(points, segment, horizontal, delta);
+  const ux = length > 0 ? (b.x - a.x) / length : 0;
+  const uy = length > 0 ? (b.y - a.y) / length : 0;
+  // Un tramo único se parte en dos sitios: con un tercio de su longitud como mucho los dos codos no coinciden.
+  const margin = Math.min(ELBOW_MARGIN, count === 2 ? length / 3 : length / 2);
+  const mid: Point[] = [{ ...a }];
+  if (segment === 0) {
+    const p = { x: a.x + ux * margin, y: a.y + uy * margin };
+    mid.push(p, { ...p });
+  }
+  const moveFirst = mid.length - 1;
+  if (segment === count - 2) {
+    const q = { x: b.x - ux * margin, y: b.y - uy * margin };
+    mid.push({ ...q }, q, { ...b });
+  } else mid.push({ ...b });
+  const moveLast = moveFirst + 1;
+  for (const index of [moveFirst, moveLast]) {
+    if (horizontal) mid[index]!.y += delta;
+    else mid[index]!.x += delta;
+  }
+  const all = [...points.slice(0, segment), ...mid, ...points.slice(segment + 2)];
+  const simplified = simplify(all.flatMap((p) => [p.x, p.y]));
+  const out: Point[] = [];
+  for (let i = 2; i + 3 < simplified.length; i += 2) out.push({ x: simplified[i]!, y: simplified[i + 1]! });
+  return out;
+}
+
+// Desplazamiento permitido del tramo `segment` (de `points`) en perpendicular. Un vecino que toca un extremo no se
+// acorta por debajo de min(ELBOW_MARGIN, su longitud) ni cambia de sentido. Un vecino interior entre dos tramos que
+// van en sentidos contrarios no se queda en longitud 0, porque los dos tramos se juntarían en una media vuelta.
+function limitElbowDrag(points: readonly Point[], segment: number, horizontal: boolean, delta: number): number {
+  const count = points.length;
+  const normal = horizontal ? { x: 0, y: 1 } : { x: 1, y: 0 };
+  let low = -Infinity;
+  let high = Infinity;
+  const interior: Array<{ length: number; k: number }> = [];
+  for (const j of [segment - 1, segment + 1]) {
+    if (j < 0 || j > count - 2) continue;
+    const p = points[j]!;
+    const q = points[j + 1]!;
+    const length = Math.hypot(q.x - p.x, q.y - p.y);
+    if (length === 0) continue;
+    // Longitud nueva del vecino en su sentido de antes: length + k·delta.
+    const k = ((j < segment ? 1 : -1) * ((q.x - p.x) * normal.x + (q.y - p.y) * normal.y)) / length;
+    if (Math.abs(k) < 0.5) continue;
+    if (j === 0 || j === count - 2) {
+      const bound = (Math.min(ELBOW_MARGIN, length) - length) / k;
+      if (k > 0) low = Math.max(low, bound);
+      else high = Math.min(high, bound);
+    } else {
+      const before = points[j - 1]!;
+      const after = points[j + 2]!;
+      const opposite = (p.x - before.x) * (after.x - q.x) + (p.y - before.y) * (after.y - q.y) < 0;
+      if (opposite) interior.push({ length, k });
+    }
+  }
+  let limited = low > high ? 0 : Math.max(low, Math.min(high, delta));
+  for (const { length, k } of interior) {
+    const next = length + k * limited;
+    if (Math.abs(next) < 1) limited = ((next >= 0 ? 1 : -1) - length) / k;
+  }
+  return limited >= low && limited <= high ? limited : 0;
+}
+
+// Inserta `point` en el tramo `segmentIndex` del recorrido inicio → waypoints → final (el tramo 0 sale del inicio).
+export function insertWaypoint(waypoints: readonly Point[], segmentIndex: number, point: Point): Point[] {
+  const out = waypoints.slice();
+  out.splice(Math.max(0, Math.min(segmentIndex, out.length)), 0, { x: point.x, y: point.y });
+  return out;
+}
+
+export function removeWaypoint(waypoints: readonly Point[], index: number): Point[] {
+  return waypoints.filter((_, i) => i !== index);
+}
+
+export function moveWaypoint(waypoints: readonly Point[], index: number, point: Point): Point[] {
+  return waypoints.map((p, i) => (i === index ? { x: point.x, y: point.y } : p));
+}
+
+// Quita puntos repetidos y los intermedios alineados con sus vecinos. Con `keepTurnbacks`, un punto alineado en el
+// que el recorrido da media vuelta se queda: es un waypoint por el que tiene que pasar.
+function simplify(points: number[], keepTurnbacks = false): number[] {
   const out: number[] = [points[0]!, points[1]!];
   for (let i = 2; i < points.length; i += 2) {
     const x = points[i]!;
@@ -207,7 +574,8 @@ function simplify(points: number[]): number[] {
       const bx = out[n - 2]!;
       const by = out[n - 1]!;
       const cross = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
-      if (Math.abs(cross) < 1e-9) {
+      const turnback = keepTurnbacks && (bx - ax) * (x - bx) + (by - ay) * (y - by) < 0;
+      if (Math.abs(cross) < 1e-9 && !turnback) {
         out[n - 2] = x;
         out[n - 1] = y;
         continue;

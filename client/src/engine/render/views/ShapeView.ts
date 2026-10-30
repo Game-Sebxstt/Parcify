@@ -1,4 +1,5 @@
 import { Container, Graphics, Matrix } from 'pixi.js';
+import { decorateLine } from '../../geometry/arrowheads.ts';
 import type { Mat } from '../../geometry/matrix.ts';
 import { dashPattern, dashSegments, outline, polygonPoints, starPolygon, arcPolygon, arcSweep } from '../../geometry/shapes.ts';
 import { layoutOf } from '../../text/layout.ts';
@@ -245,55 +246,49 @@ function drawLine(g: Graphics, record: LineRecord | ConnectorRecord, points: rea
   const stroke = parseColor(record.stroke);
   const width = record.strokeWidth;
   const pattern = dashPattern(record.strokeDash, width);
-  const key = `${record.stroke}|${width}`;
+  const { path, heads } = decorateLine(record, points);
+  // Los discontinuos acaban en seco para que se vea el patrón; los punteados necesitan el extremo redondo para
+  // que cada punto se vea.
+  const cap: 'round' | 'butt' = record.strokeDash === 'dashed' ? 'butt' : 'round';
+  let current = styleKey;
+  const strokeWith = (lineCap: 'round' | 'butt') => {
+    const key = `${record.stroke}|${width}|${lineCap}`;
+    if (key === current) g.stroke();
+    else g.stroke({ width, color: stroke.color, alpha: stroke.alpha, join: 'round', cap: lineCap });
+    current = key;
+  };
+  const stroked = heads.filter((head) => head.type === 'polyline' || head.type === 'segment');
   // El recorrido va directo al contexto: los métodos de Graphics solo lo reenvían, copiando los argumentos.
-  const path = g.context;
+  const ctx = g.context;
   g.beginPath();
-  if (pattern) for (const segment of dashSegments(points, false, pattern[0], pattern[1])) polyline(path, segment);
-  else polyline(path, points);
-
-  // Las puntas de trazo van en el mismo trazo que la línea: cada subtrazo se tesela aparte, igual que con dos
-  // llamadas, pero Pixi rehace una instrucción en vez de dos.
-  const n = points.length;
-  const at = (i: number) => [points[i * 2]!, points[i * 2 + 1]!] as const;
-  const caps: Array<[typeof record.endCap, readonly [number, number], readonly [number, number]]> = [
-    [record.startCap, at(0), at(1)],
-    [record.endCap, at(n / 2 - 1), at(n / 2 - 2)],
-  ];
-  const size = Math.max(8, width * 4);
-  for (const [cap, tip, prev] of caps) {
-    if (cap !== 'arrow' && cap !== 'bar') continue;
-    const angle = Math.atan2(tip[1] - prev[1], tip[0] - prev[0]);
-    const [tx, ty] = tip;
-    if (cap === 'arrow') {
-      const spread = Math.PI / 6;
-      g.moveTo(tx - size * Math.cos(angle - spread), ty - size * Math.sin(angle - spread))
-        .lineTo(tx, ty)
-        .lineTo(tx - size * Math.cos(angle + spread), ty - size * Math.sin(angle + spread));
-    } else {
-      const half = size / 2;
-      const nx = -Math.sin(angle) * half;
-      const ny = Math.cos(angle) * half;
-      g.moveTo(tx + nx, ty + ny).lineTo(tx - nx, ty - ny);
+  let drawn = false;
+  if (path.length >= 4) {
+    if (pattern) for (const segment of dashSegments(path, false, pattern[0], pattern[1])) polyline(ctx, segment);
+    else polyline(ctx, path);
+    drawn = true;
+  }
+  // Las puntas abiertas van en el mismo trazo que la línea si comparten estilo: cada subtrazo se tesela aparte,
+  // igual que con dos llamadas, pero Pixi rehace una instrucción en vez de dos.
+  if (cap === 'round') {
+    for (const head of stroked) polyline(ctx, flat(head.points));
+    if (drawn || stroked.length) strokeWith('round');
+  } else {
+    if (drawn) strokeWith('butt');
+    if (stroked.length) {
+      g.beginPath();
+      for (const head of stroked) polyline(ctx, flat(head.points));
+      strokeWith('round');
     }
   }
-  if (key === styleKey) g.stroke();
-  else g.stroke({ width, color: stroke.color, alpha: stroke.alpha, join: 'round', cap: 'round' });
-
-  for (const [cap, tip, prev] of caps) {
-    if (cap !== 'triangle' && cap !== 'circle') continue;
-    const [tx, ty] = tip;
-    g.beginPath();
-    if (cap === 'triangle') {
-      const angle = Math.atan2(tip[1] - prev[1], tip[0] - prev[0]);
-      const spread = Math.PI / 7;
-      g.poly([tx, ty, tx - size * Math.cos(angle - spread), ty - size * Math.sin(angle - spread), tx - size * Math.cos(angle + spread), ty - size * Math.sin(angle + spread)], true).fill({
-        color: stroke.color,
-        alpha: stroke.alpha,
-      });
-    } else {
-      g.circle(tx, ty, Math.max(3, width * 1.6)).fill({ color: stroke.color, alpha: stroke.alpha });
-    }
+  for (const head of heads) {
+    if (head.type === 'polygon') g.beginPath().poly(flat(head.points), true).fill({ color: stroke.color, alpha: stroke.alpha });
+    else if (head.type === 'circle') g.beginPath().circle(head.points[0]!.x, head.points[0]!.y, head.radius ?? 0).fill({ color: stroke.color, alpha: stroke.alpha });
   }
-  return key;
+  return current;
+}
+
+function flat(points: readonly { x: number; y: number }[]): number[] {
+  const out: number[] = [];
+  for (const p of points) out.push(p.x, p.y);
+  return out;
 }
