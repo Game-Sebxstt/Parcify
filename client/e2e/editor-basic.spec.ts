@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { canvasGap } from './helpers/canvas.ts';
+import { solidPng } from './helpers/image.ts';
 import { toolbar } from './helpers/tools.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number; rotation: number };
@@ -751,4 +752,196 @@ test('Alt+A alinea a la izquierda los seleccionados en un solo paso de deshacer 
   const flipped = (await nodes(page)) as Array<Node & { flipX?: boolean }>;
   expect(flipped.every((node) => node.flipX === true)).toBe(true);
   expect(flipped.every((node) => Math.abs(node.rotation) < 1e-6)).toBe(true);
+});
+
+// Panel de propiedades (§3.1).
+const properties = (page: Page) => page.getByTestId('properties-panel');
+// El asa del scrub es la etiqueta de la izquierda del campo (aria-hidden: el campo tiene su propio nombre).
+const scrubHandle = (page: Page, testid: string) => page.getByTestId(testid).locator('xpath=preceding-sibling::span[1]');
+type Styled = Node & { opacity: number; fill: string | null };
+
+async function drawRect(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, count: number) {
+  await page.getByRole('application', { name: 'Lienzo del proyecto' }).focus();
+  await page.keyboard.press('r');
+  await drag(page, from, to);
+  await expect.poll(async () => (await nodes(page)).length).toBe(count);
+}
+
+test('Rotación del panel: 45 gira sobre el centro, +15 suma y con dos formas muestra «Mixto» (CA-2.2, CA-2.3)', async ({ page }) => {
+  const account = await createVerifiedAccount(page.request, `rotacion-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const gap = await canvasGap(page);
+  const origin = { x: gap.x + gap.width / 2 - 160, y: gap.y + gap.height / 2 - 60 };
+  await drawRect(page, origin, { x: origin.x + 120, y: origin.y + 80 }, 1);
+  const rotation = properties(page).getByRole('spinbutton', { name: 'Rotación' });
+  const [a0] = await nodes(page);
+
+  await rotation.fill('45');
+  await rotation.press('Enter');
+  await expect.poll(async () => (await byId(page, a0!.id)).rotation).toBeCloseTo(Math.PI / 4, 6);
+  const a1 = await byId(page, a0!.id);
+  expect(Math.abs(center(a1).x - center(a0!).x)).toBeLessThan(0.001);
+  expect(Math.abs(center(a1).y - center(a0!).y)).toBeLessThan(0.001);
+  await expect(rotation).toHaveValue('45');
+
+  // Solo el + inicial es relativo.
+  await rotation.fill('+15');
+  await rotation.press('Enter');
+  await expect.poll(async () => (await byId(page, a0!.id)).rotation).toBeCloseTo(Math.PI / 3, 6);
+
+  // Una segunda forma girada 30°: con las dos, el campo muestra «Mixto».
+  await drawRect(page, { x: origin.x + 220, y: origin.y }, { x: origin.x + 300, y: origin.y + 80 }, 2);
+  const b0 = (await nodes(page)).find((node) => node.id !== a0!.id)!;
+  await rotation.fill('30');
+  await rotation.press('Enter');
+  await expect.poll(async () => (await byId(page, b0.id)).rotation).toBeCloseTo(Math.PI / 6, 6);
+  const before = await nodes(page);
+  await canvas.focus();
+  await page.keyboard.press('Control+a');
+  await expect.poll(async () => (await selection(page)).length).toBe(2);
+  await expect(rotation).toHaveValue('');
+  await expect(rotation).toHaveAttribute('placeholder', 'Mixto');
+
+  // 0 las deja a 0, cada una sobre su centro, y un solo Ctrl+Z las devuelve.
+  await rotation.fill('0');
+  await rotation.press('Enter');
+  await expect.poll(async () => (await nodes(page)).map((node) => Math.abs(node.rotation) < 1e-6)).toEqual([true, true]);
+  for (const node of await nodes(page)) {
+    const was = before.find((item) => item.id === node.id)!;
+    expect(Math.abs(center(node).x - center(was).x)).toBeLessThan(0.001);
+    expect(Math.abs(center(node).y - center(was).y)).toBeLessThan(0.001);
+  }
+  await canvas.focus();
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await byId(page, a0!.id)).rotation).toBeCloseTo(Math.PI / 3, 6);
+  expect((await byId(page, b0.id)).rotation).toBeCloseTo(Math.PI / 6, 6);
+});
+
+test('scrub de Opacidad y del área de color: nada se escribe hasta soltar, un paso de deshacer y Esc descarta (CA-3.7)', async ({ page }) => {
+  test.setTimeout(90_000);
+  const account = await createVerifiedAccount(page.request, `scrub-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const gap = await canvasGap(page);
+  const origin = { x: gap.x + gap.width / 2 - 60, y: gap.y + gap.height / 2 - 40 };
+  await drawRect(page, origin, { x: origin.x + 120, y: origin.y + 80 }, 1);
+  const shape = async () => (await nodes(page))[0] as Styled;
+  const { fill } = await shape();
+
+  // 2 s de arrastre en el asa con dos pausas de 500 ms: el Y.Map no cambia en ninguna pausa.
+  const handle = (await scrubHandle(page, 'props-opacity').boundingBox())!;
+  const start = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  for (const [i, dx] of [-10, -20, -30].entries()) {
+    await page.mouse.move(start.x + dx, start.y, { steps: 5 });
+    if (i < 2) {
+      await page.waitForTimeout(500);
+      expect((await shape()).opacity).toBe(1);
+    }
+  }
+  await page.waitForTimeout(400);
+  expect((await shape()).opacity).toBe(1);
+  await page.mouse.up();
+  // Unos 28 px a la izquierda (los 2 primeros solo arman el arrastre): en torno al 72 %.
+  await expect.poll(async () => (await shape()).opacity).toBeLessThan(0.8);
+  await canvas.focus();
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await shape()).opacity).toBe(1);
+
+  // Esc durante el scrub deja la opacidad como estaba y no escribe al soltar.
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x - 40, start.y, { steps: 5 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  expect((await shape()).opacity).toBe(1);
+  await expect(page.getByTestId('props-opacity')).toHaveValue('100');
+
+  // El área del selector de color sigue el mismo contrato.
+  await page.getByTestId('props-fill-row-swatch').click();
+  const area = page.getByRole('slider', { name: 'Saturación y brillo' });
+  const box = (await area.boundingBox())!;
+  await page.mouse.move(box.x + 10, box.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 5 });
+  await page.waitForTimeout(500);
+  expect((await shape()).fill).toBe(fill);
+  await page.mouse.move(box.x + box.width - 10, box.y + 20, { steps: 5 });
+  await page.waitForTimeout(500);
+  expect((await shape()).fill).toBe(fill);
+  await page.mouse.up();
+  await expect.poll(async () => (await shape()).fill).not.toBe(fill);
+  const picked = (await shape()).fill;
+  await page.mouse.move(box.x + 20, box.y + box.height - 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 30, { steps: 5 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  expect((await shape()).fill).toBe(picked);
+});
+
+test('el panel de propiedades no tiene scroll horizontal a 248 px con cualquier selección (CA-3.4)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const account = await createVerifiedAccount(page.request, `panel-ancho-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const scroller = page.getByTestId('properties-scroll');
+  await expect(page.getByTestId('right-panel')).toHaveAttribute('data-state', 'open');
+  expect(Math.round((await page.getByTestId('right-panel').boundingBox())!.width)).toBe(248);
+  const noHorizontalScroll = async (kind: string) => {
+    await expect(properties(page)).toBeVisible();
+    const sizes = await scroller.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+    expect(sizes, kind).toEqual({ scroll: sizes.client, client: sizes.client });
+  };
+  const select = async (x: number, y: number) => {
+    await canvas.focus();
+    await page.keyboard.press('Escape');
+    const at = await toPage(page, x, y);
+    await page.mouse.click(at.x, at.y);
+  };
+  const gap = await canvasGap(page);
+  const origin = { x: gap.x + 40, y: gap.y + 40 };
+
+  await noHorizontalScroll('sin selección');
+  await drawRect(page, origin, { x: origin.x + 100, y: origin.y + 70 }, 1);
+  await noHorizontalScroll('forma');
+
+  await canvas.focus();
+  await page.keyboard.press('t');
+  await page.mouse.click(origin.x + 160, origin.y + 20);
+  await page.keyboard.type('Texto del panel');
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await nodes(page)).some((node) => node.type === 'text')).toBe(true);
+  const text = (await nodes(page)).find((node) => node.type === 'text')!;
+  await select(text.x + 4, text.y + text.h / 2);
+  await expect.poll(async () => await selection(page)).toEqual([text.id]);
+  await noHorizontalScroll('texto');
+
+  await canvas.focus();
+  await page.keyboard.press('l');
+  await drag(page, { x: origin.x, y: origin.y + 120 }, { x: origin.x + 120, y: origin.y + 160 });
+  await expect.poll(async () => (await nodes(page)).some((node) => node.type === 'line')).toBe(true);
+  await noHorizontalScroll('línea');
+
+  await page.getByTestId('image-input').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: solidPng(120) });
+  await expect.poll(async () => (await nodes(page)).some((node) => node.type === 'image'), { timeout: 30_000 }).toBe(true);
+  await noHorizontalScroll('imagen');
+
+  await canvas.focus();
+  await page.keyboard.press('f');
+  await drag(page, { x: origin.x + 260, y: origin.y + 120 }, { x: origin.x + 420, y: origin.y + 220 });
+  await expect.poll(async () => (await nodes(page)).some((node) => node.type === 'frame')).toBe(true);
+  await noHorizontalScroll('marco');
+
+  await canvas.focus();
+  await page.keyboard.press('Control+a');
+  await expect.poll(async () => (await selection(page)).length).toBeGreaterThan(1);
+  await noHorizontalScroll('selección múltiple');
 });

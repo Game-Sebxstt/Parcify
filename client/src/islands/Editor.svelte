@@ -42,7 +42,7 @@
   import Minimap from './editor/Minimap.svelte';
   import Present, { presentationSlides } from './editor/Present.svelte';
   import { downloadLocalCopy } from '../lib/local-copy.ts';
-  import PropertiesPanel from './editor/PropertiesPanel.svelte';
+  import PropertiesPanel from './editor/properties/PropertiesPanel.svelte';
   import ContextBar from './editor/toolbar/ContextBar.svelte';
   import FloatingToolbar from './editor/toolbar/FloatingToolbar.svelte';
   import ZoomBar from './editor/toolbar/ZoomBar.svelte';
@@ -854,12 +854,14 @@
     {#snippet design()}
       {#if engine}
         <PropertiesPanel
+          {engine}
           records={selection}
-          commands={engine.commands}
           readOnly={engineReadOnly}
           {tool}
           preset={framePreset}
+          pageName={pages.find((item) => item.id === activePage)?.name ?? ''}
           onpreset={(next) => engine?.core.framePreset.set(next)}
+          onexport={() => (exportOpen = true)}
         />
       {/if}
     {/snippet}

@@ -93,7 +93,7 @@ async function prepareScene(page: Page) {
 
   await drawRect(page, 0, 260);
   await expect.poll(async () => (await nodes(page)).length).toBe(258);
-  await page.getByRole('checkbox', { name: 'Sombra' }).check();
+  await page.getByRole('button', { name: 'Añadir sombra' }).click();
   const withShadow = (node: Node) => node.type === 'rect' && !!node.shadow;
   await expect.poll(async () => (await nodes(page)).some(withShadow)).toBe(true);
   const shadowed = (await nodes(page)).find(withShadow)!;

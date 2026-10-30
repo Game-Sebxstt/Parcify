@@ -231,7 +231,7 @@ test('abrir y cerrar 5 vistas previas no cambia el lienzo principal con contenid
   await page.mouse.move(from.x + 100, from.y + 80, { steps: 6 });
   await page.mouse.up();
   await expect.poll(async () => (await nodes(page)).length).toBe(258);
-  await page.getByRole('checkbox', { name: 'Sombra' }).check();
+  await page.getByRole('button', { name: 'Añadir sombra' }).click();
   await expect.poll(async () => (await nodes(page)).some((node) => node.type === 'rect' && !!node.shadow)).toBe(true);
 
   await canvasArea(page).focus();

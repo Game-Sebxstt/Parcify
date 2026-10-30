@@ -74,6 +74,9 @@ type MovingLookup = (id: string) => Readonly<Mat> | null;
 
 type CachedTerminal = { target: NodeRecord; anchor: unknown; terminal: Terminal };
 
+// Vista previa de estilo: `patch` para todos los nodos y, encima, lo propio de cada uno en `each`.
+type StyleValues = Partial<Record<string, unknown>>;
+export type StylePreview = { ids: readonly string[]; patch: StyleValues; each?: ReadonlyMap<string, StyleValues> };
 
 function translateTerminal(terminal: Terminal, dx: number, dy: number): Terminal {
   const { bounds } = terminal;
@@ -282,7 +285,7 @@ export class EditorCore {
   private readonly fixedTerminals = { from: new Map<string, CachedTerminal>(), to: new Map<string, CachedTerminal>() };
 
   gesture: GesturePreview | null = null;
-  stylePreview: { ids: readonly string[]; patch: Partial<Record<string, unknown>> } | null = null;
+  stylePreview: StylePreview | null = null;
   creating: SceneRecord | null = null;
   hover: string | null = null;
   marquee: Box | null = null;
@@ -1452,7 +1455,7 @@ export class EditorCore {
     this.requestFrame();
   }
 
-  setStylePreview(preview: { ids: readonly string[]; patch: Partial<Record<string, unknown>> } | null): void {
+  setStylePreview(preview: StylePreview | null): void {
     this.stylePreview = preview;
     this.overridesDirty = true;
     this.overridesStale = true;
@@ -1628,13 +1631,14 @@ export class EditorCore {
         const record = this.selectable(id);
         if (!record) continue;
         const base = desired.get(id);
-        const next = { ...(base?.record ?? record), ...this.stylePreview.patch } as SceneRecord;
+        const own = { ...this.stylePreview.patch, ...this.stylePreview.each?.get(id) };
+        const next = { ...(base?.record ?? record), ...own } as SceneRecord;
         if (next.type === 'connector') {
           desired.set(id, { record: { ...next, path: this.computeRoute(next, this.movingLookup) }, world: [...IDENTITY] as Mat, redraw: true });
           continue;
         }
         // Las vistas previas de puntos de línea cambian la caja: la matriz se recalcula.
-        const geometric = GEOMETRY_KEYS.some((key) => key in this.stylePreview!.patch);
+        const geometric = GEOMETRY_KEYS.some((key) => key in own);
         desired.set(id, { record: next, world: base && !geometric ? base.world : this.tree.worldMatrix(next), redraw: true });
       }
     }

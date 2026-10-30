@@ -48,7 +48,7 @@
     {@render header(false)}
   {/if}
   <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden border-t border-edge/25" style:padding-bottom={clearance ? `${clearance}px` : null}>
-    <div hidden={layout.rightView !== 'design'} class="scroll-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+    <div hidden={layout.rightView !== 'design'} class="scroll-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto" data-testid="properties-scroll">
       {@render design()}
     </div>
     {@render versions()}

@@ -102,6 +102,11 @@ export type StylePatch = Partial<{
   clip: boolean;
 }>;
 
+// Estilo que depende de cada nodo (la opacidad de un color sobre el RGB de cada uno, un campo de su sombra);
+// `null` deja el nodo como está.
+export type StyleEach = (record: NodeRecord) => StylePatch | null;
+type StyleEntries = Array<[string, StylePatch]>;
+
 // Imagen ya subida y procesada por el servidor.
 export type InsertableImage = { assetId: string; width: number | null; height: number | null; alt?: string };
 
@@ -135,7 +140,7 @@ const TEXT_CHAR_RATIO = 0.55;
 
 export class Commands {
   private styleTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingStyle: { ids: string[]; patch: StylePatch } | null = null;
+  private pendingStyle: { ids: string[]; each: Map<string, StylePatch> } | null = null;
   private pendingGeometry: { ids: string[]; patch: GeometryPatch } | null = null;
   private readonly unsubscribeSelection: () => void;
 
@@ -1575,12 +1580,28 @@ export class Commands {
     return result;
   }
 
+  // Estilo de cada nodo: el mismo para todos o el que devuelve `patch` para cada uno.
+  private styleEntries(patch: StylePatch | StyleEach, ids: readonly string[]): StyleEntries {
+    if (typeof patch !== 'function') return ids.map((id) => [id, patch]);
+    const entries: StyleEntries = [];
+    for (const id of ids) {
+      const record = this.core.record(id);
+      const own = record ? patch(record) : null;
+      if (own) entries.push([id, own]);
+    }
+    return entries;
+  }
+
   // `merge`: se funde con el paso de deshacer anterior (↑/↓ seguidas en un campo del panel).
-  setStyle(patch: StylePatch, ids: readonly string[] = this.core.selection.get(), options: { merge?: boolean } = {}): void {
+  setStyle(patch: StylePatch | StyleEach, ids: readonly string[] = this.core.selection.get(), options: { merge?: boolean } = {}): void {
     if (!this.canEdit) return;
     this.cancelStylePreview();
-    if (this.recorder) patch = this.recordStyle(patch, ids);
-    const patches = this.stylePatches(ids, patch);
+    this.writeStyle(this.styleEntries(patch, ids), options);
+  }
+
+  private writeStyle(entries: StyleEntries, options: { merge?: boolean } = {}): void {
+    if (this.recorder) entries = this.recordStyle(entries);
+    const patches = entries.flatMap(([id, own]) => this.stylePatches([id], own));
     if (!patches.length) return;
     this.transact(() => {
       for (const [id, own] of patches) this.patchNode(id, own);
@@ -1588,9 +1609,9 @@ export class Commands {
   }
 
   // En modo «Grabar», la opacidad, el relleno y el trazo van a keyframes; devuelve el resto del estilo.
-  private recordStyle(patch: StylePatch, ids: readonly string[]): StylePatch {
+  private recordStyle(entries: StyleEntries): StyleEntries {
     const changes: RecordedChange[] = [];
-    for (const id of ids) {
+    for (const [id, patch] of entries) {
       const record = this.core.record(id);
       if (!record || record.type === 'connector' || this.core.isLocked(id)) continue;
       if (typeof patch.opacity === 'number') changes.push({ id, prop: 'opacity', value: patch.opacity });
@@ -1600,24 +1621,34 @@ export class Commands {
       if (typeof patch.stroke === 'string' && typeof (record as { stroke?: unknown }).stroke === 'string') changes.push({ id, prop: 'stroke', value: patch.stroke });
     }
     if (changes.length) this.recorder?.(changes);
-    const rest = { ...patch };
-    if (typeof patch.opacity === 'number') delete rest.opacity;
-    if (typeof patch.fill === 'string') delete rest.fill;
-    if (typeof patch.stroke === 'string') delete rest.stroke;
-    return rest;
+    return entries.map(([id, patch]) => {
+      const rest = { ...patch };
+      if (typeof patch.opacity === 'number') delete rest.opacity;
+      if (typeof patch.fill === 'string') delete rest.fill;
+      if (typeof patch.stroke === 'string') delete rest.stroke;
+      return [id, rest];
+    });
   }
 
   // Vista local y Awareness durante el gesto. Con `autoCommit` (por defecto) el documento se escribe tras 250 ms
   // quieto; sin él, solo con commitStyle, setStyle o un cambio de selección, así que tampoco graba antes.
-  previewStyle(patch: StylePatch, options: { autoCommit?: boolean } = {}): void {
+  previewStyle(patch: StylePatch | StyleEach, options: { autoCommit?: boolean } = {}): void {
     if (!this.canEdit) return;
     const ids = [...this.core.selection.get()];
     if (!ids.length) return;
-    const merged = { ...(this.pendingStyle?.patch ?? {}), ...patch };
-    this.pendingStyle = { ids, patch: merged };
-    this.core.setStylePreview({ ids, patch: merged });
+    const previous = this.pendingStyle?.each;
+    const each = new Map<string, StylePatch>();
+    for (const [id, own] of this.styleEntries(patch, ids)) each.set(id, { ...previous?.get(id), ...own });
+    for (const id of ids) if (!each.has(id) && previous?.has(id)) each.set(id, previous.get(id)!);
+    this.pendingStyle = { ids, each };
+    this.core.setStylePreview({ ids, patch: {}, each });
+    // A los demás solo llega lo que es igual en toda la selección; lo que cambia por nodo se ve al confirmar.
     const style: Record<string, unknown> = {};
-    for (const key of ['fill', 'stroke', 'opacity', 'strokeWidth', 'cornerRadius'] as const) if (key in merged) style[key] = merged[key];
+    const patches = ids.map((id) => each.get(id));
+    for (const key of ['fill', 'stroke', 'opacity', 'strokeWidth', 'cornerRadius'] as const) {
+      const first = patches[0];
+      if (first && key in first && patches.every((own) => own && key in own && Object.is(own[key], first[key]))) style[key] = first[key];
+    }
     this.core.presence.update({ gesture: { ids: 'selection', matrix: [1, 0, 0, 1, 0, 0], style } });
     if (this.styleTimer) clearTimeout(this.styleTimer);
     this.styleTimer = options.autoCommit === false ? null : setTimeout(() => this.commitStyle(), DEFERRED_STYLE_MS);
@@ -1626,7 +1657,7 @@ export class Commands {
   commitStyle(): void {
     const pending = this.pendingStyle;
     this.cancelStylePreview();
-    if (pending) this.setStyle(pending.patch, pending.ids);
+    if (pending && this.canEdit) this.writeStyle(pending.ids.flatMap((id): StyleEntries => (pending.each.has(id) ? [[id, pending.each.get(id)!]] : [])));
   }
 
   // Descarta las vistas previas de estilo y de geometría sin escribir nada (Esc durante un scrub).

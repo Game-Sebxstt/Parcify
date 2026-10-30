@@ -43,6 +43,7 @@
     </Popover.Trigger>
   {/if}
   <Popover.Portal>
+    <!-- data-own-keys: Esc cierra solo el popover y las flechas del área de color no mueven la selección del lienzo. -->
     <Popover.Content
       customAnchor={anchor}
       {side}
@@ -55,6 +56,7 @@
       aria-label={label}
       data-testid={testid}
       data-floating=""
+      data-own-keys=""
       class={[
         'z-(--z-popover) max-h-(--bits-popover-content-available-height) overflow-x-hidden overflow-y-auto scroll-thin rounded-panel border border-edge/40 bg-surface-2 p-3 text-ui text-ink shadow-float outline-none',
         className,

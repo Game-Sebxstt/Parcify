@@ -1,0 +1,172 @@
+<script lang="ts">
+  import Link2 from '@lucide/svelte/icons/link-2';
+  import Link2Off from '@lucide/svelte/icons/link-2-off';
+  import RotateCw from '@lucide/svelte/icons/rotate-cw';
+  import RotateCwSquare from '@lucide/svelte/icons/rotate-cw-square';
+  import SquareRoundCorner from '@lucide/svelte/icons/square-round-corner';
+  import type { Engine, GeometryPatch, NodeRecord } from '../../../engine/index.ts';
+  import { normalizeDeg, snapRotation } from '../../../engine/geometry/angles.ts';
+  import { m } from '../../../paraglide/messages.js';
+  import ScrubInput from '../../../ui/ScrubInput.svelte';
+  import FlipHorizontal from './icons/FlipHorizontal.svelte';
+  import FlipVertical from './icons/FlipVertical.svelte';
+  import PanelButton from './PanelButton.svelte';
+  import Section from './Section.svelte';
+  import { shared, type CommitMeta, type PanelEdits } from './panel.ts';
+
+  type Props = { engine: Engine; records: readonly NodeRecord[]; edits: PanelEdits; readonly: boolean };
+
+  let { engine, records, edits, readonly }: Props = $props();
+
+  // Límites de §2.16.
+  const POSITION = 1e6;
+  const SIZE = { min: 1, max: 1e5 };
+
+  type Rounded = Extract<NodeRecord, { type: 'rect' | 'image' }>;
+
+  const ids = $derived(records.map((record) => record.id));
+  // geometryOf lee el árbol: se vuelve a pedir cada vez que cambian los registros de la selección.
+  const geometry = $derived.by(() => {
+    void records;
+    return engine.commands.geometryOf(ids);
+  });
+  // Un conector solo se mueve: no gira ni cambia de tamaño desde el panel.
+  const onlyConnectors = $derived(records.every((record) => record.type === 'connector'));
+  const rounded = $derived(records.filter((record): record is Rounded => record.type === 'rect' || record.type === 'image'));
+  const radius = $derived(shared(rounded, (record) => record.cornerRadius));
+  const radiusMax = $derived(rounded.length ? Math.floor(Math.min(...rounded.map((record) => Math.min(record.w, record.h) / 2))) : 0);
+  const rotation = $derived(geometry?.rotationDeg ?? null);
+  const rotationMixed = $derived(rotation === null && records.length > 1);
+
+  // Candado de proporción: estado de la interfaz, no del documento (el esquema no lo guarda).
+  let ratioLocked = $state(false);
+
+  function sizePatch(axis: 'w' | 'h', value: number): GeometryPatch {
+    if (!ratioLocked || !geometry || geometry.w <= 0 || geometry.h <= 0) return { [axis]: value };
+    const ratio = geometry.h / geometry.w;
+    const other = axis === 'w' ? value * ratio : value / ratio;
+    const clamped = Math.min(SIZE.max, Math.max(SIZE.min, other));
+    return axis === 'w' ? { w: value, h: clamped } : { w: clamped, h: value };
+  }
+
+  // La rotación da la vuelta: 190 es −170 y −180 es 180.
+  const rotationPatch = (value: number): GeometryPatch => ({ rotationDeg: normalizeDeg(value) });
+
+  function snapAngle(value: number, mods: { shift: boolean; ctrl: boolean }): number {
+    return snapRotation(value, { ...mods, thresholdDeg: engine.inputProfile.get().rotateSnapDeg }).angle;
+  }
+
+  function field(patch: (value: number) => GeometryPatch) {
+    return {
+      oninput: (value: number) => edits.previewGeometry(patch(value)),
+      oncommit: (value: number, meta: CommitMeta) => edits.setGeometry(patch(value), meta),
+      oncancel: () => edits.cancel(),
+    };
+  }
+</script>
+
+{#if geometry}
+  <Section title={m.editor_props_section_layout()} testid="props-layout">
+    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_1.5rem_minmax(0,1fr)] items-center gap-x-1 gap-y-2">
+      <ScrubInput
+        value={geometry.x}
+        label={m.editor_props_x()}
+        prefix="X"
+        min={-POSITION}
+        max={POSITION}
+        {readonly}
+        testid="props-x"
+        {...field((x) => ({ x }))}
+      />
+      <span aria-hidden="true"></span>
+      <ScrubInput
+        value={geometry.y}
+        label={m.editor_props_y()}
+        prefix="Y"
+        min={-POSITION}
+        max={POSITION}
+        {readonly}
+        testid="props-y"
+        {...field((y) => ({ y }))}
+      />
+
+      <ScrubInput
+        value={geometry.w}
+        label={m.editor_props_w()}
+        prefix="An"
+        min={SIZE.min}
+        max={SIZE.max}
+        readonly={readonly || onlyConnectors || geometry.w <= 0}
+        testid="props-w"
+        {...field((w) => sizePatch('w', w))}
+      />
+      {#if readonly}
+        <span aria-hidden="true"></span>
+      {:else}
+        <PanelButton
+          label={m.editor_props_ratio_lock()}
+          pressed={ratioLocked}
+          testid="props-ratio"
+          onclick={() => (ratioLocked = !ratioLocked)}
+        >
+          {#if ratioLocked}<Link2 size={12} aria-hidden="true" />{:else}<Link2Off size={12} aria-hidden="true" />{/if}
+        </PanelButton>
+      {/if}
+      <ScrubInput
+        value={geometry.h}
+        label={m.editor_props_h()}
+        prefix="Al"
+        min={SIZE.min}
+        max={SIZE.max}
+        readonly={readonly || onlyConnectors || geometry.h <= 0}
+        testid="props-h"
+        {...field((h) => sizePatch('h', h))}
+      />
+
+      <ScrubInput
+        value={rotation ?? 0}
+        mixed={rotationMixed}
+        label={m.editor_props_rotation()}
+        icon={RotateCw}
+        unit="°"
+        decimals={1}
+        readonly={readonly || onlyConnectors}
+        snap={snapAngle}
+        testid="props-rotation"
+        {...field(rotationPatch)}
+      />
+      <span aria-hidden="true"></span>
+      {#if rounded.length}
+        <ScrubInput
+          value={Math.min(radius.value ?? 0, radiusMax)}
+          mixed={radius.mixed}
+          label={m.editor_props_radius()}
+          icon={SquareRoundCorner}
+          min={0}
+          max={radiusMax}
+          decimals={0}
+          {readonly}
+          testid="props-radius"
+          oninput={(cornerRadius) => edits.previewStyle({ cornerRadius })}
+          oncommit={(cornerRadius, meta) => edits.setStyle({ cornerRadius }, meta)}
+          oncancel={() => edits.cancel()}
+        />
+      {:else}
+        <span aria-hidden="true"></span>
+      {/if}
+    </div>
+    {#if !readonly && !onlyConnectors}
+      <div class="flex items-center gap-0.5">
+        <PanelButton label={m.editor_props_rotate_90()} testid="props-rotate-90" onclick={() => engine.commands.rotateBy(ids, 90)}>
+          <RotateCwSquare size={14} aria-hidden="true" />
+        </PanelButton>
+        <PanelButton label={m.editor_props_flip_h()} kbd="Shift+H" testid="props-flip-h" onclick={() => engine.commands.flip(ids, 'h')}>
+          <FlipHorizontal size={14} />
+        </PanelButton>
+        <PanelButton label={m.editor_props_flip_v()} kbd="Shift+V" testid="props-flip-v" onclick={() => engine.commands.flip(ids, 'v')}>
+          <FlipVertical size={14} />
+        </PanelButton>
+      </div>
+    {/if}
+  </Section>
+{/if}

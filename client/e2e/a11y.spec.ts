@@ -129,6 +129,49 @@ test('axe sin violaciones en el editor, y el lienzo y las capas se usan con el t
   await expect(tree.getByRole('treeitem', { name: 'Grupo' })).toBeVisible();
 });
 
+test('el panel de propiedades no usa controles nativos, con los paneles abiertos y plegados (CA-3.3)', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const account = await createVerifiedAccount(page.request, `a11y-props-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Panel sin nativos');
+  await page.goto(`/p/${projectId}`);
+  await page.waitForFunction(() => window.__parcifyTest?.status() === 'connected' && window.__parcifyTest.synced());
+  const nodes = () => page.evaluate(() => window.__parcifyTest!.nodes() as unknown as Node[]);
+  const panel = page.getByTestId('properties-panel');
+  // Solo los controles nativos (CA-3.3): los `title` de los botones del chat los quita su ventana nueva.
+  const controls = async () => (await nativeControls(page)).controls;
+  await expect(panel).toBeVisible();
+  expect(await controls()).toEqual([]);
+
+  // Una forma con relleno, trazo y sombra: todas las secciones de una forma a la vista.
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const origin = { x: box.x + box.width / 2 - 80, y: box.y + box.height / 2 - 60 };
+  await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
+  await drag(page, origin, { x: origin.x + 140, y: origin.y + 90 });
+  await expect.poll(async () => (await nodes()).length).toBe(1);
+  await panel.getByRole('button', { name: 'Añadir sombra' }).click();
+  await expect(panel.getByRole('spinbutton', { name: 'Desenfoque de la sombra' })).toBeVisible();
+  await expect(panel.getByRole('spinbutton', { name: 'Rotación' })).toBeVisible();
+  expect(await controls()).toEqual([]);
+  expect(await audit(page)).toEqual([]);
+
+  // El selector de color abierto tampoco.
+  await panel.getByRole('button', { name: 'Relleno', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Selector de color' })).toBeVisible();
+  expect(await controls()).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Selector de color' })).toBeHidden();
+  // Esc cierra solo el selector: la forma sigue seleccionada.
+  expect(await page.evaluate(() => window.__parcifyTest!.selection().length)).toBe(1);
+
+  // Con la interfaz minimizada los paneles quedan como pastillas.
+  await canvas.focus();
+  await page.keyboard.press('Control+Shift+Backslash');
+  await expect(page.getByTestId('left-panel-pill')).toBeVisible();
+  expect(await controls()).toEqual([]);
+});
+
 // Abre un `Select` dentro de un diálogo o una región y comprueba que su lista sale por el portal sin recortes.
 async function openSelectList(page: Page, trigger: Locator, options: number) {
   await expect(trigger).toBeVisible();

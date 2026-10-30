@@ -25,7 +25,7 @@ export type { AnimationState, AnimationStatus } from './anim/AnimationPlayer.ts'
 export { DEFAULT_ANIMATION, keyframeTime, poseValue, restValue, type AnimationCommands, type KeyframeInput, type RecordedChange } from './commands/animation.ts';
 export { EASING_CURVES, easingFn } from './anim/easing.ts';
 export { compileAnimation, effectiveDuration, poseAtProgress, COLOR_PROPS } from './anim/timeline.ts';
-export type { StylePatch, InsertableImage, GeometryPatch, Geometry, AlignMode, FlipAxis } from './commands/Commands.ts';
+export type { StylePatch, StyleEach, InsertableImage, GeometryPatch, Geometry, AlignMode, FlipAxis } from './commands/Commands.ts';
 export { AssetResolver } from './assets/AssetResolver.ts';
 export { LOCAL_ORIGIN, AI_ORIGIN } from './origins.ts';
 export { AI_PREVIEW_COLOR } from './ai/preview.ts';
