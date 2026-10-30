@@ -1,21 +1,31 @@
 <script lang="ts">
+  import ArrowDown from '@lucide/svelte/icons/arrow-down';
+  import ArrowUp from '@lucide/svelte/icons/arrow-up';
+  import BringToFront from '@lucide/svelte/icons/bring-to-front';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
+  import Layers from '@lucide/svelte/icons/layers';
   import Lock from '@lucide/svelte/icons/lock';
   import LockOpen from '@lucide/svelte/icons/lock-open';
+  import PencilLine from '@lucide/svelte/icons/pencil-line';
+  import SendToBack from '@lucide/svelte/icons/send-to-back';
   import { tick, untrack } from 'svelte';
   import { displayName, kindOf } from '../../engine/a11y/describe.ts';
-  import { ancestorsOf, LAYER_ROW_HEIGHT, layerRows, rowWindow, type LayerRow } from '../../engine/a11y/layers.ts';
+  import { ancestorsOf, LAYER_ROW_HEIGHT, LAYER_ROW_HEIGHT_TOUCH, layerRows, rowWindow, type LayerRow } from '../../engine/a11y/layers.ts';
   import type { Engine } from '../../engine/index.ts';
   import { m } from '../../paraglide/messages.js';
+  import type { MenuEntry } from '../../ui/DropdownMenu.svelte';
+  import { longPress } from '../../ui/longpress.ts';
+  import PointMenu from '../../ui/PointMenu.svelte';
   import Tooltip from '../../ui/Tooltip.svelte';
   import { kindLabel } from './kinds.ts';
 
   // titled: false cuando una pestaña «Capas» ya lo nombra; el título queda solo para los lectores de pantalla.
-  type Props = { engine: Engine; readOnly: boolean; titled?: boolean };
+  // touch: el último puntero en el editor fue un dedo; filas de 36 px y ojo y candado con 32 px de zona de toque.
+  type Props = { engine: Engine; readOnly: boolean; titled?: boolean; touch?: boolean };
 
-  let { engine, readOnly, titled = true }: Props = $props();
+  let { engine, readOnly, titled = true, touch = false }: Props = $props();
 
   const uid = $props.id();
   let version = $state(0);
@@ -27,6 +37,10 @@
   let focused = $state<string | null>(null);
   let renaming = $state<string | null>(null);
   let tree = $state<HTMLElement | null>(null);
+  // Menú de una fila abierto con una pulsación larga: la capa y el punto de la ventana.
+  let rowMenu = $state.raw<{ id: string; x: number; y: number; finger: boolean } | null>(null);
+
+  const rowHeight = $derived(touch ? LAYER_ROW_HEIGHT_TOUCH : LAYER_ROW_HEIGHT);
 
   $effect(() => {
     const source = engine;
@@ -46,7 +60,7 @@
     return pageId ? layerRows(engine.core.tree, (id) => engine.core.store.get(id), pageId, expanded) : [];
   });
   const selected = $derived(new Set(selection));
-  const range = $derived(rowWindow(rows.length, scrollTop, height));
+  const range = $derived(rowWindow(rows.length, scrollTop, height, rowHeight));
   const shown = $derived(rows.slice(range.start, range.end));
   const current = $derived(focused && rows.some((row) => row.id === focused) ? focused : (rows[0]?.id ?? null));
   // Una sola fila entra en el orden de tabulación; si la activa no está pintada, la primera del tramo.
@@ -54,7 +68,10 @@
 
   const rowId = (id: string) => `${uid}-${id}`;
 
-  const ROW_ACTION = 'inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control hover:bg-surface-2';
+  const ROW_ACTION = $derived([
+    'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control hover:bg-surface-2',
+    touch ? 'size-8' : 'size-6',
+  ]);
   // Ojo y candado aparecen con el puntero encima o con la fila enfocada; una capa oculta o bloqueada los enseña siempre,
   // y sin hover (táctil) también se ven siempre.
   const HOVER_ONLY = 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 touch:opacity-100';
@@ -87,9 +104,9 @@
     await tick();
     const index = rows.findIndex((row) => row.id === id);
     if (index === -1 || !tree) return;
-    const top = index * LAYER_ROW_HEIGHT;
+    const top = index * rowHeight;
     if (top < tree.scrollTop) tree.scrollTop = top;
-    else if (top + LAYER_ROW_HEIGHT > tree.scrollTop + tree.clientHeight) tree.scrollTop = top + LAYER_ROW_HEIGHT - tree.clientHeight;
+    else if (top + rowHeight > tree.scrollTop + tree.clientHeight) tree.scrollTop = top + rowHeight - tree.clientHeight;
     scrollTop = tree.scrollTop;
     if (!focus) return;
     await tick();
@@ -127,6 +144,70 @@
     focused = id;
     await reveal(id, true);
   }
+
+  // Pulsación larga en una fila (dedo o lápiz): su menú en el punto. Como en el lienzo, la capa pasa a estar
+  // seleccionada, salvo que ya lo estuviera junto con otras; «Ordenar» mueve la selección.
+  function openRowMenu(id: string, x: number, y: number, finger: boolean) {
+    if (readOnly || renaming) return;
+    focused = id;
+    if (!selected.has(id)) engine.commands.select([id]);
+    rowMenu = { id, x, y, finger };
+  }
+
+  // «Renombrar» espera a que el menú se cierre: si no, al cerrarse le quitaría el foco al campo del nombre.
+  let renameAfterMenu: string | null = null;
+
+  function closeRowMenu(returnFocus: boolean) {
+    const id = rowMenu?.id ?? null;
+    rowMenu = null;
+    const target = renameAfterMenu;
+    renameAfterMenu = null;
+    if (target) void rename(target);
+    else if (returnFocus && id) document.getElementById(rowId(id))?.focus({ preventScroll: true });
+  }
+
+  const rowMenuItems = $derived.by((): MenuEntry[] => {
+    void version;
+    const id = rowMenu?.id;
+    const record = id ? engine.core.store.get(id) : undefined;
+    if (!id || !record) return [];
+    const commands = engine.commands;
+    return [
+      { kind: 'item', id: 'rename', label: m.editor_menu_rename(), icon: PencilLine, onSelect: () => (renameAfterMenu = id) },
+      {
+        kind: 'item',
+        id: 'visible',
+        label: record.visible ? m.editor_layer_hide() : m.editor_layer_show(),
+        icon: record.visible ? EyeOff : Eye,
+        onSelect: () => commands.setFlagFor([id], 'visible', !record.visible),
+      },
+      {
+        kind: 'item',
+        id: 'locked',
+        label: record.locked ? m.editor_layer_unlock() : m.editor_layer_lock(),
+        icon: record.locked ? LockOpen : Lock,
+        onSelect: () => commands.setFlagFor([id], 'locked', !record.locked),
+      },
+      { kind: 'separator', id: 'sep-order' },
+      {
+        kind: 'sub',
+        id: 'order',
+        label: m.editor_menu_order(),
+        icon: Layers,
+        items: [
+          { kind: 'item', id: 'front', label: m.editor_order_front(), icon: BringToFront, onSelect: () => commands.zOrder('front') },
+          { kind: 'item', id: 'forward', label: m.editor_order_forward(), icon: ArrowUp, onSelect: () => commands.zOrder('forward') },
+          { kind: 'item', id: 'backward', label: m.editor_order_backward(), icon: ArrowDown, onSelect: () => commands.zOrder('backward') },
+          { kind: 'item', id: 'back', label: m.editor_order_back(), icon: SendToBack, onSelect: () => commands.zOrder('back') },
+        ],
+      },
+    ];
+  });
+
+  const rowMenuName = $derived.by(() => {
+    const row = rowMenu ? rows.find((item) => item.id === rowMenu?.id) : undefined;
+    return row ? nameOf(row) : '';
+  });
 
   function onKey(event: KeyboardEvent, row: LayerRow) {
     if (renaming) return;
@@ -206,7 +287,7 @@
       onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
       class="scroll-thin relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1.5 pb-1.5"
     >
-      <div class="relative" style:height="{rows.length * LAYER_ROW_HEIGHT}px">
+      <div class="relative" style:height="{rows.length * rowHeight}px">
         {#each shown as row, i (row.id)}
           {@const isSelected = selected.has(row.id)}
           <div
@@ -223,11 +304,12 @@
             ondblclick={() => startRename(row.id)}
             onkeydown={(event) => onKey(event, row)}
             onfocus={() => (focused = row.id)}
-            style:top="{(range.start + i) * LAYER_ROW_HEIGHT}px"
-            style:height="{LAYER_ROW_HEIGHT}px"
+            {@attach longPress((point) => openRowMenu(row.id, point.clientX, point.clientY, point.pointerType === 'touch'))}
+            style:top="{(range.start + i) * rowHeight}px"
+            style:height="{rowHeight}px"
             style:padding-left="{(row.depth - 1) * 14 + 4}px"
             class={[
-              'group absolute inset-x-0 flex cursor-pointer items-center gap-1 rounded-control pr-1 text-ui outline-none select-none',
+              'group absolute inset-x-0 flex cursor-pointer items-center gap-1 rounded-control pr-1 text-ui outline-none select-none [-webkit-touch-callout:none]',
               'focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-inset',
               isSelected ? 'bg-petrol text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
               row.record.visible ? '' : 'italic',
@@ -314,3 +396,15 @@
     </div>
   {/if}
 </section>
+
+{#if rowMenu}
+  <PointMenu
+    items={rowMenuItems}
+    at={{ x: rowMenu.x, y: rowMenu.y }}
+    onclose={closeRowMenu}
+    label={m.editor_layer_actions({ name: rowMenuName })}
+    density={rowMenu.finger ? 'touch' : 'default'}
+    testid="layer-menu"
+    class="w-56"
+  />
+{/if}

@@ -44,6 +44,8 @@
     class?: string;
     // Con el menú en un punto no hay disparador que reciba el foco: va a la primera entrada que se puede usar.
     focusFirst?: boolean;
+    // 'touch': entradas y disparador de 44 px de alto, para el dedo aunque el puntero principal sea fino.
+    density?: 'default' | 'touch';
     onOpenChange?: (open: boolean) => void;
     onInteractOutside?: (event: PointerEvent) => void;
     onCloseAutoFocus?: (event: Event) => void;
@@ -62,6 +64,7 @@
     testid,
     class: className = '',
     focusFirst = false,
+    density = 'default',
     onOpenChange,
     onInteractOutside,
     onCloseAutoFocus,
@@ -72,10 +75,13 @@
   // Sin `label`, el menú toma el nombre de su disparador.
   const labelledBy = $derived(label ? undefined : triggerRef?.id || undefined);
 
-  const ITEM = [
-    'flex min-h-8 cursor-default items-center gap-2 rounded-control px-2 outline-none select-none pointer-coarse:min-h-11',
-    'data-highlighted:bg-petrol data-disabled:cursor-not-allowed data-disabled:text-ink-muted',
-  ].join(' ');
+  const ITEM = $derived(
+    [
+      'flex cursor-default items-center gap-2 rounded-control px-2 outline-none select-none',
+      density === 'touch' ? 'min-h-11' : 'min-h-8 pointer-coarse:min-h-11',
+      'data-highlighted:bg-petrol data-disabled:cursor-not-allowed data-disabled:text-ink-muted',
+    ].join(' '),
+  );
   const PANEL =
     'z-(--z-popover) max-h-(--bits-floating-available-height) min-w-48 overflow-x-hidden overflow-y-auto scroll-thin rounded-panel border border-edge/40 bg-surface-2 p-1 text-ui text-ink shadow-float outline-none';
 
@@ -176,7 +182,7 @@
   {#if trigger}
     <DropdownMenu.Trigger bind:ref={triggerRef}>
       {#snippet child({ props })}
-        {@render trigger(props)}
+        {@render trigger(density === 'touch' ? { ...props, 'data-density': 'touch' } : props)}
       {/snippet}
     </DropdownMenu.Trigger>
   {/if}

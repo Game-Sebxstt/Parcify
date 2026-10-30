@@ -26,12 +26,15 @@
     // Tamaño de la pastilla plegada en pantalla (0 sin pastilla).
     pillWidth?: number;
     pillHeight?: number;
+    // El último puntero en el editor fue un dedo: filas y botones de las listas más grandes.
+    touch?: boolean;
   };
 
   let {
     engine,
     readOnly,
     open,
+    touch = false,
     header,
     hidden,
     width = $bindable(0),
@@ -75,9 +78,9 @@
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-edge/25" style:padding-bottom={clearance ? `${clearance}px` : null}>
     {#if engine}
       {@const current = engine}
-      <PagesPanel engine={current} {readOnly} />
+      <PagesPanel engine={current} {readOnly} {touch} />
       {#snippet layersTab()}
-        <LayersPanel bind:this={layers} engine={current} {readOnly} titled={false} />
+        <LayersPanel bind:this={layers} engine={current} {readOnly} titled={false} {touch} />
       {/snippet}
       {#snippet animationsTab()}
         <AnimationsPanel engine={current} />

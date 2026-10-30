@@ -215,6 +215,10 @@
   main:focus {
     outline: none;
   }
+  /* Disparador de un menú o un popover con density="touch": 44 px de alto sin cambiar su dibujo. */
+  [data-density='touch'] {
+    min-height: 2.75rem;
+  }
 }
 
 /* Sin hover: pantallas táctiles y, en el editor, mientras el último puntero fue un dedo (clase touch-ui en su raíz). */

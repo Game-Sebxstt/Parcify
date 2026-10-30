@@ -68,7 +68,7 @@
   ]);
 </script>
 
-<div class="pointer-events-auto flex h-9 items-center gap-0.5 rounded-panel border border-edge/40 bg-surface-2 p-1 shadow-float">
+<div class="pointer-events-auto flex h-9 touch-pan-x touch-pan-y items-center gap-0.5 rounded-panel border border-edge/40 bg-surface-2 p-1 shadow-float">
   {#if !readOnly}
     <ToolButton variant="tool" size="sm" side="top" label={m.editor_undo()} disabled={!canUndo} onclick={onundo}>
       <Undo size={16} aria-hidden="true" />

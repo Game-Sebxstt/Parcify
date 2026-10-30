@@ -72,8 +72,9 @@
   class={[
     'absolute inset-y-3 z-10 w-1 cursor-ew-resize touch-none rounded-full outline-none',
     'transition-colors duration-(--dur-fast) hover:bg-edge/60 focus-visible:bg-coral',
-    'touch:before:absolute touch:before:inset-y-0 touch:before:-inset-x-2.5',
-    edge === 'right' ? '-right-0.5' : '-left-0.5',
+    // Con el dedo, la zona de toque (24 px) crece hacia el lienzo y no tapa el borde del contenido del panel.
+    'touch:before:absolute touch:before:inset-y-0',
+    edge === 'right' ? '-right-0.5 touch:before:left-0 touch:before:-right-5' : '-left-0.5 touch:before:right-0 touch:before:-left-5',
     dragging ? 'bg-coral' : '',
   ]}
   data-testid="panel-resizer-{edge === 'right' ? 'left' : 'right'}"

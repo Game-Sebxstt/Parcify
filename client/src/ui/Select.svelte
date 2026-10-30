@@ -36,6 +36,8 @@
     id?: string;
     describedBy?: string | undefined;
     side?: 'top' | 'bottom';
+    // 'touch': botón y opciones de 44 px de alto, con el tamaño de letra de `size`.
+    density?: 'default' | 'touch';
     testid?: string;
     class?: string;
     onValueChange?: (value: string) => void;
@@ -54,6 +56,7 @@
     id,
     describedBy,
     side = 'bottom',
+    density = 'default',
     testid,
     class: className = '',
     onValueChange,
@@ -87,15 +90,20 @@
         : 'rounded-control hover:border-edge/60 focus-visible:outline-1 focus-visible:-outline-offset-1 data-[state=open]:border-edge/60',
       own.padding ? '' : size === 'sm' ? 'px-1.5' : size === 'md' ? 'px-2' : 'px-3.5',
       own.height ? '' : size === 'sm' ? 'h-6' : size === 'md' ? 'h-8' : 'h-11',
+      // min-height gana a cualquier alto, también al que llega en `class`.
+      density === 'touch' ? 'min-h-11' : '',
       own.text ? '' : size === 'sm' ? 'text-xs' : size === 'md' ? 'text-ui' : 'text-base',
       invalid ? 'border-danger' : size === 'lg' ? 'border-edge' : 'border-transparent',
       className,
     ].join(' '),
   );
-  const ITEM = [
-    'flex min-h-8 cursor-default items-center gap-2 rounded-control px-2 text-ui outline-none select-none pointer-coarse:min-h-11',
-    'data-highlighted:bg-petrol data-disabled:cursor-not-allowed data-disabled:text-ink-muted',
-  ].join(' ');
+  const ITEM = $derived(
+    [
+      'flex cursor-default items-center gap-2 rounded-control px-2 text-ui outline-none select-none',
+      density === 'touch' ? 'min-h-11' : 'min-h-8 pointer-coarse:min-h-11',
+      'data-highlighted:bg-petrol data-disabled:cursor-not-allowed data-disabled:text-ink-muted',
+    ].join(' '),
+  );
 </script>
 
 {#snippet leading(item: SelectItem)}

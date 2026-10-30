@@ -213,8 +213,9 @@
   const barsRight = $derived(compactLayout ? 0 : rightEdge);
   // Por eso en tablet el contenido de los paneles termina por encima de las barras: la última capa sigue al alcance.
   let barsHeight = $state(0);
-  // Las barras de abajo quedan a 12 px del borde, o 8 px por encima de la línea de tiempo abierta.
-  const barsBottom = $derived(bottomEdge ? bottomEdge + 8 : 12);
+  // Las barras de abajo quedan a 12 px del borde, o 8 px por encima de la línea de tiempo abierta. Con el dedo, 20 px:
+  // la zona de toque del asa de la línea de tiempo crece 18 px hacia arriba y las barras no deben taparla.
+  const barsBottom = $derived(bottomEdge ? bottomEdge + (inputKind === 'touch' ? 20 : 8) : 12);
   const panelClearance = $derived(compactLayout && !hideUi && barsHeight ? bottomEdge + barsHeight + 8 : 0);
   const insets = $derived({
     top: 0,
@@ -578,6 +579,10 @@
   // se cierra si además no había nada seleccionado (el primer toque vacía la selección). Con ratón no se cierra ninguno.
   const TAP_SLOP = 8;
   let tap: { id: number; x: number; y: number; hadSelection: boolean; selecting: boolean; multi: boolean } | null = null;
+
+  function onUiPointerDown(event: PointerEvent) {
+    inputKind = event.pointerType === 'touch' || event.pointerType === 'pen' ? event.pointerType : 'mouse';
+  }
 
   function onCanvasPointerDown(event: PointerEvent) {
     if (event.pointerType !== 'touch') return;
@@ -1025,7 +1030,14 @@
     <!-- Orden del DOM = orden de tabulación: panel izquierdo, lienzo, barra contextual, barras, línea de tiempo, panel
          derecho y ventanas.
          La posición de cada pieza la da el CSS: el lienzo ocupa toda la ventana y lo demás flota encima. -->
-    <div bind:this={root} class={['relative h-dvh overflow-hidden', inputKind === 'touch' ? 'touch-ui' : '']} data-ui={layout.ui}>
+    <!-- Un toque en los paneles también cuenta como último puntero: en un portátil táctil, los controles sin hover se
+         ven aunque el dedo aún no haya tocado el lienzo. -->
+    <div
+      bind:this={root}
+      onpointerdowncapture={onUiPointerDown}
+      class={['relative h-dvh overflow-hidden', inputKind === 'touch' ? 'touch-ui' : '']}
+      data-ui={layout.ui}
+    >
       {#snippet fileHeader(compact: boolean)}
         {#if collabState}
           <FileHeader
@@ -1110,6 +1122,7 @@
           {engine}
           readOnly={engineReadOnly}
           open={leftOpen}
+          touch={inputKind === 'touch'}
           hidden={hideUi}
           clearance={panelClearance}
           header={fileHeader}
@@ -1174,7 +1187,7 @@
       <!-- Avisos arriba, centrados en el hueco que dejan los paneles. -->
       {#if !presenting}
         <div
-          class="pointer-events-none absolute top-3 z-(--z-hud) flex flex-col items-center gap-2"
+          class="pointer-events-none absolute top-3 z-(--z-hud) flex touch-pan-x touch-pan-y flex-col items-center gap-2"
           style:left="{leftEdge + 12}px"
           style:right="{rightEdge + 12}px"
           hidden={!(followed || collabState.notice)}
@@ -1391,7 +1404,7 @@
               aria-keyshortcuts={uiKeys.hideAria}
               onclick={showInterface}
               class={[
-                'absolute top-2 right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-panel border border-edge/40 bg-surface-2 text-ink-muted shadow-float transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink',
+                'absolute top-2 right-2 inline-flex size-8 cursor-pointer touch-pan-x touch-pan-y items-center justify-center rounded-panel border border-edge/40 bg-surface-2 text-ink-muted shadow-float transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink',
                 overlayDocked ? 'z-(--z-stage-pill)' : 'z-(--z-toolbar)',
               ]}
               data-testid="show-ui"

@@ -853,6 +853,7 @@
   "editor_layer_show": "Mostrar",
   "editor_layer_lock": "Bloquear",
   "editor_layer_unlock": "Desbloquear",
+  "editor_layer_actions": "Acciones de la capa {name}",
   "editor_pages_label": "Páginas",
   "editor_page_add": "Añadir página",
   "editor_page_limit": "Has llegado al máximo de 100 páginas.",

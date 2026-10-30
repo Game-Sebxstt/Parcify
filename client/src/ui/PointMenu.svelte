@@ -9,11 +9,13 @@
     // returnFocus es false si se cerró pulsando fuera: el foco se queda donde el usuario lo puso.
     onclose: (returnFocus: boolean) => void;
     label: string;
+    // 'touch': abierto con el dedo, entradas de 44 px.
+    density?: 'default' | 'touch';
     testid?: string;
     class?: string;
   };
 
-  let { items, at, onclose, label, testid, class: className = '' }: Props = $props();
+  let { items, at, onclose, label, density = 'default', testid, class: className = '' }: Props = $props();
 
   // No usa el ContextMenu de bits-ui: su disparador arma su propia pulsación larga de 700 ms y saldrían dos menús.
   // A la derecha del punto, como los menús del sistema: así sube o baja lo necesario para caber entero en vez de
@@ -38,6 +40,7 @@
   sticky="always"
   {label}
   {testid}
+  {density}
   class={className}
   focusFirst
   {onOpenChange}

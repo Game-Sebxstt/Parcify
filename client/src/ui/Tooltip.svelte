@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Tooltip } from 'bits-ui';
   import type { Snippet } from 'svelte';
+  import { lastInputWasTouch, watchInputModality } from './input-modality.ts';
 
   type Props = {
     text: string;
@@ -13,10 +14,15 @@
   };
 
   let { text, kbd, side = 'top', disabled = false, children }: Props = $props();
+
+  watchInputModality();
+
+  // Tras un toque no se abre: el botón ya lleva su nombre accesible y el tooltip se quedaría tapando lo de alrededor.
+  let open = $state(false);
 </script>
 
 <Tooltip.Provider delayDuration={500}>
-  <Tooltip.Root {disabled}>
+  <Tooltip.Root {disabled} bind:open={() => open, (value) => (open = value && !lastInputWasTouch())}>
     <Tooltip.Trigger>
       {#snippet child({ props })}
         {@render children(props)}

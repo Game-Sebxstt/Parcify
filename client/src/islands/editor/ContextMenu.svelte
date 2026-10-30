@@ -38,6 +38,9 @@
 
   let { engine, request, readOnly, onclose, onanimate, oncopypng, onexport, onrename }: Props = $props();
 
+  // Abierto con el dedo (pulsación larga): entradas de 44 px.
+  const density = $derived(request.pointerType === 'touch' ? 'touch' : 'default');
+
   const pasteFailed = () => showToast({ message: m.editor_paste_error(), tone: 'error' });
 
   // Lo que hay seleccionado al abrir (el clic derecho o la pulsación larga ya la ajustaron).
@@ -143,6 +146,7 @@
   at={{ x: request.clientX, y: request.clientY }}
   {onclose}
   label={m.editor_menu_label()}
+  {density}
   testid="context-menu"
   class="w-64"
 />

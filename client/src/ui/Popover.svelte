@@ -15,6 +15,8 @@
     sideOffset?: number;
     testid?: string;
     class?: string;
+    // 'touch': el disparador mide 44 px de alto (hojas y barras para el dedo).
+    density?: 'default' | 'touch';
     onOpenChange?: (open: boolean) => void;
     children: Snippet;
   };
@@ -29,6 +31,7 @@
     sideOffset = 6,
     testid,
     class: className = '',
+    density = 'default',
     onOpenChange,
     children,
   }: Props = $props();
@@ -38,7 +41,7 @@
   {#if trigger}
     <Popover.Trigger>
       {#snippet child({ props })}
-        {@render trigger(props)}
+        {@render trigger(density === 'touch' ? { ...props, 'data-density': 'touch' } : props)}
       {/snippet}
     </Popover.Trigger>
   {/if}

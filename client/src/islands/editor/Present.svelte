@@ -55,8 +55,8 @@
   let index = $state(0);
   let rect = $state<{ x: number; y: number; w: number; h: number } | null>(null);
   let idle = $state(false);
-  // El último puntero fue un dedo: controles de 44 px.
-  let touchUi = $state(false);
+  // El último puntero fue un dedo: controles de 44 px. Antes del primer toque, lo que diga la pantalla.
+  let touchUi = $state(typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches);
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
   let fitted: { width: number; height: number; box: AABB | null } = { width: -1, height: -1, box: null };
   let shown = '';

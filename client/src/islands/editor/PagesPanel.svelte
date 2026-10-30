@@ -10,9 +10,10 @@
   import Tooltip from '../../ui/Tooltip.svelte';
   import ConfirmDialog from '../dashboard/ConfirmDialog.svelte';
 
-  type Props = { engine: Engine; readOnly: boolean };
+  // touch: el último puntero en el editor fue un dedo; filas de 36 px y ⋯ con 32 px de zona de toque.
+  type Props = { engine: Engine; readOnly: boolean; touch?: boolean };
 
-  let { engine, readOnly }: Props = $props();
+  let { engine, readOnly, touch = false }: Props = $props();
 
   const uid = $props.id();
   let pages = $state.raw<readonly PageRecord[]>([]);
@@ -109,7 +110,7 @@
             onblur={(event) => {
               if (renaming === page.id) finishRename(page.id, event.currentTarget.value);
             }}
-            class="h-7 min-w-0 flex-1 rounded-control bg-surface-2 px-2 text-ui"
+            class={['min-w-0 flex-1 rounded-control bg-surface-2 px-2 text-ui', touch ? 'h-9' : 'h-7']}
           />
         {:else}
           <button
@@ -121,7 +122,8 @@
               if (!readOnly) renaming = page.id;
             }}
             class={[
-              'h-7 min-w-0 flex-1 cursor-pointer truncate rounded-control px-2 text-left text-ui',
+              'min-w-0 flex-1 cursor-pointer truncate rounded-control px-2 text-left text-ui',
+              touch ? 'h-9' : 'h-7',
               page.id === active ? 'bg-petrol font-semibold text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
             ]}
           >
@@ -143,8 +145,9 @@
                 type="button"
                 aria-label={m.editor_page_actions({ name: page.name })}
                 class={[
-                  'inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink',
+                  'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink',
                   'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 touch:opacity-100',
+                  touch ? 'size-8' : 'size-6',
                 ]}
               >
                 <Ellipsis size={16} aria-hidden="true" />
