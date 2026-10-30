@@ -175,6 +175,16 @@
   }
 }
 
+/* Sin hover: pantallas táctiles y, en el editor, mientras el último puntero fue un dedo (clase touch-ui en su raíz). */
+@custom-variant touch {
+  @media (hover: none) {
+    @slot;
+  }
+  &:where(.touch-ui, .touch-ui *) {
+    @slot;
+  }
+}
+
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }

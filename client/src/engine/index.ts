@@ -16,7 +16,7 @@ import type { InputProfile } from './interaction/input/profile.ts';
 import { TextEditor } from './text/TextEditor.ts';
 import type { NodeRecord } from './types.ts';
 
-export type { Tool, EngineUser, FrameStats, TextEditing } from './EditorCore.ts';
+export type { Tool, EngineUser, FrameStats, TextEditing, UiCommand, UiCommandName } from './EditorCore.ts';
 export { DirectBackend, LinkBackend, type DocumentBackend } from './doc/backend.ts';
 export type { NodeRecord } from './types.ts';
 export type { PageRecord } from './model/DocumentStore.ts';

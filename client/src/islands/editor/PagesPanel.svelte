@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import Plus from '@lucide/svelte/icons/plus';
   import { untrack } from 'svelte';
@@ -6,8 +7,8 @@
   import { m } from '../../paraglide/messages.js';
   import { DOCUMENT_LIMITS } from '../../shared/document/limits.js';
   import Menu from '../../ui/Menu.svelte';
+  import Tooltip from '../../ui/Tooltip.svelte';
   import ConfirmDialog from '../dashboard/ConfirmDialog.svelte';
-  import ToolButton from './ToolButton.svelte';
 
   type Props = { engine: Engine; readOnly: boolean };
 
@@ -19,6 +20,7 @@
   let renaming = $state<string | null>(null);
   let doomed = $state<PageRecord | null>(null);
   let confirmOpen = $state(false);
+  let expanded = $state(true);
 
   $effect(() => {
     const source = engine;
@@ -58,19 +60,42 @@
   };
 </script>
 
-<section aria-labelledby="{uid}-title" class="flex max-h-[40%] shrink-0 flex-col gap-2">
-  <div class="flex items-center justify-between gap-2 px-1">
-    <h2 id="{uid}-title" class="font-semibold">{m.editor_pages_label()}</h2>
+<section aria-labelledby="{uid}-title" class="flex shrink-0 flex-col border-b border-edge/25 pb-1">
+  <div class="flex h-8 items-center gap-1 pr-2 pl-1">
+    <button
+      type="button"
+      aria-expanded={expanded}
+      aria-controls="{uid}-list"
+      onclick={() => (expanded = !expanded)}
+      class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink"
+    >
+      <ChevronRight size={14} aria-hidden="true" class={['transition-transform duration-(--dur-fast)', expanded ? 'rotate-90' : '']} />
+      <span class="sr-only">{expanded ? m.editor_pages_collapse() : m.editor_pages_expand()}</span>
+    </button>
+    <h2 id="{uid}-title" class="min-w-0 flex-1 truncate text-2xs font-semibold text-ink-muted">{m.editor_pages_label()}</h2>
     {#if !readOnly}
-      <ToolButton side="bottom" label={m.editor_page_add()} disabled={full} onclick={add}><Plus size={16} aria-hidden="true" /></ToolButton>
+      <Tooltip text={m.editor_page_add()} side="bottom">
+        {#snippet children(props)}
+          <button
+            {...props}
+            type="button"
+            aria-label={m.editor_page_add()}
+            disabled={full}
+            onclick={add}
+            class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Plus size={14} aria-hidden="true" />
+          </button>
+        {/snippet}
+      </Tooltip>
     {/if}
   </div>
   {#if full && !readOnly}
-    <p class="px-1 text-xs text-ink-muted">{m.editor_page_limit()}</p>
+    <p class="px-3 pb-1 text-2xs text-ink-muted">{m.editor_page_limit()}</p>
   {/if}
-  <ul aria-labelledby="{uid}-title" class="flex min-h-0 flex-col gap-0.5 overflow-y-auto">
+  <ul id="{uid}-list" hidden={!expanded} aria-labelledby="{uid}-title" class="scroll-thin flex max-h-40 min-h-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto px-1.5">
     {#each pages as page, i (page.id)}
-      <li class="flex items-center gap-1">
+      <li class="group flex min-w-0 items-center gap-0.5">
         {#if renaming === page.id}
           <input
             {@attach focusInput}
@@ -84,7 +109,7 @@
             onblur={(event) => {
               if (renaming === page.id) finishRename(page.id, event.currentTarget.value);
             }}
-            class="h-8 min-w-0 flex-1 rounded-panel bg-surface-2 px-2"
+            class="h-7 min-w-0 flex-1 rounded-control bg-surface-2 px-2 text-ui"
           />
         {:else}
           <button
@@ -96,9 +121,9 @@
               if (!readOnly) renaming = page.id;
             }}
             class={[
-              'h-8 min-w-0 flex-1 cursor-pointer truncate rounded-panel px-2 text-left',
+              'h-7 min-w-0 flex-1 cursor-pointer truncate rounded-control px-2 text-left text-ui',
               page.id === active ? 'bg-petrol font-semibold text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
-            ].join(' ')}
+            ]}
           >
             {page.name}
           </button>
@@ -117,7 +142,10 @@
                 {...props}
                 type="button"
                 aria-label={m.editor_page_actions({ name: page.name })}
-                class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-2 hover:text-ink"
+                class={[
+                  'inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink',
+                  'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 touch:opacity-100',
+                ]}
               >
                 <Ellipsis size={16} aria-hidden="true" />
               </button>

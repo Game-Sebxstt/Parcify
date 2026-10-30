@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
+import { canvasGap } from './helpers/canvas.ts';
 import { samePixel, screenPixel } from './helpers/pixels.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
 
@@ -142,7 +143,7 @@ test('A crea una versión, cambia el lienzo y la restaura; B ve el cambio sin re
 
 // Un movimiento del ratón por el lienzo cambia el hover y obliga al editor a pintar un frame nuevo.
 async function repaint(page: Page) {
-  const box = (await canvasArea(page).boundingBox())!;
+  const box = await canvasGap(page);
   await page.mouse.move(box.x + box.width - 40, box.y + 40, { steps: 3 });
   await page.mouse.move(box.x + box.width - 60, box.y + 60, { steps: 3 });
   await page.waitForTimeout(300);

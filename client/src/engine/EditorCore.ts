@@ -123,6 +123,9 @@ export type CoreOptions = {
 
 export type GesturePreview = { ids: readonly string[]; matrix: Mat; snapGuides?: OverlayModel['guides'] };
 
+export type UiCommandName = 'hideUi' | 'minimizeUi';
+export type UiCommand = { name: UiCommandName; n: number };
+
 export class EditorCore {
   readonly backend: DocumentBackend;
   readonly writer: DocWriter;
@@ -160,6 +163,9 @@ export class EditorCore {
   readonly following = new Store<number | null>(null);
   // Perfil del puntero con el que se está trabajando (el del último pointerdown o pointermove): umbrales y tiradores.
   readonly inputProfile = new Store<Readonly<InputProfile>>(INPUT_PROFILES[initialKind()]);
+  // Atajos que cambian la interfaz y no el documento (ocultar o minimizar los paneles): los atiende quien monta el
+  // motor. `n` sube con cada pulsación para que dos seguidas iguales también avisen.
+  readonly uiCommand = new Store<UiCommand | null>(null);
 
   // Grupo en el que se ha entrado con doble clic: sus hijos se seleccionan directamente.
   scope: string | null = null;
@@ -574,7 +580,7 @@ export class EditorCore {
       this.lastCameraVersion = this.camera.version;
       this.sink.setCamera(this.camera.state());
       this.zoom.set(this.camera.zoom);
-      this.presence.update({ viewport: this.camera.state() });
+      this.publishViewport();
       this.overlayDirty = true;
       this.remoteDirty = true;
       this.needsRender = true;
@@ -1361,11 +1367,16 @@ export class EditorCore {
     if (!ids.length) return;
     this.stopFollowing();
     const box = this.boundsOf(ids);
-    if (isEmptyAABB(box) || containsAABB(this.camera.viewport(), box)) return;
+    // Lo que tapan los paneles no cuenta como visible: el nodo enfocado no puede quedar debajo de uno (WCAG 2.4.11).
+    const view = this.camera.visibleRect(this.viewInsets);
+    const topLeft = this.camera.screenToWorld(view.x, view.y);
+    const bottomRight = this.camera.screenToWorld(view.x + view.width, view.y + view.height);
+    const visible = { minX: topLeft.x, minY: topLeft.y, maxX: bottomRight.x, maxY: bottomRight.y };
+    if (isEmptyAABB(box) || containsAABB(visible, box)) return;
     const zoom = this.camera.zoom;
     const cx = (box.minX + box.maxX) / 2;
     const cy = (box.minY + box.maxY) / 2;
-    this.camera.set({ x: cx - this.camera.width / zoom / 2, y: cy - this.camera.height / zoom / 2, zoom });
+    this.camera.set({ x: cx - (view.x + view.width / 2) / zoom, y: cy - (view.y + view.height / 2) / zoom, zoom });
     this.requestFrame();
   }
 
@@ -1906,6 +1917,14 @@ export class EditorCore {
     const current = this.viewInsets;
     if (current.top === insets.top && current.right === insets.right && current.bottom === insets.bottom && current.left === insets.left) return;
     this.viewInsets = { top: insets.top, right: insets.right, bottom: insets.bottom, left: insets.left };
+    this.publishViewport();
+  }
+
+  // La presencia lleva la esquina del área visible, no la de la pantalla: quien sigue ve lo que no tapan los paneles.
+  private publishViewport(): void {
+    const camera = this.camera;
+    const view = camera.visibleRect(this.viewInsets);
+    this.presence.update({ viewport: { x: camera.x + view.x / camera.zoom, y: camera.y + view.y / camera.zoom, zoom: camera.zoom } });
   }
 
   zoomToSelection(): void {

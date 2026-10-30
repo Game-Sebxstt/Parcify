@@ -1,7 +1,7 @@
 import { newNodeId } from '../../shared/document/ids.js';
 import { DOCUMENT_LIMITS } from '../../shared/document/limits.js';
 import { NodeSchema, PageSchema, type FontFamily } from '../../shared/document/schema.js';
-import type { EditorCore, Tool } from '../EditorCore.ts';
+import type { EditorCore, Tool, UiCommandName } from '../EditorCore.ts';
 import { EDIT_TOOLS } from '../EditorCore.ts';
 import { localMatrix } from '../geometry/bounds.ts';
 import { endpointBox, endpointsFromBox, type ConnectorEnd, type ConnectorRoute } from '../geometry/connectors.ts';
@@ -197,6 +197,11 @@ export class Commands {
     this.core.toolLocked.set(tool !== 'select' && tool !== 'hand' && opts.locked === true);
     this.core.tool.set(tool);
     this.core.controller.cancel();
+  }
+
+  // Ocultar o minimizar la interfaz: no toca el documento, lo atiende quien monta el motor.
+  uiCommand(name: UiCommandName): void {
+    this.core.uiCommand.set({ name, n: (this.core.uiCommand.get()?.n ?? 0) + 1 });
   }
 
   // Al terminar de crear: vuelve a Seleccionar salvo que la herramienta esté bloqueada.

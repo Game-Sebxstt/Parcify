@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { canvasGap } from './helpers/canvas.ts';
 import { toolbar } from './helpers/tools.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number; rotation: number };
@@ -62,14 +63,17 @@ test('sacar el puntero del lienzo quita el contorno de hover', async ({ page }) 
   await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
   await drag(page, origin, { x: origin.x + 120, y: origin.y + 80 });
   await expect.poll(async () => (await nodes(page)).length).toBe(1);
-  // Sin selección, para que el contorno que se ve sea el del hover. Abajo está la barra de zoom: se pulsa arriba.
-  await page.mouse.click(box.x + 20, box.y + 20);
+  // Sin selección, para que el contorno que se ve sea el del hover. Los paneles flotan sobre el lienzo: se vacía con Esc.
+  await canvas.focus();
+  await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection().length)).toBe(0);
 
   const hover = () => page.evaluate(() => (window.__parcifyTest!.overlayModel()?.hover ?? null) !== null);
   await page.mouse.move(origin.x + 60, origin.y + 40);
   await expect.poll(hover).toBe(true);
-  await page.mouse.move(box.x + box.width / 2, Math.max(1, box.y - 10));
+  // El panel derecho tapa el lienzo: pasar a él es sacar el puntero del lienzo.
+  const panel = (await page.getByTestId('right-panel').boundingBox())!;
+  await page.mouse.move(panel.x + panel.width / 2, panel.y + panel.height / 2, { steps: 4 });
   await expect.poll(hover, { timeout: 1_000 }).toBe(false);
 });
 
@@ -478,7 +482,7 @@ test('el desplegable de un grupo sale por encima de la barra y entero en 390×84
   await page.keyboard.press('Escape');
 
   // Mantener pulsado el botón del grupo 300 ms abre el desplegable sin cambiar de herramienta.
-  // Hasta la maqueta móvil, la barra de zoom tapa el final de la barra a este ancho: se usa el grupo Formas.
+  // A este ancho la barra puede quedar justa contra los bordes: se usa el grupo Formas, que está en el centro.
   const rect = bar.getByRole('button', { name: 'Rectángulo (R)' });
   const box = (await rect.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -508,4 +512,141 @@ test('con la Galería abierta, la barra de zoom no tapa ningún botón de la bar
       .map((button) => button.getAttribute('aria-label') ?? button.textContent),
   );
   expect(covered).toEqual([]);
+});
+
+// Rectángulo en pantalla del <canvas> del motor.
+const canvasRect = (page: Page) =>
+  page.evaluate(() => {
+    const box = document.querySelector('[role="application"] canvas')!.getBoundingClientRect();
+    return { x: box.x, y: box.y, width: box.width, height: box.height };
+  });
+
+test('el lienzo mide lo que la ventana con los paneles abiertos y plegados, y «Encajar todo» centra en el hueco entre ellos', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const account = await createVerifiedAccount(page.request, `maqueta-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const full = { x: 0, y: 0, width: 1440, height: 900 };
+  expect(await canvasRect(page)).toEqual(full);
+
+  // Un rectángulo en el hueco y el panel izquierdo a su ancho máximo, para que los dos márgenes sean distintos.
+  const box = await canvasGap(page);
+  await canvas.focus();
+  await page.keyboard.press('r');
+  await drag(page, { x: box.x + 100, y: box.y + 100 }, { x: box.x + 220, y: box.y + 180 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  const rect = (await nodes(page))[0]!;
+  const resizer = page.getByRole('separator', { name: 'Ancho del panel de capas' });
+  await resizer.focus();
+  await page.keyboard.press('End');
+  await expect(resizer).toHaveAttribute('aria-valuenow', '400');
+  const fitCenter = async () => {
+    await canvas.focus();
+    await page.keyboard.press('Shift+1');
+    return toPage(page, center(rect).x, center(rect).y);
+  };
+
+  // Abiertos: margen izquierdo 400 + 16 y derecho 248 + 16; el hueco va de 416 a 1176.
+  await expect.poll(async () => Math.abs((await fitCenter()).x - (416 + 1176) / 2)).toBeLessThanOrEqual(2);
+  expect(Math.abs((await fitCenter()).y - 450)).toBeLessThanOrEqual(2);
+
+  // Plegados: el lienzo no cambia de tamaño y el encuadre usa toda la ventana.
+  await page.getByTestId('left-panel-toggle').click();
+  await page.getByTestId('right-panel-toggle').click();
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'collapsed');
+  await expect(page.getByTestId('right-panel')).toHaveAttribute('data-state', 'collapsed');
+  expect(await canvasRect(page)).toEqual(full);
+  await expect.poll(async () => Math.abs((await fitCenter()).x - 720)).toBeLessThanOrEqual(2);
+  expect(Math.abs((await fitCenter()).y - 450)).toBeLessThanOrEqual(2);
+
+  // Desplegados otra vez, siguen a toda la ventana.
+  await page.getByTestId('left-panel-toggle').click();
+  await page.getByTestId('right-panel-toggle').click();
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'open');
+  expect(await canvasRect(page)).toEqual(full);
+});
+
+test('tras recargar, los paneles conservan su plegado y su ancho', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const account = await createVerifiedAccount(page.request, `maqueta-guardada-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+
+  const resizer = page.getByRole('separator', { name: 'Ancho del panel de propiedades' });
+  await resizer.focus();
+  // En el panel derecho el asa está a su izquierda: ← lo ensancha 8 px cada vez.
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowLeft');
+  await expect(resizer).toHaveAttribute('aria-valuenow', '296');
+  await page.getByTestId('left-panel-toggle').click();
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'collapsed');
+  await page.waitForTimeout(400);
+
+  await page.reload();
+  await openEditor(page, projectId);
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'collapsed');
+  await expect(page.getByTestId('left-panel-pill')).toBeVisible();
+  await expect(page.getByTestId('right-panel')).toHaveAttribute('data-state', 'open');
+  expect(Math.round((await page.getByTestId('right-panel').boundingBox())!.width)).toBe(296);
+});
+
+test('Tab recorre el panel izquierdo, el lienzo, la barra de herramientas, la de zoom y el panel derecho, en ese orden', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const account = await createVerifiedAccount(page.request, `tabulacion-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+
+  const region = () =>
+    page.evaluate(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) return 'none';
+      if (active.closest('[data-testid="left-panel"]')) return 'left';
+      if (active.getAttribute('role') === 'application') return 'canvas';
+      if (active.closest('[role="toolbar"]')) return 'toolbar';
+      if (active.closest('[data-testid="canvas-bars"]')) return 'zoom';
+      if (active.closest('[data-testid="right-panel"]')) return 'right';
+      return 'other';
+    });
+
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  const order: string[] = [];
+  for (let i = 0; i < 80 && !order.includes('right'); i++) {
+    await page.keyboard.press('Tab');
+    const now = await region();
+    if (now !== 'none' && now !== 'other' && order.at(-1) !== now) order.push(now);
+  }
+  expect(order).toEqual(['left', 'canvas', 'toolbar', 'zoom', 'right']);
+});
+
+test('Ctrl+\\ oculta la interfaz, también con AltGr del teclado español, y Ctrl+Shift+\\ la minimiza', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const account = await createVerifiedAccount(page.request, `ocultar-interfaz-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug);
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+
+  // AltGr+º del teclado español: llegan Ctrl y Alt, la tecla es «\» y el código, el de la tecla º.
+  await canvas.evaluate((element) => {
+    element.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', code: 'Backquote', ctrlKey: true, altKey: true, bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByTestId('left-panel')).toBeHidden();
+  await expect(page.getByTestId('right-panel')).toBeHidden();
+  await expect(page.getByTestId('canvas-bars')).toBeHidden();
+  await page.getByTestId('show-ui').click();
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'open');
+  await expect(page.getByTestId('canvas-bars')).toBeVisible();
+
+  await canvas.focus();
+  await page.keyboard.press('Control+\\');
+  await expect(page.getByTestId('show-ui')).toBeVisible();
+  await page.keyboard.press('Control+\\');
+  await expect(page.getByTestId('show-ui')).toHaveCount(0);
+
+  await page.keyboard.press('Control+Shift+Backslash');
+  await expect(page.getByTestId('left-panel-pill')).toBeVisible();
+  await expect(page.getByTestId('right-panel-pill')).toBeVisible();
+  await page.keyboard.press('Control+Shift+Backslash');
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'open');
+  await expect(page.getByTestId('right-panel')).toHaveAttribute('data-state', 'open');
 });

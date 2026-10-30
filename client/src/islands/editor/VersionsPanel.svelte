@@ -1,8 +1,8 @@
 <script lang="ts">
   import BookmarkPlus from '@lucide/svelte/icons/bookmark-plus';
   import Eye from '@lucide/svelte/icons/eye';
+  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
-  import X from '@lucide/svelte/icons/x';
   import { tick, untrack } from 'svelte';
   import type { EngineUser } from '../../engine/index.ts';
   import { ApiError } from '../../lib/api.ts';
@@ -14,6 +14,7 @@
   import Button from '../../ui/Button.svelte';
   import Dialog from '../../ui/Dialog.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
+  import Tooltip from '../../ui/Tooltip.svelte';
   import ConfirmDialog from '../dashboard/ConfirmDialog.svelte';
   import NameDialog from '../dashboard/NameDialog.svelte';
   import type { VersionPreview } from './version-preview.ts';
@@ -193,24 +194,31 @@
   }
 </script>
 
+<!-- Vista «Versiones» del panel derecho; «←» y Esc vuelven a Diseño. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<aside
+<section
   hidden={!open}
   aria-labelledby="{uid}-title"
   onkeydown={onPanelKey}
-  class="flex w-80 shrink-0 flex-col overflow-hidden bg-surface-1 text-sm"
+  class="flex min-h-0 w-full flex-1 flex-col overflow-hidden text-sm"
   data-testid="versions-panel"
 >
-  <div class="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-    <h2 id="{uid}-title" class="font-semibold">{m.editor_versions_title()}</h2>
-    <button
-      type="button"
-      aria-label={m.editor_versions_close()}
-      onclick={onclose}
-      class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-2 hover:text-ink"
-    >
-      <X size={16} aria-hidden="true" />
-    </button>
+  <div class="flex h-10 shrink-0 items-center gap-1 px-2">
+    <Tooltip text={m.editor_versions_back()} side="bottom">
+      {#snippet children(props)}
+        <button
+          {...props}
+          type="button"
+          aria-label={m.editor_versions_back()}
+          onclick={onclose}
+          class="inline-flex size-7 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-petrol hover:text-ink"
+          data-testid="versions-back"
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+        </button>
+      {/snippet}
+    </Tooltip>
+    <h2 id="{uid}-title" class="text-ui font-semibold">{m.editor_versions_title()}</h2>
   </div>
 
   {#if canEdit}
@@ -295,7 +303,7 @@
       {/if}
     {/if}
   </div>
-</aside>
+</section>
 
 <NameDialog
   bind:open={nameOpen}

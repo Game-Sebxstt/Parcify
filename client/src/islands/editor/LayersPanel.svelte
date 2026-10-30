@@ -53,6 +53,11 @@
 
   const rowId = (id: string) => `${uid}-${id}`;
 
+  const ROW_ACTION = 'inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control hover:bg-surface-2';
+  // Ojo y candado aparecen con el puntero encima o con la fila enfocada; una capa oculta o bloqueada los enseña siempre,
+  // y sin hover (táctil) también se ven siempre.
+  const HOVER_ONLY = 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 touch:opacity-100';
+
   function nameOf(row: LayerRow): string {
     const text = row.record.type === 'text' ? engine.core.store.text(row.id) : '';
     return displayName(row.record, kindLabel(kindOf(row.record)), text);
@@ -183,11 +188,11 @@
   };
 </script>
 
-<section aria-labelledby="{uid}-title" class="flex min-h-0 flex-1 flex-col gap-2">
-  <h2 id="{uid}-title" class="px-1 font-semibold">{m.editor_layers_label()}</h2>
+<section aria-labelledby="{uid}-title" class="flex min-h-0 flex-1 flex-col">
+  <h2 id="{uid}-title" class="flex h-8 shrink-0 items-center px-3 text-2xs font-semibold text-ink-muted">{m.editor_layers_label()}</h2>
   <p id="{uid}-hint" class="sr-only">{m.editor_layers_hint()}</p>
   {#if rows.length === 0}
-    <p class="px-1 text-ink-muted">{m.editor_layers_empty()}</p>
+    <p class="px-3 text-xs text-ink-muted">{m.editor_layers_empty()}</p>
   {:else}
     <div
       bind:this={tree}
@@ -198,7 +203,7 @@
       aria-multiselectable="true"
       data-own-keys
       onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
-      class="relative min-h-0 flex-1 overflow-y-auto"
+      class="scroll-thin relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1.5 pb-1.5"
     >
       <div class="relative" style:height="{rows.length * LAYER_ROW_HEIGHT}px">
         {#each shown as row, i (row.id)}
@@ -221,7 +226,7 @@
             style:height="{LAYER_ROW_HEIGHT}px"
             style:padding-left="{(row.depth - 1) * 14 + 4}px"
             class={[
-              'absolute inset-x-0 flex cursor-pointer items-center gap-1 rounded-[6px] pr-1 outline-none select-none',
+              'group absolute inset-x-0 flex cursor-pointer items-center gap-1 rounded-control pr-1 text-ui outline-none select-none',
               'focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-inset',
               isSelected ? 'bg-petrol text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
               row.record.visible ? '' : 'italic',
@@ -277,7 +282,7 @@
                       event.stopPropagation();
                       engine.commands.setFlagFor([row.id], 'visible', !row.record.visible);
                     }}
-                    class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2"
+                    class={[ROW_ACTION, row.record.visible ? HOVER_ONLY : '']}
                   >
                     {#if row.record.visible}<Eye size={14} />{:else}<EyeOff size={14} />{/if}
                   </button>
@@ -295,7 +300,7 @@
                       event.stopPropagation();
                       engine.commands.setFlagFor([row.id], 'locked', !row.record.locked);
                     }}
-                    class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2"
+                    class={[ROW_ACTION, row.record.locked ? '' : HOVER_ONLY]}
                   >
                     {#if row.record.locked}<Lock size={14} />{:else}<LockOpen size={14} />{/if}
                   </button>

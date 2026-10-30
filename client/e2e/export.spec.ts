@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PDFDocument } from 'pdf-lib';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { canvasGap } from './helpers/canvas.ts';
 
 type Node = { id: string; type: string; name: string; x: number; y: number; w: number; h: number; parentId: string | null };
 
@@ -83,7 +84,7 @@ test('PNG, JPG, SVG, PDF y .parcify; vista previa en el dashboard y reimportaci√
 
   // Dos frames de 240 √ó 160 y un rect√°ngulo dentro del primero.
   const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
-  const box = (await canvas.boundingBox())!;
+  const box = await canvasGap(page);
   const origin = { x: box.x + 60, y: box.y + 60 };
   for (const dx of [0, 300]) {
     await canvas.focus();
@@ -154,7 +155,8 @@ test('PNG, JPG, SVG, PDF y .parcify; vista previa en el dashboard y reimportaci√
   expect(archive.file.subarray(0, 2).toString('ascii')).toBe('PK');
 
   // Al volver al dashboard se sube la miniatura y la tarjeta la muestra.
-  await page.getByRole('link', { name: 'Volver a tus proyectos' }).click();
+  await page.getByTestId('file-menu').click();
+  await page.getByRole('menuitem', { name: 'Volver al inicio' }).click();
   await expect(page).toHaveURL('/app');
   const card = page
     .getByRole('list', { name: 'Recientes' })

@@ -168,6 +168,30 @@ describe('seguir a un colaborador', () => {
     expect(core.following.get()).toBeNull();
     core.destroy();
   });
+
+  it('la presencia publica la esquina del área que no tapan los paneles y quien sigue la coloca en la suya', () => {
+    const { timers } = fakeTimers();
+    const doc = newDoc();
+    const awareness = new Awareness(doc);
+    const { core, tick } = makeCore(doc, { awareness, timers });
+    core.camera.resize(1440, 900);
+    core.camera.moveTo(100, 50, 2);
+    core.setViewInsets({ top: 0, left: 272, right: 272, bottom: 0 });
+    tick(1000);
+    const published = core.presence.state.viewport;
+    expect(published).toEqual({ x: 100 + 272 / 2, y: 50, zoom: 2 });
+    awareness.states.set(3000, { ...core.presence.state, user: { ...USER, id: 'u3' }, viewport: published });
+    awareness.emit('change', [{ added: [3000], updated: [], removed: [] }, 'remote']);
+    core.camera.moveTo(0, 0, 1);
+    core.follow(3000);
+    let time = 1000;
+    for (let i = 0; i < 300; i++) {
+      time += 16;
+      tick(time);
+    }
+    expect(core.camera.state()).toEqual({ x: 100, y: 50, zoom: 2 });
+    core.destroy();
+  });
 });
 
 describe('cursores remotos', () => {

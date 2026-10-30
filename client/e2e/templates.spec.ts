@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { canvasGap } from './helpers/canvas.ts';
 
 type Node = { id: string; type: string; w: number; h: number };
 const nodes = (page: Page) => page.evaluate(() => window.__parcifyTest!.nodes() as unknown as Node[]);
@@ -29,14 +30,15 @@ test('publicar como plantilla, me gusta, favorita y crear proyectos desde la gal
   const sourceId = await createProject(page.request, ana.workspaceSlug, 'Cartel de origen');
   await page.goto(`/p/${sourceId}`);
   await waitForEditor(page);
-  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
-  const box = (await canvas.boundingBox())!;
+  const box = await canvasGap(page);
   await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
   await drag(page, { x: box.x + 80, y: box.y + 80 }, { x: box.x + 200, y: box.y + 160 });
   await expect.poll(async () => (await nodes(page)).length).toBe(1);
   const original = await shapes(page);
 
-  await page.getByRole('button', { name: 'Publicar como plantilla' }).click();
+  // Publicar está en el menú principal, en la cabecera del panel izquierdo.
+  await page.getByTestId('file-menu').click();
+  await page.getByRole('menuitem', { name: 'Publicar como plantilla' }).click();
   const publish = page.getByRole('dialog', { name: 'Publicar como plantilla' });
   await publish.getByRole('textbox', { name: 'Nombre de la plantilla' }).fill('Cartel base');
   await publish.getByRole('textbox', { name: 'Descripción (opcional)' }).fill('Un rectángulo para empezar.');

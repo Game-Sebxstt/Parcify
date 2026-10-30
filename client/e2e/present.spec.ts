@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { canvasGap } from './helpers/canvas.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number };
 
@@ -33,7 +34,7 @@ test('Presentar: la diapositiva sigue centrada al pasar de 1440×900 a 1920×108
   await openEditor(page, projectId);
 
   const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
-  const box = (await canvas.boundingBox())!;
+  const box = await canvasGap(page);
   await canvas.focus();
   await page.keyboard.press('f');
   await drag(page, { x: box.x + 60, y: box.y + 80 }, { x: box.x + 300, y: box.y + 220 });
@@ -80,7 +81,7 @@ test('Presentar: frames en orden, teclado para avanzar, atajos del editor bloque
 
   // Tres frames en fila y un rectángulo dentro del segundo.
   const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
-  const box = (await canvas.boundingBox())!;
+  const box = await canvasGap(page);
   const origin = { x: box.x + 40, y: box.y + 60 };
   for (const dx of [0, 220, 440]) {
     await canvas.focus();

@@ -69,7 +69,18 @@ function keyOf(input: KeyInput): string[] {
   return keys;
 }
 
+// Ctrl/⌘+\ oculta la interfaz y Ctrl/⌘+Shift+\ la minimiza. En el teclado español «\» sale con AltGr, que llega como
+// Ctrl+Alt: aquí Alt no cuenta. También vale la tecla física de «\» del teclado inglés (o la de «<» del ISO), escriba
+// lo que escriba la distribución.
+const HIDE_UI: Shortcut = { key: '\\', ctrl: true, run: (c) => c.uiCommand('hideUi') };
+const MINIMIZE_UI: Shortcut = { key: '\\', ctrl: true, shift: true, run: (c) => c.uiCommand('minimizeUi') };
+
+function isBackslash(input: KeyInput): boolean {
+  return input.key === '\\' || input.code === 'Backslash' || input.code === 'IntlBackslash';
+}
+
 export function findShortcut(input: KeyInput): Shortcut | null {
+  if (input.ctrl && isBackslash(input)) return input.shift ? MINIMIZE_UI : HIDE_UI;
   if (input.alt) return null;
   const keys = keyOf(input);
   return (

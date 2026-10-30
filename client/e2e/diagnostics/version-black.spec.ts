@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from '../helpers/account.ts';
+import { canvasGap } from '../helpers/canvas.ts';
 
 // Reproducción del lienzo negro al ver versiones. Solo se ejecuta con DIAG=1 y una vez: anota lo que pasa,
 // no protege ningún comportamiento.
@@ -50,7 +51,7 @@ async function screenPixel(page: Page, point: { x: number; y: number }): Promise
 
 // Un movimiento del ratón por el lienzo cambia el hover y obliga al editor a pintar un frame nuevo.
 async function repaint(page: Page) {
-  const box = (await canvasArea(page).boundingBox())!;
+  const box = await canvasGap(page);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 60, { steps: 3 });
   await page.mouse.move(box.x + box.width - 40, box.y + 40, { steps: 3 });
   await page.waitForTimeout(300);

@@ -262,6 +262,21 @@ describe('atajos', () => {
     expect(doc.getMap(ROOT_KEYS.nodes).size).toBe(2);
   });
 
+  it('Ctrl+\\ oculta la interfaz y Ctrl+Shift+\\ la minimiza, también con AltGr del teclado español', () => {
+    const { core } = makeCore(newDoc(), { readOnly: true });
+    const c = core.controller;
+    expect(c.keyDown(key('\\', 'Backslash', { ctrl: true }))).toBe(true);
+    expect(core.uiCommand.get()).toEqual({ name: 'hideUi', n: 1 });
+    // AltGr+º: llegan Ctrl y Alt, y la tecla física no es la de «\».
+    expect(c.keyDown({ ...key('\\', 'Backquote', { ctrl: true }), alt: true })).toBe(true);
+    expect(core.uiCommand.get()).toEqual({ name: 'hideUi', n: 2 });
+    expect(c.keyDown(key('|', 'Backslash', { ctrl: true, shift: true }))).toBe(true);
+    expect(core.uiCommand.get()).toEqual({ name: 'minimizeUi', n: 3 });
+    // La tecla «\» sin Ctrl no hace nada.
+    expect(c.keyDown(key('\\', 'Backslash'))).toBe(false);
+    expect(core.uiCommand.get()?.n).toBe(3);
+  });
+
   it('orden z con Ctrl+] y Ctrl+Shift+[', () => {
     const doc = newDoc();
     const a = putNode(doc, rect({ index: 'a0' }));

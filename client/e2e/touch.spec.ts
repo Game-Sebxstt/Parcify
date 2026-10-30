@@ -30,11 +30,6 @@ async function openEditor(page: Page, label: string) {
 }
 
 test.describe('@touch gestos con el dedo', () => {
-  test.beforeEach(() => {
-    // A 412 px las dos barras laterales fijas dejan el lienzo sin ancho.
-    test.skip(test.info().project.name === 'mobile', 'el lienzo no tiene ancho en la maqueta de móvil actual');
-  });
-
   test('dos dedos que se separan acercan y dos que se mueven juntos desplazan sin zoom', async ({ page }) => {
     const { center } = await openEditor(page, 'dos-dedos');
 

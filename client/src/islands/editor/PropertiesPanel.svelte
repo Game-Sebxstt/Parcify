@@ -130,7 +130,7 @@
   </div>
 {/snippet}
 
-<aside aria-label={m.editor_props_label()} class="flex w-60 shrink-0 flex-col gap-5 overflow-y-auto bg-surface-1 p-4 text-sm">
+<div class="flex min-w-0 flex-col gap-5 p-4 text-sm" data-testid="properties-panel">
   {#if !first && tool === 'frame' && !readOnly}
     <div class="flex flex-col gap-3">
       <span class="font-semibold">{m.editor_props_preset()}</span>
@@ -537,4 +537,4 @@
       </div>
     {/if}
   {/if}
-</aside>
+</div>

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
 import { setProjectMember } from './helpers/seed.ts';
+import { canvasGap } from './helpers/canvas.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number; parentId: string | null; pageId: string };
 
@@ -35,7 +36,7 @@ test('grupo, frame y página creados por una persona y vistos por otra', async (
   await openEditor(bea, projectId);
 
   const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
-  const box = (await canvas.boundingBox())!;
+  const box = await canvasGap(page);
   const origin = { x: box.x + 60, y: box.y + 60 };
 
   // Dos rectángulos agrupados con Ctrl+G.
