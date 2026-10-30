@@ -8,6 +8,7 @@
     createEngine,
     OWN_WHEEL_ATTR,
     RendererUnavailableError,
+    type ActiveVertex,
     type ContextMenuRequest,
     type ContextState,
     type Engine,
@@ -80,6 +81,8 @@
   // Caja en pantalla de la selección para la barra contextual (null mientras el motor la oculta).
   let selectionRect = $state.raw<ScreenRect | null>(null);
   let hud = $state.raw<Hud | null>(null);
+  let activeVertex = $state.raw<ActiveVertex | null>(null);
+  let pointLimit = $state(false);
   let history = $state({ canUndo: false, canRedo: false });
   let zoom = $state(1);
   let engineReadOnly = $state(true);
@@ -402,6 +405,8 @@
       created.state.selectionRecords.subscribe((value) => (selection = value.map((record) => ({ ...record })))),
       created.core.selectionScreenRect.subscribe((value) => (selectionRect = value)),
       created.core.hud.subscribe((value) => (hud = value)),
+      created.state.activeVertex.subscribe((value) => (activeVertex = value)),
+      created.state.pointLimit.subscribe((value) => (pointLimit = value)),
       created.state.history.subscribe((value) => (history = value)),
       created.state.zoom.subscribe((value) => (zoom = value)),
       created.state.readOnly.subscribe((value) => (engineReadOnly = value)),
@@ -645,6 +650,8 @@
     engine = null;
     selectionRect = null;
     hud = null;
+    activeVertex = null;
+    pointLimit = false;
     engineCanvas?.remove();
     engineCanvas = null;
     contextState = 'ok';
@@ -898,7 +905,12 @@
       onpointercancel={onCanvasPointerCancel}
       class="absolute inset-0 touch-none overflow-hidden outline-none select-none [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
     ></div>
-    <CanvasHud restoring={contextState === 'lost'} hud={presenting ? null : hud} touch={inputKind === 'touch'} />
+    <CanvasHud
+      restoring={contextState === 'lost'}
+      hud={presenting ? null : hud}
+      touch={inputKind === 'touch'}
+      pointLimit={pointLimit && !presenting && !hideUi}
+    />
     <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
     <input
       bind:this={replaceInput}
@@ -919,6 +931,7 @@
         locked={selectionLocked}
         avoid={contextAvoid}
         touch={inputKind === 'touch'}
+        vertex={activeVertex}
         onmore={openMoreMenu}
         onreplaceimage={pickReplacement}
         onescape={() => container?.focus({ preventScroll: true })}

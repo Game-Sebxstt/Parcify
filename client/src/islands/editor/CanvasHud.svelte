@@ -9,9 +9,11 @@
     hud: Hud | null;
     // El último puntero fue un dedo: al imantar el giro, el móvil vibra.
     touch: boolean;
+    // La línea o el conector seleccionado ya no admite más puntos.
+    pointLimit: boolean;
   };
 
-  let { restoring, hud, touch }: Props = $props();
+  let { restoring, hud, touch, pointLimit }: Props = $props();
 
   const snapped = $derived(hud?.kind === 'angle' && hud.snapped);
   let wasSnapped = false;
@@ -39,11 +41,18 @@
   </div>
 {/if}
 
-<!-- La región existe siempre para que el lector de pantalla anuncie el aviso al aparecer. -->
+<!-- Las regiones existen siempre para que el lector de pantalla anuncie el aviso al aparecer. -->
 <div class="pointer-events-none absolute inset-0 grid place-items-center">
   <div role="status">
     {#if restoring}
       <p class="rounded-panel bg-surface-2 px-4 py-3 text-sm shadow-float">{m.editor_canvas_restoring()}</p>
+    {/if}
+  </div>
+</div>
+<div class="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center">
+  <div role="status" data-testid="point-limit">
+    {#if pointLimit}
+      <p class="rounded-panel bg-surface-2 px-3 py-1.5 text-xs text-ink-muted shadow-float">{m.editor_point_limit()}</p>
     {/if}
   </div>
 </div>

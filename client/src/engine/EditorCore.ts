@@ -11,7 +11,19 @@ import { DocWriter } from './doc/DocWriter.ts';
 import type { DocBatch, TextSessionState } from './doc/protocol.ts';
 import { DEFAULT_FRAME_PRESET, type FramePresetId } from './commands/defaults.ts';
 import { geometryAABB, localPoints, paintedFromGeometry, paintPadding, transformedAABB, translatedPlacement, type Placement } from './geometry/bounds.ts';
-import { anchorTerminal, endpointsFromBox, routeEnd, routePoints, routeStart, type ConnectorEnd, type Terminal } from './geometry/connectors.ts';
+import {
+  anchorTerminal,
+  anchorUnit,
+  endpointsFromBox,
+  NAMED_ANCHORS,
+  routeEnd,
+  routePoints,
+  routeStart,
+  type Anchor,
+  type ConnectorEnd,
+  type Terminal,
+} from './geometry/connectors.ts';
+import { DOCUMENT_LIMITS } from '../shared/document/limits.js';
 import { hitRecord, insideBox } from './geometry/hit.ts';
 import { apply, IDENTITY, invert, isRigid, isTranslation, multiply, rotation, transformPoints, type Mat, type Point } from './geometry/matrix.ts';
 import { SnapCandidates } from './geometry/snapping.ts';
@@ -21,8 +33,10 @@ import { PointerController } from './interaction/PointerController.ts';
 import { DocumentStore, type PageRecord } from './model/DocumentStore.ts';
 import { SceneTree } from './model/tree.ts';
 import {
+  elbowSegments,
   frameCorners,
   handlePositions,
+  pathMids,
   radiusHandlesLocal,
   radiusVisible,
   rotateHandlePosition,
@@ -79,6 +93,10 @@ const roundPx = (value: number) => Math.round(value * 10) / 10;
 // Píldora bajo la selección: tamaño («857 × 623») o, mientras se gira, el ángulo. x e y en px del contenedor: el
 // centro del borde superior de la píldora (debajo de la selección) o el del inferior (`above`, encima).
 export type Hud = { kind: 'size' | 'angle'; text: string; x: number; y: number; snapped: boolean; above: boolean };
+// Vértice marcado de una línea o un conector, con el índice de sus tiradores.
+export type ActiveVertex = { id: string; index: number };
+// Nodo al que se va a pegar el extremo de un conector y ancla elegida.
+export type AnchorTarget = { nodeId: string; anchor: Anchor };
 
 const sameHud = (a: Hud | null, b: Hud | null) =>
   a === b || (!!a && !!b && a.kind === b.kind && a.text === b.text && a.x === b.x && a.y === b.y && a.snapped === b.snapped && a.above === b.above);
@@ -228,6 +246,10 @@ export class EditorCore {
   // Píldora de tamaño o de ángulo de la selección. Se publica desde el frame y solo avisa si cambia el texto, el
   // color o la posición redondeada.
   readonly hud = new Store<Hud | null>(null, sameHud);
+  // Vértice marcado de la línea o el conector seleccionado: Supr lo borra. Se vacía al cambiar la selección.
+  readonly activeVertex = new Store<ActiveVertex | null>(null, (a, b) => a === b || (!!a && !!b && a.id === b.id && a.index === b.index));
+  // La línea o el conector seleccionado llegó al máximo de puntos (512) o de waypoints (64): ya no hay puntos medios.
+  readonly pointLimit = new Store(false);
 
   // Grupo en el que se ha entrado con doble clic: sus hijos se seleccionan directamente.
   scope: string | null = null;
@@ -335,6 +357,10 @@ export class EditorCore {
   private hudFrame: { key: string; frame: SelectionFrame | null } | null = null;
   // El puntero está cerca de una esquina de la selección: con hover, los tiradores de radio solo se ven entonces.
   private radiusHover = false;
+  // El puntero está sobre la línea o el conector seleccionado (con hover, sus puntos medios solo se ven entonces) y,
+  // si lo hay, el punto medio que tiene debajo.
+  private lineHover: { id: string; mid: number | null } | null = null;
+  private anchorTarget: AnchorTarget | null = null;
   // Ángulo que muestra la píldora mientras se gira.
   private rotationReadout: { angle: number; snapped: boolean } | null = null;
   private lastSelectionModel: OverlayModel['selection'] = null;
@@ -1202,6 +1228,7 @@ export class EditorCore {
     });
     if (this.scope && (unique.length === 0 || unique.some((id) => !this.tree.isDescendant(id, this.scope!)))) this.scope = null;
     this.selectionVersion++;
+    if (!sameList(unique, this.selection.get())) this.activeVertex.set(null);
     this.selection.set(unique);
     this.refreshSelectionRecords();
     const box = unique.length ? this.boundsOf(unique) : null;
@@ -1541,6 +1568,29 @@ export class EditorCore {
     this.markOverlayDirty();
   }
 
+  setActiveVertex(vertex: ActiveVertex | null): void {
+    const before = this.activeVertex.get();
+    this.activeVertex.set(vertex);
+    if (before !== this.activeVertex.get()) this.markOverlayDirty();
+  }
+
+  // `id`: la línea o el conector seleccionado que tiene el puntero encima (null si no hay ninguno); `mid`, el punto
+  // medio bajo el puntero.
+  setLineHover(id: string | null, mid: number | null = null): void {
+    const current = this.lineHover;
+    if (id === null ? current === null : current?.id === id && current.mid === mid) return;
+    this.lineHover = id === null ? null : { id, mid };
+    this.markOverlayDirty();
+  }
+
+  // Resalte del nodo al que se va a pegar el extremo de un conector mientras se arrastra o se crea.
+  setAnchorTarget(target: AnchorTarget | null): void {
+    const current = this.anchorTarget;
+    if (current === target || (current && target && current.nodeId === target.nodeId && sameAnchor(current.anchor, target.anchor))) return;
+    this.anchorTarget = target;
+    this.markOverlayDirty();
+  }
+
   setRotationReadout(readout: { angle: number; snapped: boolean } | null): void {
     const same = readout === this.rotationReadout || (!!readout && !!this.rotationReadout && readout.angle === this.rotationReadout.angle && readout.snapped === this.rotationReadout.snapped);
     if (same) return;
@@ -1858,11 +1908,12 @@ export class EditorCore {
         : this.selection.get().length === 0
           ? 'empty'
           : `${this.selectionVersion}:${this.recordsVersion}:${this.camera.version}:${this.readOnly.get()}:${moving ? 'move' : 'idle'}:` +
-            `${this.stylePreviewVersion}:${profile.kind}:${profile.handleDraw}:${this.radiusHover}`;
+            `${this.stylePreviewVersion}:${profile.kind}:${profile.handleDraw}:${this.radiusHover}:` +
+            `${vertexKey(this.activeVertex.get())}:${this.lineHover ? `${this.lineHover.id}/${this.lineHover.mid}` : ''}`;
     const zoom = this.camera.zoom;
     const model: OverlayModel = {
       profile: { handleDraw: profile.handleDraw, showHoverOnly: profile.showHoverOnly },
-      anchorTarget: null,
+      anchorTarget: this.anchorTargetModel(),
       selection: null,
       selectionKey,
       selectionOffset: moving ? { x: gestureMatrix[4] * zoom, y: gestureMatrix[5] * zoom } : { x: 0, y: 0 },
@@ -1877,6 +1928,7 @@ export class EditorCore {
     // Con la clave igual la capa no redibuja; el modelo lleva la selección anterior para quien lo lea (test-hooks).
     if (reused) model.selection = this.lastSelectionModel;
     else if (ids.length) model.selection = this.selectionOverlay(ids, matrix, moving, profile);
+    else this.pointLimit.set(false);
     this.lastSelectionModel = model.selection;
     if (this.hover && !this.isSelected(this.hover) && !this.gesture) model.hover = this.screenOutline(this.hover);
     if (this.marquee) {
@@ -1900,6 +1952,7 @@ export class EditorCore {
     const single = ids.length === 1 ? this.renderable(ids[0]!) : undefined;
     const editable = !this.readOnly.get() && !this.anyLocked(ids);
     const lineHandles = editable && (single?.type === 'line' || single?.type === 'connector') ? this.lineHandles(single.id, matrix, moving) : null;
+    this.pointLimit.set(!!lineHandles && this.atPointLimit(single!.id));
     let corners = this.screenCorners(frame, matrix);
     let outlines: Point[][] = [];
     if (matrices && this.gesture) {
@@ -1928,34 +1981,87 @@ export class EditorCore {
 
   // Tiradores en pantalla de una línea o un conector tal como se ve ahora (con su vista previa). Los usan el overlay y
   // el impacto del puntero. `matrix`: gesto que lo deforma sin redibujarlo; con `moving`, la capa desplaza el dibujo.
+  // Vértices: los puntos de una línea; en un conector recto o curvo, el inicio, los waypoints y el final; en un codo,
+  // solo los extremos, y sus tramos llevan tirador. Los puntos medios se ven siempre con el dedo y, con hover, con el
+  // puntero encima; no hay con el máximo de puntos ni en vanos de menos de 3 zonas de impacto.
   lineHandles(id: string, matrix?: Readonly<Mat>, moving = false): LineHandles | null {
     const record = this.renderable(id);
     if (record?.type !== 'line' && record?.type !== 'connector') return null;
-    const vertices: Point[] = [];
-    const anchored: number[] = [];
+    const profile = this.inputProfile.get();
+    const withMids = !profile.showHoverOnly || this.lineHover?.id === id;
+    const midLength = 3 * profile.handleHit;
+    const active = this.activeVertex.get();
+    const handles: LineHandles = {
+      vertices: [],
+      mids: [],
+      segments: [],
+      activeVertex: null,
+      hoverMid: this.lineHover?.id === id ? this.lineHover.mid : null,
+      anchored: [],
+    };
     if (record.type === 'line') {
       const override = moving ? undefined : this.overrides.get(id);
       const shown = override?.record.type === 'line' ? override.record : record;
       const world = override && !override.gesture ? override.world : matrix ? multiply(matrix, this.tree.worldMatrix(record)) : this.tree.worldMatrix(record);
       for (const [px, py] of shown.points) {
         const p = apply(world, px, py);
-        vertices.push(this.camera.worldToScreen(p.x, p.y));
+        handles.vertices.push(this.camera.worldToScreen(p.x, p.y));
+      }
+      if (withMids && shown.points.length < DOCUMENT_LIMITS.maxPoints) {
+        handles.mids = pathMids(handles.vertices, handles.vertices.map((_, i) => i), midLength);
       }
     } else {
       const route = (moving ? this.routes.get(id) : this.routeOf(id)) ?? [];
       if (route.length < 4) return null;
       const redrawn = this.overrides.get(id)?.redraw;
-      for (const p of [routeStart(route), routeEnd(route)]) {
-        const at = matrix && !redrawn ? apply(matrix, p.x, p.y) : p;
-        vertices.push(this.camera.worldToScreen(at.x, at.y));
+      const points: Point[] = [];
+      for (let i = 0; i < route.length; i += 2) {
+        const at = matrix && !redrawn ? apply(matrix, route[i]!, route[i + 1]!) : { x: route[i]!, y: route[i + 1]! };
+        points.push(this.camera.worldToScreen(at.x, at.y));
       }
       const shown = this.previewRecord(id);
-      if (shown?.type === 'connector') {
-        if ('nodeId' in shown.from) anchored.push(0);
-        if ('nodeId' in shown.to) anchored.push(1);
+      const connector = shown?.type === 'connector' ? shown : record;
+      // En recto y curvo cada waypoint cae en una muestra del recorrido: una cada `steps` (ver routePoints).
+      const spans = (connector.waypoints?.length ?? 0) + 1;
+      const steps = (points.length - 1) / spans;
+      const knots = connector.route !== 'elbow' && Number.isInteger(steps) ? Array.from({ length: spans + 1 }, (_, k) => k * steps) : [0, points.length - 1];
+      handles.vertices = knots.map((k) => points[k]!);
+      if (connector.route === 'elbow') {
+        handles.segments = elbowSegments(points, profile.handleHit + profile.handleDraw);
+      } else if (withMids && knots.length === spans + 1 && spans - 1 < DOCUMENT_LIMITS.maxWaypoints) {
+        handles.mids = pathMids(points, knots, midLength);
       }
+      if ('nodeId' in connector.from) handles.anchored.push(0);
+      if ('nodeId' in connector.to) handles.anchored.push(handles.vertices.length - 1);
     }
-    return { vertices, mids: [], segments: [], activeVertex: null, anchored };
+    if (active?.id === id && active.index < handles.vertices.length) handles.activeVertex = active.index;
+    return handles;
+  }
+
+  // Lo que dice el aviso de máximo de puntos: la línea o el conector seleccionado ya no admite más.
+  private atPointLimit(id: string): boolean {
+    const record = this.previewRecord(id);
+    if (record?.type === 'line') return record.points.length >= DOCUMENT_LIMITS.maxPoints;
+    if (record?.type === 'connector') return record.route !== 'elbow' && (record.waypoints?.length ?? 0) >= DOCUMENT_LIMITS.maxWaypoints;
+    return false;
+  }
+
+  // Contorno, cinco anclas y ancla elegida del nodo al que se va a pegar un extremo. Un ancla libre ({u, v}, con
+  // Ctrl/⌘) se añade como sexta y es la activa.
+  private anchorTargetModel(): OverlayModel['anchorTarget'] {
+    const target = this.anchorTarget;
+    const record = target ? this.renderable(target.nodeId) ?? this.store.get(target.nodeId) : undefined;
+    if (!target || !record) return null;
+    const world = this.worldMatrix(record);
+    const toScreen = (p: Point) => this.camera.worldToScreen(p.x, p.y);
+    const anchors = NAMED_ANCHORS.map((name) => toScreen(anchorTerminal(world, record.w, record.h, name)));
+    let active: number | null = typeof target.anchor === 'string' ? NAMED_ANCHORS.indexOf(target.anchor) : null;
+    if (typeof target.anchor !== 'string') {
+      const { u, v } = anchorUnit(target.anchor);
+      anchors.push(toScreen(apply(world, u * record.w, v * record.h)));
+      active = anchors.length - 1;
+    }
+    return { outline: this.screenOutline(target.nodeId) ?? [], anchors, active };
   }
 
   // Tiradores de radio de un rectángulo o una imagen en pantalla (nw, ne, se, sw), con el radio de la vista previa.
@@ -2300,6 +2406,15 @@ export class EditorCore {
 }
 
 // Un conector se puede anclar a cualquier nodo con caja propia salvo a otro conector.
+function vertexKey(vertex: ActiveVertex | null): string {
+  return vertex ? `${vertex.id}/${vertex.index}` : '';
+}
+
+function sameAnchor(a: Anchor, b: Anchor): boolean {
+  if (typeof a === 'string' || typeof b === 'string') return a === b;
+  return a.u === b.u && a.v === b.v;
+}
+
 export function isAnchorable(record: NodeRecord): boolean {
   return (isRenderable(record) && record.type !== 'connector') || record.type === 'frame';
 }

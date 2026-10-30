@@ -174,7 +174,7 @@
         break;
       case 'Delete':
       case 'Backspace':
-        if (!readOnly && selected.has(row.id)) engine.commands.deleteSelection();
+        if (!readOnly && selected.has(row.id)) engine.commands.deleteNodes();
         break;
       default:
         return;

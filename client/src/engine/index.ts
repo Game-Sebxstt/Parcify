@@ -3,7 +3,7 @@ import type { AnimationState } from './anim/AnimationPlayer.ts';
 import type { AssetResolver } from './assets/AssetResolver.ts';
 import { AnimationCommands } from './commands/animation.ts';
 import type { Commands } from './commands/Commands.ts';
-import { EditorCore, type EngineUser, type FrameStats, type TextEditing, type Tool } from './EditorCore.ts';
+import { EditorCore, type ActiveVertex, type EngineUser, type FrameStats, type TextEditing, type Tool } from './EditorCore.ts';
 import { ClipboardController, type ClipboardSource } from './interaction/clipboard.ts';
 import { bindDom, type ContextMenuRequest } from './interaction/dom.ts';
 import type { CameraState, ViewInsets } from './render/Camera.ts';
@@ -16,7 +16,7 @@ import type { InputProfile } from './interaction/input/profile.ts';
 import { TextEditor } from './text/TextEditor.ts';
 import type { NodeRecord } from './types.ts';
 
-export type { Tool, EngineUser, FrameStats, TextEditing, UiCommand, UiCommandName, ScreenRect, Hud } from './EditorCore.ts';
+export type { Tool, EngineUser, FrameStats, TextEditing, UiCommand, UiCommandName, ScreenRect, Hud, ActiveVertex } from './EditorCore.ts';
 export { DirectBackend, LinkBackend, type DocumentBackend } from './doc/backend.ts';
 export type { NodeRecord } from './types.ts';
 export type { PageRecord } from './model/DocumentStore.ts';
@@ -82,6 +82,10 @@ export type EngineState = {
   pages: Readable<readonly PageRecord[]>;
   layersVersion: Readable<number>;
   following: Readable<number | null>;
+  // Vértice marcado de la línea o el conector seleccionado (Supr o «Eliminar punto» lo quitan).
+  activeVertex: Readable<ActiveVertex | null>;
+  // La línea o el conector seleccionado no admite más puntos.
+  pointLimit: Readable<boolean>;
 };
 
 // Reproducción local de las animaciones de la página activa (tiempos en ms) y comandos de keyframes.
@@ -216,6 +220,8 @@ export async function createEngine(options: EngineOptions): Promise<Engine> {
       pages: core.pages.readonly(),
       layersVersion: core.layersVersion.readonly(),
       following: core.following.readonly(),
+      activeVertex: core.activeVertex.readonly(),
+      pointLimit: core.pointLimit.readonly(),
     },
     setReadOnly: (readOnly) => core.setReadOnly(readOnly),
     assetReady: (assetId) => {

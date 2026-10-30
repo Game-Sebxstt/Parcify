@@ -18,12 +18,15 @@ export type ViewOverride = {
 export type HandleKind = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 
 // Tiradores de una línea o un conector seleccionado solo, en pantalla. `anchored`: índices de los vértices que son
-// extremos pegados a un nodo.
+// extremos pegados a un nodo. Cada punto medio lleva el vano en el que inserta (`segment`, entre los vértices
+// `segment` y `segment + 1`) y cada tramo de codo su índice en el recorrido (`index`), porque los vanos y tramos
+// demasiado cortos no llevan tirador. `hoverMid`: punto medio bajo el puntero.
 export type LineHandles = {
   vertices: Point[];
-  mids: Point[];
-  segments: Array<{ a: Point; b: Point; axis: 'x' | 'y' }>;
+  mids: Array<Point & { segment: number }>;
+  segments: Array<{ a: Point; b: Point; axis: 'x' | 'y'; index: number }>;
   activeVertex: number | null;
+  hoverMid: number | null;
   anchored: number[];
 };
 

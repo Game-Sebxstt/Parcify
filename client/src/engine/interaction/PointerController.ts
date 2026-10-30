@@ -1,8 +1,9 @@
+import { DOCUMENT_LIMITS } from '../../shared/document/limits.js';
 import { newConnector, newFrame, newLine, newShape, DEFAULT_SIZE } from '../commands/defaults.ts';
-import type { EditorCore, Tool } from '../EditorCore.ts';
+import { linePointsInParent, linePointsPatch, storedWaypoints, waypointPoints } from '../commands/paths.ts';
+import type { AnchorTarget, EditorCore, Tool } from '../EditorCore.ts';
 import { isAnchorable, SNAP_THRESHOLD_PX } from '../EditorCore.ts';
-import { localMatrix } from '../geometry/bounds.ts';
-import { anchorAt, type ConnectorEnd } from '../geometry/connectors.ts';
+import { anchorAt, anchorTerminal, dragElbowSegment, insertWaypoint, moveWaypoint, NAMED_ANCHORS, routeStart, type ConnectorEnd } from '../geometry/connectors.ts';
 import { apply, compose, invert, rotateAround, rotation, scaling, translation, type Mat, type Point } from '../geometry/matrix.ts';
 import { snapBox, type SnapCandidates } from '../geometry/snapping.ts';
 import { snapRotation, toDeg, toRad } from '../geometry/angles.ts';
@@ -22,7 +23,7 @@ import {
 } from '../overlay/handles.ts';
 import type { HandleKind } from '../render/sink.ts';
 import { Store } from '../store.ts';
-import { containsAABB, type AABB, type BasicShapeType, type LineRecord } from '../types.ts';
+import { containsAABB, type AABB, type BasicShapeType, type NodeRecord } from '../types.ts';
 import type { InputProfile, PointerKind } from './input/profile.ts';
 import { findShortcut, type KeyInput } from './shortcuts.ts';
 
@@ -38,25 +39,32 @@ export type PointerInput = {
   pressure: number;
 };
 
-export type PointerState = 'idle' | 'pressing' | 'dragging' | 'marquee' | 'resizing' | 'rotating' | 'creating' | 'panning' | 'point' | 'radius';
+export type PointerState = 'idle' | 'pressing' | 'dragging' | 'marquee' | 'resizing' | 'rotating' | 'creating' | 'panning' | 'point' | 'segment' | 'radius';
 
 // viaBox: se pulsó en un hueco dentro de la caja de la selección; arrastrar mueve la selección y un clic es un clic en vacío.
 // rotate: `corner` es la esquina de la zona de giro (null con el tirador del dedo), para orientar el cursor.
 // radius: `toLocal` lleva el mundo a la caja del nodo y `start` es la pulsación ahí; `inward` es hacia dónde crece el
 // radio desde esa esquina en cada eje.
+// point: vértice `index` de los `vertices` tiradores de una línea o un conector (en un conector, el primero y el
+// último son sus extremos y los de en medio, sus waypoints).
+// insert: punto medio `mid` del vano `segment`; al pasar el umbral se inserta ahí un vértice y sigue como `point`.
+// segment: tramo `index` del recorrido en codo `route` (en mundo, tal como estaba al pulsar).
 type PressTarget =
   | { kind: 'node'; id: string; wasSelected: boolean; viaBox?: boolean }
   | { kind: 'empty'; base: readonly string[] }
   | { kind: 'handle'; handle: HandleKind; frame: SelectionFrame }
   | { kind: 'rotate'; frame: SelectionFrame; corner: CornerName | null }
   | { kind: 'radius'; id: string; r0: number; max: number; toLocal: Mat; start: Point; inward: [number, number] }
-  | { kind: 'point'; id: string; index: number }
+  | { kind: 'point'; id: string; index: number; vertices: number }
+  | { kind: 'insert'; id: string; segment: number; mid: number; vertices: number }
+  | { kind: 'segment'; id: string; index: number; route: readonly number[]; horizontal: boolean }
   | { kind: 'create'; tool: Tool }
   | { kind: 'pan' };
 
 export type PressKind = PressTarget['kind'];
 
-// A menos de esta distancia de pantalla, el extremo de un conector se pega al ancla con nombre más cercana.
+// Fuera de un nodo, a menos de esta distancia de pantalla de una de sus anclas, el extremo de un conector también se
+// pega a él. Con el dedo es media zona de impacto.
 export const ANCHOR_SNAP_PX = 12;
 const SHAPE_TOOLS = new Set<Tool>(['rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc']);
 
@@ -79,6 +87,11 @@ export class PointerController {
   private pointPreview: Array<[number, number]> | null = null;
   private endPreview: { which: 'from' | 'to'; end: ConnectorEnd } | null = null;
   private radiusPreview: number | null = null;
+  // Puntos de la línea o waypoints del conector al empezar a arrastrar un vértice (con el insertado, si lo hay), en el
+  // sistema del padre, y waypoints de la vista previa.
+  private pathBase: { points: Array<[number, number]> } | { waypoints: Point[] } | null = null;
+  private waypointPreview: Array<[number, number]> | null = null;
+  private lastVertexClick: { key: string; x: number; y: number; time: number } | null = null;
   private startAngle = 0;
   // id null: el clic fue en vacío (o en el hueco de la selección).
   private lastClick: { id: string | null; x: number; y: number; time: number } | null = null;
@@ -138,6 +151,8 @@ export class PointerController {
     }
 
     const handle = this.handleAt(input.x, input.y);
+    // Cualquier pulsación que no sea en un vértice lo desmarca.
+    if (handle?.kind !== 'point') this.core.setActiveVertex(null);
     if (handle) {
       this.target = handle;
       this.state = 'pressing';
@@ -226,8 +241,12 @@ export class PointerController {
         this.finishCreate(input);
         break;
       case 'point':
-        if (target?.kind === 'point' && this.pointPreview) this.core.commands.setLinePoints(target.id, this.pointPreview);
-        if (target?.kind === 'point' && this.endPreview) this.core.commands.setConnectorEnd(target.id, this.endPreview.which, this.endPreview.end);
+      case 'segment':
+        if (target?.kind === 'point' || target?.kind === 'segment') {
+          if (this.pointPreview) this.core.commands.setLinePoints(target.id, this.pointPreview);
+          if (this.waypointPreview) this.core.commands.setConnectorPath(target.id, { waypoints: this.waypointPreview });
+          if (this.endPreview) this.core.commands.setConnectorEnd(target.id, this.endPreview.which, this.endPreview.end);
+        }
         this.core.setStylePreview(null);
         break;
       case 'radius':
@@ -246,6 +265,7 @@ export class PointerController {
     this.latest = null;
     this.core.setHover(null);
     this.core.setRadiusHover(false);
+    this.core.setLineHover(null);
   }
 
   // Quita las vistas previas del gesto sin escribir nada en el documento.
@@ -253,7 +273,7 @@ export class PointerController {
     if (this.state === 'dragging' || this.state === 'resizing' || this.state === 'rotating') this.core.setGesture(null);
     if (this.state === 'marquee') this.core.setMarquee(null);
     if (this.state === 'creating') this.core.setCreating(null);
-    if (this.state === 'point' || this.state === 'radius') this.core.setStylePreview(null);
+    if (this.state === 'point' || this.state === 'segment' || this.state === 'radius') this.core.setStylePreview(null);
     this.reset();
   }
 
@@ -268,17 +288,30 @@ export class PointerController {
     this.pointPreview = null;
     this.endPreview = null;
     this.radiusPreview = null;
+    this.pathBase = null;
+    this.waypointPreview = null;
     this.lastPan = null;
     this.pendingSelect = null;
     this.core.setRotationReadout(null);
+    this.core.setAnchorTarget(null);
     this.cursor.set(this.idleCursor());
   }
 
   // Clic derecho: lo que hay debajo pasa a ser la selección (si no lo era ya) y el menú actúa sobre ella. En vacío,
   // la selección se vacía. Devuelve el punto de la página donde se abrió.
+  // Sobre un vértice que se puede quitar (también con una pulsación larga), la selección no cambia y el vértice queda
+  // marcado: el menú ofrece «Eliminar punto».
   contextMenu(input: { x: number; y: number }): Point {
     if (this.state !== 'idle') this.cancel();
     const world = this.world(input);
+    if (this.tool === 'select') {
+      const handle = this.handleAt(input.x, input.y);
+      if (handle?.kind === 'point' && this.core.commands.canRemoveVertex(handle.id, handle.index)) {
+        this.core.setActiveVertex({ id: handle.id, index: handle.index });
+        return world;
+      }
+    }
+    this.core.setActiveVertex(null);
     if (this.tool !== 'select') this.core.commands.setTool('select');
     const hit = this.core.pick(input.x, input.y, { includeLocked: true });
     const selection = this.core.selection.get();
@@ -299,6 +332,10 @@ export class PointerController {
     if (input.key === 'Escape') {
       if (this.state !== 'idle') {
         this.cancel();
+        return true;
+      }
+      if (this.core.activeVertex.get()) {
+        this.core.setActiveVertex(null);
         return true;
       }
       if (this.tool !== 'select') {
@@ -360,12 +397,31 @@ export class PointerController {
       return;
     }
     this.core.setRadiusHover(this.nearRadiusCorner(input.x, input.y));
+    const picked = this.core.pick(input.x, input.y);
+    // Con el puntero sobre la línea o el conector seleccionado aparecen sus puntos medios; se marcan antes de buscar
+    // el tirador para que el punto medio que hay debajo cuente.
+    const path = this.selectedPath();
+    if (path && picked === path) this.core.setLineHover(path);
     const handle = this.handleAt(input.x, input.y);
+    if (path) {
+      const onPath = picked === path || handle?.kind === 'point' || handle?.kind === 'insert' || handle?.kind === 'segment';
+      this.core.setLineHover(onPath ? path : null, handle?.kind === 'insert' ? handle.mid : null);
+    }
     if (handle?.kind === 'handle') this.cursor.set(resizeCursor(handle.handle, handle.frame.angle));
     else if (handle?.kind === 'rotate') this.cursor.set(handle.corner ? rotateCursor(handle.corner, handle.frame.angle) : 'grab');
     else if (handle?.kind === 'point') this.cursor.set('move');
+    else if (handle?.kind === 'insert') this.cursor.set('copy');
+    else if (handle?.kind === 'segment') this.cursor.set(handle.horizontal ? 'ns-resize' : 'ew-resize');
     else this.cursor.set('default');
-    this.core.setHover(handle ? null : this.core.pick(input.x, input.y));
+    this.core.setHover(handle ? null : picked);
+  }
+
+  // La línea o el conector seleccionado solo, si se puede editar.
+  private selectedPath(): string | null {
+    const ids = this.core.selection.get();
+    if (ids.length !== 1 || this.readOnly || this.core.anyLocked(ids)) return null;
+    const type = this.core.record(ids[0]!)?.type;
+    return type === 'line' || type === 'connector' ? ids[0]! : null;
   }
 
   // Un rectángulo o una imagen solos, editables, con el puntero cerca de una de sus esquinas o de un tirador de radio
@@ -387,7 +443,15 @@ export class PointerController {
       const handles = this.core.lineHandles(id);
       if (handles) {
         const hit = hitLineHandle(handles, x, y, profile);
-        return hit?.kind === 'vertex' ? { kind: 'point', id, index: hit.index } : null;
+        const vertices = handles.vertices.length;
+        if (hit?.kind === 'vertex') return { kind: 'point', id, index: hit.index, vertices };
+        if (hit?.kind === 'mid') return { kind: 'insert', id, segment: handles.mids[hit.index]!.segment, mid: hit.index, vertices };
+        const route = hit?.kind === 'segment' ? this.core.routeOf(id) : null;
+        if (hit?.kind === 'segment' && route) {
+          const segment = handles.segments[hit.index]!;
+          return { kind: 'segment', id, index: segment.index, route: [...route], horizontal: segment.axis === 'y' };
+        }
+        return null;
       }
     }
     const frame = this.core.selectionFrame(ids);
@@ -453,6 +517,22 @@ export class PointerController {
         return;
       case 'point':
         this.state = 'point';
+        this.pathBase = this.pathPoints(target.id);
+        return;
+      case 'insert': {
+        const index = this.insertAtPress(target);
+        if (index === null) {
+          this.state = 'idle';
+          this.target = null;
+          return;
+        }
+        this.target = { kind: 'point', id: target.id, index, vertices: target.vertices + 1 };
+        this.state = 'point';
+        this.cursor.set('move');
+        return;
+      }
+      case 'segment':
+        this.state = 'segment';
         return;
       case 'radius':
         this.state = 'radius';
@@ -495,6 +575,8 @@ export class PointerController {
         return this.previewCreate(input, down);
       case 'point':
         return this.movePoint(input);
+      case 'segment':
+        return this.moveSegment(input);
       case 'radius':
         return this.moveRadius(input);
     }
@@ -648,7 +730,8 @@ export class PointerController {
     }
     const base = { id: '__creating', pageId: page, parentId: null, index: 'a0', createdBy: this.core.user.id };
     if (tool === 'connector') {
-      const { from, to } = this.connectorEnds(input, down);
+      const { from, to, target } = this.connectorEnds(input, down);
+      this.core.setAnchorTarget(target);
       this.core.setCreating(newConnector(base, from, to, { x: 0, y: 0, w: 0, h: 0, flipX: false, flipY: false }));
       return;
     }
@@ -702,6 +785,15 @@ export class PointerController {
   private click(target: PressTarget | null, input: PointerInput): void {
     if (!target) return;
     const now = performance.now();
+    if (target.kind === 'point') {
+      this.clickVertex(target.id, target.index, input, now);
+      return;
+    }
+    this.lastVertexClick = null;
+    if (target.kind === 'insert' || target.kind === 'segment') {
+      this.lastClick = null;
+      return;
+    }
     if (target.kind === 'node' && target.viaBox) {
       this.core.setSelection([]);
       // Cuenta como clic en vacío: el segundo clic de un doble clic llega ya sin selección, por la rama de vacío.
@@ -732,7 +824,7 @@ export class PointerController {
         return;
       }
       if (target.tool === 'connector') {
-        this.core.commands.createConnector(this.endAt(input, new Set()), roundEnd({ x: at.x + DEFAULT_SIZE, y: at.y }));
+        this.core.commands.createConnector(this.endAt(input, new Set()).end, roundEnd({ x: at.x + DEFAULT_SIZE, y: at.y }));
       } else if (target.tool === 'line' || target.tool === 'arrow') {
         this.core.commands.createLine(at, { x: at.x + DEFAULT_SIZE, y: at.y }, target.tool === 'arrow');
       } else if (target.tool === 'frame') {
@@ -750,63 +842,163 @@ export class PointerController {
     return now - last.time <= doubleMs && Math.hypot(input.x - last.x, input.y - last.y) <= doublePx;
   }
 
-  // Extremo de conector bajo el puntero: anclado al nodo que haya debajo (sin contar conectores) o libre. Los
-  // extremos libres se guardan en el sistema del padre del conector.
-  private endAt(input: PointerInput, exclude: ReadonlySet<string>, connectorId?: string): ConnectorEnd {
+  // Extremo de conector bajo el puntero: anclado al nodo que haya debajo (sin contar conectores), al nodo con un ancla
+  // a menos de ANCHOR_SNAP_PX o libre. Anclado, va al ancla con nombre más cercana; con Ctrl/⌘, al punto exacto
+  // ({u, v}). Los extremos libres se guardan en el sistema del padre del conector. `target` es el nodo que se resalta.
+  private endAt(input: PointerInput, exclude: ReadonlySet<string>, connectorId?: string): { end: ConnectorEnd; target: AnchorTarget | null } {
     const world = this.world(input);
+    const snap = (this.profile.kind === 'touch' ? this.profile.handleHit / 2 : ANCHOR_SNAP_PX) / this.core.camera.zoom;
     const hit = this.core.hitTest(input.x, input.y, { exclude, skipConnectors: true, includeLocked: true });
-    const record = hit ? this.core.record(hit) : undefined;
-    if (record && isAnchorable(record)) {
-      const anchor = anchorAt(this.core.worldMatrix(record), record.w, record.h, world, ANCHOR_SNAP_PX / this.core.camera.zoom);
-      return { nodeId: record.id, anchor };
+    const under = hit ? this.core.record(hit) : undefined;
+    const record = under && isAnchorable(under) ? under : this.nodeNearAnchor(world, snap, exclude);
+    if (record) {
+      const anchor = anchorAt(this.core.worldMatrix(record), record.w, record.h, world, input.ctrl ? -1 : Infinity);
+      return { end: { nodeId: record.id, anchor }, target: { nodeId: record.id, anchor } };
     }
     const parentWorld = connectorId ? this.core.tree.parentWorld(this.core.tree.parent(connectorId)) : null;
-    return roundEnd(parentWorld ? apply(invert(parentWorld), world.x, world.y) : world);
+    return { end: roundEnd(parentWorld ? apply(invert(parentWorld), world.x, world.y) : world), target: null };
   }
 
-  private connectorEnds(input: PointerInput, down: PointerInput): { from: ConnectorEnd; to: ConnectorEnd } {
-    const from = this.endAt(down, new Set());
+  // Nodo con un ancla con nombre a menos de `snap` (en mundo) del punto; el más cercano.
+  private nodeNearAnchor(world: Point, snap: number, exclude: ReadonlySet<string>): NodeRecord | null {
+    const box = { minX: world.x - snap, minY: world.y - snap, maxX: world.x + snap, maxY: world.y + snap };
+    let best: NodeRecord | null = null;
+    let bestDistance = snap;
+    for (const id of this.core.queryBox(box, { includeLocked: true })) {
+      const record = this.core.record(id);
+      if (!record || exclude.has(id) || !isAnchorable(record)) continue;
+      const matrix = this.core.worldMatrix(record);
+      for (const name of NAMED_ANCHORS) {
+        const p = anchorTerminal(matrix, record.w, record.h, name);
+        const distance = Math.hypot(p.x - world.x, p.y - world.y);
+        if (distance <= bestDistance) {
+          best = record;
+          bestDistance = distance;
+        }
+      }
+    }
+    return best;
+  }
+
+  private connectorEnds(input: PointerInput, down: PointerInput): { from: ConnectorEnd; to: ConnectorEnd; target: AnchorTarget | null } {
+    const from = this.endAt(down, new Set()).end;
     const to = this.endAt(input, 'nodeId' in from ? new Set([from.nodeId]) : new Set());
-    return { from, to };
+    return { from, to: to.end, target: to.target };
   }
 
+  // Puntos de la línea o waypoints del conector al empezar a arrastrar, en el sistema del padre.
+  private pathPoints(id: string): PointerController['pathBase'] {
+    const record = this.core.record(id);
+    if (record?.type === 'line') return { points: linePointsInParent(record) };
+    if (record?.type === 'connector') return { waypoints: waypointPoints(record) };
+    return null;
+  }
+
+  // Inserta un vértice en el punto medio pulsado; devuelve su índice de tirador o null si ya no caben más.
+  private insertAtPress(target: Extract<PressTarget, { kind: 'insert' }>): number | null {
+    const base = this.pathPoints(target.id);
+    const at = this.toParentOf(target.id, this.world(this.down!));
+    if (base && 'points' in base) {
+      if (base.points.length >= DOCUMENT_LIMITS.maxPoints) return null;
+      base.points.splice(target.segment + 1, 0, [at.x, at.y]);
+    } else if (base) {
+      if (base.waypoints.length >= DOCUMENT_LIMITS.maxWaypoints) return null;
+      base.waypoints = insertWaypoint(base.waypoints, target.segment, at);
+    } else {
+      return null;
+    }
+    this.pathBase = base;
+    return target.segment + 1;
+  }
+
+  private toParentOf(id: string, world: Point): Point {
+    const parentWorld = this.core.tree.parentWorld(this.core.tree.parent(id));
+    return parentWorld ? apply(invert(parentWorld), world.x, world.y) : world;
+  }
+
+  private toWorldOf(id: string, local: Point): Point {
+    const parentWorld = this.core.tree.parentWorld(this.core.tree.parent(id));
+    return parentWorld ? apply(parentWorld, local.x, local.y) : local;
+  }
+
+  // Clic en un vértice: lo marca (si se puede quitar) y un doble clic lo quita.
+  private clickVertex(id: string, index: number, input: PointerInput, now: number): void {
+    this.lastClick = null;
+    const key = `${id}:${index}`;
+    const last = this.lastVertexClick;
+    if (last?.key === key && this.isDoubleClick(last, input, now)) {
+      this.lastVertexClick = null;
+      this.core.commands.removeVertex(id, index);
+      return;
+    }
+    this.lastVertexClick = { key, x: input.x, y: input.y, time: now };
+    this.core.setActiveVertex(this.core.commands.canRemoveVertex(id, index) ? { id, index } : null);
+  }
+
+  // Vértice de una línea, extremo de un conector (que se reancla) o waypoint, con Shift a 45° del vértice anterior.
   private movePoint(input: PointerInput): void {
     const target = this.target;
     if (target?.kind !== 'point') return;
-    const connector = this.core.record(target.id);
-    if (connector?.type === 'connector') {
-      const which = target.index === 0 ? 'from' : 'to';
-      const end = this.endAt(input, new Set([connector.id]), connector.id);
-      this.endPreview = { which, end };
-      this.core.setStylePreview({ ids: [connector.id], patch: { [which]: end } });
+    const record = this.core.record(target.id);
+    const base = this.pathBase;
+    let world = this.world(input);
+    if (record?.type === 'connector') {
+      const which = target.index === 0 ? 'from' : target.index === target.vertices - 1 ? 'to' : null;
+      if (which) {
+        const found = this.endAt(input, new Set([record.id]), record.id);
+        this.endPreview = { which, end: found.end };
+        this.core.setAnchorTarget(found.target);
+        this.core.setStylePreview({ ids: [record.id], patch: { [which]: found.end } });
+        return;
+      }
+      const waypoints = base && 'waypoints' in base ? base.waypoints : waypointPoints(record);
+      const index = target.index - 1;
+      if (index < 0 || index >= waypoints.length) return;
+      if (input.shift) {
+        const route = this.core.routeOf(record.id);
+        const previous = index === 0 ? (route ? routeStart(route) : null) : this.toWorldOf(record.id, waypoints[index - 1]!);
+        if (previous) world = snapAngle(previous, world);
+      }
+      this.waypointPreview = storedWaypoints(moveWaypoint(waypoints, index, this.toParentOf(record.id, world)));
+      this.core.setStylePreview({ ids: [record.id], patch: { waypoints: this.waypointPreview } });
       return;
     }
-    const record = connector as LineRecord | undefined;
-    if (!record || record.type !== 'line') return;
-    const parentWorld = this.core.tree.parentWorld(this.core.tree.parent(record.id));
-    const toParent = parentWorld ? invert(parentWorld) : null;
-    const local = localMatrix(record);
-    const absolute = record.points.map(([px, py]) => {
-      const p = apply(local, px, py);
-      return [p.x, p.y] as [number, number];
-    });
-    let world = this.world(input);
+    if (record?.type !== 'line') return;
+    const absolute = (base && 'points' in base ? base.points : linePointsInParent(record)).map(([x, y]) => [x, y] as [number, number]);
+    if (target.index >= absolute.length) return;
     if (input.shift) {
       const neighbor = absolute[target.index === 0 ? 1 : target.index - 1]!;
-      world = snapAngle({ x: neighbor[0], y: neighbor[1] }, world);
+      world = snapAngle(this.toWorldOf(record.id, { x: neighbor[0], y: neighbor[1] }), world);
     }
-    const inParent = toParent ? apply(toParent, world.x, world.y) : world;
+    const inParent = this.toParentOf(record.id, world);
     absolute[target.index] = [inParent.x, inParent.y];
     this.pointPreview = absolute;
-    const minX = Math.min(...absolute.map(([x]) => x));
-    const minY = Math.min(...absolute.map(([, y]) => y));
-    const maxX = Math.max(...absolute.map(([x]) => x));
-    const maxY = Math.max(...absolute.map(([, y]) => y));
-    this.core.setStylePreview({
-      ids: [record.id],
-      patch: { x: minX, y: minY, w: maxX - minX, h: maxY - minY, rotation: 0, points: absolute.map(([x, y]) => [x - minX, y - minY]) },
-    });
+    this.core.setStylePreview({ ids: [record.id], patch: linePointsPatch(absolute) });
   }
+
+  // Tramo de un codo arrastrado en perpendicular: los waypoints nuevos son los vértices interiores del recorrido.
+  private moveSegment(input: PointerInput): void {
+    const target = this.target;
+    if (target?.kind !== 'segment' || !this.down) return;
+    const from = this.world(this.down);
+    const to = this.world(input);
+    const delta = target.horizontal ? to.y - from.y : to.x - from.x;
+    const world = dragElbowSegment(target.route, target.index, delta);
+    // Sin cambio (o bloqueado por los extremos) no se escribe nada.
+    if (world.length > DOCUMENT_LIMITS.maxWaypoints || sameInterior(world, target.route)) {
+      if (this.waypointPreview) this.core.setStylePreview(null);
+      this.waypointPreview = null;
+      return;
+    }
+    this.waypointPreview = storedWaypoints(world.map((p) => this.toParentOf(target.id, p)));
+    this.core.setStylePreview({ ids: [target.id], patch: { waypoints: this.waypointPreview } });
+  }
+}
+
+// Los puntos son los vértices interiores del recorrido plano `route`.
+function sameInterior(points: readonly Point[], route: readonly number[]): boolean {
+  if (points.length !== route.length / 2 - 2) return false;
+  return points.every((p, i) => Math.abs(p.x - route[i * 2 + 2]!) < 1e-6 && Math.abs(p.y - route[i * 2 + 3]!) < 1e-6);
 }
 
 function roundEnd(p: Point): ConnectorEnd {

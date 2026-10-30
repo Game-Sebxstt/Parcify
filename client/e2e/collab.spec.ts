@@ -149,3 +149,51 @@ test('sin red, al recargar se ve lo que había en la copia local del navegador',
   expect(await page.evaluate(() => window.__parcifyTest!.status())).not.toBe('connected');
   await expect(page.getByText('El editor dejó de responder')).toHaveCount(0);
 });
+
+test('dos personas editan los puntos de paso del mismo conector y ven el mismo recorrido (CA-1.6)', async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  type Path = Node & { waypoints?: number[][] };
+  type Handles = { vertices: Array<{ x: number; y: number }>; mids: Array<{ x: number; y: number }> };
+  const label = `collab-waypoints-${test.info().project.name}`;
+  const ana = await createVerifiedAccount(page.request, `${label}-a`, 'Ana Recorrido');
+  const otherContext = await browser.newContext();
+  const bea = await otherContext.newPage();
+  await createVerifiedAccount(bea.request, `${label}-b`, 'Bea Recorrido');
+  const projectId = await createProject(page.request, ana.workspaceSlug, 'Recorridos compartidos');
+  await joinProjectByLink(page.request, projectId, bea.request, 'editor');
+  await openEditor(page, projectId);
+  await openEditor(bea, projectId);
+  const handles = (who: Page) => who.evaluate(() => (window.__parcifyTest!.overlayModel()?.selection?.lineHandles ?? null) as unknown as Handles | null);
+  const waypoints = async (who: Page) => ((await nodes(who)).find((node) => node.type === 'connector') as Path | undefined)?.waypoints;
+
+  // Ana dibuja un conector libre y lo pasa a recto.
+  const origin = await canvasOrigin(page);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  await canvas.focus();
+  await page.keyboard.press('c');
+  await drag(page, origin, { x: origin.x + 300, y: origin.y });
+  await expect.poll(async () => (await nodes(bea)).filter((node) => node.type === 'connector').length).toBe(1);
+  await page.getByTestId('props-route').getByRole('radio', { name: 'Recto' }).click();
+
+  // Ana arrastra el punto medio hacia abajo: Bea ve el mismo punto de paso.
+  const mid = { x: origin.x + 150, y: origin.y };
+  await page.mouse.move(mid.x, mid.y, { steps: 2 });
+  await expect.poll(async () => (await handles(page))?.mids.length ?? 0).toBe(1);
+  await drag(page, mid, { x: mid.x, y: mid.y + 80 });
+  await expect.poll(() => waypoints(page)).toHaveLength(1);
+  const first = (await waypoints(page))!;
+  await expect.poll(() => waypoints(bea)).toEqual(first);
+
+  // Bea selecciona el conector y mueve ese punto; los dos acaban con el mismo valor.
+  const connector = (await nodes(bea)).find((node) => node.type === 'connector')!;
+  const point = await toPage(bea, first[0]![0]!, first[0]![1]!);
+  await bea.mouse.click(point.x, point.y);
+  await expect.poll(() => bea.evaluate(() => [...window.__parcifyTest!.selection()])).toEqual([connector.id]);
+  await bea.waitForTimeout(500);
+  await drag(bea, point, { x: point.x + 60, y: point.y + 20 });
+  await expect.poll(async () => (await waypoints(bea))?.[0]?.[0]).toBeGreaterThan(first[0]![0]! + 30);
+  const second = (await waypoints(bea))!;
+  await expect.poll(() => waypoints(page)).toEqual(second);
+
+  await otherContext.close();
+});

@@ -44,6 +44,7 @@ import {
 import { DEFAULT_SIZE, DEFAULT_TEXT, framePreset, imageSize, newConnector, newFrame, newGroup, newImage, newLine, newShape, newText, type FramePresetId } from './defaults.ts';
 import type { RecordedChange } from './animation.ts';
 import { changeOfBasis, groupPatch, reexpressPatch } from './group.ts';
+import { PathCommands, transformWaypoints } from './paths.ts';
 import type { AssistantPlan } from '../../shared/ai/assistant.js';
 import { resolvePlan, type PlanView } from '../ai/plan.ts';
 
@@ -69,7 +70,7 @@ export const STYLE_KEYS = [
   ...TEXT_STYLE_KEYS,
   ...LABEL_STYLE_KEYS,
 ] as const;
-type Cap = 'none' | 'arrow' | 'triangle' | 'circle' | 'bar';
+type Cap = 'none' | 'arrow' | 'triangle' | 'circle' | 'diamond' | 'bar';
 export type StyleKey = (typeof STYLE_KEYS)[number];
 export type StylePatch = Partial<{
   fill: string | null;
@@ -143,6 +144,7 @@ export class Commands {
   private pendingStyle: { ids: string[]; each: Map<string, StylePatch> } | null = null;
   private pendingGeometry: { ids: string[]; patch: GeometryPatch } | null = null;
   private readonly unsubscribeSelection: () => void;
+  private readonly paths: PathCommands;
 
   // Ops de la transacción en curso.
   private ops: OpBuilder | null = null;
@@ -153,6 +155,16 @@ export class Commands {
   // Una vista previa del panel que sigue pendiente al cambiar la selección se confirma sobre los nodos que tenía,
   // no sobre los nuevos.
   constructor(private readonly core: EditorCore) {
+    this.paths = new PathCommands({
+      core,
+      canEdit: () => this.canEdit,
+      write: (patches) =>
+        this.transact(() => {
+          for (const [id, patch] of patches) this.patchNode(id, patch);
+        }),
+      connectorBoxPatches: (changed) => this.connectorBoxPatches(changed),
+      cacheFor: (record) => this.cacheFor(record),
+    });
     const flush = () => {
       if (this.pendingStyle) this.commitStyle();
       if (this.pendingGeometry) this.commitGeometryPreview();
@@ -440,14 +452,16 @@ export class Commands {
     return result;
   }
 
-  // Un conector que pasa a medirse en otro sistema (`change` lleva el viejo al nuevo): sus extremos libres y la
-  // caja de sus extremos.
+  // Un conector que pasa a medirse en otro sistema (`change` lleva el viejo al nuevo): sus extremos libres, sus
+  // waypoints y la caja de sus extremos.
   private reexpressConnector(record: ConnectorRecord, change: Readonly<Mat>): Record<string, unknown> {
     const patch: Record<string, unknown> = {};
     for (const which of ['from', 'to'] as const) {
       const end = record[which];
       if (!('nodeId' in end)) patch[which] = roundPoint(apply(change, end.x, end.y));
     }
+    // Los waypoints están en el mismo sistema que los extremos libres: pasan con la misma matriz.
+    if (record.waypoints) patch.waypoints = transformWaypoints(record.waypoints, change);
     const ends = this.core.connectorEndpoints(record.id);
     if (ends) {
       const box = endpointBox(roundPoint(apply(change, ends.from.x, ends.from.y)), roundPoint(apply(change, ends.to.x, ends.to.y)));
@@ -709,6 +723,14 @@ export class Commands {
           const next = apply(matrix, world.x, world.y);
           patch[which] = roundPoint(toParent ? apply(toParent, next.x, next.y) : next);
         }
+      }
+      // Waypoints: se transforman con el conector si lo mueve el gesto directamente, y con sus dos nodos si los dos
+      // se mueven con la misma matriz rígida. Si lo lleva su contenedor ya van con él; en otro caso se quedan y el
+      // recorrido se recalcula pasando por ellos.
+      const waypointMatrix = freeEnds.has(id) ? matrix : delta.has(id) ? undefined : sharedEndsMatrix(record, delta);
+      if (record.waypoints && waypointMatrix) {
+        const parentWorld = parentWorldOf(id);
+        patch.waypoints = transformWaypoints(record.waypoints, parentWorld ? compose(invertMat(parentWorld), waypointMatrix, parentWorld) : waypointMatrix);
       }
       const parent = tree.parent(id);
       Object.assign(patch, this.cacheFor(record, moving, undefined, parent ? systems.get(parent) : undefined));
@@ -1052,26 +1074,38 @@ export class Commands {
     });
   }
 
-  setLinePoints(id: string, absolute: Array<[number, number]>): void {
-    const record = this.core.record(id);
-    if (!this.canEdit || !record || record.type !== 'line' || this.core.isLocked(id)) return;
-    const minX = Math.min(...absolute.map(([x]) => x));
-    const minY = Math.min(...absolute.map(([, y]) => y));
-    const maxX = Math.max(...absolute.map(([x]) => x));
-    const maxY = Math.max(...absolute.map(([, y]) => y));
-    const patch = {
-      x: minX,
-      y: minY,
-      w: maxX - minX,
-      h: maxY - minY,
-      rotation: 0,
-      points: absolute.map(([x, y]) => [x - minX, y - minY]),
-    };
-    const connectors = this.connectorBoxPatches(new Map([[id, { ...record, ...patch } as NodeRecord]]));
-    this.transact(() => {
-      this.patchNode(id, patch);
-      for (const [connector, box] of connectors) this.patchNode(connector, box);
-    });
+  // ── Recorridos (engine/commands/paths.ts) ──
+
+  // Puntos de una línea en el sistema de su padre.
+  setLinePoints(id: string, absolute: ReadonlyArray<readonly [number, number]>): void {
+    this.paths.setLinePoints(id, absolute);
+  }
+
+  removeLinePoint(id: string, index: number): boolean {
+    return this.paths.removeLinePoint(id, index);
+  }
+
+  insertLinePoint(id: string, segmentIndex: number, point: Point): number | null {
+    return this.paths.insertLinePoint(id, segmentIndex, point);
+  }
+
+  // Waypoints de un conector en el sistema de su padre; una lista vacía vuelve al recorrido automático.
+  setConnectorPath(id: string, path: { waypoints: ReadonlyArray<Point | readonly [number, number]> }): boolean {
+    return this.paths.setConnectorPath(id, path);
+  }
+
+  resetConnectorPath(ids: string | readonly string[]): void {
+    this.paths.resetConnectorPath(ids);
+  }
+
+  // Vértice con el índice de los tiradores (ver PathCommands).
+  canRemoveVertex(id: string, index: number): boolean {
+    return this.paths.canRemoveVertex(id, index);
+  }
+
+  removeVertex(id: string, index: number): boolean {
+    if (this.core.activeVertex.get()?.id === id) this.core.setActiveVertex(null);
+    return this.paths.removeVertex(id, index);
   }
 
   nudge(dx: number, dy: number): void {
@@ -1083,9 +1117,21 @@ export class Commands {
     return this.core.selection.get().filter((id) => !this.core.isLocked(id));
   }
 
-  // Un contenedor se borra con todo lo que cuelga de él.
+  // Supr: con un vértice marcado se borra solo ese vértice; si no, los nodos seleccionados.
   deleteSelection(): void {
     if (!this.canEdit) return;
+    const vertex = this.core.activeVertex.get();
+    if (vertex) {
+      this.removeVertex(vertex.id, vertex.index);
+      return;
+    }
+    this.deleteNodes();
+  }
+
+  // Borra los nodos seleccionados aunque haya un vértice marcado. Un contenedor se borra con todo lo que cuelga de él.
+  deleteNodes(): void {
+    if (!this.canEdit) return;
+    this.core.setActiveVertex(null);
     const ids = this.editableSelection();
     if (!ids.length) return;
     const all = new Set<string>();
@@ -1367,7 +1413,11 @@ export class Commands {
   }
 
   // Un extremo anclado a un nodo copiado pasa a la copia; anclado a otro nodo, se queda en su punto actual.
-  private copiedEnds(record: ConnectorRecord, newIds: ReadonlyMap<string, string>, offset: Point): { from: ConnectorEnd; to: ConnectorEnd } {
+  private copiedEnds(
+    record: ConnectorRecord,
+    newIds: ReadonlyMap<string, string>,
+    offset: Point,
+  ): { from: ConnectorEnd; to: ConnectorEnd; waypoints?: Array<[number, number]> } {
     const tree = this.core.tree;
     let current = this.core.record(record.id)?.type === 'connector' ? this.core.connectorEndpoints(record.id) : null;
     const liveParent = current ? tree.parent(record.id) : null;
@@ -1377,7 +1427,9 @@ export class Commands {
       current = { from: apply(change, current.from.x, current.from.y), to: apply(change, current.to.x, current.to.y) };
     }
     const points = current ?? endpointsFromBox(record);
-    const result = {} as { from: ConnectorEnd; to: ConnectorEnd };
+    const result = {} as { from: ConnectorEnd; to: ConnectorEnd; waypoints?: Array<[number, number]> };
+    // Los waypoints van con la copia, en el mismo sistema que sus extremos libres.
+    if (record.waypoints) result.waypoints = transformWaypoints(record.waypoints, translation(offset.x, offset.y));
     for (const which of ['from', 'to'] as const) {
       const end = record[which];
       if ('nodeId' in end) {
@@ -1574,6 +1626,10 @@ export class Commands {
         if (key === 'cornerRadius' && typeof value === 'number') value = Math.max(0, Math.min(value, Math.min(record.w, record.h) / 2));
         own[key] = value;
       }
+      // Los waypoints de un codo son sus vértices y los de recto y curvo, puntos de paso: no valen de uno a otro.
+      if (record.type === 'connector' && record.waypoints && typeof own.route === 'string' && (own.route === 'elbow') !== (record.route === 'elbow')) {
+        own.waypoints = undefined;
+      }
       if (!Object.keys(own).length) continue;
       if (NodeSchema.safeParse({ ...record, ...own }).success) result.push([id, own]);
     }
@@ -1744,7 +1800,7 @@ export class Commands {
 
   cutSelection(): string | null {
     const html = this.copySelection();
-    if (html) this.deleteSelection();
+    if (html) this.deleteNodes();
     return html;
   }
 
@@ -1895,6 +1951,14 @@ function isMotion(m: Readonly<Mat>): boolean {
 
 function sameMat(a: Readonly<Mat>, b: Readonly<Mat>): boolean {
   return a.every((value, i) => Math.abs(value - b[i]!) < 1e-9);
+}
+
+// Matriz rígida con la que se mueven los nodos de los dos extremos de un conector, si es la misma para los dos.
+function sharedEndsMatrix(record: ConnectorRecord, delta: ReadonlyMap<string, Readonly<Mat>>): Readonly<Mat> | undefined {
+  if (!('nodeId' in record.from) || !('nodeId' in record.to)) return undefined;
+  const a = delta.get(record.from.nodeId);
+  const b = delta.get(record.to.nodeId);
+  return a && b && sameMat(a, b) && isRigid(a) ? a : undefined;
 }
 
 // transformPatch guarda cualquier reflejo como flipY con media vuelta; (giro, flipX, flipY) y (giro + π, !flipX,

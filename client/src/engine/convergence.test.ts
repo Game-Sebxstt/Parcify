@@ -4,7 +4,7 @@ import { ROOT_KEYS, serverOrigin } from '../shared/document/keys.js';
 import { createTouches, normalizeDocument } from '../shared/document/normalize.js';
 import { NodeSchema } from '../shared/document/schema.js';
 import { compareOrder } from './model/order.ts';
-import { frame, group, makeCore, newDoc, nodeMap, PAGE_ID, putNode, rect } from './test-utils.ts';
+import { connectorNode, frame, group, makeCore, newDoc, nodeMap, PAGE_ID, putNode, rect } from './test-utils.ts';
 
 // Réplicas en memoria: los cambios se hacen «sin conexión» y después se intercambian todos los updates.
 function replicas(count: number, seed: (doc: Y.Doc) => void) {
@@ -210,5 +210,46 @@ describe('convergencia con varias réplicas', () => {
     expect(parents.filter((p) => p !== null).length).toBeLessThanOrEqual(1);
     const records = Object.values(snapshot(cores[0]!.doc)) as Array<{ id: string; index: string }>;
     expect([...records].sort(compareOrder)).toHaveLength(2);
+  });
+});
+
+describe('convergencia de los waypoints de un conector (CA-1.6)', () => {
+  it('dos personas editan, restablecen y cambian el recorrido del mismo conector a la vez y convergen', () => {
+    let connector = '';
+    const cores = replicas(2, (doc) => {
+      const a = putNode(doc, rect({ x: 0, y: 0, index: 'a0' }));
+      const b = putNode(doc, rect({ x: 300, y: 200, index: 'a1' }));
+      connector = putNode(doc, connectorNode({ nodeId: a, anchor: 'right' }, { nodeId: b, anchor: 'left' }, { waypoints: [[150, 25]] }));
+    });
+    const [ana, bea] = cores as [ReturnType<typeof makeCore>, ReturnType<typeof makeCore>];
+    const sameRoute = () => {
+      expectConverged(cores);
+      expect(ana.core.routeOf(connector)).toEqual(bea.core.routeOf(connector));
+    };
+
+    // Ana mueve el punto de paso y Bea añade otro.
+    expect(ana.core.commands.setConnectorPath(connector, { waypoints: [{ x: 150, y: 100 }] })).toBe(true);
+    expect(bea.core.commands.setConnectorPath(connector, { waypoints: [{ x: 150, y: 25 }, { x: 220, y: 225 }] })).toBe(true);
+    syncAll(cores.map((r) => r.doc));
+    sameRoute();
+    expect([[[150, 100]], [[150, 25], [220, 225]]]).toContainEqual(nodeMap(ana.doc, connector).get('waypoints'));
+
+    // Ana restablece el recorrido mientras Bea mueve un punto.
+    ana.core.commands.resetConnectorPath(connector);
+    expect(nodeMap(ana.doc, connector).has('waypoints')).toBe(false);
+    expect(bea.core.commands.setConnectorPath(connector, { waypoints: [{ x: 200, y: 60 }] })).toBe(true);
+    syncAll(cores.map((r) => r.doc));
+    sameRoute();
+
+    // Ana pasa a codo (quita los waypoints en la misma transacción) mientras Bea escribe otros.
+    expect(bea.core.commands.setConnectorPath(connector, { waypoints: [{ x: 120, y: 40 }] })).toBe(true);
+    syncAll(cores.map((r) => r.doc));
+    for (const r of cores) r.tick();
+    ana.core.commands.setStyle({ route: 'elbow' }, [connector]);
+    expect(nodeMap(ana.doc, connector).get('route')).toBe('elbow');
+    expect(nodeMap(ana.doc, connector).has('waypoints')).toBe(false);
+    bea.core.commands.setConnectorPath(connector, { waypoints: [{ x: 160, y: 40 }] });
+    syncAll(cores.map((r) => r.doc));
+    sameRoute();
   });
 });

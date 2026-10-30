@@ -224,6 +224,36 @@ describe('pegar en el lienzo', () => {
     expect(insertFiles).toHaveBeenCalledWith([file], { x: 5, y: 6 });
   });
 
+  it('cortar con un vértice marcado borra la línea entera, por el menú y por Ctrl+X', async () => {
+    const { cornerRadius: _r, ...base } = rect();
+    const line = { ...base, type: 'line', fill: null, stroke: '#EEF2F6FF', strokeWidth: 2, x: 0, y: 0, w: 0, h: 0, startCap: 'none', endCap: 'none' };
+    const points = [
+      [100, 100],
+      [200, 150],
+      [300, 100],
+    ];
+    const doc = newDoc();
+    const viaMenu = putNode(doc, { ...line, points });
+    const viaKeys = putNode(doc, { ...line, id: nodeId(), index: 'a5', points });
+    const ctx = makeCore(doc);
+    const controller = new ClipboardController(ctx.core, { source: null });
+
+    ctx.core.setSelection([viaMenu]);
+    ctx.core.setActiveVertex({ id: viaMenu, index: 1 });
+    expect(await controller.cut()).toBe(true);
+    ctx.tick();
+    expect(ctx.core.record(viaMenu)).toBeUndefined();
+
+    ctx.core.setSelection([viaKeys]);
+    ctx.core.setActiveVertex({ id: viaKeys, index: 1 });
+    const data: Record<string, string> = {};
+    expect(controller.cutTo({ setData: (type: string, value: string) => void (data[type] = value) } as unknown as DataTransfer)).toBe(true);
+    ctx.tick();
+    expect(ctx.core.record(viaKeys)).toBeUndefined();
+    expect(parseClipboard(data['text/html']!)?.nodes.map((node) => node.id)).toEqual([viaKeys]);
+    expect(ctx.core.activeVertex.get()).toBeNull();
+  });
+
   it('en solo lectura no pega nada', async () => {
     const ctx = makeCore(newDoc(), { readOnly: true });
     const controller = new ClipboardController(ctx.core, { source: null });

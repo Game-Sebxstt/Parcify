@@ -97,10 +97,10 @@ export class GestureRouter {
       else this.options.stopTextEdit();
     }
     this.core.controller.pointerDown(input);
-    // Solo sobre un nodo o en vacío: detenerse sobre un tirador antes de girar o redimensionar, o al empezar a crear una
-    // forma, no abre el menú.
+    // Solo sobre un nodo, en vacío o en un vértice de línea (su menú ofrece «Eliminar punto»): detenerse sobre un
+    // tirador antes de girar o redimensionar, o al empezar a crear una forma, no abre el menú.
     const press = this.core.controller.pressKind;
-    if (profile.longPressMs !== null && this.options.onLongPress && input.button === 0 && (press === 'node' || press === 'empty')) {
+    if (profile.longPressMs !== null && this.options.onLongPress && input.button === 0 && (press === 'node' || press === 'empty' || press === 'point')) {
       const ms = profile.longPressMs;
       this.longPressTimer = setTimeout(() => this.fireLongPress(input.pointerId), ms);
     }

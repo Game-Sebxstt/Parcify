@@ -11,6 +11,7 @@
   import ALargeSmall from '@lucide/svelte/icons/a-large-small';
   import Bold from '@lucide/svelte/icons/bold';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import CircleMinus from '@lucide/svelte/icons/circle-minus';
   import CornerDownRight from '@lucide/svelte/icons/corner-down-right';
   import Crop from '@lucide/svelte/icons/crop';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
@@ -26,7 +27,16 @@
   import TextCursorInput from '@lucide/svelte/icons/text-cursor-input';
   import Ungroup from '@lucide/svelte/icons/ungroup';
   import type { Snippet } from 'svelte';
-  import { FRAME_PRESETS, type AlignMode, type Engine, type FramePresetId, type NodeRecord, type ScreenRect, type StylePatch } from '../../../engine/index.ts';
+  import {
+    FRAME_PRESETS,
+    type ActiveVertex,
+    type AlignMode,
+    type Engine,
+    type FramePresetId,
+    type NodeRecord,
+    type ScreenRect,
+    type StylePatch,
+  } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import { cssFamily } from '../../../engine/text/fonts.ts';
   import { FONT_FAMILIES, type FontFamily } from '../../../shared/document/schema.js';
@@ -54,12 +64,14 @@
     avoid: Avoid;
     // El último puntero fue un dedo: la selección lleva tirador de giro encima.
     touch: boolean;
+    // Vértice marcado de la línea o el conector seleccionado: la barra ofrece «Eliminar punto».
+    vertex: ActiveVertex | null;
     onmore: (at: { clientX: number; clientY: number }) => void;
     onreplaceimage: (id: string) => void;
     onescape: () => void;
   };
 
-  let { engine, records, rect, container, locked, avoid, touch, onmore, onreplaceimage, onescape }: Props = $props();
+  let { engine, records, rect, container, locked, avoid, touch, vertex, onmore, onreplaceimage, onescape }: Props = $props();
 
   const GAP = 12;
   // Con el dedo hay un tirador de giro 24 px por encima de la caja (círculo de 14 px): la barra queda por encima.
@@ -110,6 +122,7 @@
     const padding = avoid;
     const offset = gap;
     void kind;
+    void vertex;
     if (!target) return;
     const box = container.getBoundingClientRect();
     void placeOverCanvas(el, { x: box.left + target.x, y: box.top + target.y, width: target.width, height: target.height }, {
@@ -172,6 +185,7 @@
     { id: 'arrow', label: m.editor_props_cap_arrow },
     { id: 'triangle', label: m.editor_props_cap_triangle },
     { id: 'circle', label: m.editor_props_cap_circle },
+    { id: 'diamond', label: m.editor_props_cap_diamond },
     { id: 'bar', label: m.editor_props_cap_bar },
   ] as const;
   const ROUTES = [
@@ -483,6 +497,21 @@
       oncommit={(value) => commit({ strokeWidth: value })}
       oncancel={cancel}
     />
+    {#if vertex && vertex.id === line.id}
+      {@const point = vertex}
+      <ToolButton
+        variant="tool"
+        size="sm"
+        side="top"
+        label={m.editor_point_delete()}
+        kbd="Supr"
+        ariaKeys="Delete"
+        testid="context-delete-point"
+        onclick={() => commands.removeVertex(point.id, point.index)}
+      >
+        <CircleMinus size={16} aria-hidden="true" />
+      </ToolButton>
+    {/if}
   {:else if kind === 'image' && image}
     <button
       type="button"

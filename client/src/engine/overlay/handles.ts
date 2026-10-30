@@ -167,6 +167,46 @@ export function hitRadius(
   return best;
 }
 
+// Puntos medios de una polilínea en pantalla: uno por vano entre dos vértices editables consecutivos (`knots`, índices
+// de `points`), a mitad de su longitud por el propio recorrido (en una curva cae sobre ella). Los vanos de menos de
+// `minLength` px no llevan, para no tapar los vértices.
+export function pathMids(points: readonly Point[], knots: readonly number[], minLength: number): Array<Point & { segment: number }> {
+  const mids: Array<Point & { segment: number }> = [];
+  for (let k = 0; k + 1 < knots.length; k++) {
+    const from = knots[k]!;
+    const to = knots[k + 1]!;
+    let length = 0;
+    for (let i = from; i < to; i++) length += Math.hypot(points[i + 1]!.x - points[i]!.x, points[i + 1]!.y - points[i]!.y);
+    if (length < minLength) continue;
+    let left = length / 2;
+    for (let i = from; i < to; i++) {
+      const a = points[i]!;
+      const b = points[i + 1]!;
+      const step = Math.hypot(b.x - a.x, b.y - a.y);
+      if (step >= left || i === to - 1) {
+        const t = step > 0 ? Math.min(1, left / step) : 0;
+        mids.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, segment: k });
+        break;
+      }
+      left -= step;
+    }
+  }
+  return mids;
+}
+
+// Tiradores de los tramos de un codo en pantalla. `axis` es el eje en el que se arrastra: un tramo horizontal se mueve
+// en y. Los tramos de menos de `minLength` px no llevan, porque su tirador caería encima de un vértice.
+export function elbowSegments(points: readonly Point[], minLength: number): Array<{ a: Point; b: Point; axis: 'x' | 'y'; index: number }> {
+  const segments: Array<{ a: Point; b: Point; axis: 'x' | 'y'; index: number }> = [];
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    if (Math.hypot(b.x - a.x, b.y - a.y) < minLength) continue;
+    segments.push({ a, b, axis: Math.abs(b.x - a.x) >= Math.abs(b.y - a.y) ? 'y' : 'x', index: i });
+  }
+  return segments;
+}
+
 export type LineHandleHit = { kind: 'vertex' | 'mid' | 'segment'; index: number } | null;
 
 // Por prioridad: vértices, puntos medios y tramos de codo. Cada uno con su zona cuadrada de lado handleHit.

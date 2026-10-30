@@ -1,14 +1,17 @@
 <script lang="ts">
+  import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import CornerDownRight from '@lucide/svelte/icons/corner-down-right';
   import Minus from '@lucide/svelte/icons/minus';
   import Plus from '@lucide/svelte/icons/plus';
   import RectangleHorizontal from '@lucide/svelte/icons/rectangle-horizontal';
   import Spline from '@lucide/svelte/icons/spline';
+  import { createRawSnippet } from 'svelte';
   import type { NodeRecord, StylePatch } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import ScrubInput from '../../../ui/ScrubInput.svelte';
   import SegmentedControl from '../../../ui/SegmentedControl.svelte';
-  import Select from '../../../ui/Select.svelte';
+  import Select, { type SelectItem } from '../../../ui/Select.svelte';
+  import { capThumbnail } from './cap-thumbnail.ts';
   import ColorRow from './ColorRow.svelte';
   import DashDashed from './icons/DashDashed.svelte';
   import DashDotted from './icons/DashDotted.svelte';
@@ -36,12 +39,12 @@
     { value: 'dashed', label: m.editor_props_dash_dashed(), icon: DashDashed },
     { value: 'dotted', label: m.editor_props_dash_dotted(), icon: DashDotted },
   ];
-  // Las miniaturas de cada punta, el botón de intercambiar y «Rombo» llegan con los extremos nuevos.
-  const CAPS = [
+  const CAPS: Array<{ value: Cap; label: string }> = [
     { value: 'none', label: m.editor_props_cap_none() },
     { value: 'arrow', label: m.editor_props_cap_arrow() },
     { value: 'triangle', label: m.editor_props_cap_triangle() },
     { value: 'circle', label: m.editor_props_cap_circle() },
+    { value: 'diamond', label: m.editor_props_cap_diamond() },
     { value: 'bar', label: m.editor_props_cap_bar() },
   ];
   const ROUTES = [
@@ -62,6 +65,21 @@
   const endCap = $derived(shared(ended, (record) => record.endCap));
   const connectors = $derived(styled.filter((record): record is Connector => record.type === 'connector'));
   const route = $derived(shared(connectors, (record) => record.route));
+  const routed = $derived(connectors.some((record) => record.waypoints?.length));
+
+  // Cada punta con su miniatura dibujada con el grosor del trazo (el de la selección, o 2 si es mixto).
+  const capWidth = $derived(width.mixed ? 2 : (width.value ?? 2));
+  const capItems = (side: 'start' | 'end', strokeWidth: number): SelectItem[] =>
+    CAPS.map((cap) => {
+      const svg = capThumbnail(cap.value, side, strokeWidth);
+      return { ...cap, preview: createRawSnippet(() => ({ render: () => svg })) };
+    });
+  const startItems = $derived(capItems('start', capWidth));
+  const endItems = $derived(capItems('end', capWidth));
+
+  function swapCaps() {
+    edits.setStyle((record) => ('startCap' in record ? { startCap: record.endCap, endCap: record.startCap } : null));
+  }
 </script>
 
 {#if styled.length}
@@ -118,10 +136,12 @@
       </div>
     {/if}
     {#if ended.length}
-      <div class="grid min-w-0 grid-cols-2 gap-2">
+      <div class="flex min-w-0 items-center gap-1" data-testid="props-caps">
         <Select
+          class="w-24 min-w-0"
           size="sm"
-          items={CAPS}
+          compact
+          items={startItems}
           value={startCap.mixed ? '' : (startCap.value ?? 'none')}
           placeholder={m.ui_mixed()}
           label={m.editor_props_start_cap()}
@@ -129,9 +149,16 @@
           testid="props-start-cap"
           onValueChange={(value) => edits.setStyle({ startCap: value as Cap })}
         />
+        {#if !readonly}
+          <PanelButton label={m.editor_props_swap_caps()} testid="props-swap-caps" onclick={swapCaps}>
+            <ArrowLeftRight size={14} aria-hidden="true" />
+          </PanelButton>
+        {/if}
         <Select
+          class="w-24 min-w-0"
           size="sm"
-          items={CAPS}
+          compact
+          items={endItems}
           value={endCap.mixed ? '' : (endCap.value ?? 'none')}
           placeholder={m.ui_mixed()}
           label={m.editor_props_end_cap()}
@@ -142,16 +169,27 @@
       </div>
     {/if}
     {#if connectors.length}
-      <SegmentedControl
-        class="self-start"
-        items={ROUTES}
-        value={route.mixed ? '' : (route.value ?? 'elbow')}
-        label={m.editor_props_route()}
-        size="sm"
-        disabled={readonly}
-        testid="props-route"
-        onValueChange={(value) => edits.setStyle({ route: value as Route })}
-      />
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <SegmentedControl
+          items={ROUTES}
+          value={route.mixed ? '' : (route.value ?? 'elbow')}
+          label={m.editor_props_route()}
+          size="sm"
+          disabled={readonly}
+          testid="props-route"
+          onValueChange={(value) => edits.setStyle({ route: value as Route })}
+        />
+        {#if routed && !readonly}
+          <button
+            type="button"
+            class="h-6 cursor-pointer rounded-control px-1.5 text-xs text-ink-muted transition-colors duration-(--dur-fast) hover:bg-surface-2 hover:text-ink focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral"
+            data-testid="props-route-reset"
+            onclick={() => edits.resetPath()}
+          >
+            {m.editor_props_route_reset()}
+          </button>
+        {/if}
+      </div>
     {/if}
   </Section>
 {/if}

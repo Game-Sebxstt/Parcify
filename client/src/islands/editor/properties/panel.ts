@@ -116,6 +116,12 @@ export class PanelEdits {
     this.owner = null;
     this.engine().commands.cancelPreview();
   }
+
+  // «Restablecer recorrido» en los conectores seleccionados, en un solo paso.
+  resetPath(): void {
+    this.owner = null;
+    this.engine().commands.resetConnectorPath(this.ids());
+  }
 }
 
 // Formas con texto interior (las que tienen labelFontSize en el esquema).

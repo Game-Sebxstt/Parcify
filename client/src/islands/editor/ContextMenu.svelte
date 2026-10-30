@@ -2,6 +2,7 @@
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import BringToFront from '@lucide/svelte/icons/bring-to-front';
+  import CircleMinus from '@lucide/svelte/icons/circle-minus';
   import ClipboardPaste from '@lucide/svelte/icons/clipboard-paste';
   import Copy from '@lucide/svelte/icons/copy';
   import CopyPlus from '@lucide/svelte/icons/copy-plus';
@@ -50,7 +51,17 @@
     const commands = engine.commands;
     const at = request.at;
     const off = !selected || !editable;
+    // El clic derecho o la pulsación larga sobre un vértice lo dejaron marcado.
+    const vertex = engine.state.activeVertex.get();
+    const point: MenuEntry[] =
+      vertex && editable && single?.id === vertex.id
+        ? [
+            { kind: 'item', id: 'delete-point', label: m.editor_point_delete(), icon: CircleMinus, keys: 'Supr', ariaKeys: 'Delete', onSelect: () => void commands.removeVertex(vertex.id, vertex.index) },
+            { kind: 'separator', id: 'sep-point' },
+          ]
+        : [];
     return [
+      ...point,
       { kind: 'item', id: 'cut', label: m.editor_menu_cut(), icon: Scissors, keys: 'Ctrl+X', ariaKeys: 'Control+X', disabled: off, onSelect: () => void engine.clipboard.cut() },
       { kind: 'item', id: 'copy', label: m.editor_menu_copy(), icon: Copy, keys: 'Ctrl+C', ariaKeys: 'Control+C', disabled: !selected, onSelect: () => void engine.clipboard.copy() },
       {
@@ -73,7 +84,16 @@
       ...(single
         ? [{ kind: 'item', id: 'rename', label: m.editor_menu_rename(), icon: PencilLine, disabled: !editable, onSelect: () => onrename(single.id) } satisfies MenuEntry]
         : []),
-      { kind: 'item', id: 'delete', label: m.editor_menu_delete(), icon: Trash, keys: 'Supr', ariaKeys: 'Delete', danger: true, disabled: off, onSelect: () => commands.deleteSelection() },
+      {
+        kind: 'item',
+        id: 'delete',
+        label: m.editor_menu_delete(),
+        icon: Trash,
+        ...(point.length ? {} : { keys: 'Supr', ariaKeys: 'Delete' }),
+        danger: true,
+        disabled: off,
+        onSelect: () => commands.deleteNodes(),
+      },
       { kind: 'separator', id: 'sep-order' },
       {
         kind: 'sub',

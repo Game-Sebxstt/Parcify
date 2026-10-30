@@ -232,7 +232,7 @@ export class ClipboardController {
 
   cutTo(data: DataTransfer): boolean {
     if (this.core.readOnly.get() || !this.copyTo(data)) return false;
-    this.core.commands.deleteSelection();
+    this.core.commands.deleteNodes();
     return true;
   }
 
@@ -258,7 +258,7 @@ export class ClipboardController {
   async cut(): Promise<boolean> {
     if (this.core.readOnly.get()) return false;
     const copied = await this.copy();
-    if (copied && !this.destroyed) this.core.commands.deleteSelection();
+    if (copied && !this.destroyed) this.core.commands.deleteNodes();
     return copied;
   }
 

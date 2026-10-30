@@ -112,8 +112,12 @@ export class OverlayLayer {
       marks.roundRect(cx - w / 2, cy - h / 2, w, h, 2);
     }
     if (line.segments.length) marks.fill({ color: WHITE, alpha: 1 }).stroke({ width: 1, color: ACCENT, alpha: 1 });
-    for (const p of line.mids) marks.circle(p.x, p.y, MID_PX / 2);
-    if (line.mids.length) marks.fill({ color: SURFACE, alpha: 1 }).stroke({ width: 1, color: ACCENT, alpha: 0.6 });
+    line.mids.forEach((p, i) => {
+      if (i !== line.hoverMid) marks.circle(p.x, p.y, MID_PX / 2);
+    });
+    if (line.mids.length > (line.hoverMid === null ? 0 : 1)) marks.fill({ color: SURFACE, alpha: 1 }).stroke({ width: 1, color: ACCENT, alpha: 0.6 });
+    const hovered = line.hoverMid === null ? undefined : line.mids[line.hoverMid];
+    if (hovered) marks.circle(hovered.x, hovered.y, MID_PX / 2).fill({ color: SURFACE, alpha: 1 }).stroke({ width: 1, color: ACCENT, alpha: 1 });
     const vertex = model.profile.handleDraw / 2;
     line.vertices.forEach((p, i) => {
       const fill = i === line.activeVertex ? ACCENT : line.anchored.includes(i) ? SAGE : WHITE;
