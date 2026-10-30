@@ -66,9 +66,12 @@ test('IA: asistente con vista previa y un Ctrl+Z, chat persistente y «Convertir
   await expect(chat.getByText('Respuesta de prueba.')).toBeVisible();
   await expect(chat.locator('ol').getByText('¿Qué hay en el lienzo?')).toBeVisible();
 
-  // Tras recargar, la conversación se restaura desde el servidor.
+  // Tras recargar, la ventana vuelve abierta en la pestaña IA y la conversación se restaura desde el servidor.
+  await page.waitForTimeout(400);
   await openEditor(page, projectId);
-  await page.getByTestId('ai-toggle').click();
+  const conversation = page.getByRole('dialog', { name: 'Chat' });
+  await expect(conversation.getByRole('radio', { name: 'IA' })).toBeChecked();
+  await expect(panel).toBeVisible();
   await panel.getByRole('tab', { name: 'Chat' }).click();
   await expect(chat.getByText('Respuesta de prueba.')).toBeVisible();
   await expect(chat.locator('ol').getByText('¿Qué hay en el lienzo?')).toBeVisible();
@@ -158,6 +161,36 @@ test('IA: imagen generada en la galería con insignia y «Enviar al chat de IA»
   await chat.getByTestId('ai-chat-input').press('Enter');
   await expect(chat.getByText('Respuesta de prueba.')).toBeVisible();
   await expect(chat.getByTestId('ai-chat-attachment')).toHaveCount(0);
+});
+
+test('IA: si el panel no se descarga, la pestaña muestra el error sin reintentar sola y Reintentar lo carga', async ({ page }) => {
+  test.setTimeout(120_000);
+  const ana = await createVerifiedAccount(page.request, `ai-fail-${test.info().project.name}`, 'Ana Sin Panel');
+  const projectId = await createProject(page.request, ana.workspaceSlug, 'Panel de IA caído');
+  let requests = 0;
+  await page.route('**/AiPanel*.js', async (route) => {
+    requests += 1;
+    await route.abort();
+  });
+  await openEditor(page, projectId);
+
+  await page.getByTestId('ai-toggle').click();
+  const conversation = page.getByRole('dialog', { name: 'Chat' });
+  await expect(conversation.getByTestId('ai-load-error')).toBeVisible();
+
+  // Tras recargar con la ventana guardada en la pestaña IA, se intenta una vez y no vuelve a pedir el archivo.
+  await page.waitForTimeout(400);
+  requests = 0;
+  await openEditor(page, projectId);
+  await expect(conversation.getByTestId('ai-load-retry')).toBeVisible();
+  await page.waitForTimeout(2000);
+  expect(requests).toBeGreaterThanOrEqual(1);
+  expect(requests).toBeLessThanOrEqual(2);
+
+  await page.unroute('**/AiPanel*.js');
+  await conversation.getByTestId('ai-load-retry').click();
+  await expect(page.getByTestId('ai-panel')).toBeVisible();
+  await expect(conversation.getByTestId('ai-load-error')).toHaveCount(0);
 });
 
 test('IA: sin modelos configurados no aparecen los botones de IA', async ({ page }) => {

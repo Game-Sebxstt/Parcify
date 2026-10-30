@@ -1,5 +1,4 @@
 <script lang="ts">
-  import X from '@lucide/svelte/icons/x';
   import { untrack } from 'svelte';
   import type { Engine } from '../../../engine/index.ts';
   import type { AiFeatures } from '../../../lib/ai.ts';
@@ -15,10 +14,9 @@
     readOnly: boolean;
     // Imagen de la galería para el chat («Enviar al chat de IA»).
     attachment: { assetId: string; name: string; n: number } | null;
-    onclose: () => void;
   };
 
-  let { engine, projectId, features, readOnly, attachment, onclose }: Props = $props();
+  let { engine, projectId, features, readOnly, attachment }: Props = $props();
 
   type Tab = 'assistant' | 'chat';
   const uid = $props.id();
@@ -70,25 +68,9 @@
     document.getElementById(`${uid}-tab-${next.value}`)?.focus();
   }
 
-  function onPanelKey(event: KeyboardEvent) {
-    if (event.key === 'Escape' && !event.defaultPrevented) onclose();
-  }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<aside aria-labelledby="{uid}-title" onkeydown={onPanelKey} class="flex w-80 shrink-0 flex-col overflow-hidden bg-surface-1 text-sm" data-testid="ai-panel">
-  <div class="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-    <h2 id="{uid}-title" class="font-semibold">{m.editor_ai_title()}</h2>
-    <button
-      type="button"
-      aria-label={m.editor_ai_close()}
-      onclick={onclose}
-      class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-2 hover:text-ink"
-    >
-      <X size={16} aria-hidden="true" />
-    </button>
-  </div>
-
+<div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pt-3 text-sm" data-testid="ai-panel">
   {#if tabs.length > 1}
     <div role="tablist" aria-label={m.editor_ai_tabs()} tabindex="-1" onkeydown={onTabKey} class="mx-3 mb-3 inline-flex gap-1 self-start rounded-full bg-surface-2 p-1">
       {#each tabs as item (item.value)}
@@ -126,4 +108,4 @@
       <p class="px-3 py-4 text-ink-muted" role="status">{m.editor_ai_chat_loading()}</p>
     {/if}
   </div>
-</aside>
+</div>

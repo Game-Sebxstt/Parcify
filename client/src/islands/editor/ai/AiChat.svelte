@@ -173,7 +173,7 @@
     </Button>
   </div>
 
-  <div bind:this={scroller} class="min-h-0 flex-1 overflow-y-auto px-3" aria-live="polite" aria-busy={busy}>
+  <div bind:this={scroller} class="scroll-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3" aria-live="polite" aria-busy={busy}>
     {#if phase === 'loading'}
       <p class="py-4 text-ink-muted" role="status">{m.editor_ai_chat_loading()}</p>
     {:else if phase === 'error'}
@@ -186,14 +186,14 @@
     {:else}
       <ol class="flex flex-col gap-3 pb-3">
         {#each chat.messages as message (message.id)}
-          <li class={message.role === 'user' ? 'self-end' : 'self-start'}>
+          <li class={['min-w-0 max-w-full', message.role === 'user' ? 'self-end' : 'self-start']}>
             <p class="mb-0.5 text-xs text-ink-muted">{message.role === 'user' ? m.editor_ai_chat_you() : m.editor_ai_chat_ai()}</p>
             {#if message.role === 'user'}
-              <p class="rounded-panel bg-petrol px-3 py-2 whitespace-pre-wrap">{textOf(message)}</p>
+              <p class="rounded-card bg-petrol px-3 py-2 break-words whitespace-pre-wrap">{textOf(message)}</p>
             {:else}
               <!-- Markdown saneado con lista blanca (sin img, sin on*, enlaces solo https): único {@html} permitido. -->
               <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-              <div class="ai-markdown rounded-panel bg-surface-2 px-3 py-2">{@html renderMarkdown(textOf(message))}</div>
+              <div class="ai-markdown rounded-card bg-surface-2 px-3 py-2 break-words">{@html renderMarkdown(textOf(message))}</div>
             {/if}
           </li>
         {/each}
@@ -256,6 +256,7 @@
       maxlength={AI_CHAT_LIMITS.messageMax}
       placeholder={m.editor_ai_chat_placeholder()}
       class="min-w-0 flex-1 resize-none rounded-panel bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-coral"
+      data-autofocus
       data-testid="ai-chat-input"
     ></textarea>
     {#if busy}

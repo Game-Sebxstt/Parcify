@@ -30,7 +30,9 @@ test('galería: subir, ver, descargar, insertar y borrar deja el marcador de ima
   await openEditor(bea, projectId);
 
   await page.getByRole('button', { name: 'Galería', exact: true }).click();
-  const panel = page.getByTestId('gallery-panel');
+  const galleryWindow = page.getByRole('dialog', { name: 'Galería' });
+  await expect(galleryWindow).toHaveAttribute('aria-modal', 'false');
+  const panel = galleryWindow.getByTestId('gallery-panel');
   await expect(panel.getByText('Aún no hay imágenes en la galería.', { exact: false })).toBeVisible();
   await panel.getByTestId('gallery-input').setInputFiles({ name: 'Plano.png', mimeType: 'image/png', buffer: solidPng(200, [30, 160, 90]) });
   const item = panel.getByRole('button', { name: 'Ver Plano.png' });

@@ -7,6 +7,7 @@
   import Paperclip from '@lucide/svelte/icons/paperclip';
   import Send from '@lucide/svelte/icons/send-horizontal';
   import X from '@lucide/svelte/icons/x';
+  import { Portal } from 'bits-ui';
   import { tick } from 'svelte';
   import { ApiError } from '../../../lib/api.ts';
   import { assetUrl } from '../../../lib/assets.ts';
@@ -15,7 +16,10 @@
   import { m } from '../../../paraglide/messages.js';
   import type { AssetDto } from '../../../shared/api/assets.js';
   import { CHAT_LIMITS } from '../../../shared/api/chat.js';
+  import { placeOverCanvas } from '../../../ui/anchor.ts';
+  import { caretRect } from '../../../ui/caret.ts';
   import { showToast } from '../../../ui/toast.svelte.ts';
+  import Tooltip from '../../../ui/Tooltip.svelte';
 
   type Props = {
     projectId: string;
@@ -46,9 +50,53 @@
   const listOpen = $derived(suggestions.length > 0);
   const canSend = $derived(text.trim().length > 0 && uploading === 0);
 
+  // El campo crece de una línea (36 px) a unas seis (132 px) y a partir de ahí hace scroll.
+  const FIELD_MAX = 132;
+  let list = $state<HTMLUListElement | null>(null);
+
   export function focus() {
     input?.focus();
   }
+
+  // Vacío, se mide con el texto de ayuda: en una ventana estrecha ocupa dos líneas y no debe quedar cortado.
+  function fitField(field: HTMLTextAreaElement) {
+    field.style.height = 'auto';
+    const empty = field.value === '';
+    if (empty) field.value = field.placeholder;
+    const height = field.scrollHeight;
+    if (empty) field.value = '';
+    field.style.height = `${Math.min(height, FIELD_MAX)}px`;
+  }
+
+  $effect(() => {
+    void text;
+    if (input) fitField(input);
+  });
+
+  // Al cambiar el ancho de la ventana, las líneas cambian.
+  $effect(() => {
+    if (!input) return;
+    const field = input;
+    let width = field.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (field.clientWidth === width) return;
+      width = field.clientWidth;
+      fitField(field);
+    });
+    observer.observe(field);
+    return () => observer.disconnect();
+  });
+
+  // La lista de menciones va en portal, encima del caret; si no se puede medir, encima del borde superior del campo.
+  $effect(() => {
+    if (!listOpen || !list || !input) return;
+    void text;
+    void suggestions.length;
+    const field = input;
+    const box = field.getBoundingClientRect();
+    const caret = caretRect(field, field.selectionStart ?? text.length) ?? new DOMRect(box.left, box.top, box.width, 0);
+    void placeOverCanvas(list, { x: caret.x, y: caret.y, width: caret.width, height: caret.height }, { placement: 'top-start', gap: 6, padding: 8 });
+  });
 
   $effect(() => {
     for (const asset of attachments) {
@@ -146,18 +194,20 @@
   }
 </script>
 
-<div class="flex flex-col gap-2 border-t border-edge px-3 pt-2 pb-3">
+<div class="flex min-w-0 shrink-0 flex-col gap-2 border-t border-edge/25 p-2">
   {#if replyTo}
-    <div class="flex items-center gap-2 rounded-[6px] bg-surface-2 py-1 pr-1 pl-2 text-xs" data-testid="chat-replying">
-      <p class="min-w-0 flex-1 truncate text-ink-muted">
-        {m.editor_chat_replying_to({ name: replyTo.author.name ?? m.editor_chat_deleted_account() })}
-        <span class="text-ink">{replyTo.body}</span>
-      </p>
+    <!-- Una línea: «Respondiendo a …:», el texto citado recortado y la ×. -->
+    <div
+      class="grid h-7 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 rounded-control bg-surface-2 pr-0.5 pl-2 text-xs"
+      data-testid="chat-replying"
+    >
+      <span class="max-w-40 truncate text-ink-muted">{m.editor_chat_replying_to({ name: replyTo.author.name ?? m.editor_chat_deleted_account() })}</span>
+      <span class="truncate text-ink">{replyTo.body}</span>
       <button
         type="button"
         aria-label={m.editor_chat_reply_cancel()}
         onclick={oncancelreply}
-        class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-1 hover:text-ink"
+        class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink"
       >
         <X size={12} aria-hidden="true" />
       </button>
@@ -185,44 +235,56 @@
     </ul>
   {/if}
 
-  <div class="relative">
-    {#if listOpen}
+  {#if listOpen}
+    <Portal>
       <ul
+        bind:this={list}
         id="{uid}-mentions"
         role="listbox"
         aria-label={m.editor_chat_mention_list()}
-        class="absolute right-0 bottom-full left-0 mb-1 max-h-48 overflow-y-auto rounded-panel bg-surface-2 p-1 shadow-float"
+        class="scroll-thin fixed top-0 left-0 z-(--z-popover) max-h-48 w-56 max-w-[calc(100vw-16px)] overflow-y-auto rounded-panel border border-edge/40 bg-surface-2 p-1 text-sm shadow-float"
+        style="visibility: hidden"
+        data-floating=""
+        data-testid="chat-mentions"
       >
         {#each suggestions as member, index (member.userId)}
+          <!-- El ratón no quita el foco al campo; el clic (o el toque) elige. Con el teclado manda el campo (combobox). -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
           <li
             id="{uid}-mention-{index}"
             role="option"
             aria-selected={index === active}
-            class={['cursor-pointer truncate rounded-[6px] px-2 py-1.5', index === active ? 'bg-petrol text-ink' : 'text-ink-muted'].join(' ')}
-            onmousedown={(event) => {
-              event.preventDefault();
-              void choose(member);
-            }}
+            class={['cursor-pointer truncate rounded-control px-2 py-1.5', index === active ? 'bg-petrol text-ink' : 'text-ink-muted hover:text-ink']}
+            onmousedown={(event) => event.preventDefault()}
+            onclick={() => void choose(member)}
           >
             {member.name}
           </li>
         {/each}
       </ul>
-    {/if}
+    </Portal>
+  {/if}
 
+  <div class="min-w-0">
     <label for="{uid}-input" class="sr-only">{m.editor_chat_input_label()}</label>
-    <div class="flex items-end gap-1 rounded-panel bg-surface-2 p-1 focus-within:ring-2 focus-within:ring-edge">
+    <div
+      class="flex min-w-0 items-end gap-1 rounded-card bg-surface-2 p-0.5 focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-coral"
+    >
       <input bind:this={fileInput} type="file" accept={CANVAS_IMAGE_ACCEPT} multiple class="hidden" tabindex="-1" aria-hidden="true" onchange={onFiles} data-testid="chat-file-input" />
-      <button
-        type="button"
-        aria-label={m.editor_chat_attach()}
-        title={m.editor_chat_attach()}
-        disabled={attachments.length + uploading >= CHAT_LIMITS.attachmentsMax}
-        onclick={() => fileInput?.click()}
-        class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-1 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <Paperclip size={16} aria-hidden="true" />
-      </button>
+      <Tooltip text={m.editor_chat_attach()}>
+        {#snippet children(props)}
+          <button
+            {...props}
+            type="button"
+            aria-label={m.editor_chat_attach()}
+            disabled={attachments.length + uploading >= CHAT_LIMITS.attachmentsMax}
+            onclick={() => fileInput?.click()}
+            class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) enabled:hover:bg-petrol enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Paperclip size={16} aria-hidden="true" />
+          </button>
+        {/snippet}
+      </Tooltip>
       <textarea
         id="{uid}-input"
         bind:this={input}
@@ -239,19 +301,25 @@
         onclick={refreshQuery}
         onkeydown={onKeydown}
         onblur={() => (query = null)}
-        class="max-h-32 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-sm text-ink [field-sizing:content] placeholder:text-ink-muted focus:outline-none"
+        class="block max-h-[132px] min-h-9 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2 text-sm leading-5 text-ink placeholder:text-ink-muted focus:outline-none"
+        data-autofocus
         data-testid="chat-input"
       ></textarea>
-      <button
-        type="button"
-        aria-label={m.editor_chat_send()}
-        title={m.editor_chat_send()}
-        disabled={!canSend}
-        onclick={submit}
-        class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-coral text-coral-ink hover:bg-coral-hover disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <Send size={16} aria-hidden="true" />
-      </button>
+      <Tooltip text={m.editor_chat_send()}>
+        {#snippet children(props)}
+          <button
+            {...props}
+            type="button"
+            aria-label={m.editor_chat_send()}
+            disabled={!canSend}
+            onclick={submit}
+            class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-control bg-coral text-coral-ink transition-colors duration-(--dur-fast) enabled:hover:bg-coral-hover disabled:cursor-not-allowed disabled:bg-petrol disabled:text-ink-muted"
+            data-testid="chat-send"
+          >
+            <Send size={16} aria-hidden="true" />
+          </button>
+        {/snippet}
+      </Tooltip>
     </div>
   </div>
 </div>

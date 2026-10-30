@@ -5,7 +5,6 @@
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import Trash from '@lucide/svelte/icons/trash';
   import Upload from '@lucide/svelte/icons/upload';
-  import X from '@lucide/svelte/icons/x';
   import { untrack } from 'svelte';
   import type { Engine } from '../../engine/index.ts';
   import { ApiError, apiFetch } from '../../lib/api.ts';
@@ -33,10 +32,9 @@
     canGenerate: boolean;
     // «Enviar al chat de IA»; null si no hay chat de IA.
     onsendtochat: ((asset: { assetId: string; name: string }) => void) | null;
-    onclose: () => void;
   };
 
-  let { engine, projectId, readOnly, assetEvent, jobEvent, canGenerate, onsendtochat, onclose }: Props = $props();
+  let { engine, projectId, readOnly, assetEvent, jobEvent, canGenerate, onsendtochat }: Props = $props();
 
   // Generaciones en curso de esta sesión; se consultan al llegar su ai.job y cada pocos segundos por si se pierde.
   const JOB_POLL_MS = 5_000;
@@ -232,19 +230,7 @@
   }
 </script>
 
-<aside aria-labelledby="{uid}-title" class="flex w-72 shrink-0 flex-col gap-3 overflow-hidden bg-surface-1 px-3 py-3 text-sm" data-testid="gallery-panel">
-  <div class="flex items-center justify-between gap-2">
-    <h2 id="{uid}-title" class="font-semibold">{m.editor_gallery_title()}</h2>
-    <button
-      type="button"
-      aria-label={m.editor_gallery_close()}
-      onclick={onclose}
-      class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-2 hover:text-ink"
-    >
-      <X size={16} aria-hidden="true" />
-    </button>
-  </div>
-
+<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3 text-sm" data-testid="gallery-panel">
   {#if !readOnly}
     <input bind:this={input} type="file" accept={CANVAS_IMAGE_ACCEPT} multiple class="hidden" tabindex="-1" aria-hidden="true" onchange={onPicked} data-testid="gallery-input" />
     <Button size="sm" loading={uploading} onclick={() => input?.click()}>
@@ -280,7 +266,7 @@
         class="w-full resize-none rounded-[6px] bg-surface-1 px-2 py-1.5 text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-coral"
         data-testid="gallery-generate-prompt"
       ></textarea>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <div class="flex items-center gap-1 text-xs text-ink-muted">
           <label for="{uid}-gen-count">{m.editor_gallery_generate_count()}</label>
           <Select
@@ -315,7 +301,7 @@
     </form>
   {/if}
 
-  <div class="min-h-0 flex-1 overflow-y-auto">
+  <div class="scroll-thin -mx-3 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3">
     {#if status === 'loading'}
       <ul class="grid grid-cols-3 gap-2" aria-hidden="true">
         {#each [0, 1, 2, 3, 4, 5] as slot (slot)}
@@ -330,7 +316,7 @@
     {:else if !items.length}
       <p class="text-ink-muted">{m.editor_gallery_empty()}</p>
     {:else}
-      <ul class="grid grid-cols-3 gap-2" aria-labelledby="{uid}-title">
+      <ul class="grid grid-cols-3 gap-2" aria-label={m.editor_gallery_title()}>
         {#each items as item (item.id)}
           <li>
             <button
@@ -357,7 +343,7 @@
       {/if}
     {/if}
   </div>
-</aside>
+</div>
 
 <Dialog bind:open={previewOpen} title={previewing ? nameOf(previewing) : ''} size="lg">
   {#if previewing}

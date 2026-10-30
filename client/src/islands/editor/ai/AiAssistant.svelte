@@ -250,6 +250,7 @@
           placeholder={m.editor_ai_prompt_placeholder()}
           aria-describedby="{uid}-hint"
           class="w-full resize-none rounded-panel bg-surface-2 px-3 py-2 pr-10 text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-coral disabled:opacity-60"
+          data-autofocus
           data-testid="ai-prompt"
         ></textarea>
         {#if Speech}

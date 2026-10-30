@@ -2,7 +2,7 @@
   import Eye from '@lucide/svelte/icons/eye';
   import { BitsConfig } from 'bits-ui';
   import X from '@lucide/svelte/icons/x';
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { on } from 'svelte/events';
   import { describeSelection } from '../engine/a11y/describe.ts';
   import {
@@ -39,10 +39,11 @@
   import BlockingScreen from './editor/BlockingScreen.svelte';
   import CanvasHud from './editor/CanvasHud.svelte';
   import { createEngineCanvas } from './editor/engine-canvas.ts';
-  import ChatPanel from './editor/chat/ChatPanel.svelte';
+  import ConversationWindow from './editor/chat/ConversationWindow.svelte';
   import ContextMenu from './editor/ContextMenu.svelte';
   import ExportDialog from './editor/ExportDialog.svelte';
-  import GalleryPanel from './editor/GalleryPanel.svelte';
+  import GalleryWindow from './editor/GalleryWindow.svelte';
+  import type { WindowRect } from '../ui/floating-window.svelte.ts';
   import { describeLabels } from './editor/kinds.ts';
   import Minimap from './editor/Minimap.svelte';
   import Present, { presentationSlides } from './editor/Present.svelte';
@@ -103,7 +104,6 @@
   let activePage = $state<string | null>(null);
   let workspaceSlug = '';
   let menu = $state.raw<ContextMenuRequest | null>(null);
-  let galleryOpen = $state(false);
   let exportOpen = $state(false);
   let publishOpen = $state(false);
   // El panel Compartir se descarga la primera vez que se abre.
@@ -138,13 +138,13 @@
   let aiProposed = $state(false);
   // Lo que anuncia el lector de pantalla al grabar un keyframe sin Grabar (el borde ya marca Grabar).
   let recordAnnouncement = $state('');
-  let chatOpen = $state(false);
   let chatUnread = $state(0);
   // Funciones de IA con modelo configurado; el panel se descarga la primera vez que se abre.
   let aiFeatures = $state.raw<AiFeatures | null>(null);
-  let aiOpen = $state(false);
   let AiPanel = $state.raw<typeof AiPanelComponent | null>(null);
   let aiLoading = $state(false);
+  // Tras un fallo al descargar el panel no se reintenta solo: la pestaña muestra el error con Reintentar.
+  let aiLoadFailed = $state(false);
   let aiAttachment = $state.raw<{ assetId: string; name: string; n: number } | null>(null);
   // Cambia con cada ai.job (generación de imágenes) que llega del servidor.
   let aiJobEvent = $state.raw<{ jobId: string; status: string; n: number } | null>(null);
@@ -276,6 +276,23 @@
   const canShare = $derived(collabState?.role === 'admin');
   // La IA necesita poder editar el proyecto (ai:use).
   const aiAvailable = $derived(!!aiFeatures && (aiFeatures.assistant || aiFeatures.chat) && !engineReadOnly);
+  // Chat e IA comparten una ventana flotante con dos pestañas; sus botones se ven pulsados según la pestaña visible.
+  const conversationTab = $derived(layout.conversation.tab === 'ai' && aiAvailable ? 'ai' : 'team');
+  const conversationShown = $derived(layout.conversation.open && !layout.conversation.minimized);
+  const chatOpen = $derived(conversationShown && conversationTab === 'team');
+  const aiOpen = $derived(conversationShown && conversationTab === 'ai');
+  let conversationWindow = $state<ReturnType<typeof ConversationWindow> | null>(null);
+  let galleryWindow = $state<ReturnType<typeof GalleryWindow> | null>(null);
+  // Botón que abrió cada ventana: ahí vuelve el foco al minimizarla o cerrarla.
+  let conversationOpener: HTMLElement | null = null;
+  let galleryOpener: HTMLElement | null = null;
+
+  // Abiertas tras recargar en la pestaña IA: se descarga el panel.
+  $effect(() => {
+    if (layout.conversation.open && layout.conversation.tab === 'ai' && aiAvailable && !AiPanel && !aiLoadFailed) {
+      untrack(() => void loadAiPanel());
+    }
+  });
 
   // Lo que lee un lector de pantalla al cambiar la selección.
   const announcement = $derived.by(() => {
@@ -712,6 +729,14 @@
     presenting = true;
   }
 
+  // El diálogo se cierra antes de presentar: si el portal de bits-ui cambia de destino (body → raíz) mientras se
+  // cierra, el diálogo se vuelve a montar abierto y, al salir de Presentar, queda tapando el editor.
+  async function presentWholePage() {
+    presentPageAsk = false;
+    await tick();
+    beginPresenting('page');
+  }
+
   function stopPresenting() {
     presenting = false;
     container?.focus({ preventScroll: true });
@@ -731,10 +756,6 @@
     }
     layout.collapse('right');
   }
-
-  // Alto de la barra de herramientas: las ventanas provisionales acaban por encima de ella.
-  const BAR_ROW = 44;
-  const WINDOW = 'pointer-events-auto flex min-h-0 touch-pan-x touch-pan-y overflow-hidden rounded-panel border border-edge/40 shadow-float';
 
   // Permiso perdido: el documento abierto. Epoch nuevo: el que se descartó con cambios sin enviar.
   async function downloadLocal() {
@@ -867,41 +888,99 @@
     if (!rightOpen) layout.open('right');
   }
 
-  // El chat y la IA comparten la ventana provisional junto al panel derecho.
+  function focusedButton(): HTMLElement | null {
+    const active = document.activeElement;
+    return active instanceof HTMLElement && active !== document.body && !container?.contains(active) ? active : null;
+  }
+
+  // Abre la ventana de conversación en una pestaña (o la saca de la píldora) y lleva el foco a su compositor.
+  function showConversation(tab: 'team' | 'ai') {
+    conversationOpener = focusedButton();
+    layout.conversation.tab = tab;
+    layout.conversation.open = true;
+    layout.conversation.minimized = false;
+    void conversationWindow?.focus();
+  }
+
+  // Pulsado con la pestaña visible, el botón cierra la ventana; si no, la abre (o la cambia) en su pestaña.
   function toggleChat() {
-    chatOpen = !chatOpen;
-    if (chatOpen) aiOpen = false;
+    if (chatOpen) layout.conversation.open = false;
+    else showConversation('team');
   }
 
   async function toggleAi() {
     if (aiOpen) {
-      aiOpen = false;
+      layout.conversation.open = false;
       return;
     }
     await openAi();
   }
 
-  // «Enviar al chat de IA» desde la galería: abre el panel en el chat con la imagen adjunta.
+  // «Enviar al chat de IA» desde la galería: abre la pestaña IA en el chat con la imagen adjunta.
   async function sendToAiChat(asset: { assetId: string; name: string }) {
     await openAi();
     aiAttachment = { ...asset, n: (aiAttachment?.n ?? 0) + 1 };
   }
 
-  async function openAi() {
-    if (!AiPanel) {
-      if (aiLoading) return;
-      aiLoading = true;
-      try {
-        AiPanel = (await import('./editor/ai/AiPanel.svelte')).default;
-      } catch {
-        showToast({ message: m.editor_load_error(), tone: 'error' });
-        return;
-      } finally {
-        aiLoading = false;
-      }
+  async function loadAiPanel(): Promise<boolean> {
+    if (AiPanel) return true;
+    if (aiLoading) return false;
+    aiLoading = true;
+    aiLoadFailed = false;
+    try {
+      AiPanel = (await import('./editor/ai/AiPanel.svelte')).default;
+      return true;
+    } catch {
+      aiLoadFailed = true;
+      return false;
+    } finally {
+      aiLoading = false;
     }
-    aiOpen = true;
-    chatOpen = false;
+  }
+
+  async function openAi() {
+    const opener = focusedButton();
+    // Pulsar IA es un intento explícito: reintenta aunque la última descarga fallara. Si falla, la pestaña lo dice.
+    await loadAiPanel();
+    showConversation('ai');
+    conversationOpener = opener;
+  }
+
+  // Si el botón que la abrió ya no está (panel plegado, interfaz minimizada), el foco va al botón de su pestaña.
+  function conversationReturn(): HTMLElement | null {
+    if (conversationOpener?.isConnected && conversationOpener.checkVisibility()) return conversationOpener;
+    const testid = conversationTab === 'ai' ? 'ai-toggle' : 'chat-toggle';
+    return root?.querySelector<HTMLElement>(`[data-testid="${testid}"]`) ?? container;
+  }
+
+  function toggleGallery() {
+    if (layout.gallery.open) {
+      layout.gallery.open = false;
+      return;
+    }
+    galleryOpener = focusedButton();
+    layout.gallery.open = true;
+    void tick().then(() => galleryWindow?.focus());
+  }
+
+  function galleryReturn(): HTMLElement | null {
+    return galleryOpener?.isConnected && galleryOpener.checkVisibility() ? galleryOpener : container;
+  }
+
+  // Posiciones por defecto de las ventanas: el chat abajo a la derecha, a 16 px del panel derecho (o del borde) y a
+  // 72 px del borde inferior para no tapar la barra de herramientas; la galería arriba, a la izquierda del panel.
+  const WINDOW_GAP = 16;
+  const CONVERSATION_SIZE = { w: 380, h: 560 };
+  const GALLERY_SIZE = { w: 360, h: 520 };
+
+  function conversationDefault(): WindowRect {
+    const { w, h } = CONVERSATION_SIZE;
+    return { x: viewport.width - rightEdge - WINDOW_GAP - w, y: viewport.height - 72 - h, w, h };
+  }
+
+  function galleryDefault(): WindowRect {
+    const { w, h } = GALLERY_SIZE;
+    return { x: viewport.width - rightEdge - WINDOW_GAP - w, y: rightOpen ? 8 : 56, w, h };
   }
 
   // focus: «Animar…» lleva el foco a la fila de lo seleccionado. record: los accesos de «animar esto» encienden Grabar.
@@ -1165,7 +1244,7 @@
               {tool}
               {toolLocked}
               readOnly={engineReadOnly}
-              gallery={galleryOpen}
+              gallery={layout.gallery.open}
               {timelineOpen}
               {timelineLoading}
               recording={recordingAt !== null && recordMode === 'all'}
@@ -1173,7 +1252,7 @@
               {aiOpen}
               onselect={(next, locked) => engine?.commands.setTool(next, { locked: locked === true })}
               onimage={pickImages}
-              ongallery={() => (galleryOpen = !galleryOpen)}
+              ongallery={toggleGallery}
               onanimate={toggleTimeline}
               onai={toggleAi}
             />
@@ -1241,63 +1320,49 @@
         />
       {/if}
 
-      <!-- Galería, chat e IA flotan a la izquierda del panel derecho hasta que tengan su ventana propia. -->
-      <div
-        hidden={hideUi}
-        class="pointer-events-none absolute z-(--z-window) flex justify-end gap-2"
-        style:top="{rightOpen ? 8 : 56}px"
-        style:bottom="{barsBottom + BAR_ROW + 8}px"
-        style:left="{leftEdge + 8}px"
-        style:right="{rightEdge + 8}px"
-      >
-        <!-- Al presentar, el chat y la IA solo se ocultan (siguen contando y recibiendo); la galería no se monta. -->
-        {#if galleryOpen && engine && !presenting}
-          <div class={WINDOW}>
-            <GalleryPanel
-              {engine}
-              {projectId}
-              readOnly={engineReadOnly}
-              {assetEvent}
-              jobEvent={aiJobEvent}
-              canGenerate={!!aiFeatures?.image && !engineReadOnly}
-              onsendtochat={aiFeatures?.chat && !engineReadOnly ? (asset) => void sendToAiChat(asset) : null}
-              onclose={() => (galleryOpen = false)}
-            />
-          </div>
-        {/if}
-        {#if chatSession}
-          <!-- Montado aunque esté cerrado: cuenta los no leídos y recibe los mensajes en vivo. -->
-          <div hidden={!chatOpen} class={WINDOW}>
-            <ChatPanel
-              {projectId}
-              session={chatSession}
-              me={{ id: chatSession.user.id, name: chatSession.user.name, avatarAssetId: session.me?.user.avatarAssetId ?? null }}
-              role={collabState.role ?? 'viewer'}
-              open={chatOpen}
-              status={collabState.status}
-              {typingNames}
-              ontyping={(value) => engine?.core.presence.update({ chatTyping: value })}
-              onunread={(count) => (chatUnread = count)}
-              onclose={() => (chatOpen = false)}
-            />
-          </div>
-        {/if}
-        {#if AiPanel && aiOpen && aiAvailable && aiFeatures && engine}
-          <div class={WINDOW}>
-            <AiPanel
-              {engine}
-              {projectId}
-              features={aiFeatures}
-              readOnly={engineReadOnly}
-              attachment={aiAttachment}
-              onclose={() => {
-                aiOpen = false;
-                aiAttachment = null;
-              }}
-            />
-          </div>
-        {/if}
-      </div>
+      <!-- Ventanas flotantes. Al presentar, la conversación solo se oculta (sigue contando y recibiendo, sin marcar
+           nada como leído); la galería no se monta. -->
+      {#if chatSession}
+        <ConversationWindow
+          bind:this={conversationWindow}
+          {projectId}
+          session={chatSession}
+          me={{ id: chatSession.user.id, name: chatSession.user.name, avatarAssetId: session.me?.user.avatarAssetId ?? null }}
+          role={collabState.role ?? 'viewer'}
+          status={collabState.status}
+          {typingNames}
+          unread={chatUnread}
+          hidden={hideUi}
+          defaultRect={conversationDefault}
+          pillAt={{ right: barsRight + 12, bottom: barsBottom + barsHeight + 8 }}
+          returnFocus={conversationReturn}
+          {aiAvailable}
+          {AiPanel}
+          {aiFeatures}
+          {engine}
+          readOnly={engineReadOnly}
+          {aiAttachment}
+          aiFailed={aiLoadFailed}
+          onretryai={() => void loadAiPanel()}
+          ontyping={(value) => engine?.core.presence.update({ chatTyping: value })}
+          onunread={(count) => (chatUnread = count)}
+        />
+      {/if}
+      {#if layout.gallery.open && engine && !presenting}
+        <GalleryWindow
+          bind:this={galleryWindow}
+          {engine}
+          {projectId}
+          readOnly={engineReadOnly}
+          {assetEvent}
+          jobEvent={aiJobEvent}
+          canGenerate={!!aiFeatures?.image && !engineReadOnly}
+          onsendtochat={aiFeatures?.chat && !engineReadOnly ? (asset) => void sendToAiChat(asset) : null}
+          hidden={hideUi}
+          defaultRect={galleryDefault}
+          returnFocus={galleryReturn}
+        />
+      {/if}
 
       {#if viewer.viewing && !presenting}
         <!-- Tapa el hueco del lienzo y sus barras sin dejar franjas del lienzo vivo; las pastillas de los paneles plegados
@@ -1370,7 +1435,7 @@
       title={m.present_page_title()}
       description={m.present_page_body()}
       confirmLabel={m.present_page_confirm()}
-      onconfirm={() => beginPresenting('page')}
+      onconfirm={() => void presentWholePage()}
       onCloseAutoFocus={(event) => {
         // El botón que abrió el diálogo no está mientras se presenta: el foco va a la presentación.
         if (!presenting) return;

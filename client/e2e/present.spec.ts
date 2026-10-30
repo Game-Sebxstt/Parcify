@@ -151,6 +151,8 @@ test('Presentar la página entera: sin marcos, centra el contenido y vuelve a en
 
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+  // El diálogo de la página entera no vuelve a salir al terminar.
+  await expect(ask).toHaveCount(0);
   await otherContext.close();
 });
 

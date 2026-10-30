@@ -1,6 +1,5 @@
 <script lang="ts">
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
-  import X from '@lucide/svelte/icons/x';
   import { onMount, tick, untrack } from 'svelte';
   import { ApiError, apiFetch } from '../../../lib/api.ts';
   import { assetUrl } from '../../../lib/assets.ts';
@@ -21,6 +20,7 @@
   import { m } from '../../../paraglide/messages.js';
   import { ProjectMembersResponseSchema } from '../../../shared/api/projects.js';
   import type { ProjectRole } from '../../../shared/permissions.js';
+  import Skeleton from '../../../ui/Skeleton.svelte';
   import { showToast } from '../../../ui/toast.svelte.ts';
   import ConfirmDialog from '../../dashboard/ConfirmDialog.svelte';
   import ChatComposer, { type ComposerMember, type ComposerSend } from './ChatComposer.svelte';
@@ -36,12 +36,11 @@
     typingNames: string[];
     ontyping: (typing: boolean) => void;
     onunread: (count: number) => void;
-    onclose: () => void;
   };
 
-  let { projectId, session, me, role, open, status, typingNames, ontyping, onunread, onclose }: Props = $props();
+  // `open`: la conversación se ve (ventana abierta, sin minimizar y en la pestaña Equipo). Solo así se marca como leída.
+  let { projectId, session, me, role, open, status, typingNames, ontyping, onunread }: Props = $props();
 
-  const uid = $props.id();
   // Margen para considerar que se está al final de la conversación.
   const BOTTOM_SLACK = 48;
   const TOP_SLACK = 64;
@@ -321,37 +320,29 @@
     });
   }
 
-  function onPanelKey(event: KeyboardEvent) {
-    if (event.key === 'Escape' && !event.defaultPrevented) onclose();
+  export function focus() {
+    composer?.focus();
   }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<aside
-  hidden={!open}
-  aria-labelledby="{uid}-title"
-  onkeydown={onPanelKey}
-  class="flex w-80 shrink-0 flex-col overflow-hidden bg-surface-1 text-sm"
-  data-testid="chat-panel"
->
-  <div class="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-    <h2 id="{uid}-title" class="font-semibold">{m.editor_chat_title()}</h2>
-    <button
-      type="button"
-      aria-label={m.editor_chat_close()}
-      onclick={onclose}
-      class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-surface-2 hover:text-ink"
-    >
-      <X size={16} aria-hidden="true" />
-    </button>
-  </div>
-
+<div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden text-sm" data-testid="chat-panel">
   <div class="relative min-h-0 flex-1">
-    <div bind:this={scroller} onscroll={onScroll} class="h-full overflow-y-auto px-1 pb-2" data-testid="chat-scroller">
+    <div bind:this={scroller} onscroll={onScroll} class="scroll-thin h-full overflow-x-hidden overflow-y-auto p-3" data-testid="chat-scroller">
       {#if phase === 'loading'}
-        <p class="px-2 py-4 text-ink-muted" role="status">{m.editor_chat_loading()}</p>
+        <div role="status" class="flex flex-col gap-3">
+          <span class="sr-only">{m.editor_chat_loading()}</span>
+          {#each [0.8, 0.55, 0.7] as width, index (index)}
+            <div class="flex items-start gap-2" aria-hidden="true">
+              <Skeleton rounded="full" class="size-6 shrink-0" />
+              <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                <Skeleton class="h-2.5 w-20" />
+                <div style:width="{width * 100}%"><Skeleton class="h-9 w-full" /></div>
+              </div>
+            </div>
+          {/each}
+        </div>
       {:else if phase === 'error'}
-        <div class="flex flex-col items-start gap-2 px-2 py-4" role="alert">
+        <div class="flex flex-col items-start gap-2 py-1" role="alert">
           <p class="text-ink-muted">{m.editor_chat_load_error()}</p>
           <button type="button" class="cursor-pointer font-semibold text-coral hover:underline" onclick={() => void load()}>
             {m.common_retry()}
@@ -371,9 +362,9 @@
           </div>
         {/if}
         {#if messages.length === 0}
-          <p class="px-2 py-4 text-ink-muted">{m.editor_chat_empty()}</p>
+          <p class="py-1 text-ink-muted">{m.editor_chat_empty()}</p>
         {:else}
-          <ol aria-labelledby="{uid}-title" class="flex flex-col">
+          <ol aria-label={m.editor_chat_title()} class="flex min-w-0 flex-col gap-2">
             {#each messages as entry, index (entry.id)}
               <ChatMessage
                 {entry}
@@ -406,7 +397,7 @@
     {/if}
   </div>
 
-  <p class="h-5 truncate px-4 text-xs text-ink-muted" aria-live="polite" data-testid="chat-typing">{typingText}</p>
+  <p class="h-5 shrink-0 truncate px-3 text-xs text-ink-muted" aria-live="polite" data-testid="chat-typing">{typingText}</p>
 
   <ChatComposer
     bind:this={composer}
@@ -420,7 +411,7 @@
   />
 
   <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
-</aside>
+</div>
 
 <ConfirmDialog
   bind:open={confirmOpen}
