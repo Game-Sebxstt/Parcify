@@ -21,7 +21,7 @@
 <div
   role="toolbar"
   aria-label={m.dashboard_selection_label()}
-  class="fixed inset-x-3 bottom-3 z-30 mx-auto flex max-w-2xl flex-wrap items-center gap-2 rounded-full bg-surface-2 py-1.5 pr-1.5 pl-5 shadow-float sm:inset-x-6"
+  class="fixed inset-x-3 bottom-3 z-30 mx-auto flex max-w-4xl flex-wrap items-center gap-2 rounded-full bg-surface-2 py-1.5 pr-1.5 pl-5 shadow-float sm:inset-x-6"
 >
   <p class="mr-auto text-sm font-semibold tabular" aria-live="polite">{m.dashboard_selection_count({ count })}</p>
   {#if count < total}

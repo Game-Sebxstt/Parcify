@@ -159,7 +159,7 @@ test('PNG, JPG, SVG, PDF y .parcify; vista previa en el dashboard y reimportaciÃ
   await page.getByRole('menuitem', { name: 'Volver al inicio' }).click();
   await expect(page).toHaveURL('/app');
   const card = page
-    .getByRole('list', { name: 'Recientes' })
+    .getByRole('list', { name: 'Vistos recientemente' })
     .getByRole('listitem')
     .filter({ has: page.getByRole('link', { name: 'Cartel exportable', exact: true }) });
   await expect(async () => {

@@ -201,7 +201,7 @@ test('axe sin violaciones en el inicio, el espacio y los ajustes', async ({ page
   await context.close();
 
   await page.goto('/app');
-  await expect(page.getByRole('list', { name: 'Recientes' }).getByRole('listitem')).toHaveCount(1);
+  await expect(page.getByRole('list', { name: 'Vistos recientemente' }).getByRole('listitem')).toHaveCount(1);
   expect(await audit(page)).toEqual([]);
   expect(await nativeControls(page)).toEqual(NO_NATIVE);
 

@@ -1,5 +1,7 @@
-import { expect, test, type Page, type Request } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Request } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
+import { setProjectPreview } from './helpers/preview.ts';
+import { longPress } from './helpers/touch.ts';
 
 const API = 'http://localhost:3000';
 const ORIGIN = { origin: 'http://localhost:4321' };
@@ -15,8 +17,10 @@ const card = (page: Page, name: string) =>
 const filter = (page: Page, name: string) => page.getByRole('radiogroup', { name: 'Mostrar' }).getByRole('radio', { name, exact: true }).click();
 
 async function openMenu(page: Page, name: string) {
-  await page.getByRole('button', { name: `Acciones de ${name}` }).click();
+  await page.getByRole('button', { name: `Acciones de ${name}`, exact: true }).click();
 }
+
+const columns = (list: Locator) => list.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
 
 test('crear, renombrar, buscar, marcar favorito, duplicar, borrar en lote y restaurar', async ({ page }) => {
   const account = await createVerifiedAccount(page.request, `dash-${test.info().project.name}`);
@@ -77,8 +81,12 @@ test('crear, renombrar, buscar, marcar favorito, duplicar, borrar en lote y rest
   await expect(card(page, 'Mapa del barrio (copia)')).toBeVisible();
   await expect(page.getByRole('list', { name: 'Proyectos' }).getByRole('listitem')).toHaveCount(4);
 
-  // Borrar en lote.
-  await page.getByRole('checkbox', { name: 'Seleccionar Mapa del barrio (copia)' }).click();
+  // Borrar en lote: «Seleccionar» en el menú entra en el modo de selección y las casillas sustituyen a las estrellas.
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await openMenu(page, 'Mapa del barrio (copia)');
+  await page.getByRole('menuitem', { name: 'Seleccionar' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Seleccionar Mapa del barrio (copia)' })).toBeChecked();
+  await expect(page.getByRole('list', { name: 'Proyectos' }).getByRole('button', { name: /como favorito|de favoritos/ })).toHaveCount(0);
   await page.getByRole('checkbox', { name: 'Seleccionar Mapa del barrio', exact: true }).click();
   const bar = page.getByRole('toolbar', { name: 'Acciones de la selección' });
   await expect(bar).toContainText('2 proyectos seleccionados');
@@ -92,7 +100,9 @@ test('crear, renombrar, buscar, marcar favorito, duplicar, borrar en lote y rest
   await filter(page, 'Papelera');
   const trash = page.getByRole('list', { name: 'Proyectos' }).getByRole('listitem');
   await expect(trash).toHaveCount(2);
-  await page.getByRole('checkbox', { name: 'Seleccionar Mapa del barrio', exact: true }).click();
+  await openMenu(page, 'Mapa del barrio');
+  await page.getByRole('menuitem', { name: 'Seleccionar' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Seleccionar Mapa del barrio', exact: true })).toBeChecked();
   await bar.getByRole('button', { name: 'Restaurar' }).click();
   await expect(trash).toHaveCount(1);
   await filter(page, 'Todos');
@@ -101,8 +111,88 @@ test('crear, renombrar, buscar, marcar favorito, duplicar, borrar en lote y rest
 
   // El inicio refleja los recientes y el favorito.
   await page.getByRole('link', { name: 'Recientes' }).click();
-  await expect(page.getByRole('list', { name: 'Favoritos' }).getByRole('link', { name: 'Plano de la casa', exact: true })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Recientes' }).getByRole('listitem')).toHaveCount(3);
+  await expect(page.getByRole('list', { name: 'Vistos recientemente' }).getByRole('listitem')).toHaveCount(3);
+  await page.getByRole('tab', { name: 'Favoritos' }).click();
+  await expect(page).toHaveURL('/app?pestana=favoritos');
+  await expect(page.getByRole('list', { name: 'Favoritos', exact: true }).getByRole('listitem')).toHaveCount(1);
+  await expect(page.getByRole('list', { name: 'Favoritos', exact: true }).getByRole('link', { name: 'Plano de la casa', exact: true })).toBeVisible();
+  // Quitar la estrella en Favoritos saca el proyecto de la pestaña.
+  await page.getByRole('button', { name: 'Quitar Plano de la casa de favoritos' }).click();
+  await expect(page.getByText('Marca un proyecto con la estrella para tenerlo aquí a mano.')).toBeVisible();
+});
+
+test('inicio: 5 columnas, miniaturas enteras, vista recordada, menú en el punto y estados de carga y error (CA-7.1, 7.2, 7.4)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const account = await createVerifiedAccount(page.request, `home-views-${test.info().project.name}`);
+  const names = ['Uno', 'Dos', 'Tres', 'Cuatro', 'Cinco', 'Seis'];
+  const ids: string[] = [];
+  for (const name of names) ids.push(await createProject(page.request, account.workspaceSlug, name));
+  await setProjectPreview(page.request, ids[0]!);
+
+  await page.goto('/app');
+  const list = page.getByRole('list', { name: 'Vistos recientemente' });
+  await expect(list.getByRole('listitem')).toHaveCount(6);
+  expect(await columns(list)).toBe(5);
+  const thumb = list.locator('img').first();
+  await expect(thumb).toBeVisible();
+  expect(await thumb.evaluate((img) => getComputedStyle(img).objectFit)).toBe('contain');
+
+  // Clic derecho: el menú de la tarjeta se abre en el punto, con las mismas entradas que ⋯.
+  const two = list.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Dos', exact: true }) });
+  const box = (await two.boundingBox())!;
+  const point = { x: box.x + 40, y: box.y + 40 };
+  await page.mouse.click(point.x, point.y, { button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Acciones de Dos' });
+  await expect(menu).toBeVisible();
+  const menuBox = (await menu.boundingBox())!;
+  // A la derecha del punto o, si no cabe, a su izquierda (PointMenu).
+  expect(Math.min(Math.abs(menuBox.x - point.x), Math.abs(menuBox.x + menuBox.width - point.x))).toBeLessThan(8);
+  expect(Math.abs(menuBox.y - point.y)).toBeLessThan(8);
+  await expect(menu.getByRole('menuitem')).toHaveText(['Añadir a favoritos', 'Cambiar el nombre', 'Duplicar', 'Seleccionar', 'Mover a la papelera']);
+  await menu.getByRole('menuitem', { name: 'Seleccionar' }).click();
+  const bar = page.getByRole('toolbar', { name: 'Acciones de la selección' });
+  await expect(bar).toContainText('1 proyecto seleccionado');
+  await expect(two.getByRole('checkbox', { name: 'Seleccionar Dos' })).toBeChecked();
+  await expect(two.getByRole('button', { name: /como favorito|de favoritos/ })).toHaveCount(0);
+  // En modo selección, un clic en otra tarjeta la suma en vez de abrirla.
+  await list.getByRole('link', { name: 'Tres', exact: true }).click();
+  await expect(bar).toContainText('2 proyectos seleccionados');
+  await expect(page).toHaveURL('/app');
+  await page.keyboard.press('Escape');
+  await expect(bar).toBeHidden();
+
+  // Lista: se recuerda al recargar.
+  await page.getByRole('radiogroup', { name: 'Vista' }).getByRole('radio', { name: 'Lista' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('parcify:dashboardView'))).toBe('list');
+  await page.reload();
+  await expect(page.getByRole('radiogroup', { name: 'Vista' }).getByRole('radio', { name: 'Lista' })).toHaveAttribute('aria-checked', 'true');
+  await expect(list.getByRole('listitem')).toHaveCount(6);
+  expect((await list.getByRole('listitem').first().boundingBox())?.height).toBeCloseTo(44, 0);
+  await page.getByRole('radiogroup', { name: 'Vista' }).getByRole('radio', { name: 'Cuadrícula' }).click();
+
+  // Error con Reintentar.
+  const SHARED = /\/v1\/projects\/shared/;
+  await page.route(SHARED, (route) => route.abort());
+  await page.getByRole('tab', { name: 'Compartidos conmigo' }).click();
+  const alert = page.getByRole('tabpanel').getByRole('alert');
+  await expect(alert).toContainText('No se pudieron cargar tus proyectos. Comprueba la conexión y vuelve a intentarlo.');
+  await page.unroute(SHARED);
+  await alert.getByRole('button', { name: 'Reintentar' }).click();
+  await expect(page.getByText('Cuando alguien de otro espacio te dé acceso a un proyecto, aparecerá aquí.')).toBeVisible();
+
+  // Carga: 10 esqueletos del tamaño de una tarjeta mientras no llega la respuesta.
+  let release = () => {};
+  const released = new Promise<void>((resolve) => (release = resolve));
+  await page.route(SHARED, async (route) => {
+    await released;
+    await route.continue();
+  });
+  await page.getByRole('tab', { name: 'Vistos recientemente' }).click();
+  const skeletons = page.getByTestId('project-skeletons').locator('li');
+  await expect(skeletons).toHaveCount(10);
+  release();
+  await expect(list.getByRole('listitem')).toHaveCount(6);
+  await page.unroute(SHARED);
 });
 
 test('el buscador de la barra lateral encuentra proyectos y plantillas y solo pinta la última consulta (CA-7.3)', async ({ page }) => {
@@ -281,4 +371,53 @@ test('móvil @touch: ☰ abre la barra lateral como cajón y lleva a Plantillas 
   await drawer.getByRole('link', { name: 'Ajustes', exact: true }).tap();
   await expect(page).toHaveURL('/app/ajustes');
   await expect(page.getByRole('heading', { name: 'Ajustes de la cuenta', level: 1 })).toBeVisible();
+});
+
+test('móvil @touch: 2 columnas, ⋯ siempre visible, y crear, abrir, marcar como favorito y borrar con toques (CA-7.1, CA-16.8)', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile', 'Solo en el proyecto mobile');
+  const account = await createVerifiedAccount(page.request, 'home-touch');
+  for (const name of ['Uno', 'Dos', 'Tres']) await createProject(page.request, account.workspaceSlug, name);
+
+  await page.goto('/app');
+  const list = page.getByRole('list', { name: 'Vistos recientemente' });
+  await expect(list.getByRole('listitem')).toHaveCount(3);
+  expect(await columns(list)).toBe(2);
+  const two = list.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Dos', exact: true }) });
+
+  // Sin hover, la estrella y ⋯ se ven siempre.
+  for (const name of ['Acciones de Dos', 'Marcar Dos como favorito']) {
+    expect(await two.getByRole('button', { name, exact: true }).evaluate((button) => getComputedStyle(button).opacity)).toBe('1');
+  }
+
+  // Favorito con un toque.
+  await two.getByRole('button', { name: 'Marcar Dos como favorito' }).tap();
+  await expect(two.getByRole('button', { name: 'Quitar Dos de favoritos' })).toHaveAttribute('aria-pressed', 'true');
+
+  // Pulsación larga de 550 ms: el menú se abre una sola vez y el toque no abre el proyecto.
+  const box = (await two.boundingBox())!;
+  await longPress(page, { x: box.x + box.width / 2, y: box.y + 40 }, 550);
+  const menu = page.getByRole('menu', { name: 'Acciones de Dos' });
+  await expect(menu).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole('menu')).toHaveCount(1);
+  await expect(page).toHaveURL('/app');
+
+  // Borrar desde ese menú.
+  await menu.getByRole('menuitem', { name: 'Mover a la papelera' }).tap();
+  const confirm = page.getByRole('dialog', { name: '¿Mover el proyecto a la papelera?' });
+  await confirm.getByRole('button', { name: 'Mover a la papelera' }).tap();
+  await expect(two).toHaveCount(0);
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+
+  // Crear con el «+» de la cabecera y volver al inicio.
+  await page.getByRole('button', { name: 'Nuevo proyecto' }).tap();
+  const dialog = page.getByRole('dialog', { name: 'Crear un proyecto' });
+  await dialog.getByRole('textbox', { name: 'Nombre del proyecto' }).fill('Cuatro');
+  await dialog.getByRole('button', { name: 'Proyecto en blanco' }).tap();
+  await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}$/);
+  await page.goto('/app');
+
+  // Abrir con un toque.
+  await list.getByRole('link', { name: 'Cuatro', exact: true }).tap();
+  await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}$/);
 });

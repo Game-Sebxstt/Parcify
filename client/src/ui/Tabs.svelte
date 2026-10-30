@@ -18,6 +18,10 @@
     contentClass?: string;
     // -1 cuando el contenido ya tiene su propio elemento enfocable (un árbol, una lista de botones).
     contentTabindex?: number;
+    // Solo se monta el contenido de la pestaña activa (cada pestaña pide sus datos al abrirse).
+    lazy?: boolean;
+    // Controles a la derecha de las pestañas, en la misma fila (filtros del inicio).
+    trailing?: Snippet;
     onValueChange?: (value: string) => void;
   };
 
@@ -29,14 +33,20 @@
     class: className = '',
     contentClass = '',
     contentTabindex = 0,
+    lazy = false,
+    trailing,
     onValueChange,
   }: Props = $props();
 </script>
 
-<Tabs.Root bind:value {onValueChange} class={className}>
+{#snippet list()}
   <Tabs.List
     aria-label={label}
-    class={['scroll-thin flex shrink-0 gap-4 overflow-x-auto border-b border-edge/25', size === 'sm' ? 'px-3' : ''].join(' ')}
+    class={[
+      'scroll-thin flex gap-4 overflow-x-auto',
+      trailing ? 'max-w-full min-w-0 flex-[1_0_auto]' : 'shrink-0 border-b border-edge/25',
+      size === 'sm' ? 'px-3' : '',
+    ].join(' ')}
   >
     {#each items as item (item.value)}
       <Tabs.Trigger
@@ -52,9 +62,22 @@
       </Tabs.Trigger>
     {/each}
   </Tabs.List>
+{/snippet}
+
+<Tabs.Root bind:value {onValueChange} class={className}>
+  {#if trailing}
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-edge/25">
+      {@render list()}
+      <div class="flex flex-wrap items-center gap-2 pb-2 sm:pb-1">{@render trailing()}</div>
+    </div>
+  {:else}
+    {@render list()}
+  {/if}
   {#each items as item (item.value)}
     <Tabs.Content value={item.value} tabindex={contentTabindex} class={[size === 'sm' ? '' : 'mt-4', contentClass].join(' ')}>
-      {@render item.content()}
+      {#if !lazy || item.value === value}
+        {@render item.content()}
+      {/if}
     </Tabs.Content>
   {/each}
 </Tabs.Root>

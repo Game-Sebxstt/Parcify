@@ -4,15 +4,20 @@ export type LongPressPoint = { clientX: number; clientY: number; pointerType: 't
 
 type Options = { ms?: number; slop?: number };
 
+// Margen tras soltar el dedo en el que aún se descarta el contextmenu nativo: Android lo lanza a veces al levantarlo.
+export const NATIVE_MENU_GRACE_MS = 400;
+
 // Pulsación larga con el dedo o el lápiz, para usar con {@attach longPress(...)}. El ratón ya tiene el clic derecho.
 export function longPress(handler: (point: LongPressPoint) => void, { ms = 500, slop = 8 }: Options = {}): Attachment<HTMLElement> {
   return (node) => {
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let graceTimer: ReturnType<typeof setTimeout> | null = null;
     let pointerId: number | null = null;
     let start = { x: 0, y: 0 };
     let fired = false;
-    // Tras un pointerdown táctil (o de la punta del lápiz), el contextmenu nativo que Android y Windows Ink lanzan en
-    // su propia pulsación larga se descarta: el menú ya lo abre este gesto.
+    // Mientras dura un gesto táctil (o de la punta del lápiz), y un momento después, el contextmenu nativo que Android y
+    // Windows Ink lanzan en su propia pulsación larga se descarta: el menú ya lo abre este gesto. Un Shift+F10 o la tecla
+    // Menú posteriores sí llegan.
     let suppressNative = false;
 
     const cancel = () => {
@@ -21,8 +26,16 @@ export function longPress(handler: (point: LongPressPoint) => void, { ms = 500, 
       pointerId = null;
     };
 
+    const stopSuppressing = () => {
+      if (graceTimer !== null) clearTimeout(graceTimer);
+      graceTimer = null;
+      suppressNative = false;
+    };
+
     const onDown = (event: PointerEvent) => {
       const touchLike = event.pointerType === 'touch' || (event.pointerType === 'pen' && event.button === 0);
+      if (graceTimer !== null) clearTimeout(graceTimer);
+      graceTimer = null;
       suppressNative = touchLike;
       // Un segundo dedo convierte el gesto en otra cosa (pellizco, desplazamiento).
       if (pointerId !== null) {
@@ -55,6 +68,10 @@ export function longPress(handler: (point: LongPressPoint) => void, { ms = 500, 
 
     const onEnd = (event: PointerEvent) => {
       if (event.pointerId === pointerId) cancel();
+      if (suppressNative && pointerId === null) {
+        if (graceTimer !== null) clearTimeout(graceTimer);
+        graceTimer = setTimeout(stopSuppressing, NATIVE_MENU_GRACE_MS);
+      }
     };
 
     // Si el menú se abrió, el toque no cuenta además como clic sobre el elemento.
@@ -79,6 +96,7 @@ export function longPress(handler: (point: LongPressPoint) => void, { ms = 500, 
     node.addEventListener('contextmenu', onContextMenu, true);
     return () => {
       cancel();
+      stopSuppressing();
       node.removeEventListener('pointerdown', onDown);
       node.removeEventListener('pointermove', onMove);
       node.removeEventListener('pointerup', onEnd);

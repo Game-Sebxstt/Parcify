@@ -129,7 +129,7 @@
   {/if}
 {/snippet}
 
-<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6">
   {#if status === 'loading'}
     <p class="sr-only" role="status">{m.workspace_loading()}</p>
     <Skeleton class="h-9 w-72" />
@@ -148,13 +148,13 @@
   {:else}
     <header class="flex flex-wrap items-center gap-x-4 gap-y-3">
       <div class="min-w-0 flex-1">
-        <h1 class="truncate text-xl font-bold">{workspace.name}</h1>
+        <h1 class="truncate text-lg font-semibold">{workspace.name}</h1>
         <p class="text-sm text-ink-muted">
           {ROLE_LABEL[workspace.role]()} · {m.workspace_counts({ projects: workspace.counts.projects, members: workspace.counts.members })}
         </p>
       </div>
       {#if !workspace.deletedAt && view === 'proyectos'}
-        <Button variant="primary" onclick={() => (createOpen = true)}>
+        <Button size="sm" variant="primary" onclick={() => (createOpen = true)} class="max-sm:hidden">
           <Plus size={16} aria-hidden="true" />
           {m.dashboard_new_project()}
         </Button>

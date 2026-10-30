@@ -1,40 +1,46 @@
 <script lang="ts">
   import Plus from '@lucide/svelte/icons/plus';
   import Upload from '@lucide/svelte/icons/upload';
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import { ApiError, browser } from '../lib/api.ts';
-  import {
-    byLastEdited,
-    duplicateProject,
-    importProjectArchive,
-    listSharedProjects,
-    listWorkspaceProjects,
-    setFavorite,
-  } from '../lib/projects.ts';
+  import { replaceAppUrl } from '../lib/app-location.svelte.ts';
+  import { importProjectArchive, listSharedProjects, listWorkspaceProjects, sortDirection } from '../lib/projects.ts';
   import { loadSession, session } from '../lib/session.svelte.ts';
-  import { activeWorkspaces, loadWorkspaces, workspaces, type Workspace } from '../lib/workspaces.svelte.ts';
+  import { activeWorkspaces, loadWorkspaces, workspaces } from '../lib/workspaces.svelte.ts';
   import { m } from '../paraglide/messages.js';
   import type { ProjectSummary } from '../shared/api/projects.js';
   import Button from '../ui/Button.svelte';
   import Dialog from '../ui/Dialog.svelte';
   import Field from '../ui/Field.svelte';
-  import type { MenuItem } from '../ui/Menu.svelte';
   import Select from '../ui/Select.svelte';
   import Skeleton from '../ui/Skeleton.svelte';
+  import Tabs, { type TabItem } from '../ui/Tabs.svelte';
   import { showToast } from '../ui/toast.svelte.ts';
-  import ProjectCard from './dashboard/ProjectCard.svelte';
+  import ProjectCollection from './dashboard/ProjectCollection.svelte';
+  import ProjectSkeletons from './dashboard/ProjectSkeletons.svelte';
+  import ViewToggle from './dashboard/ViewToggle.svelte';
+  import { mergeProjects, readView, recentProjects, type ProjectSort, type ProjectView } from './dashboard/view.ts';
   import NewProjectDialog from './templates/NewProjectDialog.svelte';
 
-  const RECENT = 8;
-  const PER_WORKSPACE = 8;
+  type Tab = 'recientes' | 'compartidos' | 'favoritos';
+  const TABS: Tab[] = ['recientes', 'compartidos', 'favoritos'];
+
   // En el inicio se consultan como mucho estos espacios; el resto se abre desde la barra lateral.
   const MAX_WORKSPACES = 12;
+  // Vistos recientemente: los últimos de cada espacio y los compartidos, mezclados. Cuatro filas de cinco a 1440 px.
+  const RECENT = 20;
+  // Compartidos y favoritos: el máximo que da la API por petición.
+  const PAGE = 50;
+  const ALL = '*';
 
   let welcome = $state(false);
+  let tab = $state<Tab>('recientes');
+  let space = $state(ALL);
+  let sort = $state<ProjectSort>('edited');
+  let view = $state<ProjectView>('grid');
   let status = $state<'loading' | 'ready' | 'error'>('loading');
-  let recent = $state<ProjectSummary[]>([]);
-  let favorites = $state<ProjectSummary[]>([]);
-  let shared = $state<ProjectSummary[]>([]);
+  let items = $state<ProjectSummary[]>([]);
+  let controller: AbortController | null = null;
 
   let createOpen = $state(false);
   let newWorkspace = $state('');
@@ -48,14 +54,13 @@
   const meId = $derived(session.me?.user.id ?? '');
   const spaces = $derived(activeWorkspaces());
   const names = $derived(new Map(workspaces.items.map((workspace) => [workspace.slug, workspace.name])));
-
-  // ?pestana= viene de la barra lateral (Compartidos conmigo, Favoritos): al cargar se lleva esa sección a la vista.
-  const TAB_SECTIONS: Record<string, string> = { compartidos: 'shared-heading', favoritos: 'favorites-heading' };
-  let pendingTab: string | null = null;
+  const home = $derived(spaces.find((workspace) => workspace.personal) ?? spaces[0]);
 
   onMount(() => {
     const url = new URL(window.location.href);
-    pendingTab = url.searchParams.get('pestana');
+    const requested = url.searchParams.get('pestana');
+    if (requested && (TABS as string[]).includes(requested)) tab = requested as Tab;
+    view = readView();
     welcome = url.searchParams.has('bienvenida');
     if (welcome) {
       url.searchParams.delete('bienvenida');
@@ -63,79 +68,57 @@
     }
     void loadSession();
     void load();
+    return () => controller?.abort();
   });
 
   async function load() {
+    controller?.abort();
+    const current = (controller = new AbortController());
+    const { signal } = current;
     status = 'loading';
     try {
-      const list = (await loadWorkspaces()).filter((workspace) => workspace.deletedAt === null).slice(0, MAX_WORKSPACES);
+      const all = (await loadWorkspaces()).filter((workspace) => workspace.deletedAt === null).slice(0, MAX_WORKSPACES);
       if (workspaces.status === 'error') throw workspaces.error;
-      const [recentPages, favoritePages, sharedPage] = await Promise.all([
-        Promise.all(list.map((workspace) => listWorkspaceProjects(workspace.slug, { sort: 'edited', dir: 'desc', limit: PER_WORKSPACE }))),
-        Promise.all(list.map((workspace) => listWorkspaceProjects(workspace.slug, { filter: 'favorites', sort: 'edited', dir: 'desc', limit: PER_WORKSPACE }))),
-        listSharedProjects(),
-      ]);
-      recent = recentPages.flatMap((page) => page.items).sort(byLastEdited).slice(0, RECENT);
-      favorites = [...favoritePages.flatMap((page) => page.items), ...sharedPage.items.filter((item) => item.favorite)].sort(byLastEdited);
-      shared = sharedPage.items;
-      status = 'ready';
-      const section = pendingTab ? TAB_SECTIONS[pendingTab] : undefined;
-      pendingTab = null;
-      if (section) {
-        await tick();
-        document.getElementById(section)?.scrollIntoView({ block: 'start' });
+      const chosen = space === ALL ? all : all.filter((workspace) => workspace.slug === space);
+      const inSpace = (list: ProjectSummary[]) => (space === ALL ? list : list.filter((item) => item.workspaceSlug === space));
+      const perSpace = (filter: 'all' | 'favorites', limit: number, by: ProjectSort = sort) =>
+        Promise.all(chosen.map((workspace) => listWorkspaceProjects(workspace.slug, { filter, sort: by, dir: sortDirection(by), limit }, signal)));
+
+      let lists: ProjectSummary[][];
+      if (tab === 'compartidos') {
+        lists = [inSpace((await listSharedProjects(PAGE, signal)).items)];
+      } else if (tab === 'favoritos') {
+        const [pages, shared] = await Promise.all([perSpace('favorites', PAGE), listSharedProjects(PAGE, signal)]);
+        lists = [...pages.map((page) => page.items), inSpace(shared.items.filter((item) => item.favorite))];
+      } else {
+        const [pages, shared] = await Promise.all([perSpace('all', RECENT, 'edited'), listSharedProjects(RECENT, signal)]);
+        lists = [...pages.map((page) => page.items), inSpace(shared.items)];
       }
-    } catch {
+      if (controller !== current) return;
+      items = tab === 'recientes' ? recentProjects(lists, sort, RECENT) : mergeProjects(lists, sort, PAGE * (chosen.length + 1));
+      status = 'ready';
+    } catch (error) {
+      if (signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return;
       status = 'error';
     }
   }
 
-  function replaceEverywhere(project: ProjectSummary) {
-    const swap = (list: ProjectSummary[]) => list.map((item) => (item.id === project.id ? project : item));
-    recent = swap(recent);
-    shared = swap(shared);
-    favorites = project.favorite
-      ? favorites.some((item) => item.id === project.id)
-        ? swap(favorites)
-        : [project, ...favorites].sort(byLastEdited)
-      : favorites.filter((item) => item.id !== project.id);
-  }
-
-  async function toggleFavorite(project: ProjectSummary) {
-    const next = { ...project, favorite: !project.favorite };
-    replaceEverywhere(next);
-    try {
-      await setFavorite(project.id, next.favorite);
-    } catch (error) {
-      replaceEverywhere(project);
-      showToast({ message: error instanceof ApiError ? error.message : m.error_internal(), tone: 'error' });
-    }
-  }
-
-  function menuFor(project: ProjectSummary): MenuItem[] {
-    return [
-      {
-        label: m.dashboard_duplicate(),
-        onSelect: async () => {
-          try {
-            const copy = await duplicateProject(project.id);
-            recent = [copy, ...recent].slice(0, RECENT);
-            showToast({ message: m.dashboard_duplicated({ count: 1 }), tone: 'success' });
-          } catch (error) {
-            showToast({ message: error instanceof ApiError ? error.message : m.error_internal(), tone: 'error' });
-          }
-        },
-      },
-    ];
+  function selectTab(next: string) {
+    tab = next as Tab;
+    const url = new URL(window.location.href);
+    if (tab === 'recientes') url.searchParams.delete('pestana');
+    else url.searchParams.set('pestana', tab);
+    replaceAppUrl(url);
+    void load();
   }
 
   function openCreate() {
-    newWorkspace = (spaces.find((workspace) => workspace.personal) ?? spaces[0])?.slug ?? '';
+    newWorkspace = home?.slug ?? '';
     createOpen = true;
   }
 
   function openImport() {
-    importWorkspace = (spaces.find((workspace) => workspace.personal) ?? spaces[0])?.slug ?? '';
+    importWorkspace = home?.slug ?? '';
     importFile = null;
     importError = null;
     importOpen = true;
@@ -168,103 +151,133 @@
     }
   }
 
-  function roleOf(workspace: Workspace) {
-    return { owner: m.role_owner, admin: m.role_admin, member: m.role_member }[workspace.role]();
-  }
+  const TAB_LABEL: Record<Tab, () => string> = {
+    recientes: m.dashboard_tab_recent,
+    compartidos: m.dashboard_shared,
+    favoritos: m.dashboard_favorites,
+  };
+
+  const tabs = $derived<TabItem[]>(TABS.map((value) => ({ value, label: TAB_LABEL[value](), content: body })));
+
+  const spaceItems = $derived([
+    { value: ALL, label: m.dashboard_space_all() },
+    ...spaces.slice(0, MAX_WORKSPACES).map((workspace) => ({ value: workspace.slug, label: workspace.name })),
+  ]);
+
+  const sortItems = [
+    { value: 'edited', label: m.dashboard_sort_edited() },
+    { value: 'name', label: m.dashboard_sort_name() },
+    { value: 'created', label: m.dashboard_sort_created() },
+  ];
 </script>
 
-{#snippet grid(list: ProjectSummary[], label: string)}
-  <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label={label}>
-    {#each list as project (project.id)}
-      <ProjectCard
-        {project}
-        {meId}
-        menu={menuFor(project)}
-        showWorkspace={names.get(project.workspaceSlug) ?? null}
-        onfavorite={() => void toggleFavorite(project)}
-      />
-    {/each}
-  </ul>
+{#snippet filters()}
+  {#if spaces.length > 1}
+    <Select
+      items={spaceItems}
+      bind:value={
+        () => space,
+        (next) => {
+          space = next;
+          void load();
+        }
+      }
+      label={m.dashboard_space_filter()}
+      testid="dashboard-space"
+      class="max-w-48"
+    />
+  {/if}
+  <Select
+    items={sortItems}
+    bind:value={
+      () => sort,
+      (next) => {
+        sort = next as ProjectSort;
+        void load();
+      }
+    }
+    label={m.dashboard_sort_label()}
+    testid="dashboard-sort"
+  />
+  <ViewToggle {view} onchange={(next) => (view = next)} />
 {/snippet}
 
-<div class="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-8 sm:px-8">
-  {#if welcome}
-    <p role="status" class="rounded-panel bg-petrol px-4 py-3 text-sm">{m.app_welcome()}</p>
-  {/if}
-
-  <header class="flex flex-wrap items-center gap-4">
-    {#if session.me}
-      <h1 class="min-w-0 flex-1 truncate text-xl font-bold">{m.app_greeting({ name: session.me.user.name })}</h1>
-    {:else}
-      <div class="flex-1"><Skeleton class="h-8 w-56" /></div>
-    {/if}
-    <Button disabled={spaces.length === 0} onclick={openImport}>
-      <Upload size={16} aria-hidden="true" />
-      {m.dashboard_import()}
-    </Button>
-    <Button variant="primary" disabled={spaces.length === 0} onclick={openCreate}>
-      <Plus size={16} aria-hidden="true" />
-      {m.dashboard_new_project()}
-    </Button>
-  </header>
-
+{#snippet body()}
   {#if status === 'loading'}
     <p class="sr-only" role="status">{m.dashboard_loading_home()}</p>
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
-      {#each [0, 1, 2, 3] as index (index)}
-        <Skeleton class="aspect-[16/12] w-full" />
-      {/each}
-    </div>
+    <ProjectSkeletons {view} />
   {:else if status === 'error'}
     <div role="alert" class="flex flex-col items-start gap-3 rounded-panel bg-surface-1 p-6">
       <p class="text-sm">{m.dashboard_home_error()}</p>
       <Button size="sm" onclick={() => void load()}>{m.common_retry()}</Button>
     </div>
+  {:else if items.length === 0}
+    <div class="flex flex-col items-start gap-3 rounded-panel bg-surface-1 p-6">
+      {#if space !== ALL}
+        <p class="text-sm">{m.dashboard_empty_in_space({ name: names.get(space) ?? '' })}</p>
+        <Button
+          size="sm"
+          onclick={() => {
+            space = ALL;
+            void load();
+          }}
+        >
+          {m.dashboard_show_all_spaces()}
+        </Button>
+      {:else if tab === 'compartidos'}
+        <p class="text-sm text-ink-muted">{m.dashboard_empty_shared()}</p>
+      {:else if tab === 'favoritos'}
+        <p class="text-sm text-ink-muted">{m.dashboard_empty_home_favorites()}</p>
+      {:else}
+        <p class="text-sm">{m.dashboard_empty_recent()}</p>
+        <div class="flex flex-wrap gap-2">
+          <Button size="sm" disabled={spaces.length === 0} onclick={openCreate}>
+            <Plus size={16} aria-hidden="true" />
+            {m.dashboard_new_project()}
+          </Button>
+          {#if home}
+            <Button size="sm" variant="ghost" href="/app/e/{home.slug}?vista=plantillas">{m.dashboard_browse_templates()}</Button>
+          {/if}
+        </div>
+      {/if}
+    </div>
   {:else}
-    <section aria-labelledby="recent-heading" class="flex flex-col gap-3">
-      <h2 id="recent-heading" class="text-lg font-semibold">{m.dashboard_recent()}</h2>
-      {#if recent.length}
-        {@render grid(recent, m.dashboard_recent())}
-      {:else}
-        <p class="rounded-panel bg-surface-1 p-6 text-sm">{m.dashboard_empty_recent()}</p>
-      {/if}
-    </section>
-
-    <section aria-labelledby="favorites-heading" class="flex flex-col gap-3">
-      <h2 id="favorites-heading" class="text-lg font-semibold">{m.dashboard_favorites()}</h2>
-      {#if favorites.length}
-        {@render grid(favorites, m.dashboard_favorites())}
-      {:else}
-        <p class="rounded-panel bg-surface-1 p-6 text-sm text-ink-muted">{m.dashboard_empty_home_favorites()}</p>
-      {/if}
-    </section>
-
-    <section aria-labelledby="shared-heading" class="flex flex-col gap-3">
-      <h2 id="shared-heading" class="text-lg font-semibold">{m.dashboard_shared()}</h2>
-      {#if shared.length}
-        {@render grid(shared, m.dashboard_shared())}
-      {:else}
-        <p class="rounded-panel bg-surface-1 p-6 text-sm text-ink-muted">{m.dashboard_empty_shared()}</p>
-      {/if}
-    </section>
-
-    <section aria-labelledby="spaces-heading" class="flex flex-col gap-3">
-      <h2 id="spaces-heading" class="text-lg font-semibold">{m.dashboard_spaces()}</h2>
-      <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {#each spaces as workspace (workspace.id)}
-          <li>
-            <a
-              href="/app/e/{workspace.slug}"
-              class="flex flex-col rounded-panel bg-surface-1 px-4 py-3 hover:bg-surface-2"
-            >
-              <span class="truncate text-sm font-semibold">{workspace.name}</span>
-              <span class="text-xs text-ink-muted">{workspace.personal ? m.dashboard_personal_space() : roleOf(workspace)}</span>
-            </a>
-          </li>
-        {/each}
-      </ul>
-    </section>
+    <ProjectCollection
+      bind:items
+      {view}
+      label={TAB_LABEL[tab]()}
+      {meId}
+      workspaceNames={names}
+      removeOnUnfavorite={tab === 'favoritos'}
+      acceptsCopy={(copy) => tab === 'recientes' && (space === ALL || copy.workspaceSlug === space)}
+      onreload={() => load()}
+    />
   {/if}
+{/snippet}
+
+<div class="mx-auto flex w-full max-w-7xl flex-col px-4 pb-10 sm:px-6">
+  {#if welcome}
+    <p role="status" class="mt-4 rounded-panel bg-petrol px-4 py-3 text-sm">{m.app_welcome()}</p>
+  {/if}
+
+  <header class="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 py-3">
+    {#if session.me}
+      <h1 class="min-w-0 flex-1 truncate text-lg font-semibold">{m.app_greeting({ name: session.me.user.name })}</h1>
+    {:else}
+      <div class="flex-1"><Skeleton class="h-6 w-48" /></div>
+    {/if}
+    <Button size="sm" disabled={spaces.length === 0} onclick={openImport}>
+      <Upload size={16} aria-hidden="true" />
+      {m.dashboard_import()}
+    </Button>
+    <!-- En móvil la acción principal es el «+» de la cabecera de la app: un solo coral por pantalla. -->
+    <Button size="sm" variant="primary" disabled={spaces.length === 0} onclick={openCreate} class="max-sm:hidden">
+      <Plus size={16} aria-hidden="true" />
+      {m.dashboard_new_project()}
+    </Button>
+  </header>
+
+  <Tabs items={tabs} bind:value={tab} label={m.dashboard_tabs_label()} onValueChange={selectTab} lazy contentTabindex={-1} trailing={filters} />
 </div>
 
 <NewProjectDialog bind:open={createOpen} spaces={spaces} initialSlug={newWorkspace} />
