@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
 import { canvasGap } from './helpers/canvas.ts';
@@ -408,4 +408,78 @@ test('la vista previa encaja el contenido lejano con el fondo real, cambia 5 vec
     })
     .toBe(true);
   expect(await page.evaluate(() => document.querySelectorAll('[role=application] canvas').length)).toBe(1);
+});
+
+// Tamaño natural y dos píxeles (centro y esquina) de la imagen de una miniatura, leídos con un canvas 2D fuera del DOM.
+const thumbPixels = (thumb: Locator) =>
+  thumb.locator('img').evaluate(async (img: HTMLImageElement) => {
+    await img.decode();
+    const canvas = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);
+    const context = canvas.getContext('2d')!;
+    context.drawImage(img, 0, 0);
+    const read = (x: number, y: number) => Array.from(context.getImageData(x, y, 1, 1).data.slice(0, 3));
+    return {
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      center: read(Math.floor(img.naturalWidth / 2), Math.floor(img.naturalHeight / 2)),
+      corner: read(1, 1),
+    };
+  });
+
+// Estado de las miniaturas que se ven dentro de la lista desplazable.
+const visibleThumbStates = (page: Page) =>
+  panel(page)
+    .locator('[data-thumb-root]')
+    .evaluate((root) => {
+      const area = root.getBoundingClientRect();
+      return Array.from(root.querySelectorAll<HTMLElement>('[data-testid="version-thumb"]'))
+        .filter((thumb) => {
+          const rect = thumb.getBoundingClientRect();
+          return rect.bottom > area.top && rect.top < area.bottom;
+        })
+        .map((thumb) => thumb.dataset.state ?? '');
+    });
+
+test('cada fila de la lista de versiones lleva una miniatura pintada con el renderer del editor, sin canvas por fila', async ({ page }) => {
+  test.setTimeout(180_000);
+  const ana = await createVerifiedAccount(page.request, `miniaturas-${test.info().project.name}`, 'Ana Miniaturas');
+  const projectId = await createProject(page.request, ana.workspaceSlug, 'Miniaturas');
+  await openEditor(page, projectId);
+  const canvases = () => page.evaluate(() => document.querySelectorAll('canvas').length);
+  expect(await canvases()).toBe(1);
+
+  // Una versión vacía y varias con un rectángulo lejos del origen.
+  await page.getByTestId('versions-toggle').click();
+  await saveNamedVersion(page, 'Vacía');
+  await page.getByTestId('versions-toggle').click();
+  await drawRect(page, 0);
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  await moveSelected(page, 5000, 4000);
+  await page.getByTestId('versions-toggle').click();
+  for (let i = 1; i <= 6; i++) await saveNamedVersion(page, `Con rectángulo ${i}`);
+
+  const items = panel(page).getByTestId('version-item');
+  const thumbOf = (name: string) => items.filter({ hasText: name }).getByTestId('version-thumb');
+
+  // La vacía avisa con texto; las demás muestran el rectángulo centrado sobre el fondo del documento.
+  const filled = thumbOf('Con rectángulo 6');
+  await expect(filled).toHaveAttribute('data-state', 'image');
+  const box = (await filled.boundingBox())!;
+  expect([Math.round(box.width), Math.round(box.height)]).toEqual([64, 40]);
+  const pixels = await thumbPixels(filled);
+  expect([pixels.width, pixels.height]).toEqual([128, 80]);
+  expect(samePixel(pixels.corner, BACKGROUND, 6)).toBe(true);
+  expect(samePixel(pixels.center, BACKGROUND, 10)).toBe(false);
+
+  // Al desplazar la lista, las filas que se ven acaban pintadas y no aparece ningún canvas más en el documento.
+  const list = panel(page).locator('[data-thumb-root]');
+  for (const top of ['end', 'start', 'end'] as const) {
+    await list.evaluate((node, where) => node.scrollTo({ top: where === 'end' ? node.scrollHeight : 0 }), top);
+    await expect.poll(async () => (await visibleThumbStates(page)).filter((state) => state === 'loading').length, { timeout: 30_000 }).toBe(0);
+    expect(await canvases()).toBe(1);
+  }
+  await thumbOf('Vacía').scrollIntoViewIfNeeded();
+  await expect(thumbOf('Vacía')).toHaveAttribute('data-state', 'empty');
+  await expect(thumbOf('Vacía').getByRole('img', { name: 'Página vacía' })).toBeVisible();
+  expect(await canvases()).toBe(1);
 });

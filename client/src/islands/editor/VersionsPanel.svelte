@@ -14,15 +14,18 @@
   import Tooltip from '../../ui/Tooltip.svelte';
   import NameDialog from '../dashboard/NameDialog.svelte';
   import { getVersionViewer, versionLabel } from './versions/version-viewer.svelte.ts';
+  import VersionThumb from './VersionThumb.svelte';
 
   type Props = {
     projectId: string;
     open: boolean;
     canEdit: boolean;
+    // Página activa del editor: las miniaturas la pintan si la versión la tiene.
+    activePage: string | null;
     onclose: () => void;
   };
 
-  let { projectId, open, canEdit, onclose }: Props = $props();
+  let { projectId, open, canEdit, activePage, onclose }: Props = $props();
 
   // La vista previa y la confirmación de Restaurar viven en el editor: sobreviven a que se desmonte este panel.
   const viewer = getVersionViewer();
@@ -146,7 +149,7 @@
     </div>
   {/if}
 
-  <div class="min-h-0 flex-1 overflow-y-auto px-1 pb-3">
+  <div class="min-h-0 flex-1 overflow-y-auto px-1 pb-3" data-thumb-root>
     {#if phase === 'loading' || phase === 'idle'}
       <p class="px-2 py-4 text-ink-muted" role="status">{m.editor_versions_loading()}</p>
     {:else if phase === 'error'}
@@ -183,13 +186,18 @@
                 viewing ? 'bg-surface-2 ring-1 ring-coral/60' : '',
               ]}
             >
-              <p class={['truncate', version.kind === 'manual' ? 'font-semibold' : 'text-ink-muted'].join(' ')}>{label}</p>
-              <p class="truncate text-xs text-ink-muted">
-                <time datetime={version.createdAt}>{formatDate(version.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</time>
-                {#if version.createdBy?.name}
-                  · {version.createdBy.name}
-                {/if}
-              </p>
+              <div class="flex items-center gap-2">
+                <VersionThumb {version} pageId={activePage} />
+                <div class="min-w-0 flex-1">
+                  <p class={['truncate', version.kind === 'manual' ? 'font-semibold' : 'text-ink-muted'].join(' ')}>{label}</p>
+                  <p class="truncate text-xs text-ink-muted">
+                    <time datetime={version.createdAt}>{formatDate(version.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</time>
+                    {#if version.createdBy?.name}
+                      · {version.createdBy.name}
+                    {/if}
+                  </p>
+                </div>
+              </div>
               <div class="mt-1 flex gap-1">
                 <button
                   type="button"

@@ -60,6 +60,7 @@ export default tseslint.config(
       'src/lib/collab.worker.ts',
       'src/landing/**',
       'src/islands/editor/version-preview.ts',
+      'src/engine/export/thumbnail.ts',
       'src/engine/test-utils.ts',
       '**/*.test.ts',
     ],

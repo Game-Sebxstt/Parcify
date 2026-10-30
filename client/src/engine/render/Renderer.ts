@@ -824,10 +824,19 @@ export class Renderer implements RenderSink {
     return this.options.images?.url(assetId, variant) ?? Promise.resolve(null);
   }
 
+  // Sirve para pintar fuera del lienzo (exportar, miniaturas): no está destruido y el contexto no se perdió. Mira
+  // también el contexto WebGL, que da la pérdida antes de que llegue el evento.
+  get usable(): boolean {
+    if (this.destroyed || this.contextLost) return false;
+    const gl = (this.app.renderer as unknown as { gl?: WebGLRenderingContext } | null)?.gl;
+    return !gl?.isContextLost();
+  }
+
   // Lado máximo de una textura en esta GPU.
   get maxTextureSize(): number {
     const pixi = this.app.renderer as unknown as { gl?: WebGLRenderingContext; gpu?: { device: { limits: { maxTextureDimension2D: number } } } };
-    if (pixi.gl) return pixi.gl.getParameter(pixi.gl.MAX_TEXTURE_SIZE) as number;
+    // Con el contexto perdido, getParameter da null.
+    if (pixi.gl) return (pixi.gl.getParameter(pixi.gl.MAX_TEXTURE_SIZE) as number | null) || 4096;
     return pixi.gpu?.device.limits.maxTextureDimension2D ?? 4096;
   }
 

@@ -42,7 +42,7 @@ function clampSide(value: number, reduced: boolean): number {
 // Una sola pasada si cabe en una textura de la GPU; si no, mosaicos de 2048 px (o menos si la GPU no llega).
 export function tilesFor(width: number, height: number, maxTexture: number): Tile[] {
   if (width <= maxTexture && height <= maxTexture) return [{ x: 0, y: 0, w: width, h: height }];
-  const size = Math.min(EXPORT_TILE, maxTexture);
+  const size = Math.max(1, Math.min(EXPORT_TILE, maxTexture || EXPORT_TILE));
   const tiles: Tile[] = [];
   for (let y = 0; y < height; y += size) {
     for (let x = 0; x < width; x += size) tiles.push({ x, y, w: Math.min(size, width - x), h: Math.min(size, height - y) });
@@ -110,6 +110,7 @@ export type RasterResult = { blob: Blob; width: number; height: number; reduced:
 
 export async function renderRaster(renderer: Renderer, scene: ExportScene, options: RasterOptions): Promise<RasterResult> {
   const signal = options.signal ?? new AbortController().signal;
+  if (!renderer.usable) throw new Error('webgl context lost');
   const plan = planExport(scene.bounds, options.scale, renderer.maxTextureSize);
   const images = await loadImages(renderer, scene, options.variant ?? 'full', signal);
   const outer = new Container();
@@ -136,6 +137,8 @@ export async function renderRaster(renderer: Renderer, scene: ExportScene, optio
     inner.scale.set(plan.scale);
     for (const tile of plan.tiles) {
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      // Con el contexto WebGL perdido (o el renderer destruido) solo saldría el fondo.
+      if (!renderer.usable) throw new Error('webgl context lost');
       const target = RenderTexture.create({ width: tile.w, height: tile.h, resolution: 1, antialias: true });
       try {
         inner.position.set(-scene.bounds.x * plan.scale - tile.x, -scene.bounds.y * plan.scale - tile.y);

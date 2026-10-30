@@ -60,6 +60,7 @@
   import VersionOverlay from './editor/VersionOverlay.svelte';
   import VersionsPanel from './editor/VersionsPanel.svelte';
   import { setVersionViewer, VersionViewer } from './editor/versions/version-viewer.svelte.ts';
+  import { setVersionThumbnails, VersionThumbnails } from './editor/versions/version-thumbnails.ts';
   import ConfirmDialog from './dashboard/ConfirmDialog.svelte';
   import Tooltip from '../ui/Tooltip.svelte';
   import { EditorLayout, setEditorLayout } from '../lib/editor-layout.svelte.ts';
@@ -164,6 +165,9 @@
     fallbackFocus: () => container,
   });
   setVersionViewer(viewer);
+  // Miniaturas de la lista de versiones, pintadas con el renderer del motor montado.
+  const thumbnails = new VersionThumbnails(() => projectId);
+  setVersionThumbnails(thumbnails);
   let uiKeys = $state.raw<UiKeys>(DEFAULT_UI_KEYS);
   let shortcutsOpen = $state(false);
   let wheelOpen = $state(false);
@@ -317,6 +321,7 @@
       document.removeEventListener('visibilitychange', onVisibility);
       layout.flush();
       destroyEngine();
+      thumbnails.destroy();
       for (const cleanup of cleanups) cleanup();
       collab?.destroy();
     };
@@ -456,6 +461,7 @@
     }
     engine = created;
     engineCanvas = canvas;
+    thumbnails.setRenderer(created.renderer);
     if (collabState?.synced && !camera) {
       fittedOnSync = true;
       created.core.fitWhenReady();
@@ -734,6 +740,7 @@
 
   function destroyEngine() {
     viewer.close();
+    thumbnails.setRenderer(null);
     menu = null;
     exportOpen = false;
     publishOpen = false;
@@ -994,6 +1001,7 @@
           {projectId}
           open={versionsOpen}
           canEdit={!engineReadOnly}
+          {activePage}
           onclose={() => (layout.rightView = 'design')}
         />
       {/if}
