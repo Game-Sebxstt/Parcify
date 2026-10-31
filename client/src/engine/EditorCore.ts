@@ -1552,7 +1552,13 @@ export class EditorCore {
 
   // Bloqueado él o alguno de sus contenedores, o en reproducción.
   isLocked(id: string): boolean {
-    return !!this.store.get(id)?.locked || this.tree.lockedAbove(id) || this.anim.blocks(id);
+    return this.lockedByUser(id) || this.anim.blocks(id);
+  }
+
+  // Bloqueado con el candado, él o alguno de sus contenedores. Los ajustes de la animación sí se cambian mientras se
+  // reproduce (la duración durante la vista previa de un efecto, por ejemplo).
+  lockedByUser(id: string): boolean {
+    return !!this.store.get(id)?.locked || this.tree.lockedAbove(id);
   }
 
   // Si la selección queda fuera de la vista (al recorrerla con Tab), la cámara la centra sin cambiar el zoom.
