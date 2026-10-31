@@ -692,6 +692,20 @@
     layout.toggleHidden();
   }
 
+  // Plegar, desplegar o minimizar desmonta el botón pulsado (o el disparador del menú): el foco pasa al botón
+  // equivalente de la pastilla o del panel en lugar de caer en <body>. El menú devuelve el foco tras cerrarse, por eso
+  // se espera un frame.
+  async function keepFocus(testid: string, action: () => void) {
+    const before = document.activeElement;
+    action();
+    if (!before || before === document.body) return;
+    await tick();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const now = document.activeElement;
+    if (now && now !== document.body && now.isConnected) return;
+    root?.querySelector<HTMLElement>(`[data-testid="${testid}"]`)?.focus();
+  }
+
   // Con el dedo, en tablet y móvil, un toque en un hueco vacío del lienzo cierra el panel izquierdo; el derecho solo
   // se cierra si además no había nada seleccionado (el primer toque vacía la selección). Con ratón no se cierra ninguno.
   const TAP_SLOP = 8;
@@ -1287,11 +1301,11 @@
             onexport={() => (exportOpen = true)}
             ondownload={() => void downloadLocal()}
             onpublish={() => (publishOpen = true)}
-            onminimize={() => layout.toggleMinimized()}
+            onminimize={() => void keepFocus('file-menu', () => layout.toggleMinimized())}
             onhide={hideInterface}
             onwheel={() => (wheelOpen = true)}
             onshortcuts={() => (shortcutsOpen = true)}
-            ontoggle={() => (compact ? layout.open('left') : layout.collapse('left'))}
+            ontoggle={() => void keepFocus('left-panel-toggle', () => (compact ? layout.open('left') : layout.collapse('left')))}
           />
         {/if}
       {/snippet}
@@ -1313,7 +1327,7 @@
           onai={() => void toggleAi()}
           onpresent={startPresenting}
           onshare={openShare}
-          ontoggle={() => (compact ? layout.open('right') : collapseRight())}
+          ontoggle={() => void keepFocus('right-panel-toggle', () => (compact ? layout.open('right') : collapseRight()))}
         />
       {/snippet}
 

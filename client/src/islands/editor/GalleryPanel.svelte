@@ -372,7 +372,7 @@
     {#if status === 'loading'}
       <ul class="grid grid-cols-3 gap-2" aria-hidden="true">
         {#each [0, 1, 2, 3, 4, 5] as slot (slot)}
-          <li class="aspect-square animate-pulse rounded-[6px] bg-surface-2"></li>
+          <li class="aspect-square rounded-[6px] bg-surface-2 motion-safe:animate-pulse"></li>
         {/each}
       </ul>
     {:else if status === 'error'}

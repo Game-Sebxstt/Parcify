@@ -91,7 +91,7 @@
     ].join(' '),
   );
   const PANEL =
-    'z-(--z-popover) max-h-(--bits-floating-available-height) min-w-48 overflow-x-hidden overflow-y-auto scroll-thin rounded-panel border border-edge/40 bg-surface-2 p-1 text-ui text-ink shadow-float outline-none';
+    'z-(--z-popover) max-h-(--bits-floating-available-height) min-w-48 overflow-x-hidden overflow-y-auto overscroll-contain scroll-thin rounded-panel border border-edge/40 bg-surface-2 p-1 text-ui text-ink shadow-float outline-none';
 
   function openAutoFocus(event: Event) {
     if (!focusFirst) return;

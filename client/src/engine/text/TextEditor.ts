@@ -468,7 +468,6 @@ class Session {
       if (!caret) continue;
       const span = this.box({ left: caret.left, top: caret.top, width: 2, height: caret.height }, base, { background: color });
       span.setAttribute(REMOTE_CARET_ATTR, String(remote.clientId));
-      span.title = remote.name;
       const name = document.createElement('span');
       name.textContent = remote.name;
       Object.assign(name.style, {

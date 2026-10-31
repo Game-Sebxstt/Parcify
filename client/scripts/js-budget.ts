@@ -5,11 +5,14 @@ import { gzipSync } from 'node:zlib';
 const dist = resolve('dist');
 const KB = 1024;
 // JS que descarga cada página antes de cualquier import() dinámico, siguiendo los import estáticos.
+// Las páginas de /app pintan al cargar controles de bits-ui con Floating UI (Select, menús, tooltips, pestañas y
+// casillas) en la barra lateral, el orden y las tarjetas: unos 40 KB gzip que van en el JS inicial.
+const APP_LIMIT = 175 * KB;
 const BUDGETS: Array<{ page: string; label: string; limit: number }> = [
   { page: 'index.html', label: '/', limit: 60 * KB },
-  { page: 'app/index.html', label: '/app', limit: 120 * KB },
-  { page: 'app/e/index.html', label: '/app/e/:slug', limit: 120 * KB },
-  { page: 'app/ajustes/index.html', label: '/app/ajustes', limit: 120 * KB },
+  { page: 'app/index.html', label: '/app', limit: APP_LIMIT },
+  { page: 'app/e/index.html', label: '/app/e/:slug', limit: APP_LIMIT },
+  { page: 'app/ajustes/index.html', label: '/app/ajustes', limit: APP_LIMIT },
   { page: 'p/index.html', label: '/p/:id', limit: 600 * KB },
 ];
 

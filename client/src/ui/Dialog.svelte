@@ -37,7 +37,7 @@
       data-touch-density={touchDensity()}
       class={[
         // En móvil ocupa el ancho con 16 px de margen; si no cabe en alto, el contenido hace scroll dentro.
-        'fixed top-1/2 left-1/2 z-50 max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 overflow-x-hidden overflow-y-auto scroll-thin rounded-panel bg-surface-1 p-5 text-ink shadow-float sm:p-6',
+        'fixed top-1/2 left-1/2 z-50 max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 overflow-x-hidden overflow-y-auto overscroll-contain scroll-thin rounded-panel bg-surface-1 p-5 text-ink shadow-float sm:p-6',
         size === 'lg' ? 'w-[min(56rem,calc(100vw-2rem))]' : 'w-[min(28rem,calc(100vw-2rem))]',
       ].join(' ')}
     >

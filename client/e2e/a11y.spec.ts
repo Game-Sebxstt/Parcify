@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
+import { longPress, touchDrag } from './helpers/touch.ts';
 
 // WCAG 2.2 AA en lo que no es lienzo; el lienzo WebGL queda fuera porque axe no puede leerlo.
 async function audit(page: Page) {
@@ -138,10 +139,10 @@ test('el panel de propiedades no usa controles nativos, con los paneles abiertos
   await page.waitForFunction(() => window.__parcifyTest?.status() === 'connected' && window.__parcifyTest.synced());
   const nodes = () => page.evaluate(() => window.__parcifyTest!.nodes() as unknown as Node[]);
   const panel = page.getByTestId('properties-panel');
-  // Solo los controles nativos (CA-3.3): los `title` de los botones del chat los quita su ventana nueva.
-  const controls = async () => (await nativeControls(page)).controls;
+  // CA-3.3 completo: ni controles nativos visibles ni `title` en ningún botón.
+  const controls = () => nativeControls(page);
   await expect(panel).toBeVisible();
-  expect(await controls()).toEqual([]);
+  expect(await controls()).toEqual(NO_NATIVE);
 
   // Una forma con relleno, trazo y sombra: todas las secciones de una forma a la vista.
   const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
@@ -153,23 +154,59 @@ test('el panel de propiedades no usa controles nativos, con los paneles abiertos
   await panel.getByRole('button', { name: 'Añadir sombra' }).click();
   await expect(panel.getByRole('spinbutton', { name: 'Desenfoque de la sombra' })).toBeVisible();
   await expect(panel.getByRole('spinbutton', { name: 'Rotación' })).toBeVisible();
-  expect(await controls()).toEqual([]);
+  expect(await controls()).toEqual(NO_NATIVE);
   expect(await audit(page)).toEqual([]);
 
   // El selector de color abierto tampoco.
   await panel.getByRole('button', { name: 'Relleno', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Selector de color' })).toBeVisible();
-  expect(await controls()).toEqual([]);
+  expect(await controls()).toEqual(NO_NATIVE);
+  expect(await audit(page)).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Selector de color' })).toBeHidden();
   // Esc cierra solo el selector: la forma sigue seleccionada.
   expect(await page.evaluate(() => window.__parcifyTest!.selection().length)).toBe(1);
 
-  // Con la interfaz minimizada los paneles quedan como pastillas.
+  // Con la interfaz minimizada los paneles quedan como pastillas: axe también con los paneles plegados.
   await canvas.focus();
   await page.keyboard.press('Control+Shift+Backslash');
   await expect(page.getByTestId('left-panel-pill')).toBeVisible();
-  expect(await controls()).toEqual([]);
+  expect(await controls()).toEqual(NO_NATIVE);
+  expect(await audit(page)).toEqual([]);
+});
+
+test('plegar, desplegar y minimizar con el teclado deja el foco en el botón equivalente', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const account = await createVerifiedAccount(page.request, `a11y-foco-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Foco de los paneles');
+  await openEditor(page, projectId);
+  const left = page.getByTestId('left-panel-toggle');
+  const right = page.getByTestId('right-panel-toggle');
+
+  await left.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'collapsed');
+  await expect(page.getByTestId('left-panel-pill').getByTestId('left-panel-toggle')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('left-panel')).toHaveAttribute('data-state', 'open');
+  await expect(page.getByTestId('left-panel').getByTestId('left-panel-toggle')).toBeFocused();
+
+  await right.focus();
+  await page.keyboard.press('Enter');
+  await expect(right).toHaveAttribute('aria-expanded', 'false');
+  await expect(right).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(right).toHaveAttribute('aria-expanded', 'true');
+  await expect(right).toBeFocused();
+
+  // «Minimizar interfaz» desde el menú de archivo: el disparador del panel desaparece y el foco va al de la pastilla.
+  await page.getByTestId('file-menu').focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: 'Minimizar interfaz' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('left-panel-pill')).toBeVisible();
+  await expect(page.getByTestId('left-panel-pill').getByTestId('file-menu')).toBeFocused();
 });
 
 // Abre un `Select` dentro de un diálogo o una región y comprueba que su lista sale por el portal sin recortes.
@@ -204,6 +241,14 @@ test('axe sin violaciones en el inicio, el espacio y los ajustes', async ({ page
   await expect(page.getByRole('list', { name: 'Vistos recientemente' }).getByRole('listitem')).toHaveCount(1);
   expect(await audit(page)).toEqual([]);
   expect(await nativeControls(page)).toEqual(NO_NATIVE);
+  // La vista de lista, y de vuelta a la cuadrícula.
+  const views = page.getByTestId('project-view').first();
+  await views.getByRole('radio', { name: 'Lista' }).click();
+  await expect(views.getByRole('radio', { name: 'Lista' })).toHaveAttribute('aria-checked', 'true');
+  expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+  await views.getByRole('radio', { name: 'Cuadrícula' }).click();
+  await expect(views.getByRole('radio', { name: 'Cuadrícula' })).toHaveAttribute('aria-checked', 'true');
 
   // «Nuevo proyecto» e «Importar» con dos espacios: el `Select` de espacio existe y su lista no se recorta.
   await page.getByRole('button', { name: 'Nuevo proyecto' }).click();
@@ -452,4 +497,80 @@ test('axe sin violaciones en /invitacion: sin invitación, con un enlace y con u
   await expect(bea.getByTestId('invite-error')).toBeVisible();
   expect(await audit(bea)).toEqual([]);
   await context.close();
+});
+
+test('@touch axe sin violaciones en el móvil: inicio, cajón, editor y sus hojas (CA-3.3, CA-3.6)', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile', 'El cajón y las hojas inferiores son de la maqueta móvil');
+  test.setTimeout(240_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const account = await createVerifiedAccount(page.request, `a11y-movil-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Cartel accesible');
+  const bodyReady = () => page.waitForFunction(() => document.body.style.pointerEvents !== 'none');
+
+  await page.goto('/app');
+  await expect(page.getByRole('list', { name: 'Vistos recientemente' }).getByRole('listitem')).toHaveCount(1);
+  expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+  const drawer = page.getByRole('dialog', { name: 'Parcify' });
+  await page.getByRole('button', { name: 'Abrir el menú' }).tap();
+  await expect(drawer).toBeVisible();
+  expect(await audit(page)).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeHidden();
+
+  await openEditor(page, projectId);
+  await expect(page.getByTestId('mobile-top-bar')).toBeVisible();
+  expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
+
+  // Un rectángulo dibujado con el dedo encima del centro: las hojas tapan la mitad de abajo.
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.getByTestId('dock').getByRole('button', { name: 'Rectángulo (R)' }).tap();
+  await touchDrag(page, { x: center.x - 60, y: center.y - 160 }, { x: center.x + 60, y: center.y - 80 });
+  await expect.poll(() => page.evaluate(() => window.__parcifyTest!.selection().length)).toBe(1);
+  await page.waitForTimeout(500);
+  expect(await audit(page)).toEqual([]);
+
+  const check = async (testid: string) => {
+    const sheet = page.getByTestId(testid);
+    await expect(sheet).toBeVisible();
+    expect(await audit(page)).toEqual([]);
+    expect(await nativeControls(page)).toEqual(NO_NATIVE);
+    await sheet.getByRole('button', { name: 'Cerrar', exact: true }).first().tap();
+    await expect(sheet).toHaveCount(0);
+    await bodyReady();
+  };
+
+  await page.getByTestId('dock-properties').tap();
+  await check('properties-sheet');
+
+  const menu = page.getByTestId('mobile-menu-sheet');
+  for (const [entry, testid] of [
+    ['Páginas y capas', 'layers-sheet'],
+    ['Animaciones', 'animations-sheet'],
+    ['Línea de tiempo', 'timeline-sheet'],
+    ['Versiones', 'versions-sheet'],
+    ['Galería', 'gallery-sheet'],
+    ['Chat e IA', 'conversation-sheet'],
+  ] as const) {
+    await page.waitForTimeout(500);
+    await page.getByTestId('mobile-menu').tap();
+    await expect(menu).toBeVisible();
+    if (entry === 'Páginas y capas') expect(await audit(page)).toEqual([]);
+    await menu.getByRole('button', { name: entry === 'Chat e IA' ? /^Chat e IA/ : entry, exact: entry !== 'Chat e IA' }).tap();
+    await expect(menu).toHaveCount(0);
+    await check(testid);
+  }
+
+  // La hoja de acciones de una pulsación larga sobre la forma.
+  const rect = (await page.evaluate(() => window.__parcifyTest!.nodes() as unknown as Node[]))[0]!;
+  const at = await page.evaluate(([x, y]) => window.__parcifyTest!.toPage(x!, y!), [rect.x + rect.w / 2, rect.y + rect.h / 2]);
+  await page.waitForTimeout(500);
+  await longPress(page, at, 600);
+  const actions = page.getByTestId('action-sheet');
+  await expect(actions).toBeVisible();
+  expect(await audit(page)).toEqual([]);
+  expect(await nativeControls(page)).toEqual(NO_NATIVE);
 });

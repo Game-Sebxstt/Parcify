@@ -144,7 +144,7 @@
       data-own-keys=""
       class="z-(--z-popover) max-h-(--bits-select-content-available-height) min-w-(--bits-select-anchor-width) overflow-hidden rounded-panel border border-edge/40 bg-surface-2 text-ink shadow-float outline-none"
     >
-      <Select.Viewport class="scroll-thin min-h-0 overflow-x-hidden p-1">
+      <Select.Viewport class="scroll-thin min-h-0 overflow-x-hidden overscroll-contain p-1">
         {#each items as item (item.value)}
           <Select.Item value={item.value} label={item.label} disabled={item.disabled ?? false} class={ITEM}>
             {#snippet children({ selected: isSelected })}

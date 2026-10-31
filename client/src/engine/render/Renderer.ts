@@ -214,6 +214,18 @@ export class Renderer implements RenderSink {
   }
 
   private static async init(app: Application, options: RendererOptions): Promise<void> {
+    try {
+      await Renderer.initApp(app, options);
+    } finally {
+      // En móviles y tablets PixiJS mete en <body> un botón de 1 px con un `title` en inglés para activar su capa de
+      // accesibilidad. El lienzo ya tiene la suya (engine/a11y) y la de PixiJS no tiene nada que anunciar. Se quita
+      // también si init falla después de crear los sistemas.
+      (app.renderer as unknown as { accessibility?: { _destroyTouchHook?: () => void } } | undefined)
+        ?.accessibility?._destroyTouchHook?.();
+    }
+  }
+
+  private static async initApp(app: Application, options: RendererOptions): Promise<void> {
     // Sin resizeTo: el ResizePlugin redimensionaba el canvas antes que el ResizeObserver de createEngine, que veía el
     // tamaño ya igualado y nunca avisaba a la cámara. El tamaño lo lleva solo resize().
     await app.init({

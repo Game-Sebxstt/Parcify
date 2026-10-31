@@ -53,6 +53,11 @@ for (const bg of [...surfaces, 'petrol']) pair('ink', bg, TEXT);
 for (const fg of ['ink-muted', 'coral', 'sage', 'danger']) for (const bg of surfaces) pair(fg, bg, TEXT);
 for (const bg of ['coral', 'coral-hover', 'danger', 'sage']) pair('coral-ink', bg, TEXT);
 for (const fg of ['coral', 'edge']) for (const bg of surfaces) pair(fg, bg, UI);
+// Filas seleccionadas y estados en petrol: texto apagado (enviar deshabilitado) y foco coral encima.
+pair('ink-muted', 'petrol', TEXT);
+pair('coral', 'petrol', UI);
+// Píldora de giro imantada: texto ground sobre salvia.
+pair('ground', 'sage', TEXT);
 
 const ground = color('ground');
 for (const hex of COLLAB_COLORS) {

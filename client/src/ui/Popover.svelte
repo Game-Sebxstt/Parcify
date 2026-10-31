@@ -63,7 +63,7 @@
       data-own-keys=""
       data-touch-density={touchDensity()}
       class={[
-        'z-(--z-popover) max-h-(--bits-popover-content-available-height) overflow-x-hidden overflow-y-auto scroll-thin rounded-panel border border-edge/40 bg-surface-2 p-3 text-ui text-ink shadow-float outline-none',
+        'z-(--z-popover) max-h-(--bits-popover-content-available-height) overflow-x-hidden overflow-y-auto overscroll-contain scroll-thin rounded-panel border border-edge/40 bg-surface-2 p-3 text-ui text-ink shadow-float outline-none',
         className,
       ].join(' ')}
     >
