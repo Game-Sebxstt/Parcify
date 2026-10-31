@@ -190,7 +190,7 @@
         {#if routed && !readonly}
           <button
             type="button"
-            class="h-6 cursor-pointer rounded-control px-1.5 text-xs text-ink-muted transition-colors duration-(--dur-fast) hover:bg-surface-2 hover:text-ink focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral"
+            class="h-6 cursor-pointer rounded-control px-1.5 text-xs sheet:h-11 sheet:px-3 sheet:text-sm text-ink-muted transition-colors duration-(--dur-fast) hover:bg-surface-2 hover:text-ink focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral"
             data-testid="props-route-reset"
             onclick={() => edits.resetPath()}
           >

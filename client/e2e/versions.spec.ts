@@ -4,6 +4,7 @@ import { joinWorkspace } from './helpers/invite.ts';
 import { canvasGap } from './helpers/canvas.ts';
 import { samePixel, screenPixel } from './helpers/pixels.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
+import { touchDrag } from './helpers/touch.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number; shadow?: unknown };
 
@@ -482,4 +483,51 @@ test('cada fila de la lista de versiones lleva una miniatura pintada con el rend
   await expect(thumbOf('Vacía')).toHaveAttribute('data-state', 'empty');
   await expect(thumbOf('Vacía').getByRole('img', { name: 'Página vacía' })).toBeVisible();
   expect(await canvases()).toBe(1);
+});
+
+test('móvil @touch: «Ver» en la hoja de versiones abre la vista previa a pantalla completa y, al cerrarla, vuelve la hoja con su altura (CA-9.4)', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Solo en el proyecto mobile');
+  test.setTimeout(90_000);
+  const account = await createVerifiedAccount(page.request, `versions-sheet-${testInfo.project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Versiones en el móvil');
+  await openEditor(page, projectId);
+
+  await page.getByTestId('mobile-menu').tap();
+  await page.getByTestId('mobile-menu-sheet').getByRole('button', { name: 'Versiones', exact: true }).tap();
+  const sheet = page.getByTestId('versions-sheet');
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: 'Crear versión con nombre' }).tap();
+  const dialog = page.getByRole('dialog', { name: 'Crear versión con nombre' });
+  await dialog.getByRole('textbox').fill('Primera');
+  await dialog.getByRole('button', { name: 'Crear versión', exact: true }).tap();
+  const row = sheet.getByTestId('version-row').filter({ hasText: 'Primera' });
+  await expect(row).toHaveCount(1);
+  expect(Math.round((await row.boundingBox())!.height)).toBe(56);
+  await page.waitForFunction(() => document.body.style.pointerEvents !== 'none');
+
+  // La hoja sube a su altura mayor con un gesto rápido hacia arriba desde el asa.
+  const grip = (await sheet.locator('[data-sheet-grip]').boundingBox())!;
+  const vh = page.viewportSize()!.height;
+  await touchDrag(page, { x: grip.x + grip.width / 2, y: grip.y + 30 }, { x: grip.x + grip.width / 2, y: grip.y - 270 }, 6);
+  await expect.poll(async () => Math.abs((await sheet.boundingBox())!.height - vh * 0.92) <= 1).toBe(true);
+  const tall = Math.round((await sheet.boundingBox())!.height);
+  // Chromium no genera el clic de un toque que llega poco después de un arrastre rápido: se espera a que pase (con 500 ms
+  // aún se pierde a veces tras este gesto; con 1 s, no).
+  await page.waitForTimeout(1000);
+
+  await row.getByTestId('version-view').tap();
+  await expect(overlay(page)).toBeVisible();
+  await expect(page.getByTestId('versions-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('version-preview')).toHaveAttribute('data-state', 'ready');
+  const view = page.viewportSize()!;
+  expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest('[data-testid="version-overlay"]'), [view.width / 2, view.height / 2])).toBe(
+    true,
+  );
+
+  await page.getByTestId('version-overlay-close').tap();
+  await expect(overlay(page)).toHaveCount(0);
+  await expect(page.getByTestId('versions-sheet')).toBeVisible();
+  await expect.poll(async () => Math.round((await page.getByTestId('versions-sheet').boundingBox())!.height)).toBe(tall);
 });

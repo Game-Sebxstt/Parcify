@@ -19,6 +19,9 @@ const CHROME = [
   '[role="toolbar"]',
   '[data-testid="canvas-bars"]',
   '[data-testid="mobile-top-bar"]',
+  '[data-testid="dock"]',
+  '[data-testid="context-bar"]',
+  '[role="dialog"][data-side="bottom"]',
 ];
 const editorChrome = (page: Page) => page.evaluate((selectors) => selectors.filter((selector) => document.querySelector(selector) !== null), CHROME);
 
@@ -187,6 +190,10 @@ test('móvil @touch: deslizar cambia de diapositiva, un toque en el centro muest
   // En el móvil, Presentar está en el menú ⋯ de la barra superior. Chromium no genera el clic de un toque que llega
   // justo después de un arrastre rápido con el dedo (lo usa para parar el gesto): se espera a que pase.
   await page.waitForTimeout(500);
+  // Con una hoja abierta: al presentar no está en el DOM y al salir vuelve.
+  await page.getByTestId('mobile-menu').tap();
+  await page.getByTestId('mobile-menu-sheet').getByRole('button', { name: 'Páginas y capas', exact: true }).tap();
+  await expect(page.getByTestId('layers-sheet')).toBeVisible();
   await page.getByTestId('mobile-menu').tap();
   await page.getByTestId('mobile-menu-sheet').getByRole('button', { name: 'Presentar', exact: true }).tap();
   const dialog = page.getByRole('dialog', { name: 'Presentación' });
@@ -233,6 +240,7 @@ test('móvil @touch: deslizar cambia de diapositiva, un toque en el centro muest
   await page.touchscreen.tap(mid.x, mid.y);
   await dialog.getByRole('button', { name: 'Salir de la presentación' }).tap();
   await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('layers-sheet')).toBeVisible();
 });
 
 test('Presentar: frames en orden, teclado para avanzar, atajos del editor bloqueados y cámara restaurada', async ({ page }) => {

@@ -29,9 +29,11 @@
     onsend: (input: ComposerSend) => void;
     ontyping: () => void;
     onstoptyping: () => void;
+    // Móvil: adjuntar, enviar y quitar la respuesta miden 44 px.
+    mobile?: boolean;
   };
 
-  let { projectId, members, replyTo, oncancelreply, onsend, ontyping, onstoptyping }: Props = $props();
+  let { projectId, members, replyTo, oncancelreply, onsend, ontyping, onstoptyping, mobile = false }: Props = $props();
 
   const uid = $props.id();
 
@@ -198,7 +200,10 @@
   {#if replyTo}
     <!-- Una línea: «Respondiendo a …:», el texto citado recortado y la ×. -->
     <div
-      class="grid h-7 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 rounded-control bg-surface-2 pr-0.5 pl-2 text-xs"
+      class={[
+        'grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 rounded-control bg-surface-2 pr-0.5 pl-2 text-xs',
+        mobile ? 'h-11' : 'h-7',
+      ]}
       data-testid="chat-replying"
     >
       <span class="max-w-40 truncate text-ink-muted">{m.editor_chat_replying_to({ name: replyTo.author.name ?? m.editor_chat_deleted_account() })}</span>
@@ -207,9 +212,12 @@
         type="button"
         aria-label={m.editor_chat_reply_cancel()}
         onclick={oncancelreply}
-        class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink"
+        class={[
+          'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink',
+          mobile ? 'size-11' : 'size-6',
+        ]}
       >
-        <X size={12} aria-hidden="true" />
+        <X size={mobile ? 20 : 12} aria-hidden="true" />
       </button>
     </div>
   {/if}
@@ -279,9 +287,12 @@
             aria-label={m.editor_chat_attach()}
             disabled={attachments.length + uploading >= CHAT_LIMITS.attachmentsMax}
             onclick={() => fileInput?.click()}
-            class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) enabled:hover:bg-petrol enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+            class={[
+              'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) enabled:hover:bg-petrol enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40',
+              mobile ? 'size-11' : 'size-8',
+            ]}
           >
-            <Paperclip size={16} aria-hidden="true" />
+            <Paperclip size={mobile ? 20 : 16} aria-hidden="true" />
           </button>
         {/snippet}
       </Tooltip>
@@ -313,10 +324,13 @@
             aria-label={m.editor_chat_send()}
             disabled={!canSend}
             onclick={submit}
-            class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-control bg-coral text-coral-ink transition-colors duration-(--dur-fast) enabled:hover:bg-coral-hover disabled:cursor-not-allowed disabled:bg-petrol disabled:text-ink-muted"
+            class={[
+              'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control bg-coral text-coral-ink transition-colors duration-(--dur-fast) enabled:hover:bg-coral-hover disabled:cursor-not-allowed disabled:bg-petrol disabled:text-ink-muted',
+              mobile ? 'size-11' : 'size-8',
+            ]}
             data-testid="chat-send"
           >
-            <Send size={16} aria-hidden="true" />
+            <Send size={mobile ? 20 : 16} aria-hidden="true" />
           </button>
         {/snippet}
       </Tooltip>

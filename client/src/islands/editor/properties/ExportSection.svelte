@@ -12,7 +12,7 @@
     type="button"
     data-testid="props-export-selection"
     onclick={onexport}
-    class="h-7 w-full cursor-pointer rounded-control bg-surface-2 px-2 text-xs font-semibold text-ink transition-colors duration-(--dur-fast) hover:bg-petrol focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
+    class="h-7 w-full cursor-pointer rounded-control sheet:h-11 sheet:text-sm bg-surface-2 px-2 text-xs font-semibold text-ink transition-colors duration-(--dur-fast) hover:bg-petrol focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral"
   >
     {m.editor_props_export_selection()}
   </button>

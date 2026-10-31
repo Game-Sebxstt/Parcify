@@ -67,6 +67,7 @@
     readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
   ]}
   data-testid="keyframe"
+  data-touch-exempt=""
   data-selected={selected ? '' : undefined}
   data-at-head={atHead ? '' : undefined}
 >

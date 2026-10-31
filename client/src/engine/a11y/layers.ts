@@ -20,6 +20,8 @@ export type LayerRow = {
 export const LAYER_ROW_HEIGHT = 28;
 // Con el dedo en el panel (tablet): filas más altas para acertar con el ojo y el candado.
 export const LAYER_ROW_HEIGHT_TOUCH = 36;
+// En la hoja de capas del móvil: filas de 44 px, como los botones que llevan.
+export const LAYER_ROW_HEIGHT_SHEET = 44;
 const OVERSCAN = 8;
 
 // Filas visibles del árbol de capas: lo que está más arriba en el orden z va primero, y debajo de cada contenedor

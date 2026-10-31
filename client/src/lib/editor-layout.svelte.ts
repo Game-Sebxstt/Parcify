@@ -68,6 +68,9 @@ export class EditorLayout {
     rect: null,
   });
   gallery = $state<{ open: boolean; rect: LayoutRect | null }>({ open: false, rect: null });
+  // Altura de reposo de cada hoja del móvil (índice de sus alturas), solo para la sesión: al cerrar una hoja y volver a
+  // abrirla, sale con la que tenía.
+  sheetLevels = $state<Record<string, number>>({});
 
   // Modo al que vuelve «Mostrar interfaz».
   #beforeHidden: UiMode = 'normal';

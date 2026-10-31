@@ -67,6 +67,7 @@
         onclick={toggle}
         class={[
           'group/key inline-flex size-6 shrink-0 cursor-pointer items-center justify-start rounded-xs pl-1',
+          'sheet:size-11 sheet:justify-center sheet:pl-0',
           'focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral',
         ]}
       >

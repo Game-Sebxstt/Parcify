@@ -91,7 +91,7 @@
       own.padding ? '' : size === 'sm' ? 'px-1.5' : size === 'md' ? 'px-2' : 'px-3.5',
       own.height ? '' : size === 'sm' ? 'h-6' : size === 'md' ? 'h-8' : 'h-11',
       // min-height gana a cualquier alto, también al que llega en `class`.
-      density === 'touch' ? 'min-h-11' : '',
+      density === 'touch' ? 'min-h-11' : 'sheet:min-h-11',
       own.text ? '' : size === 'sm' ? 'text-xs' : size === 'md' ? 'text-ui' : 'text-base',
       invalid ? 'border-danger' : size === 'lg' ? 'border-edge' : 'border-transparent',
       className,

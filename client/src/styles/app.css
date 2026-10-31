@@ -231,6 +231,13 @@
   }
 }
 
+/* Dentro de una hoja del móvil (data-touch-density="touch"): filas y botones de 44 px y campos de 36 px. */
+@custom-variant sheet {
+  &:where([data-touch-density='touch'], [data-touch-density='touch'] *) {
+    @slot;
+  }
+}
+
 /* Barra lateral del inicio plegada a 56 px. El atributo lo pone en <html> un script antes de pintar, así que la página
    no salta al cargar. En móvil la barra es un cajón y no se pliega. */
 @custom-variant collapsed {

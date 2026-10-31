@@ -242,6 +242,8 @@
     class={[
       'shrink-0 cursor-pointer rounded-xs border border-edge/40 disabled:cursor-not-allowed disabled:opacity-40',
       swatchSize === 16 ? 'size-4' : 'size-6',
+      // En una hoja del móvil se toca en 44×44 y se ve la muestra de 20 px del centro.
+      'sheet:size-11 sheet:border-transparent sheet:bg-clip-content sheet:p-[11px] sheet:outline-1 sheet:-outline-offset-12 sheet:outline-edge/40',
     ]}
     style:background={swatchBackground(value)}
   ></button>

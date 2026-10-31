@@ -1,5 +1,6 @@
 <script lang="ts">
   import Download from '@lucide/svelte/icons/download';
+  import Eye from '@lucide/svelte/icons/eye';
   import ImagePlus from '@lucide/svelte/icons/image-plus';
   import MessageSquare from '@lucide/svelte/icons/message-square';
   import Sparkles from '@lucide/svelte/icons/sparkles';
@@ -16,9 +17,12 @@
   import { AssetListResponseSchema, type AssetDto } from '../../shared/api/assets.js';
   import Button from '../../ui/Button.svelte';
   import Dialog from '../../ui/Dialog.svelte';
+  import type { MenuEntry } from '../../ui/DropdownMenu.svelte';
+  import { longPress } from '../../ui/longpress.ts';
   import Select from '../../ui/Select.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
   import ConfirmDialog from '../dashboard/ConfirmDialog.svelte';
+  import ActionSheet from './mobile/ActionSheet.svelte';
 
   // `assetEvent` cambia con cada asset.ready o asset.deleted que llega del servidor.
   type Props = {
@@ -32,9 +36,67 @@
     canGenerate: boolean;
     // «Enviar al chat de IA»; null si no hay chat de IA.
     onsendtochat: ((asset: { assetId: string; name: string }) => void) | null;
+    // Hoja del móvil: «Subir» y «Generar» van en la cabecera de la hoja, un toque en un recurso lo inserta y una
+    // pulsación larga abre sus acciones.
+    sheet?: boolean;
+    // Se insertó un recurso en el lienzo.
+    oninserted?: () => void;
+    // En la hoja, el formulario de generar se abre con «Generar» de la cabecera.
+    generateOpen?: boolean;
   };
 
-  let { engine, projectId, readOnly, assetEvent, jobEvent, canGenerate, onsendtochat }: Props = $props();
+  let {
+    engine,
+    projectId,
+    readOnly,
+    assetEvent,
+    jobEvent,
+    canGenerate,
+    onsendtochat,
+    sheet = false,
+    generateOpen = $bindable(false),
+    oninserted,
+  }: Props = $props();
+
+  // Recurso cuyas acciones se ven en la hoja de acciones.
+  let acting = $state.raw<AssetDto | null>(null);
+
+  // «Subir» de la cabecera de la hoja.
+  export function pickFiles() {
+    input?.click();
+  }
+
+  // Un toque en la hoja inserta el recurso; sin permiso de edición, lo abre.
+  function tap(asset: AssetDto) {
+    if (sheet && !readOnly) insert(asset);
+    else open(asset);
+  }
+
+  const actingItems = $derived.by((): MenuEntry[] => {
+    const asset = acting;
+    if (!asset) return [];
+    return [
+      ...(readOnly ? [] : [{ kind: 'item', id: 'insert', label: m.editor_gallery_insert(), icon: ImagePlus, onSelect: () => insert(asset) } satisfies MenuEntry]),
+      { kind: 'item', id: 'view', label: m.editor_gallery_view(), icon: Eye, onSelect: () => open(asset) },
+      ...(onsendtochat ? [{ kind: 'item', id: 'chat', label: m.editor_gallery_send_chat(), icon: MessageSquare, onSelect: () => sendToChat(asset) } satisfies MenuEntry] : []),
+      { kind: 'item', id: 'download', label: m.editor_gallery_download(), icon: Download, onSelect: () => void download(asset) },
+      ...(readOnly
+        ? []
+        : [
+            {
+              kind: 'item',
+              id: 'delete',
+              label: m.editor_gallery_delete(),
+              icon: Trash,
+              danger: true,
+              onSelect: () => {
+                previewing = asset;
+                confirmOpen = true;
+              },
+            } satisfies MenuEntry,
+          ]),
+    ];
+  });
 
   // Generaciones en curso de esta sesión; se consultan al llegar su ai.job y cada pocos segundos por si se pierde.
   const JOB_POLL_MS = 5_000;
@@ -201,6 +263,7 @@
     if (!id) return;
     previewOpen = false;
     showToast({ message: m.editor_gallery_inserted() });
+    oninserted?.();
   }
 
   async function download(asset: AssetDto) {
@@ -230,16 +293,20 @@
   }
 </script>
 
-<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3 text-sm" data-testid="gallery-panel">
+<div class={['flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden text-sm', sheet ? 'px-4 pb-3' : 'p-3']} data-testid="gallery-panel">
   {#if !readOnly}
     <input bind:this={input} type="file" accept={CANVAS_IMAGE_ACCEPT} multiple class="hidden" tabindex="-1" aria-hidden="true" onchange={onPicked} data-testid="gallery-input" />
-    <Button size="sm" loading={uploading} onclick={() => input?.click()}>
-      <Upload size={14} aria-hidden="true" />
-      {m.editor_gallery_upload()}
-    </Button>
+    {#if !sheet}
+      <Button size="sm" loading={uploading} onclick={() => input?.click()}>
+        <Upload size={14} aria-hidden="true" />
+        {m.editor_gallery_upload()}
+      </Button>
+    {:else if uploading}
+      <p role="status" class="text-xs text-ink-muted">{m.editor_gallery_uploading()}</p>
+    {/if}
   {/if}
 
-  {#if canGenerate}
+  {#if canGenerate && (!sheet || generateOpen)}
     <form
       aria-labelledby="{uid}-gen-title"
       class="flex flex-col gap-2 rounded-panel bg-surface-2 p-2"
@@ -301,7 +368,7 @@
     </form>
   {/if}
 
-  <div class="scroll-thin -mx-3 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3">
+  <div class={['scroll-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto', sheet ? '-mx-4 px-4' : '-mx-3 px-3']}>
     {#if status === 'loading'}
       <ul class="grid grid-cols-3 gap-2" aria-hidden="true">
         {#each [0, 1, 2, 3, 4, 5] as slot (slot)}
@@ -316,14 +383,21 @@
     {:else if !items.length}
       <p class="text-ink-muted">{m.editor_gallery_empty()}</p>
     {:else}
-      <ul class="grid grid-cols-3 gap-2" aria-label={m.editor_gallery_title()}>
+      <ul class={['grid grid-cols-3 gap-2', sheet && 'max-[360px]:grid-cols-2']} aria-label={m.editor_gallery_title()}>
         {#each items as item (item.id)}
           <li>
+            <!-- En la hoja del móvil, un toque inserta y una pulsación larga abre las acciones del recurso. -->
             <button
               type="button"
-              aria-label={m.editor_gallery_open({ name: nameOf(item) })}
-              onclick={() => open(item)}
-              class="relative block aspect-square w-full cursor-pointer overflow-hidden rounded-[6px] bg-surface-2 hover:ring-2 hover:ring-edge"
+              aria-label={sheet && !readOnly ? m.editor_gallery_insert_named({ name: nameOf(item) }) : m.editor_gallery_open({ name: nameOf(item) })}
+              onclick={() => tap(item)}
+              {@attach longPress(() => {
+                if (sheet) acting = item;
+              })}
+              class={[
+                'relative block aspect-square w-full cursor-pointer overflow-hidden rounded-[6px] bg-surface-2 hover:ring-2 hover:ring-edge',
+                sheet && 'min-h-24 select-none [-webkit-touch-callout:none]',
+              ]}
               data-testid="gallery-item"
             >
               {#if thumbs[item.id]}
@@ -385,6 +459,10 @@
     </div>
   {/if}
 </Dialog>
+
+{#if acting}
+  <ActionSheet items={actingItems} title={nameOf(acting)} onclose={() => (acting = null)} testid="gallery-actions" />
+{/if}
 
 <ConfirmDialog
   bind:open={confirmOpen}

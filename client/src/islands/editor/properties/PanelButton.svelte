@@ -35,6 +35,7 @@
       }}
       class={[
         'inline-flex size-6 shrink-0 items-center justify-center rounded-control transition-colors duration-(--dur-fast)',
+        'sheet:size-11 sheet:[&_svg]:size-5',
         'focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral',
         disabled ? 'cursor-not-allowed text-ink-muted opacity-40' : 'cursor-pointer',
         !disabled && (pressed ? 'bg-petrol text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'),

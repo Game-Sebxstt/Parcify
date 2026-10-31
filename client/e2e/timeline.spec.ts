@@ -4,7 +4,7 @@ import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
 
-type Node = { id: string; x: number; y: number };
+type Node = { id: string; x: number; y: number; w: number; h: number };
 type Keyframe = { t: number; v: number | string };
 type Animation = { duration: number; delay: number; loop: number; tracks: Partial<Record<string, Record<string, Keyframe>>> };
 
@@ -728,4 +728,45 @@ test('keyframes: marquesina y Mayús+clic, arrastre en grupo, copiar y pegar, du
   await page.keyboard.press('Escape');
   await expect(canvas).toBeFocused();
   expect(await audit(page)).toEqual([]);
+});
+
+test('al pasar de 1024×768 a 600×800 la línea de tiempo sigue abierta y grabando, ahora en su hoja, y el siguiente movimiento graba (CA-5.14)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  const account = await createVerifiedAccount(page.request, `timeline-corte-${test.info().project.name}`);
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Corte de 640 px');
+  await openEditor(page, projectId);
+  const canvas = page.getByRole('application', { name: 'Lienzo del proyecto' });
+  const box = (await canvas.boundingBox())!;
+  const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.getByRole('button', { name: 'Rectángulo (R)' }).click();
+  await drag(page, { x: c.x - 60, y: c.y - 200 }, { x: c.x + 60, y: c.y - 120 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  const rect = (await nodes(page))[0]!;
+
+  await page.getByRole('button', { name: 'Animar', exact: true }).click();
+  const panel = page.getByTestId('timeline');
+  await expect(panel).toBeVisible();
+  await panel.getByTestId('timeline-record').click();
+  await expect(panel).toHaveAttribute('data-recording', '');
+
+  // Por debajo de 640 px se desmonta el panel y se monta la hoja con el mismo estado.
+  await page.setViewportSize({ width: 600, height: 800 });
+  const sheet = page.getByTestId('timeline-sheet');
+  await expect(sheet).toBeVisible();
+  await expect(page.locator('[data-testid="timeline"]')).toHaveCount(1);
+  await expect(sheet.getByTestId('timeline')).toHaveAttribute('data-recording', '');
+  await expect(sheet.getByTestId('timeline-record')).toHaveAttribute('aria-pressed', 'true');
+
+  const at = await page.evaluate(([x, y]) => window.__parcifyTest!.toPage(x!, y!), [rect.x + rect.w / 2, rect.y + rect.h / 2]);
+  expect(at.y).toBeLessThan((await sheet.boundingBox())!.y);
+  await page.mouse.click(at.x, at.y);
+  await drag(page, at, { x: at.x + 60, y: at.y + 10 });
+  await expect.poll(async () => (await offsetX(page, rect.id)).length).toBeGreaterThan(0);
+
+  // Y al volver, el panel de escritorio sigue grabando.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(page.getByTestId('timeline-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('timeline')).toHaveAttribute('data-recording', '');
 });

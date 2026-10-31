@@ -94,7 +94,7 @@
   $effect(() => () => clearTimeout(invalidTimer));
 </script>
 
-<div class="flex h-7 min-w-0 items-center gap-1.5" data-testid={testid}>
+<div class="flex h-7 min-w-0 items-center gap-1.5 sheet:h-11 sheet:gap-1" data-testid={testid}>
   <ColorPicker
     bind:open
     {value}
@@ -108,7 +108,7 @@
   />
   <div
     class={[
-      'flex h-6 min-w-0 flex-1 items-center rounded-control border bg-surface-2 text-xs',
+      'flex h-6 min-w-0 flex-1 items-center rounded-control border bg-surface-2 text-xs sheet:h-9 sheet:text-sm',
       'focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-coral',
       invalid ? 'border-danger' : 'border-transparent',
       !readonly && !invalid && 'hover:border-edge/60',
@@ -134,7 +134,7 @@
     />
   </div>
   <ScrubInput
-    class="w-13 shrink-0"
+    class="w-13 shrink-0 sheet:w-16"
     value={alpha}
     label={m.editor_props_color_alpha({ name: label })}
     unit="%"

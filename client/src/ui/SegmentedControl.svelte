@@ -47,6 +47,7 @@
       'focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral',
       'data-disabled:cursor-not-allowed data-disabled:opacity-40',
       size === 'sm' ? 'h-6 min-w-6 px-1.5 text-xs' : 'h-8 min-w-8 px-3 text-ui',
+      'sheet:h-11 sheet:min-w-11',
       iconOnly ? 'px-0' : '',
     ].join(' '),
   );

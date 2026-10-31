@@ -50,9 +50,15 @@
   import { downloadLocalCopy } from '../lib/local-copy.ts';
   import PropertiesPanel from './editor/properties/PropertiesPanel.svelte';
   import ContextBar from './editor/toolbar/ContextBar.svelte';
+  import AnimationsSheet from './editor/mobile/AnimationsSheet.svelte';
+  import GallerySheet from './editor/mobile/GallerySheet.svelte';
+  import LayersSheet from './editor/mobile/LayersSheet.svelte';
   import MobileMenuSheet, { type MobileMenuEntry } from './editor/mobile/MobileMenuSheet.svelte';
   import MobileTopBar from './editor/mobile/MobileTopBar.svelte';
+  import PropertiesSheet from './editor/mobile/PropertiesSheet.svelte';
   import RenameSheet from './editor/mobile/RenameSheet.svelte';
+  import TimelineSheet from './editor/mobile/TimelineSheet.svelte';
+  import VersionsSheet from './editor/mobile/VersionsSheet.svelte';
   import FloatingToolbar from './editor/toolbar/FloatingToolbar.svelte';
   import ZoomBar from './editor/toolbar/ZoomBar.svelte';
   import FileHeader from './editor/layout/FileHeader.svelte';
@@ -202,16 +208,40 @@
   // Hoja «Renombrar» del móvil: el proyecto (toque en el nombre) o un nodo («Renombrar» de la hoja de acciones).
   let renaming = $state.raw<{ kind: 'project' } | { kind: 'node'; id: string; name: string } | null>(null);
   let renameSheetHeight = $state(0);
+  // Hojas de contenido del móvil. La línea de tiempo, la conversación y la galería guardan su estado en EditorLayout
+  // (el mismo que en escritorio); estas cuatro solo existen en el móvil.
+  type ContentSheet = 'properties' | 'layers' | 'animations' | 'versions';
+  let mobileSheet = $state<ContentSheet | null>(null);
+  let contentSheetHeight = $state(0);
+  let timelineSheetHeight = $state(0);
+  let gallerySheetHeight = $state(0);
+  let conversationSheetHeight = $state(0);
+  const hideUi = $derived(presenting || layout.ui === 'hidden');
+  // Mientras el menú ⋯ o «Renombrar» están abiertos, o se ve una versión a pantalla completa, las hojas de contenido
+  // se esconden sin perder su estado y vuelven al terminar: solo hay una hoja no modal a la vez.
+  const sheetsSuspended = $derived(mobileMenuOpen || renaming !== null || viewer.viewing !== null);
+  const sheetsShown = $derived(mobile && !hideUi && !sheetsSuspended);
+  // «Propiedades» puede abrirse con la línea de tiempo abierta (para grabar desde la hoja): la tapa sin cerrarla.
+  const timelineSheetShown = $derived(sheetsShown && layout.timeline.open && mobileSheet === null && !!Timeline);
+  const gallerySheetShown = $derived(sheetsShown && layout.gallery.open);
+  const conversationSheetShown = $derived(sheetsShown && layout.conversation.open && !layout.conversation.minimized);
   // Lo que tapa por abajo la hoja no modal abierta (con el teclado, también él).
   const sheetInset = $derived.by(() => {
     if (!mobile) return 0;
-    const height = Math.max(mobileMenuOpen ? menuSheetHeight : 0, renaming ? renameSheetHeight : 0);
+    const height = Math.max(
+      mobileMenuOpen ? menuSheetHeight : 0,
+      renaming ? renameSheetHeight : 0,
+      sheetsShown && mobileSheet ? contentSheetHeight : 0,
+      timelineSheetShown ? timelineSheetHeight : 0,
+      gallerySheetShown ? gallerySheetHeight : 0,
+      conversationSheetShown ? conversationSheetHeight : 0,
+    );
     return height ? height + viewport.keyboardInset : 0;
   });
-  const hideUi = $derived(presenting || layout.ui === 'hidden');
-  const leftOpen = $derived(!hideUi && layout.ui === 'normal' && layout.left === 'open');
+  // En el móvil no hay paneles laterales: su contenido va en las hojas.
+  const leftOpen = $derived(!mobile && !hideUi && layout.ui === 'normal' && layout.left === 'open');
   // Con la interfaz minimizada, el panel derecho se abre solo mientras hay selección.
-  const rightOpen = $derived(!hideUi && (layout.ui === 'normal' ? layout.right === 'open' : selection.length > 0));
+  const rightOpen = $derived(!mobile && !hideUi && (layout.ui === 'normal' ? layout.right === 'open' : selection.length > 0));
   // Borde interior de cada panel abierto, en px desde el borde de la ventana (8 de margen más su ancho).
   const leftEdge = $derived(leftOpen ? 8 + (leftWidth || layout.leftWidth) : 0);
   const rightEdge = $derived(rightOpen ? 8 + (rightWidth || layout.rightWidth) : 0);
@@ -226,7 +256,7 @@
     const height = Math.max(left ? leftPillHeight : 0, !hideUi && !rightOpen ? rightPillHeight : showUi ? SHOW_UI_SIZE : 0);
     return { left, right, height };
   });
-  const bottomEdge = $derived(!hideUi && timelineOpen && Timeline && timelineHeight ? 8 + timelineHeight : 0);
+  const bottomEdge = $derived(!mobile && !hideUi && timelineOpen && Timeline && timelineHeight ? 8 + timelineHeight : 0);
   // En tablet los paneles abiertos flotan sin reservar sitio: abrirlos no cambia el encuadre ni mueve las barras de
   // abajo, que quedan por encima de ellos.
   const barsLeft = $derived(compactLayout ? 0 : leftEdge);
@@ -236,7 +266,7 @@
   // Las barras de abajo quedan a 12 px del borde, o 8 px por encima de la línea de tiempo abierta. Con el dedo, 20 px:
   // la zona de toque del asa de la línea de tiempo crece 18 px hacia arriba y las barras no deben taparla.
   const barsBottom = $derived(bottomEdge ? bottomEdge + (inputKind === 'touch' ? 20 : 8) : 12);
-  const panelClearance = $derived(mobile ? (hideUi ? 0 : dockHeight) : compactLayout && !hideUi && barsHeight ? bottomEdge + barsHeight + 8 : 0);
+  const panelClearance = $derived(compactLayout && !mobile && !hideUi && barsHeight ? bottomEdge + barsHeight + 8 : 0);
 
   // Herramientas de creación: en el móvil, con una activa y sin selección, la barra contextual ofrece sus modificadores.
   const CREATE_TOOLS = new Set<Tool>(['frame', 'rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc', 'line', 'arrow', 'connector', 'text']);
@@ -298,6 +328,20 @@
     untrack(() => {
       core.canvasTouchModifiers.set(onCanvas);
       if (!onCanvas) core.touchModifiers.set({ ...core.touchModifiers.get(), proportional: false, fromCenter: false, step15: false });
+    });
+  });
+
+  // Al entrar en la maqueta móvil desde una ventana más ancha puede haber varias superficies abiertas: se queda una
+  // (la línea de tiempo, si está, para no cortar la grabación; si no, la conversación).
+  $effect(() => {
+    if (!mobile) return;
+    untrack(() => {
+      if (layout.timeline.open) {
+        layout.conversation.open = false;
+        layout.gallery.open = false;
+      } else if (layout.conversation.open && !layout.conversation.minimized) {
+        layout.gallery.open = false;
+      }
     });
   });
 
@@ -670,7 +714,7 @@
     const current = tap;
     if (!current || current.id !== event.pointerId) return;
     tap = null;
-    if (current.multi || !current.selecting || !compactLayout || !engine || !container) return;
+    if (current.multi || !current.selecting || !compactLayout || mobile || !engine || !container) return;
     if (Math.hypot(event.clientX - current.x, event.clientY - current.y) > TAP_SLOP) return;
     const rect = container.getBoundingClientRect();
     if (engine.core.pick(event.clientX - rect.left, event.clientY - rect.top, { includeLocked: true })) return;
@@ -997,6 +1041,8 @@
 
   // «Enviar al chat de IA» desde la galería: abre la pestaña IA en el chat con la imagen adjunta.
   async function sendToAiChat(asset: { assetId: string; name: string }) {
+    // En el móvil, la conversación sustituye a la hoja de la galería.
+    if (mobile) closeMobileSurfaces();
     await openAi();
     aiAttachment = { ...asset, n: (aiAttachment?.n ?? 0) + 1 };
   }
@@ -1089,11 +1135,20 @@
   function closeMobileSurfaces() {
     mobileMenuOpen = false;
     renaming = null;
-    if (layout.left === 'open') layout.collapse('left');
-    if (layout.right === 'open') layout.collapse('right');
+    mobileSheet = null;
     layout.conversation.open = false;
     layout.gallery.open = false;
     if (layout.timeline.open) layout.closeTimeline();
+  }
+
+  function openMobileSheet(sheet: ContentSheet) {
+    closeMobileSurfaces();
+    mobileSheet = sheet;
+  }
+
+  // Solo la persona cierra una hoja (× o deslizar); esconderla mientras está suspendida no la cierra.
+  function closeContentSheet(sheet: ContentSheet, open: boolean) {
+    if (!open && mobileSheet === sheet) mobileSheet = null;
   }
 
   function toggleMobileMenu() {
@@ -1110,14 +1165,8 @@
     switch (entry) {
       case 'layers':
       case 'animations':
-        closeMobileSurfaces();
-        layout.leftTab = entry;
-        layout.open('left');
-        return;
       case 'versions':
-        closeMobileSurfaces();
-        layout.rightView = 'versions';
-        layout.open('right');
+        openMobileSheet(entry);
         return;
       case 'timeline':
         closeMobileSurfaces();
@@ -1130,7 +1179,6 @@
       case 'gallery':
         closeMobileSurfaces();
         layout.gallery.open = true;
-        void tick().then(() => galleryWindow?.focus());
         return;
       case 'export':
         exportOpen = true;
@@ -1149,17 +1197,20 @@
     }
   }
 
-  // «Propiedades» de la barra inferior: abre el diseño de la selección o lo cierra si ya se ve.
-  const propertiesOpen = $derived(rightOpen && layout.rightView === 'design');
+  // «Propiedades» de la barra inferior: abre la hoja de propiedades o la cierra si ya se ve. Con la línea de tiempo
+  // abierta no la cierra: la hoja la tapa y, con lo que se cambie en ella, se graba en el cabezal.
+  const propertiesOpen = $derived(mobileSheet === 'properties');
 
   function toggleProperties() {
     if (propertiesOpen) {
-      layout.collapse('right');
+      mobileSheet = null;
       return;
     }
-    closeMobileSurfaces();
-    layout.rightView = 'design';
-    layout.open('right');
+    mobileMenuOpen = false;
+    renaming = null;
+    layout.conversation.open = false;
+    layout.gallery.open = false;
+    mobileSheet = 'properties';
   }
 
   // Muestra del botón «Propiedades»: el relleno del primer elemento (el color en un texto).
@@ -1317,7 +1368,7 @@
           onmenu={toggleMobileMenu}
         />
       {/if}
-      {#if !presenting}
+      {#if !presenting && !mobile}
         <LeftPanel
           bind:this={leftPanel}
           bind:width={leftWidth}
@@ -1326,7 +1377,6 @@
           {engine}
           readOnly={engineReadOnly}
           open={leftOpen}
-          {mobile}
           touch={inputKind === 'touch'}
           hidden={hideUi}
           clearance={panelClearance}
@@ -1550,15 +1600,14 @@
         {#if timelineLoading}
           <p role="status" class="sr-only">{m.timeline_loading()}</p>
         {/if}
-        {#if Timeline && engine}
-          <!-- Flota abajo entre los paneles; su alto lo decide el asa del propio panel. -->
+        {#if Timeline && engine && !mobile}
+          <!-- Flota abajo entre los paneles; su alto lo decide el asa del propio panel. En el móvil va en su hoja. -->
           <div
             bind:offsetHeight={timelineHeight}
             hidden={hideUi || !timelineOpen}
             class="absolute bottom-2 z-(--z-panel) touch-pan-x touch-pan-y"
-            style:left="{mobile ? 8 : leftEdge + 8}px"
-            style:right="{mobile ? 8 : rightEdge + 8}px"
-            style:bottom={mobile ? `${mobileBarsHeight + 8}px` : null}
+            style:left="{leftEdge + 8}px"
+            style:right="{rightEdge + 8}px"
           >
             <Timeline
               {engine}
@@ -1573,19 +1622,20 @@
           </div>
         {/if}
 
-        <RightPanel
-          bind:width={rightWidth}
-          bind:pillWidth={rightPillWidth}
-          bind:pillHeight={rightPillHeight}
-          open={rightOpen}
-          {mobile}
-          hidden={hideUi}
-          clearance={panelClearance}
-          header={sessionBar}
-          {design}
-          versions={versionsView}
-          raised={overlayDocked}
-        />
+        {#if !mobile}
+          <RightPanel
+            bind:width={rightWidth}
+            bind:pillWidth={rightPillWidth}
+            bind:pillHeight={rightPillHeight}
+            open={rightOpen}
+            hidden={hideUi}
+            clearance={panelClearance}
+            header={sessionBar}
+            {design}
+            versions={versionsView}
+            raised={overlayDocked}
+          />
+        {/if}
       {/if}
 
       <!-- Ventanas flotantes. Al presentar, la conversación solo se oculta (sigue contando y recibiendo, sin marcar
@@ -1600,7 +1650,9 @@
           status={collabState.status}
           {typingNames}
           unread={chatUnread}
-          hidden={hideUi}
+          hidden={hideUi || (mobile && sheetsSuspended)}
+          {mobile}
+          bind:height={conversationSheetHeight}
           defaultRect={conversationDefault}
           pillAt={mobile ? { right: 12, bottom: mobileBarsHeight + 8 } : { right: barsRight + 12, bottom: barsBottom + barsHeight + 8 }}
           returnFocus={conversationReturn}
@@ -1616,7 +1668,7 @@
           onunread={(count) => (chatUnread = count)}
         />
       {/if}
-      {#if layout.gallery.open && engine && !presenting}
+      {#if layout.gallery.open && engine && !presenting && !mobile}
         <GalleryWindow
           bind:this={galleryWindow}
           {engine}
@@ -1705,6 +1757,74 @@
           label={target.kind === 'project' ? m.editor_name_label() : m.editor_mobile_rename_layer()}
           value={target.kind === 'project' ? projectName : target.name}
           onsave={saveRename}
+        />
+      {/if}
+      {#if engine}
+        {@const current = engine}
+        <!-- Hojas de contenido: una a la vez. Cerrar una (× o deslizar) la quita; esconderla (menú, «Renombrar», vista
+             previa de una versión) la conserva con su altura. -->
+        <PropertiesSheet
+          bind:open={() => sheetsShown && mobileSheet === 'properties', (value) => closeContentSheet('properties', value)}
+          bind:height={contentSheetHeight}
+          engine={current}
+          records={selection}
+          readOnly={engineReadOnly}
+          {tool}
+          preset={framePreset}
+          pageName={pages.find((item) => item.id === activePage)?.name ?? ''}
+          onpreset={(next) => current.core.framePreset.set(next)}
+          onexport={() => (exportOpen = true)}
+          onkeyframes={() => {
+            mobileSheet = null;
+            void openTimeline(true, true);
+          }}
+        />
+        <LayersSheet
+          bind:open={() => sheetsShown && mobileSheet === 'layers', (value) => closeContentSheet('layers', value)}
+          bind:height={contentSheetHeight}
+          engine={current}
+          readOnly={engineReadOnly}
+          onrename={renameNode}
+        />
+        <AnimationsSheet
+          bind:open={() => sheetsShown && mobileSheet === 'animations', (value) => closeContentSheet('animations', value)}
+          bind:height={contentSheetHeight}
+          engine={current}
+        />
+        <VersionsSheet
+          bind:open={() => sheetsShown && mobileSheet === 'versions', (value) => closeContentSheet('versions', value)}
+          bind:height={contentSheetHeight}
+          {projectId}
+          canEdit={!engineReadOnly}
+          {activePage}
+        />
+        {#if Timeline}
+          <TimelineSheet
+            bind:open={() => timelineSheetShown, (value) => {
+              if (!value) layout.closeTimeline();
+            }}
+            bind:height={timelineSheetHeight}
+            {Timeline}
+            engine={current}
+            {projectId}
+            readOnly={engineReadOnly}
+            aiAnimation={!!aiFeatures?.animation && !engineReadOnly}
+            focusRequest={timelineFocus}
+            onproperties={selection.length && !engineReadOnly ? toggleProperties : null}
+          />
+        {/if}
+        <GallerySheet
+          bind:open={() => gallerySheetShown, (value) => {
+            if (!value) layout.gallery.open = false;
+          }}
+          bind:height={gallerySheetHeight}
+          engine={current}
+          {projectId}
+          readOnly={engineReadOnly}
+          {assetEvent}
+          jobEvent={aiJobEvent}
+          canGenerate={!!aiFeatures?.image && !engineReadOnly}
+          onsendtochat={aiFeatures?.chat && !engineReadOnly ? (asset) => void sendToAiChat(asset) : null}
         />
       {/if}
     {/if}

@@ -9,6 +9,7 @@
   import FloatingWindow from '../../../ui/FloatingWindow.svelte';
   import type { WindowRect } from '../../../ui/floating-window.svelte.ts';
   import SegmentedControl from '../../../ui/SegmentedControl.svelte';
+  import Sheet from '../../../ui/Sheet.svelte';
   import type AiPanelComponent from '../ai/AiPanel.svelte';
   import Button from '../../../ui/Button.svelte';
   import ChatPanel from './ChatPanel.svelte';
@@ -38,9 +39,15 @@
     onretryai: () => void;
     ontyping: (typing: boolean) => void;
     onunread: (count: number) => void;
+    // Móvil: una hoja inferior (50 % y 92 %) en lugar de la ventana flotante.
+    mobile?: boolean;
+    // Alto de la hoja en pantalla, para que la cámara la evite.
+    height?: number;
   };
 
   let {
+    mobile = false,
+    height = $bindable(0),
     projectId,
     session,
     me,
@@ -75,12 +82,31 @@
     { value: 'ai', label: m.editor_conversation_tab_ai() },
   ]);
 
+  // En la hoja, el foco va a su cabecera al abrirse.
   export function focus() {
+    if (mobile) return;
     return floating?.focus();
   }
 
   function pickTab(next: string) {
     layout.conversation.tab = next === 'ai' ? 'ai' : 'team';
+  }
+
+  // El chat y la IA se montan una sola vez, en un contenedor oculto, y la hoja o la ventana flotante lo toman prestado.
+  // Así siguen montados con la hoja cerrada (cuentan los no leídos y reciben en vivo) y al cruzar los 640 px no se
+  // pierden el borrador, los adjuntos ni una respuesta de IA en curso.
+  let holder = $state<HTMLElement | null>(null);
+  let content = $state<HTMLElement | null>(null);
+
+  function adopt(node: HTMLElement) {
+    const moved = content;
+    if (moved) node.appendChild(moved);
+    return () => {
+      // Al cambiar de hoja a ventana, la nueva puede tomarlo antes de que la vieja lo suelte: solo lo devuelve quien lo tiene.
+      // Solo esta función mueve `content`, y Svelte no pinta nada entre él y su contenedor: vuelve a su sitio intacto.
+      // eslint-disable-next-line svelte/no-dom-manipulating
+      if (moved && holder && moved.parentNode === node) holder.appendChild(moved);
+    };
   }
 </script>
 
@@ -90,6 +116,55 @@
   {/if}
 {/snippet}
 
+{#snippet sheetTabs()}
+  {#if aiAvailable}
+    <div data-touch-density="touch">{@render tabSwitch()}</div>
+  {/if}
+{/snippet}
+
+{#snippet body()}
+  <!-- Montado siempre: cuenta los no leídos y recibe los mensajes en vivo aunque se vea la IA o la ventana esté cerrada. -->
+  <div hidden={tab !== 'team'} class="flex min-h-0 min-w-0 flex-1 flex-col">
+    <ChatPanel {projectId} {session} {me} {role} {status} {typingNames} open={visible && tab === 'team'} {ontyping} {onunread} {mobile} />
+  </div>
+  {#if AiPanel && aiAvailable && aiFeatures && engine}
+    <!-- Una vez cargada, la IA sigue montada al cambiar de pestaña: no corta una respuesta en curso. -->
+    <div hidden={tab !== 'ai'} class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <AiPanel {engine} {projectId} features={aiFeatures} {readOnly} attachment={aiAttachment} />
+    </div>
+  {:else if tab === 'ai' && aiFailed}
+    <div class="flex flex-col items-start gap-2 p-3" role="alert" data-testid="ai-load-error">
+      <p class="text-ink-muted">{m.editor_ai_load_error()}</p>
+      <Button size="sm" variant="ghost" onclick={onretryai} data-testid="ai-load-retry">{m.common_retry()}</Button>
+    </div>
+  {:else if tab === 'ai'}
+    <p class="p-3 text-ink-muted" role="status">{m.editor_ai_loading()}</p>
+  {/if}
+{/snippet}
+
+<div bind:this={holder} hidden>
+  <div bind:this={content} class="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="conversation-content">{@render body()}</div>
+</div>
+
+{#if mobile}
+  <Sheet
+    bind:open={() => visible, (value) => {
+      if (!value) {
+        layout.conversation.open = false;
+        layout.conversation.minimized = false;
+      }
+    }}
+    bind:height
+    bind:level={() => layout.sheetLevels.conversation ?? 0, (value) => (layout.sheetLevels.conversation = value)}
+    title={m.editor_chat_title()}
+    heights={[0.5, 0.92]}
+    modal={false}
+    actions={sheetTabs}
+    testid="conversation-sheet"
+  >
+    <div {@attach adopt} class="flex min-h-0 flex-1 flex-col"></div>
+  </Sheet>
+{:else}
 <FloatingWindow
   bind:this={floating}
   bind:rect={layout.conversation.rect}
@@ -115,21 +190,6 @@
   }}
   {returnFocus}
 >
-  <!-- Montado siempre: cuenta los no leídos y recibe los mensajes en vivo aunque se vea la IA o la ventana esté cerrada. -->
-  <div hidden={tab !== 'team'} class="flex min-h-0 min-w-0 flex-1 flex-col">
-    <ChatPanel {projectId} {session} {me} {role} {status} {typingNames} open={visible && tab === 'team'} {ontyping} {onunread} />
-  </div>
-  {#if AiPanel && aiAvailable && aiFeatures && engine}
-    <!-- Una vez cargada, la IA sigue montada al cambiar de pestaña: no corta una respuesta en curso. -->
-    <div hidden={tab !== 'ai'} class="flex min-h-0 min-w-0 flex-1 flex-col">
-      <AiPanel {engine} {projectId} features={aiFeatures} {readOnly} attachment={aiAttachment} />
-    </div>
-  {:else if tab === 'ai' && aiFailed}
-    <div class="flex flex-col items-start gap-2 p-3" role="alert" data-testid="ai-load-error">
-      <p class="text-ink-muted">{m.editor_ai_load_error()}</p>
-      <Button size="sm" variant="ghost" onclick={onretryai} data-testid="ai-load-retry">{m.common_retry()}</Button>
-    </div>
-  {:else if tab === 'ai'}
-    <p class="p-3 text-ink-muted" role="status">{m.editor_ai_loading()}</p>
-  {/if}
+  <div {@attach adopt} class="flex min-h-0 min-w-0 flex-1 flex-col"></div>
 </FloatingWindow>
+{/if}

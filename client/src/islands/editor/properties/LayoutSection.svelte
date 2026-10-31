@@ -90,7 +90,10 @@
 
 {#if geometry}
   <Section title={m.editor_props_section_layout()} testid="props-layout">
-    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_1.5rem_minmax(0,1fr)] items-center gap-x-1 gap-y-2">
+    <!-- En una hoja del móvil, dos columnas solo desde 360 px; por debajo, una. -->
+    <div
+      class="grid min-w-0 grid-cols-[minmax(0,1fr)_1.5rem_minmax(0,1fr)] items-center gap-x-1 gap-y-2 sheet:grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)] sheet:max-[22.5rem]:grid-cols-1"
+    >
       <div class="flex min-w-0 items-center gap-1">
         <ScrubInput
           class="flex-1"

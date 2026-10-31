@@ -23,9 +23,27 @@
     row: Snippet<[T, { top: number; height: number; index: number }]>;
     // Encima de las filas, en coordenadas de la rejilla (x desde el inicio de las pistas, y desde la primera fila).
     overlay?: Snippet;
+    // Ancho de la columna de nombres.
+    labelWidth?: number;
   };
 
-  let { rows, heights, zoom = $bindable(), head, span, recording, touch, grid, onseek, onheadkey, oncancelgesture, lockTouch, row, overlay }: Props = $props();
+  let {
+    rows,
+    heights,
+    zoom = $bindable(),
+    head,
+    span,
+    recording,
+    touch,
+    grid,
+    onseek,
+    onheadkey,
+    oncancelgesture,
+    lockTouch,
+    row,
+    overlay,
+    labelWidth = LABEL_WIDTH,
+  }: Props = $props();
 
   // Margen a la derecha del final para que el último keyframe no quede pegado al borde.
   const TAIL = 32;
@@ -42,7 +60,7 @@
   let viewHeight = $state(0);
   let fitted = false;
 
-  const laneWidth = $derived(Math.max(0, viewWidth - LABEL_WIDTH));
+  const laneWidth = $derived(Math.max(0, viewWidth - labelWidth));
   const contentWidth = $derived(Math.max(laneWidth, timeX(span, zoom) + TAIL));
   const offsets = $derived(rowOffsets(heights));
   const total = $derived(offsets[offsets.length - 1] ?? 0);
@@ -96,7 +114,7 @@
   }
 
   export function timeAt(clientX: number): number {
-    const left = (scroller?.getBoundingClientRect().left ?? 0) + LABEL_WIDTH;
+    const left = (scroller?.getBoundingClientRect().left ?? 0) + labelWidth;
     return (clientX - left + scrollX - LANE_PAD) / zoom;
   }
 
@@ -105,7 +123,7 @@
   export function gridPoint(clientX: number, clientY: number): { x: number; y: number } {
     const rect = scroller?.getBoundingClientRect();
     return {
-      x: clientX - (rect?.left ?? 0) - LABEL_WIDTH + (scroller?.scrollLeft ?? 0),
+      x: clientX - (rect?.left ?? 0) - labelWidth + (scroller?.scrollLeft ?? 0),
       y: clientY - (rect?.top ?? 0) - RULER_HEIGHT + (scroller?.scrollTop ?? 0),
     };
   }
@@ -124,7 +142,7 @@
     if (x < scrollX + 12 || x > scrollX + laneWidth - 12) setScrollX(x - laneWidth / 2);
   }
 
-  const laneLeft = () => (scroller?.getBoundingClientRect().left ?? 0) + LABEL_WIDTH;
+  const laneLeft = () => (scroller?.getBoundingClientRect().left ?? 0) + labelWidth;
 
   // Rueda sobre las pistas (RF-5.6): el zoom (Ctrl/⌘+rueda o pellizco del touchpad) cambia la escala del tiempo en el
   // puntero; un pan con componente horizontal desplaza el tiempo; un pan solo vertical es el scroll nativo de las filas.
@@ -269,9 +287,9 @@
   class={['scroll-thin relative min-h-0 flex-1 overflow-auto overscroll-contain rounded-b-[9px]', lockTouch ? 'touch-none' : 'touch-pan-x touch-pan-y']}
   data-testid="timeline-tracks"
 >
-  <div class="relative" style:width="{LABEL_WIDTH + contentWidth}px" style:height="{Math.max(RULER_HEIGHT + total, viewHeight)}px">
+  <div class="relative" style:width="{labelWidth + contentWidth}px" style:height="{Math.max(RULER_HEIGHT + total, viewHeight)}px">
     <div class="sticky top-0 z-20 flex" style:height="{RULER_HEIGHT}px">
-      <div class="sticky left-0 z-10 shrink-0 border-b border-edge/40 bg-surface-1" style:width="{LABEL_WIDTH}px"></div>
+      <div class="sticky left-0 z-10 shrink-0 border-b border-edge/40 bg-surface-1" style:width="{labelWidth}px"></div>
       <TimelineRuler bind:this={ruler} {zoom} {fromMs} {toMs} width={contentWidth} {head} {span} {recording} {touch} {timeAt} {onseek} {onheadkey} />
     </div>
     <div {...grid} class="relative" style:height="{total}px" data-testid="timeline-grid">
@@ -284,7 +302,7 @@
         aria-hidden="true"
         class="pointer-events-none absolute z-[6]"
         style:top="{RULER_HEIGHT}px"
-        style:left="{LABEL_WIDTH}px"
+        style:left="{labelWidth}px"
         style:width="{contentWidth}px"
         style:height="{total}px"
       >
@@ -295,7 +313,7 @@
       aria-hidden="true"
       class={['pointer-events-none absolute bottom-0 z-[5] w-px', recording ? 'bg-danger' : 'bg-coral']}
       style:top="{RULER_HEIGHT}px"
-      style:left="{LABEL_WIDTH + timeX(head, zoom)}px"
+      style:left="{labelWidth + timeX(head, zoom)}px"
     ></span>
   </div>
 </div>

@@ -63,7 +63,7 @@
   import { kindIcon } from '../kind-icons.ts';
   import KeyframeToggle from '../properties/KeyframeToggle.svelte';
   import KeyframeDiamond from './KeyframeDiamond.svelte';
-  import { formatTime, LABEL_WIDTH, propLabel, shortUnitOf, stepOf, timeX, toDisplay } from './model.ts';
+  import { formatTime, formatValue, LABEL_WIDTH, propLabel, shortUnitOf, stepOf, timeX, toDisplay } from './model.ts';
 
   type Props = {
     row: Row;
@@ -78,9 +78,13 @@
     playing: boolean;
     proposed: boolean;
     actions: RowActions;
+    // Hoja del móvil: plegar, ▶ y ⋯ de 44×44; las filas de propiedad muestran el valor como texto y solo llevan rombos.
+    sheet?: boolean;
+    labelWidth?: number;
   };
 
-  let { row, top, height, index, zoom, head, touch, readOnly, selected, playing, proposed, actions }: Props = $props();
+  let { row, top, height, index, zoom, head, touch, readOnly, selected, playing, proposed, actions, sheet = false, labelWidth = LABEL_WIDTH }: Props =
+    $props();
 
   // Con el dedo no hay hover: ▶ y ⋯ se ven siempre.
   const EDGES = ['start', 'end'] as const;
@@ -89,7 +93,11 @@
   const settings = $derived(actions.settingsOf(row));
   const name = $derived(actions.nameOf(row));
   const tab = $derived(actions.tabindex(row, null));
-  const rowButton = $derived(['inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink', touch ? 'size-8' : 'size-6']);
+  const rowButton = $derived([
+    'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink',
+    sheet ? 'size-11' : touch ? 'size-8' : 'size-6',
+  ]);
+  const icon = $derived(sheet ? 20 : 12);
 </script>
 
 <div role="row" aria-rowindex={index + 1} class="absolute inset-x-0 flex" style:top="{top}px" style:height="{height}px">
@@ -110,7 +118,7 @@
         actions.focusCell(header);
         actions.select(node);
       }}
-      style:width="{LABEL_WIDTH}px"
+      style:width="{labelWidth}px"
       class={[
         'group/row sticky left-0 z-10 flex shrink-0 cursor-pointer items-center gap-1 border-b border-edge/20 pr-1 pl-0.5 outline-none select-none',
         'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
@@ -125,12 +133,14 @@
           event.stopPropagation();
           actions.toggle(node, !node.expanded);
         }}
-        class="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-xs text-ink-muted hover:text-ink"
+        class={['inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xs text-ink-muted hover:text-ink', sheet ? 'size-11' : 'size-5']}
       >
-        <ChevronRight size={16} class={['transition-transform duration-(--dur-fast)', node.expanded && 'rotate-90']} />
+        <ChevronRight size={sheet ? 20 : 16} class={['transition-transform duration-(--dur-fast)', node.expanded && 'rotate-90']} />
       </button>
-      <span aria-hidden="true" class="inline-flex shrink-0 text-ink-muted"><Icon size={14} /></span>
-      <span class="min-w-0 flex-1 truncate text-xs font-medium">{name}</span>
+      {#if !sheet}
+        <span aria-hidden="true" class="inline-flex shrink-0 text-ink-muted"><Icon size={14} /></span>
+      {/if}
+      <span class={['min-w-0 flex-1 truncate font-medium', sheet ? 'text-sm' : 'text-xs']}>{name}</span>
       {#if node.animation}
         <Tooltip text={playing ? m.editor_anim_stop_node({ name }) : m.timeline_play_node({ name })}>
           {#snippet children(props)}
@@ -146,13 +156,19 @@
               class={[rowButton, playing ? 'opacity-100' : HOVER_ONLY]}
               data-testid="timeline-row-play"
             >
-              {#if playing}<Square size={12} aria-hidden="true" />{:else}<Play size={12} aria-hidden="true" />{/if}
+              {#if playing}<Square size={icon} aria-hidden="true" />{:else}<Play size={icon} aria-hidden="true" />{/if}
             </button>
           {/snippet}
         </Tooltip>
       {/if}
       {#if !readOnly}
-        <DropdownMenu items={actions.menu(node)} side="bottom" align="end" onCloseAutoFocus={actions.menuCloseFocus}>
+        <DropdownMenu
+          items={actions.menu(node)}
+          side="bottom"
+          align="end"
+          density={sheet ? 'touch' : 'default'}
+          onCloseAutoFocus={actions.menuCloseFocus}
+        >
           {#snippet trigger(props)}
             <button
               {...props}
@@ -163,7 +179,7 @@
               class={[rowButton, HOVER_ONLY]}
               data-testid="timeline-row-menu"
             >
-              <Ellipsis size={14} aria-hidden="true" />
+              <Ellipsis size={sheet ? 20 : 14} aria-hidden="true" />
             </button>
           {/snippet}
         </DropdownMenu>
@@ -261,14 +277,25 @@
       aria-label={propLabel(track.prop)}
       onfocus={() => actions.focusCell(header)}
       onclick={() => actions.focusCell(header)}
-      style:width="{LABEL_WIDTH}px"
+      style:width="{labelWidth}px"
       class={[
         'sticky left-0 z-10 flex shrink-0 cursor-default items-center gap-1 border-b border-edge/20 bg-surface-1 pr-0.5 pl-7 outline-none select-none',
         'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
       ]}
     >
       <span class="min-w-0 flex-1 truncate text-2xs text-ink-muted">{propLabel(track.prop)}</span>
-      {#if typeof value === 'number'}
+      {#if sheet}
+        <!-- En el móvil el valor del cabezal se cambia en la hoja de propiedades y el de un keyframe, con «Editar valor…». -->
+        {#if value !== null}
+          <span
+            class="shrink-0 pr-2 text-2xs text-ink-muted tabular"
+            aria-label={m.timeline_value_at({ track: propLabel(track.prop), time: formatTime(head) })}
+            data-testid="timeline-row-value"
+          >
+            {formatValue(track.prop, value)}
+          </span>
+        {/if}
+      {:else if typeof value === 'number'}
         <ScrubInput
           value={toDisplay(track.prop, value)}
           label={m.timeline_value_at({ track: propLabel(track.prop), time: formatTime(head) })}
@@ -292,7 +319,7 @@
           <span aria-hidden="true" class="truncate tabular">{value.slice(1, 7)}</span>
         </span>
       {/if}
-      {#if !readOnly}
+      {#if !readOnly && !sheet}
         <KeyframeToggle context={actions.keyframeContext()} records={[track.record]} prop={track.prop} label={propLabel(track.prop)} tabindex={tab} />
       {/if}
     </div>
@@ -312,19 +339,24 @@
       <!-- Tramos entre keyframes: un clic abre su curva. Con el teclado, «Curva ▸» del menú del keyframe. -->
       {#each times as time, i (track.keyframes[i]!.key)}
         {@const next = times[i + 1]}
-        {#if next !== undefined && next > time}
+        {#if next !== undefined && next > time && touch}
+          <!-- Con el dedo, el tramo solo se dibuja: un botón lo elegiría la corrección de toques del navegador al tocar el
+               vacío (scroll y marquesina). La curva está en «Curva ▸» de la pulsación larga. -->
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute top-1/2 h-0.5 -translate-y-1/2 bg-petrol"
+            style:left="{timeX(time, zoom)}px"
+            style:width="{(next - time) * zoom}px"
+            data-testid="keyframe-segment"
+          ></span>
+        {:else if next !== undefined && next > time}
           <button
             type="button"
             tabindex="-1"
             aria-hidden="true"
             disabled={readOnly}
             onclick={(event) => actions.segment(event, track, track.keyframes[i]!)}
-            class={[
-              'group/seg absolute top-1/2 h-3 -translate-y-1/2 cursor-pointer disabled:cursor-default',
-              // Con el dedo, el tramo no es un botón: la corrección de toques del navegador lo elegiría al tocar el vacío
-              // (scroll y marquesina). La curva está en «Curva ▸» de la pulsación larga.
-              touch && 'pointer-events-none',
-            ]}
+            class="group/seg absolute top-1/2 h-3 -translate-y-1/2 cursor-pointer disabled:cursor-default"
             style:left="{timeX(time, zoom)}px"
             style:width="{(next - time) * zoom}px"
             data-testid="keyframe-segment"

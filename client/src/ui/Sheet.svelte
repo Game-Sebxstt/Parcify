@@ -23,6 +23,8 @@
     height?: number;
     testid?: string;
     class?: string;
+    // Controles de la cabecera, entre el título y el × (pestañas, «Subir»).
+    actions?: Snippet;
     onOpenChange?: (open: boolean) => void;
     children: Snippet;
   };
@@ -38,6 +40,7 @@
     height = $bindable(0),
     testid,
     class: className = '',
+    actions,
     onOpenChange,
     children,
   }: Props = $props();
@@ -79,7 +82,7 @@
 
   function startDrag(event: PointerEvent) {
     if (side !== 'bottom' || drag || event.button !== 0) return;
-    if (event.target instanceof Element && event.target.closest('button')) return;
+    if (event.target instanceof Element && event.target.closest('button, a, input, [role="radio"], [role="tab"]')) return;
     try {
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     } catch {
@@ -208,6 +211,9 @@
 {#snippet head()}
   <div bind:this={header} tabindex="-1" class="flex h-12 shrink-0 items-center gap-2 pl-4 outline-none">
     <Dialog.Title class="min-w-0 flex-1 truncate text-sm font-semibold">{title}</Dialog.Title>
+    {#if actions}
+      <div class="flex shrink-0 items-center gap-1">{@render actions()}</div>
+    {/if}
     <Dialog.Close
       aria-label={m.common_close()}
       class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-card text-ink-muted hover:bg-surface-2 hover:text-ink"

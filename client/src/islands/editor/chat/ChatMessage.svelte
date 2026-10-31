@@ -1,8 +1,13 @@
 <script lang="ts">
+  import Copy from '@lucide/svelte/icons/copy';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Reply from '@lucide/svelte/icons/reply';
   import Trash from '@lucide/svelte/icons/trash';
   import { tick, type Component } from 'svelte';
+  import type { MenuEntry } from '../../../ui/DropdownMenu.svelte';
+  import { longPress } from '../../../ui/longpress.ts';
+  import { showToast } from '../../../ui/toast.svelte.ts';
+  import ActionSheet from '../mobile/ActionSheet.svelte';
   import { assetUrl } from '../../../lib/assets.ts';
   import { chatBody, type ChatEntry } from '../../../lib/chat.ts';
   import { formatDate } from '../../../lib/format.ts';
@@ -23,9 +28,32 @@
     ondelete: (entry: ChatEntry) => void;
     onretry: (entry: ChatEntry) => void;
     onquote: (messageId: string) => void;
+    // Móvil: botones de 44 px y, con una pulsación larga en la burbuja, la hoja de acciones del mensaje.
+    mobile?: boolean;
   };
 
-  let { entry, meId, compact, canModerate, mentionNames, avatar, onreply, onedit, ondelete, onretry, onquote }: Props = $props();
+  let { entry, meId, compact, canModerate, mentionNames, avatar, onreply, onedit, ondelete, onretry, onquote, mobile = false }: Props = $props();
+
+  let actionsOpen = $state(false);
+
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(entry.body);
+      showToast({ message: m.editor_chat_copied() });
+    } catch {
+      showToast({ message: m.editor_chat_copy_error(), tone: 'error' });
+    }
+  }
+
+  // Las mismas acciones que la fila de botones, más «Copiar texto» (en táctil la burbuja no deja seleccionar).
+  const sheetItems = $derived.by((): MenuEntry[] => [
+    { kind: 'item', id: 'reply', label: m.editor_chat_reply(), icon: Reply, onSelect: () => onreply(entry) },
+    ...(own ? [{ kind: 'item', id: 'edit', label: m.editor_chat_edit(), icon: Pencil, onSelect: () => void startEdit() } satisfies MenuEntry] : []),
+    { kind: 'item', id: 'copy', label: m.editor_chat_copy(), icon: Copy, onSelect: () => void copyText() },
+    ...(own || canModerate
+      ? [{ kind: 'item', id: 'delete', label: m.editor_chat_delete(), icon: Trash, danger: true, onSelect: () => ondelete(entry) } satisfies MenuEntry]
+      : []),
+  ]);
 
   const own = $derived(entry.author.id === meId);
   const deleted = $derived(entry.deletedAt !== null);
@@ -80,15 +108,17 @@
   }
 
   // Con ratón, los botones aparecen con hover o foco; con el dedo se ven siempre, en una fila bajo la burbuja.
-  const ACTION =
-    'inline-flex size-7 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink touch:size-8 touch:bg-surface-2';
+  const ACTION = $derived([
+    'inline-flex cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast) hover:bg-petrol hover:text-ink touch:bg-surface-2',
+    mobile ? 'size-11' : 'size-7 touch:size-8',
+  ]);
 </script>
 
 {#snippet action(label: string, tip: string, onclick: () => void, Icon: Component<{ size?: number; 'aria-hidden'?: 'true' }>, danger = false)}
   <Tooltip text={tip} side="top">
     {#snippet children(props)}
       <button {...props} type="button" aria-label={label} {onclick} class={[ACTION, danger && 'hover:text-danger']}>
-        <Icon size={14} aria-hidden="true" />
+        <Icon size={mobile ? 20 : 14} aria-hidden="true" />
       </button>
     {/snippet}
   </Tooltip>
@@ -105,9 +135,15 @@
 
   <div class="flex min-w-0 flex-col items-start pl-8">
     {#if mentionsMe}<span class="sr-only">{m.editor_chat_mentions_you()}</span>{/if}
+    <!-- Con el dedo, la burbuja no abre el menú del sistema ni selecciona texto: en el móvil, la pulsación larga abre
+         sus acciones (con «Copiar texto»). -->
     <div
+      {@attach longPress(() => {
+        if (mobile && !deleted && !entry.pending && !editing) actionsOpen = true;
+      })}
       class={[
         'min-w-0 max-w-full rounded-card px-2.5 py-2 text-sm',
+        'touch:select-none touch:[-webkit-touch-callout:none]',
         editing ? 'w-full' : 'w-fit',
         own ? 'bg-petrol' : 'bg-surface-2',
         mentionsMe && 'outline-1 -outline-offset-1 outline-coral/60',
@@ -206,3 +242,7 @@
     {/if}
   </div>
 </li>
+
+{#if actionsOpen}
+  <ActionSheet items={sheetItems} title={m.editor_chat_message_actions({ name: authorName })} onclose={() => (actionsOpen = false)} testid="chat-message-actions" />
+{/if}

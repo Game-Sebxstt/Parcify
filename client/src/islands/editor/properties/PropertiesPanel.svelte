@@ -29,9 +29,11 @@
     onexport: () => void;
     // Abre la línea de tiempo con la selección y Grabar encendido.
     onkeyframes: () => void;
+    // touch: en la hoja del móvil, filas y botones de icono de 44 px y campos de 36 px.
+    density?: 'default' | 'touch';
   };
 
-  let { engine, records, readOnly, tool, preset, pageName, onpreset, onexport, onkeyframes }: Props = $props();
+  let { engine, records, readOnly, tool, preset, pageName, onpreset, onexport, onkeyframes, density = 'default' }: Props = $props();
 
   const PRESETS = FRAME_PRESETS.map((item) => ({ id: item.id, label: PRESET_LABELS[item.id] }));
 
@@ -55,7 +57,11 @@
   const colors = () => pageColors(engine);
 </script>
 
-<div class="flex min-w-0 flex-col pb-2 text-ui" data-testid="properties-panel">
+<div
+  class="flex min-w-0 flex-col pb-2 text-ui"
+  data-testid="properties-panel"
+  data-touch-density={density === 'touch' ? 'touch' : undefined}
+>
   {#if records.length === 0}
     {#if tool === 'frame' && !readOnly}
       <Section title={m.editor_props_frame()} testid="props-frame-presets">
@@ -67,7 +73,7 @@
               aria-pressed={preset === option.id}
               onclick={() => onpreset(option.id)}
               class={[
-                'flex h-7 min-w-0 cursor-pointer items-center truncate rounded-control px-2 text-left text-ui transition-colors duration-(--dur-fast)',
+                'flex h-7 min-w-0 cursor-pointer items-center truncate rounded-control px-2 text-left text-ui transition-colors duration-(--dur-fast) sheet:h-11 sheet:text-sm',
                 'focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral',
                 preset === option.id ? 'bg-petrol text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
               ]}

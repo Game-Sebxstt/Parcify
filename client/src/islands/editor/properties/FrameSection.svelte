@@ -33,7 +33,7 @@
       testid="props-frame-preset"
       onValueChange={(value) => engine.commands.applyFramePreset(value as FramePresetId)}
     />
-    <div class="flex h-6 min-w-0 items-center justify-between gap-2">
+    <div class="flex h-6 min-w-0 items-center justify-between gap-2 sheet:h-11">
       <label for="{uid}-clip" class="min-w-0 truncate text-xs text-ink">{m.editor_props_clip()}</label>
       <Switch id="{uid}-clip" checked={clip} disabled={readonly} testid="props-frame-clip" onCheckedChange={(checked) => edits.setStyle({ clip: checked })} />
     </div>

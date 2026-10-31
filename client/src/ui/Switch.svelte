@@ -44,6 +44,8 @@
     {onCheckedChange}
     class={[
       'inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full bg-edge p-0.5',
+      // En una hoja del móvil la caja mide 44×44 y la pista de 36×20 queda centrada (el padding no se pinta).
+      'sheet:size-11 sheet:bg-clip-content sheet:px-1 sheet:py-3',
       'transition-colors duration-(--dur-base) data-[state=checked]:bg-coral',
       'data-disabled:cursor-not-allowed',
       disabled && !label ? 'opacity-40' : '',
@@ -51,7 +53,7 @@
     ].join(' ')}
   >
     <Switch.Thumb
-      class="pointer-events-none block size-3 rounded-full bg-ink transition-transform duration-(--dur-base) ease-out data-[state=checked]:translate-x-3 data-[state=checked]:bg-coral-ink"
+      class="pointer-events-none block size-3 rounded-full bg-ink transition-transform duration-(--dur-base) ease-out data-[state=checked]:translate-x-3 data-[state=checked]:bg-coral-ink sheet:ml-0.5 sheet:size-4 sheet:data-[state=checked]:translate-x-4"
     />
   </Switch.Root>
 {/snippet}

@@ -11,9 +11,12 @@
   import { kindIcon } from '../kind-icons.ts';
   import { kindLabel } from '../kinds.ts';
 
-  type Props = { engine: Engine };
+  // density 'touch': hoja del móvil, con filas y ▶ de 44 px.
+  type Props = { engine: Engine; density?: 'default' | 'touch' };
 
-  let { engine }: Props = $props();
+  let { engine, density = 'default' }: Props = $props();
+
+  const sheet = $derived(density === 'touch');
 
   type Row = { id: string; record: NodeRecord; animation: Animation; name: string };
 
@@ -71,15 +74,16 @@
     engine.core.revealSelection();
   }
 
-  const PLAY_BUTTON = [
-    'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast)',
+  const PLAY_BUTTON = $derived([
+    'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--dur-fast)',
     'hover:bg-surface-2 hover:text-ink focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral',
-  ];
+    sheet ? 'size-11' : 'size-7',
+  ]);
 </script>
 
 <section aria-labelledby="{uid}-title" class="flex min-h-0 flex-1 flex-col" data-testid="animations-panel">
-  <div class="flex h-8 shrink-0 items-center gap-1 pr-2 pl-3">
-    <h2 id="{uid}-title" class="min-w-0 flex-1 truncate text-2xs font-semibold text-ink-muted">{m.editor_anim_library_title()}</h2>
+  <div class={['flex shrink-0 items-center gap-1 pr-2 pl-3', sheet ? 'h-11' : 'h-8']}>
+    <h2 id="{uid}-title" class={['min-w-0 flex-1 truncate font-semibold text-ink-muted', sheet ? 'text-xs' : 'text-2xs']}>{m.editor_anim_library_title()}</h2>
     {#if previewing}
       <Tooltip text={m.editor_anim_stop()} side="bottom">
         {#snippet children(props)}
@@ -100,7 +104,7 @@
             data-testid="animations-play-all"
             onclick={() => play(rows.map((row) => row.id))}
           >
-            <Play size={14} aria-hidden="true" />
+            <Play size={sheet ? 20 : 14} aria-hidden="true" />
           </button>
         {/snippet}
       </Tooltip>
@@ -116,7 +120,8 @@
         {@const playing = previewing?.has(row.id) ?? false}
         <li
           class={[
-            'flex h-9 min-w-0 items-center gap-1 rounded-control pr-1 transition-colors duration-(--dur-fast)',
+            'flex min-w-0 items-center gap-1 rounded-control pr-1 transition-colors duration-(--dur-fast)',
+            sheet ? 'h-11' : 'h-9',
             playing ? 'bg-petrol text-ink' : selected.has(row.id) ? 'bg-surface-2 text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
           ]}
           data-testid="animation-row"
@@ -142,7 +147,7 @@
             data-testid="animation-play"
             onclick={() => (playing ? stop() : play([row.id]))}
           >
-            {#if playing}<Square size={10} fill="currentColor" aria-hidden="true" />{:else}<Play size={14} aria-hidden="true" />{/if}
+            {#if playing}<Square size={sheet ? 14 : 10} fill="currentColor" aria-hidden="true" />{:else}<Play size={sheet ? 20 : 14} aria-hidden="true" />{/if}
           </button>
         </li>
       {/each}

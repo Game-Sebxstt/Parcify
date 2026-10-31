@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
 import { joinWorkspace } from './helpers/invite.ts';
 import { setOrgAccess, setProjectMember } from './helpers/seed.ts';
-import { touchDrag } from './helpers/touch.ts';
+import { longPress, touchDrag } from './helpers/touch.ts';
 
 async function openEditor(page: Page, projectId: string) {
   await page.goto(`/p/${projectId}`);
@@ -226,9 +226,40 @@ test('la ventana del chat no sale de la vista, recuerda su sitio, cabe en 320 px
   await expect(input(page)).toBeFocused();
 });
 
+test('al cruzar los 640 px, la ventana y la hoja comparten el mismo chat: el borrador sigue en las dos', async ({ page }) => {
+  const project = test.info().project.name;
+  test.skip(project === 'mobile' || project === 'tablet', 'El cruce de 640 px se hace cambiando el tamaño de la vista en escritorio');
+  test.setTimeout(90_000);
+  const account = await createVerifiedAccount(page.request, `chat-cruce-${project}`, 'Ana Cruce');
+  const projectId = await createProject(page.request, account.workspaceSlug, 'Chat al cruzar');
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openEditor(page, projectId);
+
+  await page.getByTestId('chat-toggle').click();
+  await expect(chatWindow(page)).toBeVisible();
+  await input(page).fill('Primer mensaje');
+  await input(page).press('Enter');
+  await expect(messageWith(page, 'Primer mensaje')).toBeVisible();
+  await input(page).fill('borrador sin enviar');
+
+  await page.setViewportSize({ width: 600, height: 800 });
+  const sheet = page.getByTestId('conversation-sheet');
+  await expect(sheet).toBeVisible();
+  await expect(chatWindow(page)).toHaveCount(0);
+  await expect(sheet.getByTestId('chat-message').filter({ hasText: 'Primer mensaje' })).toHaveCount(1);
+  await expect(sheet.getByRole('combobox', { name: 'Mensaje' })).toHaveValue('borrador sin enviar');
+  await sheet.getByRole('combobox', { name: 'Mensaje' }).fill('borrador en la hoja');
+
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(sheet).toHaveCount(0);
+  await expect(chatWindow(page)).toBeVisible();
+  await expect(chatWindow(page).getByRole('combobox', { name: 'Mensaje' })).toHaveValue('borrador en la hoja');
+  await expect(page.getByTestId('chat-panel')).toHaveCount(1);
+});
+
 test.describe('@touch chat con el dedo', () => {
   test('en tablet, las asas se agarran desde fuera y las acciones del mensaje se ven y se pulsan sin hover', async ({ page }) => {
-    test.skip(test.info().project.name !== 'tablet', 'CA-8.6 en tablet; la hoja móvil llega con T8.3');
+    test.skip(test.info().project.name !== 'tablet', 'CA-8.6 en tablet; el móvil tiene su propio test');
     test.setTimeout(90_000);
     const account = await createVerifiedAccount(page.request, `chat-tactil-${test.info().project.name}`, 'Ana Táctil');
     const projectId = await createProject(page.request, account.workspaceSlug, 'Chat táctil');
@@ -266,5 +297,52 @@ test.describe('@touch chat con el dedo', () => {
     const header = await boxOf(page.getByTestId('conversation-window-header'));
     await touchDrag(page, { x: header.x + 24, y: header.y + 20 }, { x: header.x - 100, y: header.y - 100 });
     await expect.poll(async () => Math.round((await boxOf(win)).x)).toBe(Math.max(8, Math.round(after.x - 124)));
+  });
+
+  test('en el móvil, la conversación va en una hoja y una pulsación larga en un mensaje abre sus acciones; «Responder» deja el chip (CA-8.6)', async ({
+    page,
+  }) => {
+    test.skip(test.info().project.name !== 'mobile', 'CA-8.6 en el móvil');
+    test.setTimeout(90_000);
+    const account = await createVerifiedAccount(page.request, `chat-movil-${test.info().project.name}`, 'Ana Móvil');
+    const projectId = await createProject(page.request, account.workspaceSlug, 'Chat en el móvil');
+    await openEditor(page, projectId);
+
+    await page.getByTestId('mobile-menu').tap();
+    await page.getByTestId('mobile-menu-sheet').getByRole('button', { name: 'Chat e IA', exact: true }).tap();
+    const sheet = page.getByTestId('conversation-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toHaveAttribute('aria-modal', 'false');
+    await expect(chatWindow(page)).toHaveCount(0);
+    // A media altura.
+    expect(Math.abs((await boxOf(sheet)).height - page.viewportSize()!.height * 0.5)).toBeLessThanOrEqual(1);
+
+    await input(page).fill('Mensaje desde el móvil');
+    await panel(page).getByTestId('chat-send').tap();
+    const message = messageWith(page, 'Mensaje desde el móvil');
+    await expect(message).toBeVisible();
+    await expect(message.getByTestId('chat-actions')).toBeVisible();
+    // Las acciones bajo la burbuja miden 44 px; la burbuja no deja seleccionar texto con el dedo.
+    expect(Math.round((await boxOf(message.getByRole('button', { name: 'Responder a Ana Móvil' }))).width)).toBe(44);
+    expect(await message.getByTestId('chat-bubble').evaluate((el) => getComputedStyle(el).userSelect)).toBe('none');
+
+    const bubble = await boxOf(message.getByTestId('chat-bubble'));
+    await longPress(page, { x: bubble.x + bubble.width / 2, y: bubble.y + bubble.height / 2 }, 600);
+    const actions = page.getByTestId('chat-message-actions');
+    await expect(actions).toBeVisible();
+    await expect(actions.locator('button[data-action]')).toHaveText(['Responder', 'Editar', 'Copiar texto', 'Borrar']);
+    await actions.getByRole('button', { name: 'Responder' }).tap();
+    await expect(actions).toHaveCount(0);
+    const chip = panel(page).getByTestId('chat-replying');
+    await expect(chip).toContainText('Mensaje desde el móvil');
+    expect((await boxOf(chip)).y + (await boxOf(chip)).height).toBeLessThanOrEqual((await boxOf(input(page))).y + 0.5);
+
+    // Al girar el teléfono (844×390 ya es tablet), la ventana flotante conserva el borrador y la respuesta elegida.
+    await input(page).fill('borrador antes de girar');
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(sheet).toHaveCount(0);
+    await expect(chatWindow(page)).toBeVisible();
+    await expect(input(page)).toHaveValue('borrador antes de girar');
+    await expect(panel(page).getByTestId('chat-replying')).toContainText('Mensaje desde el móvil');
   });
 });

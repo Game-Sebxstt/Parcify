@@ -85,7 +85,7 @@
   }
 
   const BUTTON = [
-    'inline-flex h-7 min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-control bg-surface-2 px-2 text-xs text-ink',
+    'inline-flex h-7 min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-control bg-surface-2 px-2 text-xs text-ink sheet:h-11 sheet:text-sm',
     'transition-colors duration-(--dur-fast) hover:bg-petrol',
     'focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-coral',
   ];

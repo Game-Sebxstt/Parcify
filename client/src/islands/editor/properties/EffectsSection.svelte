@@ -57,7 +57,7 @@
       {/if}
     {/snippet}
     {#if first}
-      <div class="flex h-7 min-w-0 items-center gap-1" role="group" aria-label={m.editor_props_shadow()} data-testid="props-shadow">
+      <div class="flex h-7 min-w-0 items-center gap-1 sheet:h-11" role="group" aria-label={m.editor_props_shadow()} data-testid="props-shadow">
         <ColorPicker
           bind:open
           value={first.color}

@@ -23,9 +23,14 @@
     // Página activa del editor: las miniaturas la pintan si la versión la tiene.
     activePage: string | null;
     onclose: () => void;
+    // Hoja del móvil: filas de 56 px con Ver y Restaurar de 44×44, sin «←» (la hoja tiene su ×). «Ver» abre la vista
+    // previa a pantalla completa y el editor esconde la hoja mientras dura.
+    sheet?: boolean;
   };
 
-  let { projectId, open, canEdit, activePage, onclose }: Props = $props();
+  let { projectId, open, canEdit, activePage, onclose, sheet = false }: Props = $props();
+
+  const view = (version: VersionDto) => viewer.open(version);
 
   // La vista previa y la confirmación de Restaurar viven en el editor: sobreviven a que se desmonte este panel.
   const viewer = getVersionViewer();
@@ -122,6 +127,9 @@
   class="flex min-h-0 w-full flex-1 flex-col overflow-hidden text-sm"
   data-testid="versions-panel"
 >
+  {#if sheet}
+    <h2 id="{uid}-title" class="sr-only">{m.editor_versions_title()}</h2>
+  {:else}
   <div class="flex h-10 shrink-0 items-center gap-1 px-2">
     <Tooltip text={m.editor_versions_back()} side="bottom">
       {#snippet children(props)}
@@ -139,10 +147,11 @@
     </Tooltip>
     <h2 id="{uid}-title" class="text-ui font-semibold">{m.editor_versions_title()}</h2>
   </div>
+  {/if}
 
   {#if canEdit}
-    <div class="px-3 pb-3">
-      <Button variant="secondary" size="sm" class="w-full" loading={saving} onclick={() => (nameOpen = true)}>
+    <div class={sheet ? 'px-4 pb-3' : 'px-3 pb-3'}>
+      <Button variant="secondary" size={sheet ? 'md' : 'sm'} class={sheet ? 'h-11 w-full' : 'w-full'} loading={saving} onclick={() => (nameOpen = true)}>
         <BookmarkPlus size={14} aria-hidden="true" />
         {m.editor_versions_create_named()}
       </Button>
@@ -168,7 +177,7 @@
           {@const label = versionLabel(version)}
           {@const viewing = viewer.viewing?.id === version.id}
           <li
-            class="group relative py-1.5 pr-1 pl-3"
+            class={['group relative pr-1 pl-3', sheet ? 'py-0.5' : 'py-1.5']}
             aria-current={viewing ? 'true' : undefined}
             data-testid="version-item"
             data-version-id={version.id}
@@ -176,10 +185,45 @@
             <span
               aria-hidden="true"
               class={[
-                'absolute top-4 -left-[5px] size-2.5 rounded-full ring-2 ring-surface-1',
+                'absolute -left-[5px] size-2.5 rounded-full ring-2 ring-surface-1',
+                sheet ? 'top-6' : 'top-4',
                 version.kind === 'manual' ? 'bg-coral' : version.kind === 'restore_point' ? 'bg-sage' : 'bg-ink-muted',
               ].join(' ')}
             ></span>
+            {#if sheet}
+              <!-- Hoja del móvil: una fila de 56 px con la miniatura, el nombre y las acciones de 44×44. -->
+              <div class={['flex h-14 items-center gap-2 rounded-panel pl-2', viewing ? 'bg-surface-2 ring-1 ring-coral/60' : '']} data-testid="version-row">
+                <VersionThumb {version} pageId={activePage} />
+                <div class="min-w-0 flex-1">
+                  <p class={['truncate', version.kind === 'manual' ? 'font-semibold' : 'text-ink-muted'].join(' ')}>{label}</p>
+                  <p class="truncate text-xs text-ink-muted">
+                    <time datetime={version.createdAt}>{formatDate(version.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</time>
+                    {#if version.createdBy?.name}
+                      · {version.createdBy.name}
+                    {/if}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label={m.editor_versions_preview_of({ name: label })}
+                  onclick={() => view(version)}
+                  class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-petrol hover:text-ink"
+                  data-testid="version-view"
+                >
+                  <Eye size={20} aria-hidden="true" />
+                </button>
+                {#if canEdit}
+                  <button
+                    type="button"
+                    aria-label={m.editor_versions_restore_of({ name: label })}
+                    onclick={() => viewer.askRestore(version)}
+                    class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-petrol hover:text-ink"
+                  >
+                    <RotateCcw size={20} aria-hidden="true" />
+                  </button>
+                {/if}
+              </div>
+            {:else}
             <div
               class={[
                 'rounded-panel px-2 py-1.5 group-hover:bg-surface-2 group-focus-within:bg-surface-2',
@@ -202,7 +246,7 @@
                 <button
                   type="button"
                   aria-label={m.editor_versions_preview_of({ name: label })}
-                  onclick={() => viewer.open(version)}
+                  onclick={() => view(version)}
                   class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap text-ink-muted hover:bg-petrol hover:text-ink"
                 >
                   <Eye size={13} aria-hidden="true" />
@@ -221,6 +265,7 @@
                 {/if}
               </div>
             </div>
+            {/if}
           </li>
         {/each}
       </ol>
@@ -230,7 +275,10 @@
             type="button"
             disabled={loadingMore}
             onclick={() => void loadMore()}
-            class="h-7 cursor-pointer rounded-full px-3 text-xs font-semibold text-ink-muted hover:bg-surface-2 hover:text-ink disabled:cursor-wait"
+            class={[
+              'cursor-pointer rounded-full px-3 font-semibold text-ink-muted hover:bg-surface-2 hover:text-ink disabled:cursor-wait',
+              sheet ? 'h-11 text-sm' : 'h-7 text-xs',
+            ]}
           >
             {loadingMore ? m.editor_versions_loading() : m.editor_versions_more()}
           </button>

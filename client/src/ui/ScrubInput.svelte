@@ -267,6 +267,7 @@
   class={[
     'relative flex min-w-0 items-center rounded-control border bg-surface-2 text-ink',
     size === 'sm' ? 'h-5 text-2xs' : size === 'lg' ? 'h-9 text-sm' : 'h-6 text-xs',
+    'sheet:h-9 sheet:text-sm',
     'focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-coral',
     invalid ? 'border-danger' : 'border-transparent',
     interactive && !invalid && 'hover:border-edge/60',
@@ -280,6 +281,7 @@
       class={[
         'flex h-full shrink-0 touch-none items-center justify-center text-2xs text-ink-muted select-none',
         size === 'lg' ? 'w-8' : 'w-5',
+        'sheet:w-8',
         interactive && 'cursor-ew-resize',
       ]}
       onpointerdown={startScrub}

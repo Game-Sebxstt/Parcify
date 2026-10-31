@@ -10,13 +10,16 @@ export const MIN_ZOOM = 0.02;
 export const MAX_ZOOM = 2;
 // Columna de nombres y alto de la regla.
 export const LABEL_WIDTH = 200;
+// En la hoja del móvil la columna cabe el plegado, ▶ y ⋯ de 44 px y el nombre.
+export const LABEL_WIDTH_SHEET = 216;
 export const RULER_HEIGHT = 24;
 // Margen antes del instante 0: un keyframe en 0 no queda medio tapado por la columna de nombres.
 export const LANE_PAD = 8;
 // Posición en la pista (px) de un instante (ms).
 export const timeX = (ms: number, zoom: number) => LANE_PAD + ms * zoom;
 // Alto de las filas: con el dedo crecen para que los rombos y los botones se puedan tocar.
-const ROW_HEIGHTS = { mouse: { node: 28, track: 24 }, touch: { node: 36, track: 32 } } as const;
+// En la hoja del móvil, las filas de nodo llevan botones de 44 px.
+const ROW_HEIGHTS = { mouse: { node: 28, track: 24 }, touch: { node: 36, track: 32 }, sheet: { node: 44, track: 32 } } as const;
 
 export type TimelineKeyframe = { key: string; keyframe: Keyframe; time: number };
 
@@ -108,7 +111,7 @@ export function buildRows(
   return rows;
 }
 
-export const rowHeight = (row: Row, touch: boolean) => ROW_HEIGHTS[touch ? 'touch' : 'mouse'][row.kind];
+export const rowHeight = (row: Row, touch: boolean | 'sheet') => ROW_HEIGHTS[touch === 'sheet' ? 'sheet' : touch ? 'touch' : 'mouse'][row.kind];
 
 // Posición vertical de cada fila: offsets[i] es su borde superior y offsets[n], el alto total.
 export function rowOffsets(heights: readonly number[]): number[] {

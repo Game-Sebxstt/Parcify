@@ -197,7 +197,7 @@ async function animatedRect(page: Page, canvas: Locator, center: { x: number; y:
 
 test.describe('@touch tablet sin hover', () => {
   test.beforeEach(() => {
-    test.skip(test.info().project.name !== 'tablet', 'CA-16.13 y CA-16.14 son de tablet; en móvil van las hojas de T8.3');
+    test.skip(test.info().project.name !== 'tablet', 'CA-16.13 y CA-16.14 son de tablet; el móvil lo cubre «@touch hojas del móvil»');
   });
 
   test('ojo, candado, renombrar con pulsación larga, ⋯ de una página y ▶ de la línea de tiempo, solo con toques (CA-16.13)', async ({ page }) => {
@@ -481,5 +481,143 @@ test.describe('@touch maqueta móvil', () => {
     await touchDrag(page, { x: center.x - 120, y: center.y - 220 }, { x: center.x - 60, y: center.y - 180 });
     await expect.poll(async () => (await nodes(page)).length).toBe(3);
     await expect(rectTool).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+// Instantes absolutos (ms) de los keyframes de una pista, de menor a mayor.
+type Animation = { duration: number; delay: number; tracks: Partial<Record<string, Record<string, { t: number }>>> };
+const times = async (page: Page, id: string, prop: string) => {
+  const anim = await page.evaluate((nodeId) => (window.__parcifyTest!.animations() as unknown as Record<string, Animation>)[nodeId] ?? null, id);
+  return Object.values(anim?.tracks[prop] ?? {})
+    .map((kf) => Math.round(anim!.delay + kf.t * anim!.duration))
+    .sort((a, b) => a - b);
+};
+
+// Un rectángulo creado con el dedo desde la barra inferior, encima del centro (las hojas tapan la mitad de abajo).
+async function mobileRect(page: Page, center: { x: number; y: number }) {
+  await page.getByTestId('dock').getByRole('button', { name: 'Rectángulo (R)' }).tap();
+  await touchDrag(page, { x: center.x - 60, y: center.y - 160 }, { x: center.x + 60, y: center.y - 80 });
+  await expect.poll(async () => (await nodes(page)).length).toBe(1);
+  // Chromium no genera el clic de un toque que llega justo después de un arrastre rápido: se espera a que pase.
+  await page.waitForTimeout(500);
+  return (await nodes(page))[0]!;
+}
+
+async function fromMenu(page: Page, entry: string) {
+  await page.getByTestId('mobile-menu').tap();
+  const menu = page.getByTestId('mobile-menu-sheet');
+  await menu.getByRole('button', { name: entry, exact: true }).tap();
+  await expect(menu).toHaveCount(0);
+}
+
+test.describe('@touch hojas del móvil', () => {
+  test.beforeEach(() => {
+    test.skip(test.info().project.name !== 'mobile', 'Las hojas inferiores son de la maqueta móvil');
+  });
+
+  test('en la hoja de la línea de tiempo, dos keyframes con «Añadir a la selección» se duplican desde la hoja de acciones (CA-5.13)', async ({ page }) => {
+    test.setTimeout(90_000);
+    const { center } = await openEditor(page, 'movil-linea-de-tiempo');
+    const rect = await mobileRect(page, center);
+
+    // «Deslizar» desde la hoja de propiedades: Desplazamiento Y con keyframes en 0 y 500 ms.
+    await page.getByTestId('dock-properties').tap();
+    const props = page.getByTestId('properties-sheet');
+    await expect(props).toBeVisible();
+    await expect(props.getByTestId('properties-panel')).toHaveAttribute('data-touch-density', 'touch');
+    await props.getByTestId('props-anim-presets').getByRole('button', { name: 'Deslizar' }).tap();
+    await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500]);
+    await expect.poll(() => page.evaluate(() => window.__parcifyTest!.player()?.preview), { timeout: 10_000 }).toBe(false);
+    await props.getByRole('button', { name: 'Cerrar', exact: true }).tap();
+    await expect(props).toHaveCount(0);
+
+    await fromMenu(page, 'Línea de tiempo');
+    const sheet = page.getByTestId('timeline-sheet');
+    await expect(sheet).toBeVisible();
+    const grid = sheet.getByRole('grid', { name: 'Línea de tiempo' });
+    const rows = grid.getByRole('row');
+    await expect(rows.first()).toBeVisible();
+    // Filas de nodo de 44 px y de propiedad de 32 px; en la fila de propiedad, el valor como texto.
+    expect(await rows.evaluateAll((els) => els.slice(0, 2).map((el) => Math.round(el.getBoundingClientRect().height)))).toEqual([44, 32]);
+    await expect(sheet.getByTestId('timeline-row-value').first()).toBeVisible();
+
+    const kf = (time: string) => grid.getByRole('gridcell', { name: new RegExp(`^Desplazamiento Y, fotograma clave en ${time}`) });
+    const additive = sheet.getByRole('button', { name: 'Añadir a la selección' });
+    expect(Math.round((await boxOf(additive)).height)).toBe(44);
+    await additive.tap();
+    await expect(additive).toHaveAttribute('aria-pressed', 'true');
+    await kf('0,00 s').tap();
+    await kf('0,50 s').tap();
+    await expect(sheet.locator('[data-testid="keyframe"][data-selected]')).toHaveCount(2);
+
+    const at = await boxOf(kf('0,50 s'));
+    await longPress(page, { x: at.x + at.width / 2, y: at.y + at.height / 2 }, 600);
+    const actions = page.getByTestId('keyframe-menu');
+    await expect(actions).toBeVisible();
+    await expect(actions).toHaveAttribute('aria-modal', 'true');
+    await actions.getByRole('button', { name: 'Duplicar' }).tap();
+    await expect.poll(() => times(page, rect.id, 'offsetY')).toHaveLength(4);
+    await expect(actions).toHaveCount(0);
+  });
+
+  test('con la línea de tiempo grabando, «Propiedades» de su hoja la tapa sin cerrarla y la opacidad se graba en el cabezal (§3.9)', async ({ page }) => {
+    test.setTimeout(90_000);
+    const { center } = await openEditor(page, 'movil-grabar-propiedades');
+    const rect = await mobileRect(page, center);
+
+    await fromMenu(page, 'Línea de tiempo');
+    const sheet = page.getByTestId('timeline-sheet');
+    await expect(sheet).toBeVisible();
+    const timeline = sheet.getByTestId('timeline');
+    await sheet.getByTestId('timeline-record').tap();
+    await expect(timeline).toHaveAttribute('data-recording', '');
+
+    const open = sheet.getByTestId('timeline-sheet-properties');
+    expect(Math.round((await boxOf(open)).height)).toBe(44);
+    await open.tap();
+    const props = page.getByTestId('properties-sheet');
+    await expect(props).toBeVisible();
+    await expect(sheet).toHaveCount(0);
+
+    const opacity = props.getByTestId('props-opacity');
+    await opacity.fill('40');
+    await opacity.press('Enter');
+    await expect.poll(async () => (await times(page, rect.id, 'opacity')).length).toBeGreaterThan(0);
+    expect(await times(page, rect.id, 'opacity')).toContain(0);
+
+    await props.getByRole('button', { name: 'Cerrar', exact: true }).tap();
+    await expect(props).toHaveCount(0);
+    await expect(page.getByTestId('timeline-sheet')).toBeVisible();
+    await expect(page.getByTestId('timeline-sheet').getByTestId('timeline')).toHaveAttribute('data-recording', '');
+  });
+
+  test('una pulsación larga en una capa abre sus acciones y «Renombrar» abre la hoja; al guardar vuelve la de capas (CA-16.13, móvil)', async ({ page }) => {
+    const { center } = await openEditor(page, 'movil-capas');
+    await mobileRect(page, center);
+    await expect(page.getByTestId('left-panel')).toHaveCount(0);
+
+    await fromMenu(page, 'Páginas y capas');
+    const layers = page.getByTestId('layers-sheet');
+    await expect(layers).toBeVisible();
+    await expect(layers).toHaveAttribute('aria-modal', 'false');
+    const row = layers.getByRole('treeitem').first();
+    expect(Math.round((await boxOf(row)).height)).toBe(44);
+    for (const name of ['Ocultar', 'Bloquear']) expect(Math.round((await boxOf(row.locator(`button[aria-label="${name}"]`))).width)).toBe(44);
+
+    const box = await boxOf(row);
+    await longPress(page, { x: box.x + 90, y: box.y + box.height / 2 }, 600);
+    const actions = page.getByTestId('layer-menu');
+    await expect(actions).toBeVisible();
+    await actions.getByRole('button', { name: 'Renombrar' }).tap();
+    const rename = page.getByTestId('rename-sheet');
+    await expect(rename).toBeVisible();
+    await expect(layers).toHaveCount(0);
+    const field = rename.getByRole('textbox', { name: 'Nombre de la capa' });
+    await expect(field).toBeFocused();
+    await field.fill('Caja');
+    await field.press('Enter');
+    await expect.poll(async () => (await nodes(page))[0]!.name).toBe('Caja');
+    await expect(rename).toHaveCount(0);
+    await expect(page.getByTestId('layers-sheet')).toBeVisible();
   });
 });

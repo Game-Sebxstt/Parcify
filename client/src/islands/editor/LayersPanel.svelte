@@ -12,7 +12,15 @@
   import SendToBack from '@lucide/svelte/icons/send-to-back';
   import { tick, untrack } from 'svelte';
   import { displayName, kindOf } from '../../engine/a11y/describe.ts';
-  import { ancestorsOf, LAYER_ROW_HEIGHT, LAYER_ROW_HEIGHT_TOUCH, layerRows, rowWindow, type LayerRow } from '../../engine/a11y/layers.ts';
+  import {
+    ancestorsOf,
+    LAYER_ROW_HEIGHT,
+    LAYER_ROW_HEIGHT_SHEET,
+    LAYER_ROW_HEIGHT_TOUCH,
+    layerRows,
+    rowWindow,
+    type LayerRow,
+  } from '../../engine/a11y/layers.ts';
   import type { Engine } from '../../engine/index.ts';
   import { m } from '../../paraglide/messages.js';
   import type { MenuEntry } from '../../ui/DropdownMenu.svelte';
@@ -20,12 +28,24 @@
   import PointMenu from '../../ui/PointMenu.svelte';
   import Tooltip from '../../ui/Tooltip.svelte';
   import { kindLabel } from './kinds.ts';
+  import ActionSheet from './mobile/ActionSheet.svelte';
 
   // titled: false cuando una pestaña «Capas» ya lo nombra; el título queda solo para los lectores de pantalla.
   // touch: el último puntero en el editor fue un dedo; filas de 36 px y ojo y candado con 32 px de zona de toque.
-  type Props = { engine: Engine; readOnly: boolean; titled?: boolean; touch?: boolean };
+  // density 'touch': hoja del móvil, con filas y botones de 44 px; la pulsación larga abre la hoja de acciones y
+  // «Renombrar» llama a `onrename` (la hoja «Renombrar» del editor).
+  type Props = {
+    engine: Engine;
+    readOnly: boolean;
+    titled?: boolean;
+    touch?: boolean;
+    density?: 'default' | 'touch';
+    onrename?: (id: string) => void;
+  };
 
-  let { engine, readOnly, titled = true, touch = false }: Props = $props();
+  let { engine, readOnly, titled = true, touch = false, density = 'default', onrename }: Props = $props();
+
+  const sheet = $derived(density === 'touch');
 
   const uid = $props.id();
   let version = $state(0);
@@ -40,7 +60,7 @@
   // Menú de una fila abierto con una pulsación larga: la capa y el punto de la ventana.
   let rowMenu = $state.raw<{ id: string; x: number; y: number; finger: boolean } | null>(null);
 
-  const rowHeight = $derived(touch ? LAYER_ROW_HEIGHT_TOUCH : LAYER_ROW_HEIGHT);
+  const rowHeight = $derived(sheet ? LAYER_ROW_HEIGHT_SHEET : touch ? LAYER_ROW_HEIGHT_TOUCH : LAYER_ROW_HEIGHT);
 
   $effect(() => {
     const source = engine;
@@ -70,8 +90,9 @@
 
   const ROW_ACTION = $derived([
     'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control hover:bg-surface-2',
-    touch ? 'size-8' : 'size-6',
+    sheet ? 'size-11' : touch ? 'size-8' : 'size-6',
   ]);
+  const CHEVRON = $derived(sheet ? 'size-11' : 'size-6');
   // Ojo y candado aparecen con el puntero encima o con la fila enfocada; una capa oculta o bloqueada los enseña siempre,
   // y sin hover (táctil) también se ven siempre.
   const HOVER_ONLY = 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 touch:opacity-100';
@@ -162,7 +183,8 @@
     rowMenu = null;
     const target = renameAfterMenu;
     renameAfterMenu = null;
-    if (target) void rename(target);
+    if (target && sheet && onrename) onrename(target);
+    else if (target) void rename(target);
     else if (returnFocus && id) document.getElementById(rowId(id))?.focus({ preventScroll: true });
   }
 
@@ -309,7 +331,8 @@
             style:height="{rowHeight}px"
             style:padding-left="{(row.depth - 1) * 14 + 4}px"
             class={[
-              'group absolute inset-x-0 flex cursor-pointer items-center gap-1 rounded-control pr-1 text-ui outline-none select-none [-webkit-touch-callout:none]',
+              'group absolute inset-x-0 flex cursor-pointer items-center gap-1 rounded-control pr-1 outline-none select-none [-webkit-touch-callout:none]',
+              sheet ? 'text-sm' : 'text-ui',
               'focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-inset',
               isSelected ? 'bg-petrol text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
               row.record.visible ? '' : 'italic',
@@ -325,12 +348,12 @@
                   event.stopPropagation();
                   toggle(row.id, !row.expanded);
                 }}
-                class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2"
+                class={['inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2', CHEVRON]}
               >
-                <ChevronRight size={14} class={row.expanded ? 'rotate-90' : ''} />
+                <ChevronRight size={sheet ? 18 : 14} class={row.expanded ? 'rotate-90' : ''} />
               </button>
             {:else}
-              <span class="size-6 shrink-0"></span>
+              <span class={['shrink-0', CHEVRON]}></span>
             {/if}
             {#if renaming === row.id}
               <input
@@ -347,7 +370,7 @@
                 onblur={(event) => {
                   if (renaming === row.id) void finishRename(row.id, event.currentTarget.value);
                 }}
-                class="h-6 min-w-0 flex-1 rounded-[4px] bg-surface-2 px-1.5 text-ink"
+                class={['min-w-0 flex-1 rounded-[4px] bg-surface-2 px-1.5 text-ink', sheet ? 'h-9 text-sm' : 'h-6']}
               />
             {:else}
               <span class="min-w-0 flex-1 truncate">{nameOf(row)}</span>
@@ -367,7 +390,7 @@
                     }}
                     class={[ROW_ACTION, row.record.visible ? HOVER_ONLY : '']}
                   >
-                    {#if row.record.visible}<Eye size={14} />{:else}<EyeOff size={14} />{/if}
+                    {#if row.record.visible}<Eye size={sheet ? 20 : 14} />{:else}<EyeOff size={sheet ? 20 : 14} />{/if}
                   </button>
                 {/snippet}
               </Tooltip>
@@ -385,7 +408,7 @@
                     }}
                     class={[ROW_ACTION, row.record.locked ? '' : HOVER_ONLY]}
                   >
-                    {#if row.record.locked}<Lock size={14} />{:else}<LockOpen size={14} />{/if}
+                    {#if row.record.locked}<Lock size={sheet ? 20 : 14} />{:else}<LockOpen size={sheet ? 20 : 14} />{/if}
                   </button>
                 {/snippet}
               </Tooltip>
@@ -397,7 +420,9 @@
   {/if}
 </section>
 
-{#if rowMenu}
+{#if rowMenu && sheet}
+  <ActionSheet items={rowMenuItems} title={rowMenuName || m.editor_mobile_actions()} onclose={closeRowMenu} testid="layer-menu" />
+{:else if rowMenu}
   <PointMenu
     items={rowMenuItems}
     at={{ x: rowMenu.x, y: rowMenu.y }}

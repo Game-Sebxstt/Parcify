@@ -37,6 +37,7 @@
   import type { MenuEntry } from '../../../ui/DropdownMenu.svelte';
   import PointMenu from '../../../ui/PointMenu.svelte';
   import ScrubInput from '../../../ui/ScrubInput.svelte';
+  import ActionSheet from '../mobile/ActionSheet.svelte';
   import Select from '../../../ui/Select.svelte';
   import Slider from '../../../ui/Slider.svelte';
   import { showToast } from '../../../ui/toast.svelte.ts';
@@ -56,6 +57,8 @@
     formatValue,
     fromDisplay,
     keyframeAt,
+    LABEL_WIDTH,
+    LABEL_WIDTH_SHEET,
     propLabel,
     rowHeight,
     rowOffsets,
@@ -81,9 +84,17 @@
     // Sube cada vez que «Animar…» pide llevar el foco a la selección.
     focusRequest: number;
     onclose: () => void;
+    // Dentro de la hoja del móvil: ocupa la hoja (sin borde, sin asa ni ×), cabecera de 52 px con botones de 44 px,
+    // filas de nodo de 44 px y el menú de los keyframes como hoja de acciones.
+    sheet?: boolean;
   };
 
-  let { engine, projectId, readOnly: canNotEdit, aiAnimation, open, touch, focusRequest, onclose }: Props = $props();
+  let { engine, projectId, readOnly: canNotEdit, aiAnimation, open, touch, focusRequest, onclose, sheet = false }: Props = $props();
+
+  const labelWidth = $derived(sheet ? LABEL_WIDTH_SHEET : LABEL_WIDTH);
+  const toolSize = $derived(sheet ? 'lg' : 'sm');
+  const smallToolSize = $derived(sheet ? 'lg' : 'xs');
+  const smallIcon = $derived(sheet ? 20 : 14);
 
   // Animaciones propuestas por la IA en vista previa: sus pistas se pintan en violeta y, mientras están, el
   // timeline no edita (lo que se ve no es el documento).
@@ -190,6 +201,7 @@
   let wasPlaying = false;
   let wasPreview = false;
   let list = $state<ReturnType<typeof TrackList<Row>> | null>(null);
+  let section = $state<HTMLElement | null>(null);
   let innerHeight = $state(900);
   let resizing: { pointerId: number; y: number; height: number } | null = null;
   let resizeActive = $state(false);
@@ -248,7 +260,7 @@
     void layers;
     return buildRows(ids, (id) => engine.core.store.get(id), animationOf, collapsed);
   });
-  const heights = $derived(rows.map((row) => rowHeight(row, touch)));
+  const heights = $derived(rows.map((row) => rowHeight(row, sheet ? 'sheet' : touch)));
 
   const span = $derived.by(() => {
     void version;
@@ -662,6 +674,12 @@
     const cell = document.getElementById(cellId({ row: row.rowKey, key: kf.key }));
     const box = cell?.getBoundingClientRect();
     const left = Math.max(8, Math.min((box?.left ?? 8) - 136, window.innerWidth - 296));
+    if (sheet) {
+      // En la hoja del móvil, el editor del keyframe va centrado justo encima de ella.
+      const top = section?.getBoundingClientRect().top ?? window.innerHeight / 2;
+      editing = { id: row.id, prop: row.prop, key: kf.key, left: Math.max(8, (window.innerWidth - 288) / 2), bottom: window.innerHeight - top + 8 };
+      return;
+    }
     editing = { id: row.id, prop: row.prop, key: kf.key, left, bottom: window.innerHeight - (box?.top ?? window.innerHeight / 2) + 8 };
   }
 
@@ -1381,20 +1399,26 @@
 <!-- Espacio reproduce o pausa desde cualquier parte del panel. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section
+  bind:this={section}
   aria-labelledby="{uid}-title"
   hidden={!open}
   data-own-keys
   onkeydown={onPanelKey}
-  style:height="{height}px"
-  style:box-shadow={recording ? 'inset 0 2px 0 var(--color-danger), var(--shadow-float)' : undefined}
-  class="relative flex flex-col rounded-panel border border-edge/40 bg-surface-1 text-sm shadow-float"
+  style:height={sheet ? null : `${height}px`}
+  style:box-shadow={recording ? (sheet ? 'inset 0 2px 0 var(--color-danger)' : 'inset 0 2px 0 var(--color-danger), var(--shadow-float)') : undefined}
+  class={[
+    'relative flex flex-col bg-surface-1 text-sm',
+    sheet ? 'min-h-0 flex-1' : 'rounded-panel border border-edge/40 shadow-float',
+  ]}
   data-testid="timeline"
   data-recording={recording ? '' : undefined}
 >
-  <!-- El asa se mueve con el puntero y con ↑/↓; es un separador con valor, no un botón. -->
+  <!-- El asa se mueve con el puntero y con ↑/↓; es un separador con valor, no un botón. En la hoja del móvil, el alto lo
+       da el asa de la hoja. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
+    hidden={sheet}
     role="separator"
     aria-orientation="horizontal"
     aria-label={m.timeline_resize()}
@@ -1425,12 +1449,17 @@
 
   <h2 id="{uid}-title" class="sr-only">{m.timeline_label()}</h2>
   <!-- Encajar, IA y × quedan siempre a la vista; si no cabe el resto, se desplaza y el slider de zoom se oculta. -->
-  <div class={['@container flex shrink-0 items-center gap-1 border-b border-edge/40 px-2', touch ? 'h-12' : 'h-10']} data-testid="timeline-header">
+  <div
+    class={['@container flex shrink-0 items-center gap-1 border-b border-edge/40 px-2', sheet ? 'h-13' : touch ? 'h-12' : 'h-10']}
+    data-testid="timeline-header"
+  >
     <div class="scroll-thin flex h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto" data-testid="timeline-header-scroll">
-      <ToolButton variant="tool" size="sm" side="top" label={playing ? m.timeline_pause() : m.timeline_play()} kbd="Espacio" ariaKeys="Space" onclick={togglePlay}>
-        {#if playing}<Pause size={16} aria-hidden="true" />{:else}<Play size={16} aria-hidden="true" />{/if}
+      <ToolButton variant="tool" size={toolSize} side="top" label={playing ? m.timeline_pause() : m.timeline_play()} kbd="Espacio" ariaKeys="Space" onclick={togglePlay}>
+        {#if playing}<Pause size={sheet ? 20 : 16} aria-hidden="true" />{:else}<Play size={sheet ? 20 : 16} aria-hidden="true" />{/if}
       </ToolButton>
-      <ToolButton variant="tool" size="xs" side="top" label={m.timeline_rewind()} onclick={rewind}><SkipBack size={14} aria-hidden="true" /></ToolButton>
+      {#if !sheet}
+        <ToolButton variant="tool" size="xs" side="top" label={m.timeline_rewind()} onclick={rewind}><SkipBack size={14} aria-hidden="true" /></ToolButton>
+      {/if}
       <ScrubInput
         value={Math.round(head) / 1000}
         label={m.timeline_time_field()}
@@ -1438,11 +1467,14 @@
         step={0.01}
         min={0}
         max={Math.round(span) / 1000}
+        size={sheet ? 'lg' : 'md'}
         class="ml-1 w-16 shrink-0"
         testid="timeline-time-field"
         oncommit={(seconds) => setHead(seconds * 1000)}
       />
-      <span class="shrink-0 text-xs whitespace-nowrap text-ink-muted tabular" data-testid="timeline-time">/ {formatTime(span)}</span>
+      <!-- En la hoja del móvil la duración solo se lee (la regla ya la enseña): así Grabar y «Añadir a la selección»
+           caben sin desplazar la cabecera. -->
+      <span class={sheet ? 'sr-only' : 'shrink-0 text-xs whitespace-nowrap text-ink-muted tabular'} data-testid="timeline-time">/ {formatTime(span)}</span>
       <span aria-hidden="true" class="mx-1 h-5 w-px shrink-0 bg-edge/40"></span>
       {#if !readOnly}
         <button
@@ -1451,8 +1483,9 @@
           aria-keyshortcuts="K"
           onclick={toggleRecord}
           class={[
-            'inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-control px-2.5 text-xs transition-colors duration-(--dur-fast)',
+            'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-control px-2.5 transition-colors duration-(--dur-fast)',
             'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
+            sheet ? 'h-11 text-sm' : 'h-7 text-xs',
             recording ? 'bg-danger/15 text-danger' : 'text-ink hover:bg-petrol',
           ]}
           data-testid="timeline-record"
@@ -1491,27 +1524,43 @@
         {/if}
         <span aria-hidden="true" class="mx-1 h-5 w-px shrink-0 bg-edge/40"></span>
       {/if}
-      <ToolButton variant="tool" size="xs" side="top" label={m.timeline_repeat()} pressed={repeat} onclick={toggleRepeat}>
-        <Repeat size={14} aria-hidden="true" />
+      <ToolButton variant="tool" size={smallToolSize} side="top" label={m.timeline_repeat()} pressed={repeat} onclick={toggleRepeat}>
+        <Repeat size={smallIcon} aria-hidden="true" />
       </ToolButton>
-      <Select items={SPEEDS} value={speed} label={m.timeline_speed()} size="sm" side="top" class="h-7 w-16 shrink-0" onValueChange={pickSpeed} testid="timeline-speed" />
-      <span class="min-w-2 flex-1"></span>
-      <ToolButton variant="tool" size="xs" side="top" label={m.timeline_zoom_out()} onclick={() => list?.zoomBy(1 / 1.5)}><Minus size={14} aria-hidden="true" /></ToolButton>
-      <Slider
-        value={zoomToSlider(zoom)}
-        label={m.timeline_zoom()}
-        min={0}
-        max={100}
-        valueText={`${Math.round(zoom * 1000)} px/s`}
-        class="w-20! shrink-0 @max-2xl:hidden!"
-        testid="timeline-zoom"
-        oninput={(value) => list?.zoomTo(sliderToZoom(value))}
-        oncommit={(value) => list?.zoomTo(sliderToZoom(value))}
+      <Select
+        items={SPEEDS}
+        value={speed}
+        label={m.timeline_speed()}
+        size="sm"
+        side="top"
+        density={sheet ? 'touch' : 'default'}
+        class={sheet ? 'w-18 shrink-0' : 'h-7 w-16 shrink-0'}
+        onValueChange={pickSpeed}
+        testid="timeline-speed"
       />
-      <ToolButton variant="tool" size="xs" side="top" label={m.timeline_zoom_in()} onclick={() => list?.zoomBy(1.5)}><Plus size={14} aria-hidden="true" /></ToolButton>
+      <span class="min-w-2 flex-1"></span>
+      <ToolButton variant="tool" size={smallToolSize} side="top" label={m.timeline_zoom_out()} onclick={() => list?.zoomBy(1 / 1.5)}>
+        <Minus size={smallIcon} aria-hidden="true" />
+      </ToolButton>
+      {#if !sheet}
+        <Slider
+          value={zoomToSlider(zoom)}
+          label={m.timeline_zoom()}
+          min={0}
+          max={100}
+          valueText={`${Math.round(zoom * 1000)} px/s`}
+          class="w-20! shrink-0 @max-2xl:hidden!"
+          testid="timeline-zoom"
+          oninput={(value) => list?.zoomTo(sliderToZoom(value))}
+          oncommit={(value) => list?.zoomTo(sliderToZoom(value))}
+        />
+      {/if}
+      <ToolButton variant="tool" size={smallToolSize} side="top" label={m.timeline_zoom_in()} onclick={() => list?.zoomBy(1.5)}>
+        <Plus size={smallIcon} aria-hidden="true" />
+      </ToolButton>
     </div>
-    <ToolButton variant="tool" size="xs" side="top" label={m.timeline_fit()} onclick={() => list?.fit()} testid="timeline-fit">
-      <UnfoldHorizontal size={14} aria-hidden="true" />
+    <ToolButton variant="tool" size={smallToolSize} side="top" label={m.timeline_fit()} onclick={() => list?.fit()} testid="timeline-fit">
+      <UnfoldHorizontal size={smallIcon} aria-hidden="true" />
     </ToolButton>
     {#if aiAnimation}
       <span aria-hidden="true" class="mx-1 h-5 w-px shrink-0 bg-edge/40"></span>
@@ -1521,17 +1570,21 @@
         aria-controls="{uid}-ai"
         onclick={() => (aiOpen = !aiOpen)}
         class={[
-          'inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-control px-2.5 text-xs transition-colors duration-(--dur-fast)',
+          'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-control transition-colors duration-(--dur-fast)',
           'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
+          sheet ? 'size-11 justify-center' : 'h-7 px-2.5 text-xs',
           aiOpen ? 'bg-petrol text-ink' : 'text-ink-muted hover:bg-petrol hover:text-ink',
         ]}
+        aria-label={sheet ? m.timeline_ai_animate() : undefined}
         data-testid="timeline-ai"
       >
-        <WandSparkles size={14} aria-hidden="true" />
-        {m.timeline_ai_animate()}
+        <WandSparkles size={smallIcon} aria-hidden="true" />
+        {#if !sheet}{m.timeline_ai_animate()}{/if}
       </button>
     {/if}
-    <ToolButton variant="tool" size="xs" side="top" label={m.timeline_hide()} onclick={onclose}><X size={14} aria-hidden="true" /></ToolButton>
+    {#if !sheet}
+      <ToolButton variant="tool" size="xs" side="top" label={m.timeline_hide()} onclick={onclose}><X size={14} aria-hidden="true" /></ToolButton>
+    {/if}
   </div>
   <p role="status" class="sr-only">{recording ? m.timeline_recording({ time: formatTime(head) }) : ''}</p>
   <p role="status" class="sr-only" data-testid="timeline-announcement">{announcement}</p>
@@ -1553,6 +1606,7 @@
       {touch}
       {grid}
       {lockTouch}
+      {labelWidth}
       onseek={setHead}
       onheadkey={onHeadKey}
       oncancelgesture={cancelGestures}
@@ -1608,12 +1662,20 @@
           playing={item.kind === 'node' && previewing.has(item.id)}
           proposed={proposed?.has(item.id) ?? false}
           {actions}
+          {sheet}
+          {labelWidth}
         />
       {/snippet}
     </TrackList>
   {/if}
 
-  <PointMenu items={menuItems} at={menu?.at ?? null} onclose={closeMenu} label={m.timeline_keyframe_menu()} testid="keyframe-menu" />
+  {#if sheet}
+    {#if menu}
+      <ActionSheet items={menuItems} title={m.timeline_keyframe_menu()} onclose={closeMenu} testid="keyframe-menu" />
+    {/if}
+  {:else}
+    <PointMenu items={menuItems} at={menu?.at ?? null} onclose={closeMenu} label={m.timeline_keyframe_menu()} testid="keyframe-menu" />
+  {/if}
   {#if easingTarget && easingShown !== null}
     <EasingPopover at={easingTarget.rect} easing={easingShown} {readOnly} onpick={pickEasing} onclose={() => (easingTarget = null)} />
   {/if}

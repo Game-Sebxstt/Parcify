@@ -42,7 +42,8 @@
 </script>
 
 <Section title={m.editor_arrange_align()} testid="props-align">
-  <div class="flex min-w-0 items-center" role="group" aria-label={m.editor_arrange_align()}>
+  <!-- En una hoja del móvil, si no caben los 8 botones de 44 px en una fila, pasan a la siguiente. -->
+  <div class="flex min-w-0 items-center sheet:flex-wrap" role="group" aria-label={m.editor_arrange_align()}>
     {#each ALIGN as item (item.id)}
       <PanelButton
         label={item.label()}
@@ -55,7 +56,7 @@
         <item.icon size={14} aria-hidden="true" />
       </PanelButton>
     {/each}
-    <span aria-hidden="true" class="mx-1 h-3 w-px shrink-0 bg-edge/40"></span>
+    <span aria-hidden="true" class="mx-1 h-3 w-px shrink-0 bg-edge/40 sheet:mx-0"></span>
     <PanelButton
       label={m.editor_arrange_distribute_h()}
       disabledReason={distributeReason}

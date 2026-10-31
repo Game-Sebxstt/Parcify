@@ -36,10 +36,12 @@
     typingNames: string[];
     ontyping: (typing: boolean) => void;
     onunread: (count: number) => void;
+    // Móvil: la conversación va en una hoja y los mensajes llevan botones de 44 px y pulsación larga.
+    mobile?: boolean;
   };
 
   // `open`: la conversación se ve (ventana abierta, sin minimizar y en la pestaña Equipo). Solo así se marca como leída.
-  let { projectId, session, me, role, open, status, typingNames, ontyping, onunread }: Props = $props();
+  let { projectId, session, me, role, open, status, typingNames, ontyping, onunread, mobile = false }: Props = $props();
 
   // Margen para considerar que se está al final de la conversación.
   const BOTTOM_SLACK = 48;
@@ -378,6 +380,7 @@
                 ondelete={askDelete}
                 onretry={(item) => void deliver(item.id)}
                 onquote={jumpTo}
+                {mobile}
               />
             {/each}
           </ol>
@@ -408,6 +411,7 @@
     onsend={onSend}
     ontyping={() => typing.input()}
     onstoptyping={() => typing.stop()}
+    {mobile}
   />
 
   <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
