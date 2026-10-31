@@ -21,10 +21,14 @@
     onimage?: (() => void) | undefined;
     disabled?: boolean;
     tabindex: (stop: string) => number;
+    // Barra inferior del móvil: botón y chevron de 44 px.
+    dock?: boolean;
+    // El último puntero fue un dedo: el doble toque no es fiable y el desplegable termina con «Mantener herramienta».
+    touch?: boolean;
     onselect: (tool: Tool, locked?: boolean) => void;
   };
 
-  let { label, stop, tools, tool, locked, shown, onimage, disabled = false, tabindex, onselect }: Props = $props();
+  let { label, stop, tools, tool, locked, shown, onimage, disabled = false, tabindex, dock = false, touch = false, onselect }: Props = $props();
 
   const LONG_PRESS_MS = 300;
 
@@ -59,6 +63,19 @@
         ariaKeys: 'Control+Shift+K',
         inset: true,
         onSelect: onimage,
+      });
+    }
+    // Hace lo mismo que el doble clic: deja activa la herramienta del grupo después de crear.
+    if (touch) {
+      const held = locked && active;
+      entries.push({ kind: 'separator', id: `${stop}-keep-sep` });
+      entries.push({
+        kind: 'check',
+        id: `${stop}-keep`,
+        label: m.editor_tool_keep(),
+        checked: held,
+        toggle: true,
+        onSelect: () => onselect(active ? tool : shown.id, !held),
       });
     }
     return entries;
@@ -107,7 +124,7 @@
   }
 </script>
 
-<div class={['flex items-center rounded-card', active ? 'bg-coral text-coral-ink' : ''].join(' ')}>
+<div class={['flex shrink-0 snap-start items-center rounded-card', active ? 'bg-coral text-coral-ink' : ''].join(' ')}>
   <Tooltip text={shown.label()} kbd={shown.shortcut} side="top">
     {#snippet children(props)}
       <button
@@ -128,21 +145,22 @@
         ondblclick={() => onselect(shown.id, true)}
         onkeydown={(event) => onKeydown(event, props.onkeydown)}
         class={[
-          'relative inline-flex h-9 w-8 cursor-pointer touch-manipulation items-center justify-center rounded-l-card select-none',
+          'relative inline-flex cursor-pointer touch-manipulation items-center justify-center rounded-l-card select-none',
+          dock ? 'size-11' : 'h-9 w-8',
           'transition-[color,background-color,scale] duration-120 active:scale-96 motion-reduce:active:scale-100',
           'disabled:cursor-not-allowed disabled:opacity-40',
           'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
           active ? '' : 'text-ink-muted hover:bg-petrol hover:text-ink',
         ].join(' ')}
       >
-        <span aria-hidden="true" class="inline-flex"><ShownIcon size={18} /></span>
+        <span aria-hidden="true" class="inline-flex"><ShownIcon size={dock ? 20 : 18} /></span>
         {#if locked && active}
           <span aria-hidden="true" class="absolute right-0.5 bottom-0.5 text-current"><Lock size={8} strokeWidth={3} /></span>
         {/if}
       </button>
     {/snippet}
   </Tooltip>
-  <DropdownMenu bind:open {items} {label} side="top" align="start" sideOffset={8} focusFirst class="min-w-58">
+  <DropdownMenu bind:open {items} {label} side="top" align="start" sideOffset={8} focusFirst density={dock ? 'touch' : 'default'} class="min-w-58">
     {#snippet trigger(props)}
       <button
         {...props}
@@ -153,13 +171,14 @@
         data-stop={menuStop}
         onkeydown={(event) => onKeydown(event, props.onkeydown)}
         class={[
-          'inline-flex h-9 w-3.5 cursor-pointer items-center justify-center rounded-r-card transition-colors duration-120',
+          'inline-flex cursor-pointer items-center justify-center rounded-r-card transition-colors duration-120',
+          dock ? 'h-11 w-11' : 'h-9 w-3.5',
           'disabled:cursor-not-allowed disabled:opacity-40',
           'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
           active ? '' : 'text-ink-muted hover:bg-petrol hover:text-ink',
         ].join(' ')}
       >
-        <ChevronUp size={14} aria-hidden="true" />
+        <ChevronUp size={dock ? 16 : 14} aria-hidden="true" />
       </button>
     {/snippet}
   </DropdownMenu>

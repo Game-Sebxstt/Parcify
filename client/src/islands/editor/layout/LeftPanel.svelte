@@ -28,6 +28,8 @@
     pillHeight?: number;
     // El último puntero en el editor fue un dedo: filas y botones de las listas más grandes.
     touch?: boolean;
+    // Móvil: sin pastilla (lo abre el menú de la barra superior) y por debajo de esa barra.
+    mobile?: boolean;
   };
 
   let {
@@ -35,6 +37,7 @@
     readOnly,
     open,
     touch = false,
+    mobile = false,
     header,
     hidden,
     width = $bindable(0),
@@ -65,7 +68,8 @@
   inert={!open}
   style:width="{layout.leftWidth}px"
   class={[
-    'absolute top-2 bottom-2 left-2 z-(--z-panel) flex flex-col rounded-panel border border-edge/40 bg-surface-1 text-ui shadow-panel',
+    'absolute bottom-2 left-2 z-(--z-panel) flex max-w-[calc(100%-1rem)] flex-col rounded-panel border border-edge/40 bg-surface-1 text-ui shadow-panel',
+    mobile ? 'top-[calc(env(safe-area-inset-top)+3.5rem)]' : 'top-2',
     'touch-pan-x touch-pan-y transition-[translate,opacity,visibility] duration-(--dur-slow) ease-out',
     open ? '' : 'invisible -translate-x-[calc(100%+1rem)] opacity-0',
   ]}
@@ -110,7 +114,7 @@
   />
 </aside>
 
-{#if !open && !hidden}
+{#if !open && !hidden && !mobile}
   <!-- Con las dos pastillas en una ventana estrecha, cada una se queda con su mitad. -->
   <div
     bind:offsetWidth={pillWidth}

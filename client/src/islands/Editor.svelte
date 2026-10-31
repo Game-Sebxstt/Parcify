@@ -4,7 +4,7 @@
   import X from '@lucide/svelte/icons/x';
   import { onMount, tick, untrack } from 'svelte';
   import { on } from 'svelte/events';
-  import { describeSelection } from '../engine/a11y/describe.ts';
+  import { describeSelection, displayName, kindOf } from '../engine/a11y/describe.ts';
   import {
     createEngine,
     OWN_WHEEL_ATTR,
@@ -44,12 +44,15 @@
   import ExportDialog from './editor/ExportDialog.svelte';
   import GalleryWindow from './editor/GalleryWindow.svelte';
   import type { WindowRect } from '../ui/floating-window.svelte.ts';
-  import { describeLabels } from './editor/kinds.ts';
+  import { describeLabels, kindLabel } from './editor/kinds.ts';
   import Minimap from './editor/Minimap.svelte';
   import Present, { presentationSlides } from './editor/Present.svelte';
   import { downloadLocalCopy } from '../lib/local-copy.ts';
   import PropertiesPanel from './editor/properties/PropertiesPanel.svelte';
   import ContextBar from './editor/toolbar/ContextBar.svelte';
+  import MobileMenuSheet, { type MobileMenuEntry } from './editor/mobile/MobileMenuSheet.svelte';
+  import MobileTopBar from './editor/mobile/MobileTopBar.svelte';
+  import RenameSheet from './editor/mobile/RenameSheet.svelte';
   import FloatingToolbar from './editor/toolbar/FloatingToolbar.svelte';
   import ZoomBar from './editor/toolbar/ZoomBar.svelte';
   import FileHeader from './editor/layout/FileHeader.svelte';
@@ -188,6 +191,23 @@
   const timelineOpen = $derived(layout.timeline.open);
   const versionsOpen = $derived(layout.rightView === 'versions');
   const compactLayout = $derived(viewport.mode !== 'desktop');
+  // Móvil (< 640 px): barra superior compacta, barra inferior a todo el ancho y hojas inferiores; sin pastillas.
+  const mobile = $derived(viewport.mode === 'mobile');
+  // Con el teclado virtual abierto se ocultan las barras de abajo, salvo los controles del texto que se escribe.
+  const keyboardUp = $derived(mobile && viewport.keyboardInset > 0);
+  let topBarHeight = $state(0);
+  let dockHeight = $state(0);
+  let mobileMenuOpen = $state(false);
+  let menuSheetHeight = $state(0);
+  // Hoja «Renombrar» del móvil: el proyecto (toque en el nombre) o un nodo («Renombrar» de la hoja de acciones).
+  let renaming = $state.raw<{ kind: 'project' } | { kind: 'node'; id: string; name: string } | null>(null);
+  let renameSheetHeight = $state(0);
+  // Lo que tapa por abajo la hoja no modal abierta (con el teclado, también él).
+  const sheetInset = $derived.by(() => {
+    if (!mobile) return 0;
+    const height = Math.max(mobileMenuOpen ? menuSheetHeight : 0, renaming ? renameSheetHeight : 0);
+    return height ? height + viewport.keyboardInset : 0;
+  });
   const hideUi = $derived(presenting || layout.ui === 'hidden');
   const leftOpen = $derived(!hideUi && layout.ui === 'normal' && layout.left === 'open');
   // Con la interfaz minimizada, el panel derecho se abre solo mientras hay selección.
@@ -216,16 +236,69 @@
   // Las barras de abajo quedan a 12 px del borde, o 8 px por encima de la línea de tiempo abierta. Con el dedo, 20 px:
   // la zona de toque del asa de la línea de tiempo crece 18 px hacia arriba y las barras no deben taparla.
   const barsBottom = $derived(bottomEdge ? bottomEdge + (inputKind === 'touch' ? 20 : 8) : 12);
-  const panelClearance = $derived(compactLayout && !hideUi && barsHeight ? bottomEdge + barsHeight + 8 : 0);
-  const insets = $derived({
-    top: 0,
-    left: leftEdge && !compactLayout ? leftEdge + 8 : 0,
-    right: rightEdge && !compactLayout ? rightEdge + 8 : 0,
-    bottom: bottomEdge ? bottomEdge + 8 : 0,
+  const panelClearance = $derived(mobile ? (hideUi ? 0 : dockHeight) : compactLayout && !hideUi && barsHeight ? bottomEdge + barsHeight + 8 : 0);
+
+  // Herramientas de creación: en el móvil, con una activa y sin selección, la barra contextual ofrece sus modificadores.
+  const CREATE_TOOLS = new Set<Tool>(['frame', 'rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc', 'line', 'arrow', 'connector', 'text']);
+  const createTool = $derived(mobile && CREATE_TOOLS.has(tool) ? tool : null);
+  const contextShown = $derived(
+    (selection.length > 0 || tool === 'pen' || createTool !== null) && !hideUi && !engineReadOnly && (!keyboardUp || editingText),
+  );
+  // En el móvil la barra contextual va encima de la barra inferior, o encima del teclado mientras se escribe.
+  const CONTEXT_BAR_HEIGHT = 52;
+  const contextBottom = $derived(keyboardUp ? viewport.keyboardInset : hideUi ? 0 : dockHeight);
+  const mobileBarsHeight = $derived(hideUi ? 0 : (keyboardUp ? 0 : dockHeight) + (contextShown ? CONTEXT_BAR_HEIGHT : 0));
+
+  const insets = $derived(
+    mobile
+      ? { top: hideUi ? 0 : topBarHeight, left: 0, right: 0, bottom: Math.max(mobileBarsHeight + (keyboardUp ? viewport.keyboardInset : 0), sheetInset) }
+      : {
+          top: 0,
+          left: leftEdge && !compactLayout ? leftEdge + 8 : 0,
+          right: rightEdge && !compactLayout ? rightEdge + 8 : 0,
+          bottom: bottomEdge ? bottomEdge + 8 : 0,
+        },
+  );
+
+  // Una hoja que sube por abajo no tapa la selección: si queda debajo, la cámara la sube lo que haga falta.
+  let revealedInset = 0;
+  $effect(() => {
+    const inset = sheetInset;
+    const grew = inset > revealedInset;
+    revealedInset = inset;
+    if (grew) untrack(() => revealSelection(inset));
   });
+
+  function revealSelection(inset: number) {
+    const rect = selectionRect;
+    const current = engine;
+    if (!rect || !current || !container) return;
+    const box = container.getBoundingClientRect();
+    const lowest = box.top + rect.y + rect.height;
+    const limit = viewport.height - inset - 16;
+    if (lowest <= limit) return;
+    // Sin llevar su borde superior por debajo de la barra de arriba.
+    const room = box.top + rect.y - (topBarHeight + 16);
+    const dy = Math.min(lowest - limit, Math.max(0, room));
+    if (dy <= 0) return;
+    current.core.camera.panBy(0, -dy);
+    current.core.requestFrame();
+  }
 
   $effect(() => {
     engine?.setViewInsets(insets);
+  });
+
+  // Los conmutadores táctiles del lienzo solo valen con la maqueta móvil, que es la que los muestra. Al salir de ella
+  // se apagan los que solo existen ahí; «Añadir a la selección» se queda para la línea de tiempo.
+  $effect(() => {
+    const core = engine?.core;
+    if (!core) return;
+    const onCanvas = mobile;
+    untrack(() => {
+      core.canvasTouchModifiers.set(onCanvas);
+      if (!onCanvas) core.touchModifiers.set({ ...core.touchModifiers.get(), proportional: false, fromCenter: false, step15: false });
+    });
   });
 
   // Se graba solo con la línea de tiempo abierta y sin presentar. Grabar encendido graba todo lo animable; apagado,
@@ -665,7 +738,8 @@
     menuTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const box = container.getBoundingClientRect();
     const world = engine.core.camera.screenToWorld(at.clientX - box.left, at.clientY - box.top);
-    menu = { clientX: at.clientX, clientY: at.clientY, at: { x: world.x, y: world.y }, pointerType: 'mouse' };
+    // En el móvil, «Más…» abre la misma hoja de acciones que la pulsación larga.
+    menu = { clientX: at.clientX, clientY: at.clientY, at: { x: world.x, y: world.y }, pointerType: mobile ? 'touch' : 'mouse' };
   }
 
   function onImagesPicked(event: Event & { currentTarget: HTMLInputElement }) {
@@ -1010,6 +1084,116 @@
     if (timelineOpen) layout.closeTimeline();
     else void openTimeline(false);
   }
+
+  // En el móvil solo hay una superficie no modal abierta a la vez: abrir una cierra las demás.
+  function closeMobileSurfaces() {
+    mobileMenuOpen = false;
+    renaming = null;
+    if (layout.left === 'open') layout.collapse('left');
+    if (layout.right === 'open') layout.collapse('right');
+    layout.conversation.open = false;
+    layout.gallery.open = false;
+    if (layout.timeline.open) layout.closeTimeline();
+  }
+
+  function toggleMobileMenu() {
+    if (mobileMenuOpen) {
+      mobileMenuOpen = false;
+      return;
+    }
+    renaming = null;
+    mobileMenuOpen = true;
+  }
+
+  function onMobileMenu(entry: MobileMenuEntry) {
+    mobileMenuOpen = false;
+    switch (entry) {
+      case 'layers':
+      case 'animations':
+        closeMobileSurfaces();
+        layout.leftTab = entry;
+        layout.open('left');
+        return;
+      case 'versions':
+        closeMobileSurfaces();
+        layout.rightView = 'versions';
+        layout.open('right');
+        return;
+      case 'timeline':
+        closeMobileSurfaces();
+        void openTimeline(false);
+        return;
+      case 'chat':
+        closeMobileSurfaces();
+        showConversation('team');
+        return;
+      case 'gallery':
+        closeMobileSurfaces();
+        layout.gallery.open = true;
+        void tick().then(() => galleryWindow?.focus());
+        return;
+      case 'export':
+        exportOpen = true;
+        return;
+      case 'share':
+        openShare();
+        return;
+      case 'present':
+        startPresenting();
+        return;
+      case 'publish':
+        publishOpen = true;
+        return;
+      case 'download':
+        void downloadLocal();
+    }
+  }
+
+  // «Propiedades» de la barra inferior: abre el diseño de la selección o lo cierra si ya se ve.
+  const propertiesOpen = $derived(rightOpen && layout.rightView === 'design');
+
+  function toggleProperties() {
+    if (propertiesOpen) {
+      layout.collapse('right');
+      return;
+    }
+    closeMobileSurfaces();
+    layout.rightView = 'design';
+    layout.open('right');
+  }
+
+  // Muestra del botón «Propiedades»: el relleno del primer elemento (el color en un texto).
+  const selectionFill = $derived.by((): string | null => {
+    const first = selection[0];
+    if (!first) return null;
+    if ('fill' in first && typeof first.fill === 'string') return first.fill;
+    if (first.type === 'text') return first.color;
+    return null;
+  });
+
+  function renameProject() {
+    mobileMenuOpen = false;
+    renaming = { kind: 'project' };
+  }
+
+  // «Renombrar» del menú contextual: en el móvil, hoja con el nombre; si no, edición en la fila de capas.
+  function renameNode(id: string) {
+    const record = engine?.core.store.get(id);
+    if (!mobile || !engine || !record) {
+      void leftPanel?.rename(id);
+      return;
+    }
+    const text = record.type === 'text' ? engine.core.store.text(id) : '';
+    mobileMenuOpen = false;
+    renaming = { kind: 'node', id, name: record.name ?? displayName(record, kindLabel(kindOf(record)), text) };
+  }
+
+  function saveRename(name: string): Promise<boolean> | boolean {
+    const target = renaming;
+    if (target?.kind === 'project') return rename(name);
+    if (target?.kind === 'node') engine?.commands.renameNode(target.id, name);
+    return true;
+  }
 </script>
 
 <svelte:window onkeydowncapture={onWindowKey} onpagehide={() => layout.flush()} />
@@ -1113,6 +1297,26 @@
 
       <!-- Mientras se presenta solo quedan el lienzo, su HUD y la presentación: nada más puede tapar la diapositiva.
            La maqueta (anchos, plegado, línea de tiempo) no cambia y todo vuelve igual al salir. -->
+      {#if mobile && !hideUi && collabState}
+        <MobileTopBar
+          bind:height={topBarHeight}
+          name={projectName}
+          {canRename}
+          collab={collabState}
+          {people}
+          {following}
+          canUndo={history.canUndo}
+          canRedo={history.canRedo}
+          readOnly={engineReadOnly}
+          menuOpen={mobileMenuOpen}
+          onleave={publishBeforeLeaving}
+          onrename={renameProject}
+          onundo={() => engine?.commands.undo()}
+          onredo={() => engine?.commands.redo()}
+          onfollow={(clientId) => engine?.follow(clientId)}
+          onmenu={toggleMobileMenu}
+        />
+      {/if}
       {#if !presenting}
         <LeftPanel
           bind:this={leftPanel}
@@ -1122,6 +1326,7 @@
           {engine}
           readOnly={engineReadOnly}
           open={leftOpen}
+          {mobile}
           touch={inputKind === 'touch'}
           hidden={hideUi}
           clearance={panelClearance}
@@ -1163,7 +1368,7 @@
         onchange={onReplacementPicked}
         data-testid="replace-image-input"
       />
-      {#if engine && container && (selection.length > 0 || tool === 'pen') && !hideUi && !engineReadOnly}
+      {#if engine && container && contextShown}
         <ContextBar
           {engine}
           records={selection}
@@ -1175,6 +1380,9 @@
           vertex={activeVertex}
           pen={tool === 'pen' ? penPoints : null}
           editing={editingText}
+          {mobile}
+          bottom={contextBottom}
+          create={createTool}
           onmore={openMoreMenu}
           onreplaceimage={pickReplacement}
           onescape={() => container?.focus({ preventScroll: true })}
@@ -1240,20 +1448,18 @@
           {/if}
         </div>
 
-        <!-- La barra de herramientas va antes que la de zoom en el DOM: es el orden de tabulación. La rejilla la centra en
-             el hueco entre los paneles mientras cabe y, si no, sube el zoom y el minimapa a la fila de encima. -->
-        <div
-          bind:clientWidth={barsWidth}
-          bind:offsetHeight={barsHeight}
-          hidden={hideUi}
-          class={['pointer-events-none absolute z-(--z-toolbar) grid items-end gap-2', barsStacked ? 'grid-cols-1' : 'grid-cols-[1fr_auto_1fr]']}
-          style:left="{barsLeft + 12}px"
-          style:right="{barsRight + 12}px"
-          style:bottom="{barsBottom}px"
-          data-testid="canvas-bars"
-        >
-          <div bind:offsetWidth={toolbarWidth} class={['flex', barsStacked ? 'col-start-1 row-start-2 justify-self-center' : 'col-start-2 row-start-1']}>
+        {#if mobile}
+          <!-- Móvil: la barra de herramientas ocupa todo el ancho abajo. Deshacer y rehacer están en la barra superior y
+               el zoom se hace con dos dedos. -->
+          <div
+            bind:offsetHeight={dockHeight}
+            hidden={hideUi || keyboardUp}
+            class="pointer-events-none absolute inset-x-0 bottom-0 z-(--z-toolbar) flex"
+            data-testid="canvas-bars"
+          >
             <FloatingToolbar
+              dock
+              touch={inputKind === 'touch'}
               {tool}
               {toolLocked}
               readOnly={engineReadOnly}
@@ -1263,36 +1469,83 @@
               recording={recordingAt !== null && recordMode === 'all'}
               {aiAvailable}
               {aiOpen}
+              properties={selection.length && !engineReadOnly ? { fill: selectionFill, open: propertiesOpen } : null}
               onselect={(next, locked) => engine?.commands.setTool(next, { locked: locked === true })}
               onimage={pickImages}
-              ongallery={toggleGallery}
-              onanimate={toggleTimeline}
-              onai={toggleAi}
+              ongallery={() => {
+                if (layout.gallery.open) layout.gallery.open = false;
+                else onMobileMenu('gallery');
+              }}
+              onanimate={() => {
+                if (timelineOpen) layout.closeTimeline();
+                else onMobileMenu('timeline');
+              }}
+              onai={() => {
+                if (aiOpen) layout.conversation.open = false;
+                else {
+                  closeMobileSurfaces();
+                  void openAi();
+                }
+              }}
+              onproperties={toggleProperties}
             />
           </div>
-          <div bind:offsetWidth={zoomWidth} class="col-start-1 row-start-1 flex justify-self-start">
-            <ZoomBar
-              {zoom}
-              canUndo={history.canUndo}
-              canRedo={history.canRedo}
-              readOnly={engineReadOnly}
-              {minimapOpen}
-              onundo={() => engine?.commands.undo()}
-              onredo={() => engine?.commands.redo()}
-              onzoomin={() => engine?.commands.zoomIn()}
-              onzoomout={() => engine?.commands.zoomOut()}
-              onzoomreset={() => engine?.commands.zoomTo(1)}
-              onfitall={() => engine?.commands.fitAll()}
-              onfitselection={() => engine?.commands.zoomToSelection()}
-              onminimap={() => (minimapOpen = !minimapOpen)}
-            />
-          </div>
-          {#if minimapOpen && engine}
-            <div bind:offsetWidth={minimapWidth} class={['pointer-events-auto row-start-1 justify-self-end', barsStacked ? 'col-start-1' : 'col-start-3']}>
-              <Minimap {engine} />
+        {:else}
+          <!-- La barra de herramientas va antes que la de zoom en el DOM: es el orden de tabulación. La rejilla la centra en
+               el hueco entre los paneles mientras cabe y, si no, sube el zoom y el minimapa a la fila de encima. -->
+          <div
+            bind:clientWidth={barsWidth}
+            bind:offsetHeight={barsHeight}
+            hidden={hideUi}
+            class={['pointer-events-none absolute z-(--z-toolbar) grid items-end gap-2', barsStacked ? 'grid-cols-1' : 'grid-cols-[1fr_auto_1fr]']}
+            style:left="{barsLeft + 12}px"
+            style:right="{barsRight + 12}px"
+            style:bottom="{barsBottom}px"
+            data-testid="canvas-bars"
+          >
+            <div bind:offsetWidth={toolbarWidth} class={['flex', barsStacked ? 'col-start-1 row-start-2 justify-self-center' : 'col-start-2 row-start-1']}>
+              <FloatingToolbar
+                touch={inputKind === 'touch'}
+                {tool}
+                {toolLocked}
+                readOnly={engineReadOnly}
+                gallery={layout.gallery.open}
+                {timelineOpen}
+                {timelineLoading}
+                recording={recordingAt !== null && recordMode === 'all'}
+                {aiAvailable}
+                {aiOpen}
+                onselect={(next, locked) => engine?.commands.setTool(next, { locked: locked === true })}
+                onimage={pickImages}
+                ongallery={toggleGallery}
+                onanimate={toggleTimeline}
+                onai={toggleAi}
+              />
             </div>
-          {/if}
-        </div>
+            <div bind:offsetWidth={zoomWidth} class="col-start-1 row-start-1 flex justify-self-start">
+              <ZoomBar
+                {zoom}
+                canUndo={history.canUndo}
+                canRedo={history.canRedo}
+                readOnly={engineReadOnly}
+                {minimapOpen}
+                onundo={() => engine?.commands.undo()}
+                onredo={() => engine?.commands.redo()}
+                onzoomin={() => engine?.commands.zoomIn()}
+                onzoomout={() => engine?.commands.zoomOut()}
+                onzoomreset={() => engine?.commands.zoomTo(1)}
+                onfitall={() => engine?.commands.fitAll()}
+                onfitselection={() => engine?.commands.zoomToSelection()}
+                onminimap={() => (minimapOpen = !minimapOpen)}
+              />
+            </div>
+            {#if minimapOpen && engine}
+              <div bind:offsetWidth={minimapWidth} class={['pointer-events-auto row-start-1 justify-self-end', barsStacked ? 'col-start-1' : 'col-start-3']}>
+                <Minimap {engine} />
+              </div>
+            {/if}
+          </div>
+        {/if}
 
         {#if timelineLoading}
           <p role="status" class="sr-only">{m.timeline_loading()}</p>
@@ -1303,8 +1556,9 @@
             bind:offsetHeight={timelineHeight}
             hidden={hideUi || !timelineOpen}
             class="absolute bottom-2 z-(--z-panel) touch-pan-x touch-pan-y"
-            style:left="{leftEdge + 8}px"
-            style:right="{rightEdge + 8}px"
+            style:left="{mobile ? 8 : leftEdge + 8}px"
+            style:right="{mobile ? 8 : rightEdge + 8}px"
+            style:bottom={mobile ? `${mobileBarsHeight + 8}px` : null}
           >
             <Timeline
               {engine}
@@ -1324,6 +1578,7 @@
           bind:pillWidth={rightPillWidth}
           bind:pillHeight={rightPillHeight}
           open={rightOpen}
+          {mobile}
           hidden={hideUi}
           clearance={panelClearance}
           header={sessionBar}
@@ -1347,7 +1602,7 @@
           unread={chatUnread}
           hidden={hideUi}
           defaultRect={conversationDefault}
-          pillAt={{ right: barsRight + 12, bottom: barsBottom + barsHeight + 8 }}
+          pillAt={mobile ? { right: 12, bottom: mobileBarsHeight + 8 } : { right: barsRight + 12, bottom: barsBottom + barsHeight + 8 }}
           returnFocus={conversationReturn}
           {aiAvailable}
           {AiPanel}
@@ -1425,9 +1680,33 @@
           onanimate={() => void openTimeline(true, true)}
           oncopypng={copyAsPng}
           onexport={() => (exportOpen = true)}
-          onrename={(id) => void leftPanel?.rename(id)}
+          onrename={renameNode}
+          {mobile}
         />
       {/key}
+    {/if}
+    {#if mobile && !presenting && collabState}
+      <MobileMenuSheet
+        bind:open={mobileMenuOpen}
+        bind:height={menuSheetHeight}
+        {canShare}
+        {canPublish}
+        {chatUnread}
+        downloading={downloadingLocal}
+        onselect={onMobileMenu}
+      />
+      {#if renaming}
+        {@const target = renaming}
+        <RenameSheet
+          bind:open={() => renaming !== null, (value) => {
+            if (!value) renaming = null;
+          }}
+          bind:height={renameSheetHeight}
+          label={target.kind === 'project' ? m.editor_name_label() : m.editor_mobile_rename_layer()}
+          value={target.kind === 'project' ? projectName : target.name}
+          onsave={saveRename}
+        />
+      {/if}
     {/if}
     {#if engine}
       <ExportDialog bind:open={exportOpen} {engine} {projectId} {projectName} />

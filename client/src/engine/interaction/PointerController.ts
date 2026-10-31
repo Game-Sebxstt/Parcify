@@ -202,6 +202,7 @@ export class PointerController {
       return;
     }
 
+    if (this.core.canvasTouchModifiers.get() && this.core.touchModifiers.get().additive) input = { ...input, shift: true };
     const hit = this.core.pick(input.x, input.y, { includeLocked: input.alt });
     const selection = this.core.selection.get();
     const gap = !input.shift && !input.ctrl && (!hit || this.isBackdrop(hit, selection)) && this.insideSelectionBox(input.x, input.y, selection);
@@ -258,10 +259,11 @@ export class PointerController {
     this.core.requestFrame();
   }
 
-  pointerUp(input: PointerInput): void {
-    this.latest = input;
+  pointerUp(raw: PointerInput): void {
+    this.latest = raw;
     this.moved = true;
     this.flush();
+    const input = this.withModifiers(raw);
     const target = this.target;
     switch (this.state) {
       case 'pressing':
@@ -625,9 +627,25 @@ export class PointerController {
     this.candidatesCamera = this.core.camera.version;
   }
 
-  private continue(input: PointerInput): void {
+  // Los conmutadores táctiles de la barra contextual hacen de Shift y Alt según el gesto: proporción y desde el centro
+  // al redimensionar o al crear un marco o una forma, de 15 en 15 al girar y sumar a la selección al tocar.
+  private withModifiers(input: PointerInput): PointerInput {
+    if (!this.core.canvasTouchModifiers.get()) return input;
+    const mods = this.core.touchModifiers.get();
+    const target = this.target;
+    const creating = target?.kind === 'create' && (target.tool === 'frame' || SHAPE_TOOLS.has(target.tool));
+    if (this.state === 'resizing' || ((this.state === 'creating' || this.state === 'pressing') && creating)) {
+      return mods.proportional || mods.fromCenter ? { ...input, shift: input.shift || mods.proportional, alt: input.alt || mods.fromCenter } : input;
+    }
+    if (this.state === 'rotating') return mods.step15 ? { ...input, shift: true } : input;
+    if (this.state === 'pressing' && (target?.kind === 'node' || target?.kind === 'empty')) return mods.additive ? { ...input, shift: true } : input;
+    return input;
+  }
+
+  private continue(raw: PointerInput): void {
     const down = this.down;
     if (!down) return;
+    const input = this.withModifiers(raw);
     switch (this.state) {
       case 'panning': {
         const last = this.lastPan ?? down;

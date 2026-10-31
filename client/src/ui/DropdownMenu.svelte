@@ -15,7 +15,15 @@
         inset?: boolean | undefined;
         onSelect: () => void;
       })
-    | (Shared & { kind: 'check'; checked: boolean; keys?: string | undefined; ariaKeys?: string | undefined; onSelect: () => void })
+    | (Shared & {
+        kind: 'check';
+        checked: boolean;
+        keys?: string | undefined;
+        ariaKeys?: string | undefined;
+        // Se dibuja como un conmutador a la derecha (solo visual: la entrada es el menuitemcheckbox).
+        toggle?: boolean | undefined;
+        onSelect: () => void;
+      })
     | (Shared & { kind: 'sub'; items: MenuEntry[] })
     | { kind: 'label'; id: string; label: string; items: MenuEntry[] }
     | { kind: 'separator'; id: string };
@@ -153,12 +161,23 @@
         onSelect={() => entry.onSelect()}
         class={ITEM}
       >
-        <span aria-hidden="true" class="inline-flex size-4 shrink-0 items-center justify-center text-coral">
-          {#if entry.checked}<Check size={14} />{/if}
-        </span>
-        {@render leading(entry.icon)}
-        <span class="min-w-0 flex-1 truncate">{entry.label}</span>
-        {@render shortcut(entry.keys)}
+        {#if entry.toggle}
+          {@render leading(entry.icon)}
+          <span class="min-w-0 flex-1 truncate">{entry.label}</span>
+          <span
+            aria-hidden="true"
+            class={['ml-4 inline-flex h-4 w-7 shrink-0 items-center rounded-full p-0.5 transition-colors duration-(--dur-base)', entry.checked ? 'bg-coral' : 'bg-edge']}
+          >
+            <span class={['block size-3 rounded-full transition-transform duration-(--dur-base) ease-out', entry.checked ? 'translate-x-3 bg-coral-ink' : 'bg-ink']}></span>
+          </span>
+        {:else}
+          <span aria-hidden="true" class="inline-flex size-4 shrink-0 items-center justify-center text-coral">
+            {#if entry.checked}<Check size={14} />{/if}
+          </span>
+          {@render leading(entry.icon)}
+          <span class="min-w-0 flex-1 truncate">{entry.label}</span>
+          {@render shortcut(entry.keys)}
+        {/if}
       </DropdownMenu.CheckboxItem>
     {:else}
       <DropdownMenu.Sub>

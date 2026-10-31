@@ -32,8 +32,8 @@
     snap?: ScrubSnap;
     testid?: string;
     class?: string;
-    // sm: 20 px de alto, para las filas de 24 px de la línea de tiempo.
-    size?: 'sm' | 'md';
+    // sm: 20 px de alto, para las filas de 24 px de la línea de tiempo; lg: 36 px, los campos táctiles.
+    size?: 'sm' | 'md' | 'lg';
     // Tabindex itinerante de la rejilla que lo contiene.
     tabindex?: number | undefined;
     // Solo vista previa: durante el arrastre y mientras se escribe un valor válido.
@@ -266,7 +266,7 @@
 <div
   class={[
     'relative flex min-w-0 items-center rounded-control border bg-surface-2 text-ink',
-    size === 'sm' ? 'h-5 text-2xs' : 'h-6 text-xs',
+    size === 'sm' ? 'h-5 text-2xs' : size === 'lg' ? 'h-9 text-sm' : 'h-6 text-xs',
     'focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-coral',
     invalid ? 'border-danger' : 'border-transparent',
     interactive && !invalid && 'hover:border-edge/60',
@@ -278,7 +278,8 @@
     <span
       aria-hidden="true"
       class={[
-        'flex h-full w-5 shrink-0 touch-none items-center justify-center text-2xs text-ink-muted select-none',
+        'flex h-full shrink-0 touch-none items-center justify-center text-2xs text-ink-muted select-none',
+        size === 'lg' ? 'w-8' : 'w-5',
         interactive && 'cursor-ew-resize',
       ]}
       onpointerdown={startScrub}
@@ -286,7 +287,7 @@
       onpointerup={endScrub}
       onpointercancel={cancelScrub}
     >
-      {#if Icon}<Icon size={12} />{:else}{prefix}{/if}
+      {#if Icon}<Icon size={size === 'lg' ? 16 : 12} />{:else}{prefix}{/if}
     </span>
   {/if}
   <input

@@ -20,10 +20,13 @@
     // Tamaño de la pastilla plegada en pantalla (0 sin pastilla).
     pillWidth?: number;
     pillHeight?: number;
+    // Móvil: sin pastilla (lo abren «Propiedades» de la barra inferior y el menú) y por debajo de la barra superior.
+    mobile?: boolean;
   };
 
   let {
     open,
+    mobile = false,
     header,
     design,
     versions,
@@ -45,7 +48,8 @@
   inert={!open}
   style:width="{layout.rightWidth}px"
   class={[
-    'absolute top-2 right-2 bottom-2 z-(--z-panel) flex flex-col rounded-panel border border-edge/40 bg-surface-1 text-ui shadow-panel',
+    'absolute right-2 bottom-2 z-(--z-panel) flex max-w-[calc(100%-1rem)] flex-col rounded-panel border border-edge/40 bg-surface-1 text-ui shadow-panel',
+    mobile ? 'top-[calc(env(safe-area-inset-top)+3.5rem)]' : 'top-2',
     'touch-pan-x touch-pan-y transition-[translate,opacity,visibility] duration-(--dur-slow) ease-out',
     open ? '' : 'invisible translate-x-[calc(100%+1rem)] opacity-0',
   ]}
@@ -71,7 +75,7 @@
   </div>
 </aside>
 
-{#if !open && !hidden}
+{#if !open && !hidden && !mobile}
   <!-- Con las dos pastillas en una ventana estrecha, cada una se queda con su mitad y esta desplaza sus botones. -->
   <div
     bind:offsetWidth={pillWidth}

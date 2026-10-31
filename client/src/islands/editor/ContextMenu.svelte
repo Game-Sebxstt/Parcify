@@ -24,6 +24,7 @@
   import type { MenuEntry } from '../../ui/DropdownMenu.svelte';
   import PointMenu from '../../ui/PointMenu.svelte';
   import { showToast } from '../../ui/toast.svelte.ts';
+  import ActionSheet from './mobile/ActionSheet.svelte';
 
   type Props = {
     engine: Engine;
@@ -34,12 +35,15 @@
     oncopypng: () => void;
     onexport: () => void;
     onrename: (id: string) => void;
+    // Móvil: con el dedo, el menú es una hoja de acciones abajo en vez de un menú en el punto.
+    mobile?: boolean;
   };
 
-  let { engine, request, readOnly, onclose, onanimate, oncopypng, onexport, onrename }: Props = $props();
+  let { engine, request, readOnly, onclose, onanimate, oncopypng, onexport, onrename, mobile = false }: Props = $props();
 
   // Abierto con el dedo (pulsación larga): entradas de 44 px.
   const density = $derived(request.pointerType === 'touch' ? 'touch' : 'default');
+  const sheet = $derived(mobile && request.pointerType === 'touch');
 
   const pasteFailed = () => showToast({ message: m.editor_paste_error(), tone: 'error' });
 
@@ -141,12 +145,16 @@
   });
 </script>
 
-<PointMenu
-  items={entries}
-  at={{ x: request.clientX, y: request.clientY }}
-  {onclose}
-  label={m.editor_menu_label()}
-  {density}
-  testid="context-menu"
-  class="w-64"
-/>
+{#if sheet}
+  <ActionSheet items={entries} title={m.editor_mobile_actions()} {onclose} />
+{:else}
+  <PointMenu
+    items={entries}
+    at={{ x: request.clientX, y: request.clientY }}
+    {onclose}
+    label={m.editor_menu_label()}
+    {density}
+    testid="context-menu"
+    class="w-64"
+  />
+{/if}

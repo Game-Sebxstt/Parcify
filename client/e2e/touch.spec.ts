@@ -47,6 +47,7 @@ test.describe('@touch gestos con el dedo', () => {
   });
 
   test('una pulsación larga sobre una forma abre el menú contextual con esa forma seleccionada', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile', 'En el móvil abre la hoja de acciones: lo cubre «@touch maqueta móvil»');
     const { canvas, center } = await openEditor(page, 'pulsacion-larga');
     const menu = page.getByTestId('context-menu');
 
@@ -288,5 +289,197 @@ test.describe('@touch tablet sin hover', () => {
     expect(toolbar.y + toolbar.height).toBeLessThan(from.y);
     await touchDrag(page, from, { x: from.x, y: from.y - 60 });
     await expect.poll(async () => Math.round((await boxOf(timeline)).height - tall.height)).toBe(60);
+  });
+
+  test('«Añadir a la selección» de la línea de tiempo no cambia los toques en el lienzo', async ({ page }) => {
+    const { canvas, center } = await openEditor(page, 'tablet-sumar');
+    await canvas.focus();
+    await page.keyboard.press('r');
+    await touchDrag(page, { x: center.x - 160, y: center.y - 40 }, { x: center.x - 60, y: center.y + 40 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(1);
+    await canvas.focus();
+    await page.keyboard.press('r');
+    await touchDrag(page, { x: center.x + 60, y: center.y - 40 }, { x: center.x + 160, y: center.y + 40 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(2);
+    const [a, b] = await nodes(page);
+    const empty = { x: center.x, y: center.y + 200 };
+
+    // Chromium no genera el clic de un toque que llega justo después de un arrastre rápido: se espera a que pase.
+    await page.waitForTimeout(500);
+    const animate = page.getByRole('button', { name: 'Animar', exact: true });
+    await animate.tap();
+    const additive = page.getByTestId('timeline').getByRole('button', { name: 'Añadir a la selección' });
+    await additive.tap();
+    await expect(additive).toHaveAttribute('aria-pressed', 'true');
+    await animate.tap();
+    await expect(page.getByTestId('timeline')).toBeHidden();
+    // En tablet la barra contextual no muestra el conmutador, así que el lienzo no lo aplica.
+    await expect(page.getByTestId('context-bar').getByRole('button', { name: 'Añadir a la selección' })).toHaveCount(0);
+
+    const at = async (node: Node) => page.evaluate(([x, y]) => window.__parcifyTest!.toPage(x!, y!), [node.x + node.w / 2, node.y + node.h / 2]);
+    await page.touchscreen.tap(empty.x, empty.y);
+    await expect.poll(() => selection(page)).toEqual([]);
+    const pa = await at(a!);
+    await page.touchscreen.tap(pa.x, pa.y);
+    await expect.poll(() => selection(page)).toEqual([a!.id]);
+    const pb = await at(b!);
+    await page.touchscreen.tap(pb.x, pb.y);
+    await expect.poll(() => selection(page)).toEqual([b!.id]);
+  });
+});
+
+// Punto de la página bajo un punto de la ventana (inverso de toPage).
+const toWorld = async (page: Page, at: { x: number; y: number }) => {
+  const { zoom, x, y } = await view(page);
+  return { x: (at.x - x) / zoom, y: (at.y - y) / zoom };
+};
+
+test.describe('@touch maqueta móvil', () => {
+  test.beforeEach(() => {
+    test.skip(test.info().project.name !== 'mobile', 'CA-16.4 (móvil), CA-16.10 y CA-16.12 son de la maqueta móvil');
+  });
+
+  test('barra superior y barra inferior a todo el ancho, con el área segura de abajo (CA-16.10)', async ({ page }) => {
+    await openEditor(page, 'movil-maqueta');
+    const width = page.viewportSize()!.width;
+    const top = page.getByTestId('mobile-top-bar');
+    const dock = page.getByTestId('dock');
+    await expect(top).toBeVisible();
+    await expect(dock).toBeVisible();
+    await expect(page.getByTestId('left-panel-pill')).toHaveCount(0);
+    await expect(page.getByTestId('right-panel-pill')).toHaveCount(0);
+    expect(Math.round((await boxOf(top)).width)).toBe(width);
+    expect(Math.round((await boxOf(dock)).width)).toBe(width);
+    expect(await page.locator('meta[name="viewport"]').getAttribute('content')).toContain('viewport-fit=cover');
+
+    // El padding inferior de la barra es el área segura: con 34 px emulados, la barra crece 34 px y el CSS calculado
+    // lo refleja. Sin la emulación de CDP, al menos la regla que se le aplica usa env(safe-area-inset-bottom).
+    const cdp = await page.context().newCDPSession(page);
+    const emulated = await cdp
+      .send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 34, left: 0, right: 0 } })
+      .then(
+        () => true,
+        () => false,
+      );
+    if (emulated) {
+      await expect.poll(() => dock.evaluate((element) => getComputedStyle(element).paddingBottom)).toBe('34px');
+      expect(Math.round((await boxOf(dock)).height)).toBe(56 + 34);
+    } else {
+      const usesEnv = await dock.evaluate((element) => {
+        const rules = (list: CSSRuleList): CSSStyleRule[] =>
+          [...list].flatMap((rule) => ('cssRules' in rule ? rules((rule as CSSGroupingRule).cssRules) : rule instanceof CSSStyleRule ? [rule] : []));
+        return [...document.styleSheets]
+          .flatMap((sheet) => rules(sheet.cssRules))
+          .some((rule) => element.matches(rule.selectorText) && rule.style.paddingBottom.includes('env(safe-area-inset-bottom)'));
+      });
+      expect(usesEnv).toBe(true);
+      expect(Math.round((await boxOf(dock)).height)).toBe(56);
+    }
+  });
+
+  test('una pulsación larga sobre una forma abre la hoja de acciones con la forma seleccionada (CA-16.4)', async ({ page }) => {
+    const { canvas, center } = await openEditor(page, 'movil-acciones');
+    await canvas.focus();
+    await page.keyboard.press('r');
+    await touchDrag(page, { x: center.x - 60, y: center.y - 40 }, { x: center.x + 60, y: center.y + 40 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(1);
+    const rect = (await nodes(page))[0]!;
+    const empty = { x: center.x, y: center.y - 200 };
+
+    await page.touchscreen.tap(empty.x, empty.y);
+    await expect.poll(() => selection(page)).toEqual([]);
+    await longPress(page, center, 550);
+    const sheet = page.getByTestId('action-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(page.getByTestId('context-menu')).toHaveCount(0);
+    expect(await selection(page)).toEqual([rect.id]);
+    // Filas de 48 px; «Borrar» va al final, antes de «Cancelar».
+    const rows = sheet.locator('button[data-action]');
+    for (const row of await rows.all()) expect(Math.round((await boxOf(row)).height)).toBe(48);
+    await expect(rows.last()).toHaveAttribute('data-action', 'delete');
+    await sheet.getByRole('button', { name: 'Cancelar' }).tap();
+    await expect(sheet).toHaveCount(0);
+    await page.waitForFunction(() => document.body.style.pointerEvents !== 'none');
+
+    // «Duplicar» desde la hoja actúa sobre la forma.
+    await longPress(page, center, 550);
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('button', { name: 'Duplicar' }).tap();
+    await expect.poll(async () => (await nodes(page)).length).toBe(2);
+    await expect(sheet).toHaveCount(0);
+    await page.waitForFunction(() => document.body.style.pointerEvents !== 'none');
+
+    // Si el dedo se mueve 10 px antes de tiempo, no hay hoja.
+    await page.touchscreen.tap(empty.x, empty.y);
+    await expect.poll(() => selection(page)).toEqual([]);
+    await longPress(page, center, 650, { x: 10, y: 0 });
+    await page.waitForTimeout(100);
+    await expect(sheet).toHaveCount(0);
+  });
+
+  test('con Rectángulo y sin selección, la barra contextual ofrece proporción y centro, y «Mantener herramienta» deja la herramienta (CA-16.12)', async ({ page }) => {
+    const { center } = await openEditor(page, 'movil-modificadores');
+    const dock = page.getByTestId('dock');
+    const bar = page.getByTestId('context-bar');
+    const rectTool = dock.getByRole('button', { name: 'Rectángulo (R)' });
+
+    await rectTool.tap();
+    await expect(bar).toHaveAttribute('data-kind', 'create');
+    await expect(bar.getByTestId('context-create-tool')).toHaveText('Rectángulo');
+    const proportional = bar.getByRole('button', { name: 'Mantener proporción' });
+    const fromCenter = bar.getByRole('button', { name: 'Desde el centro' });
+    await expect(proportional).toBeVisible();
+    await expect(fromCenter).toBeVisible();
+    for (const control of [proportional, fromCenter]) expect(Math.round((await boxOf(control)).height)).toBe(44);
+    // La barra va encima de la barra inferior, a todo el ancho.
+    const barBox = await boxOf(bar);
+    expect(Math.round(barBox.y + barBox.height)).toBe(Math.round((await boxOf(dock)).y));
+    expect(Math.round(barBox.width)).toBe(page.viewportSize()!.width);
+
+    // Mantener proporción: un arrastre de 100×40 deja un cuadrado.
+    await proportional.tap();
+    await expect(proportional).toHaveAttribute('aria-pressed', 'true');
+    await touchDrag(page, { x: center.x - 50, y: center.y - 120 }, { x: center.x + 50, y: center.y - 80 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(1);
+    const square = (await nodes(page))[0]!;
+    expect(square.w).toBeCloseTo(square.h, 6);
+    // Sin «Mantener herramienta», al crear se vuelve a Seleccionar.
+    await expect(rectTool).toHaveAttribute('aria-pressed', 'false');
+
+    // Desde el centro: el punto donde empieza el arrastre queda en el centro de la forma.
+    await page.touchscreen.tap(center.x, center.y + 150);
+    await expect.poll(() => selection(page)).toEqual([]);
+    await rectTool.tap();
+    await expect(bar).toHaveAttribute('data-kind', 'create');
+    await proportional.tap();
+    await expect(proportional).toHaveAttribute('aria-pressed', 'false');
+    await fromCenter.tap();
+    await expect(fromCenter).toHaveAttribute('aria-pressed', 'true');
+    const start = { x: center.x, y: center.y + 60 };
+    const origin = await toWorld(page, start);
+    await touchDrag(page, start, { x: start.x + 100, y: start.y + 40 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(2);
+    const centered = (await nodes(page)).find((node) => node.id !== square.id)!;
+    expect(Math.abs(centered.x + centered.w / 2 - origin.x)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(centered.y + centered.h / 2 - origin.y)).toBeLessThanOrEqual(0.5);
+    // Chromium no genera el clic de un toque que llega justo después de un arrastre rápido: se espera a que pase.
+    await page.waitForTimeout(500);
+    await fromCenter.tap();
+    await expect(fromCenter).toHaveAttribute('aria-pressed', 'false');
+
+    // «Mantener herramienta» al final del desplegable de Formas: la herramienta sigue activa después de crear.
+    await page.touchscreen.tap(center.x, center.y + 220);
+    await expect.poll(() => selection(page)).toEqual([]);
+    await dock.getByRole('button', { name: 'Formas', exact: true }).tap();
+    const keep = page.getByRole('menuitemcheckbox', { name: 'Mantener herramienta' });
+    await expect(keep).toBeVisible();
+    expect(Math.round((await boxOf(keep)).height)).toBeGreaterThanOrEqual(44);
+    await keep.tap();
+    await expect(keep).toHaveCount(0);
+    await expect(rectTool).toHaveAttribute('aria-pressed', 'true');
+    await page.waitForFunction(() => document.body.style.pointerEvents !== 'none');
+    await touchDrag(page, { x: center.x - 120, y: center.y - 220 }, { x: center.x - 60, y: center.y - 180 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(3);
+    await expect(rectTool).toHaveAttribute('aria-pressed', 'true');
   });
 });

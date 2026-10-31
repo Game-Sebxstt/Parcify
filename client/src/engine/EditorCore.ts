@@ -247,6 +247,9 @@ export class EditorCore {
   // Perfil del puntero con el que se está trabajando (el del último pointerdown o pointermove): umbrales y tiradores.
   readonly inputProfile = new Store<Readonly<InputProfile>>(INPUT_PROFILES[initialKind()]);
   readonly touchModifiers = new Store<Readonly<TouchModifiers>>({ proportional: false, fromCenter: false, step15: false, additive: false }, sameModifiers);
+  // El lienzo solo aplica los conmutadores donde la barra contextual los muestra (la maqueta móvil). Fuera de ella,
+  // «Añadir a la selección» solo vale en la línea de tiempo.
+  readonly canvasTouchModifiers = new Store(false);
   // Atajos que cambian la interfaz y no el documento (ocultar o minimizar los paneles): los atiende quien monta el
   // motor. `n` sube con cada pulsación para que dos seguidas iguales también avisen.
   readonly uiCommand = new Store<UiCommand | null>(null);

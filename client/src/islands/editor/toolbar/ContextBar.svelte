@@ -38,6 +38,8 @@
     type NodeRecord,
     type ScreenRect,
     type StylePatch,
+    type Tool,
+    type TouchModifiers,
   } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import { cssFamily } from '../../../engine/text/fonts.ts';
@@ -52,6 +54,7 @@
   import Tooltip from '../../../ui/Tooltip.svelte';
   import { ALT_KEY, MOD_ARIA, MOD_KEY } from '../layout/ui-keys.ts';
   import ToolButton from '../ToolButton.svelte';
+  import { toolById } from './tools.ts';
 
   export type Avoid = { top: number; right: number; bottom: number; left: number };
 
@@ -78,9 +81,33 @@
     onreplaceimage: (id: string) => void;
     // Devuelve el foco al lienzo.
     onescape: () => void;
+    // Móvil: a todo el ancho encima de la barra inferior (no encima de la selección), con controles de 44 px y los
+    // conmutadores que hacen de Shift y Alt.
+    mobile?: boolean;
+    // En el móvil, distancia al borde inferior de la ventana: el alto de la barra inferior o el del teclado.
+    bottom?: number;
+    // En el móvil, herramienta de creación activa sin selección: su nombre y los modificadores que aplican al crear.
+    create?: Tool | null;
   };
 
-  let { engine, records, rect, container, locked, avoid, touch, vertex, pen, editing, onmore, onreplaceimage, onescape }: Props = $props();
+  let {
+    engine,
+    records,
+    rect,
+    container,
+    locked,
+    avoid,
+    touch,
+    vertex,
+    pen,
+    editing,
+    onmore,
+    onreplaceimage,
+    onescape,
+    mobile = false,
+    bottom = 0,
+    create = null,
+  }: Props = $props();
 
   const GAP = 12;
   // Con el dedo hay un tirador de giro 24 px por encima de la caja (círculo de 14 px): la barra queda por encima.
@@ -89,13 +116,14 @@
   const DEFAULT_FILL = '#D9D9D9FF';
   const DEFAULT_STROKE = '#EEF2F6FF';
 
-  type Kind = 'shape' | 'text' | 'line' | 'image' | 'frame' | 'group' | 'multi' | 'locked' | 'pen';
+  type Kind = 'shape' | 'text' | 'line' | 'image' | 'frame' | 'group' | 'multi' | 'locked' | 'pen' | 'create';
   type Single<T extends NodeRecord['type']> = Extract<NodeRecord, { type: T }>;
   type Shape = Single<'rect' | 'ellipse' | 'triangle' | 'diamond' | 'star' | 'polygon' | 'arc'>;
   type Fit = Single<'image'>['fit'];
 
   const kind = $derived.by((): Kind => {
     if (pen !== null) return 'pen';
+    if (create && !records.length) return 'create';
     if (locked || !records.length) return 'locked';
     if (records.length > 1) return 'multi';
     const type = records[0]!.type;
@@ -144,13 +172,46 @@
     if (rect) last = rect;
     return rect ?? last;
   });
-  const visible = $derived(kind === 'pen' || rect !== null || focusInside);
+  const visible = $derived(mobile || kind === 'pen' || rect !== null || focusInside);
 
   let viewportWidth = $state(0);
   let viewportHeight = $state(0);
 
-  // Se recoloca cuando el motor publica otra caja, cambian los márgenes o cambia el contenido (y con él el ancho).
+  // Conmutadores táctiles: el motor los combina con Shift y Alt según el gesto.
+  let mods = $state.raw<Readonly<TouchModifiers>>({ proportional: false, fromCenter: false, step15: false, additive: false });
+  $effect(() => engine.core.touchModifiers.subscribe((value) => (mods = value)));
+
+  type ModifierKey = keyof TouchModifiers;
+  const MODIFIER_LABELS: Record<ModifierKey, () => string> = {
+    proportional: m.editor_touch_proportional,
+    fromCenter: m.editor_touch_from_center,
+    step15: m.editor_touch_step15,
+    additive: m.editor_touch_additive,
+  };
+  const CREATE_SHAPES = new Set<Tool>(['frame', 'rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc']);
+  // Solo los que tienen efecto en lo que se puede hacer ahora: al crear, la proporción y el centro valen para marcos y
+  // formas; con una línea o algo bloqueado solo queda sumar a la selección.
+  const modifierKeys = $derived.by((): ModifierKey[] => {
+    if (!mobile || kind === 'pen') return [];
+    if (kind === 'create') return create && CREATE_SHAPES.has(create) ? ['proportional', 'fromCenter'] : [];
+    if (kind === 'line' || kind === 'locked') return ['additive'];
+    return ['proportional', 'fromCenter', 'step15', 'additive'];
+  });
+
+  function toggleModifier(key: ModifierKey) {
+    const current = engine.core.touchModifiers.get();
+    engine.core.touchModifiers.set({ ...current, [key]: !current[key] });
+  }
+
+  // Se recoloca cuando el motor publica otra caja, cambian los márgenes o cambia el contenido (y con él el ancho). En
+  // el móvil la barra no sigue a la selección: va fija encima de la barra inferior.
   function place(el: HTMLElement) {
+    if (mobile) {
+      el.style.left = '';
+      el.style.top = '';
+      el.style.visibility = '';
+      return;
+    }
     const target = anchorRect;
     const padding = avoid;
     const offset = gap;
@@ -323,11 +384,21 @@
     })),
   );
 
-  const TRIGGER = [
-    'inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-0.5 rounded-control text-ink-muted transition-colors duration-(--dur-fast)',
-    'hover:bg-petrol hover:text-ink data-[state=open]:bg-petrol data-[state=open]:text-ink',
-    'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
-  ].join(' ');
+  const FOCUS = 'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral';
+  // En el móvil todo control mide 44 px de alto (y de ancho los de icono), con iconos de 20 px.
+  const TRIGGER = $derived(
+    [
+      'inline-flex shrink-0 cursor-pointer items-center justify-center gap-0.5 text-ink-muted transition-colors duration-(--dur-fast)',
+      mobile ? 'h-11 min-w-11 rounded-card' : 'h-8 rounded-control',
+      'hover:bg-petrol hover:text-ink data-[state=open]:bg-petrol data-[state=open]:text-ink',
+      FOCUS,
+    ].join(' '),
+  );
+  const iconSize = $derived(mobile ? 20 : 16);
+  const buttonSize = $derived(mobile ? 'lg' : 'sm');
+  const fieldSize = $derived(mobile ? 'lg' : 'md');
+  const swatchWidth = $derived(mobile ? 'w-11' : 'w-8');
+  const SWATCH = $derived(mobile ? 'size-6' : 'size-4.5');
   // Sin color: muestra con tablero y una diagonal.
   const NONE = `linear-gradient(to top right, transparent calc(50% - 0.75px), var(--color-ink-muted) 50%, transparent calc(50% + 0.75px)), ${CHECKER}`;
 </script>
@@ -348,9 +419,9 @@
 {/snippet}
 
 {#snippet menuTrigger(props: Record<string, unknown>, label: string, Icon: MenuIcon)}
-  <button {...props} type="button" aria-label={label} class={[TRIGGER, 'w-11 pl-1']}>
-    <span aria-hidden="true" class="inline-flex"><Icon size={16} /></span>
-    <ChevronDown size={12} aria-hidden="true" />
+  <button {...props} type="button" aria-label={label} class={[TRIGGER, mobile ? 'w-14 pl-1' : 'w-11 pl-1']}>
+    <span aria-hidden="true" class="inline-flex"><Icon size={iconSize} /></span>
+    <ChevronDown size={mobile ? 14 : 12} aria-hidden="true" />
   </button>
 {/snippet}
 
@@ -368,8 +439,8 @@
       oncancel={cancel}
     >
       {#snippet trigger(props)}
-        <button {...props} type="button" aria-label={m.editor_props_fill()} class={[TRIGGER, 'w-8']} data-testid="context-fill">
-          <span aria-hidden="true" class="size-4.5 rounded-xs border border-edge/40" style:background={color ? `linear-gradient(${color}, ${color}), ${CHECKER}` : NONE}></span>
+        <button {...props} type="button" aria-label={m.editor_props_fill()} class={[TRIGGER, swatchWidth]} data-testid="context-fill">
+          <span aria-hidden="true" class={[SWATCH, 'rounded-xs border border-edge/40']} style:background={color ? `linear-gradient(${color}, ${color}), ${CHECKER}` : NONE}></span>
         </button>
       {/snippet}
     </ColorPicker>
@@ -391,11 +462,11 @@
       oncancel={cancel}
     >
       {#snippet trigger(props)}
-        <button {...props} type="button" aria-label={m.editor_props_stroke()} class={[TRIGGER, 'w-8']} data-testid="context-stroke">
+        <button {...props} type="button" aria-label={m.editor_props_stroke()} class={[TRIGGER, swatchWidth]} data-testid="context-stroke">
           {#if color}
-            <span aria-hidden="true" class="size-4.5 rounded-xs border-[3px]" style:border-color={color}></span>
+            <span aria-hidden="true" class={[SWATCH, 'rounded-xs border-[3px]']} style:border-color={color}></span>
           {:else}
-            <span aria-hidden="true" class="size-4.5 rounded-xs border border-edge/40" style:background={NONE}></span>
+            <span aria-hidden="true" class={[SWATCH, 'rounded-xs border border-edge/40']} style:background={NONE}></span>
           {/if}
         </button>
       {/snippet}
@@ -408,13 +479,17 @@
   bind:this={bar}
   role="toolbar"
   tabindex="-1"
-  aria-label={kind === 'pen' ? m.editor_pen_bar() : m.editor_context_bar()}
+  aria-label={kind === 'pen' ? m.editor_pen_bar() : kind === 'create' && create ? m.editor_mobile_create_bar({ tool: toolById(create).label() }) : m.editor_context_bar()}
   aria-orientation="horizontal"
   data-testid="context-bar"
   data-kind={kind}
   style="visibility: hidden"
+  style:bottom={mobile ? `${bottom}px` : null}
   class={[
-    'pointer-events-auto fixed top-0 left-0 z-(--z-toolbar) flex h-9 items-center gap-0.5 rounded-panel border border-edge/40 bg-surface-2 p-0.5 text-ui text-ink shadow-float [touch-action:pan-x_pan-y]',
+    'pointer-events-auto fixed z-(--z-toolbar) flex items-center text-ui text-ink [touch-action:pan-x_pan-y]',
+    mobile
+      ? 'scroll-thin inset-x-0 h-13 gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-t border-edge/40 bg-surface-2 py-1 pr-[max(0.25rem,env(safe-area-inset-right))] pl-[max(0.25rem,env(safe-area-inset-left))]'
+      : 'top-0 left-0 h-9 gap-0.5 rounded-panel border border-edge/40 bg-surface-2 p-0.5 shadow-float',
     !visible && 'invisible',
   ]}
   onfocusin={() => (focusInside = true)}
@@ -423,7 +498,10 @@
   onmousedown={onMousedown}
   {@attach place}
 >
-  {#if kind === 'pen'}
+  {#if kind === 'create' && create}
+    <span class="shrink-0 px-2 text-xs whitespace-nowrap text-ink-muted" data-testid="context-create-tool">{toolById(create).label()}</span>
+    <span class="min-w-0 flex-1"></span>
+  {:else if kind === 'pen'}
     <span class="px-2 text-ui text-ink-muted" data-testid="pen-hint">{touch ? m.editor_pen_hint_touch() : m.editor_pen_hint()}</span>
     {@render separator()}
     <Tooltip text={m.editor_pen_finish_hint()} kbd="Enter" side="top">
@@ -439,7 +517,7 @@
             onescape();
           }}
         >
-          <Check size={16} aria-hidden="true" />
+          <Check size={iconSize} aria-hidden="true" />
           {m.editor_pen_finish()}
         </button>
       {/snippet}
@@ -456,7 +534,7 @@
             onescape();
           }}
         >
-          <X size={16} aria-hidden="true" />
+          <X size={iconSize} aria-hidden="true" />
           {m.editor_pen_cancel()}
         </button>
       {/snippet}
@@ -467,7 +545,8 @@
     {#if shape.type === 'rect'}
       {@const max = Math.floor(Math.min(shape.w, shape.h) / 2)}
       <ScrubInput
-        class="mx-1 w-16"
+        class={mobile ? 'mx-1 w-24 shrink-0' : 'mx-1 w-16'}
+        size={fieldSize}
         value={Math.min(shape.cornerRadius, max)}
         label={m.editor_props_radius()}
         icon={SquareRoundCorner}
@@ -480,12 +559,13 @@
         oncancel={cancel}
       />
     {/if}
-    <ToolButton variant="tool" size="sm" side="top" label={m.editor_context_edit_label()} kbd="Enter" onclick={() => commands.editSelectedText()}>
-      <TextCursorInput size={16} aria-hidden="true" />
+    <ToolButton variant="tool" size={buttonSize} side="top" label={m.editor_context_edit_label()} kbd="Enter" onclick={() => commands.editSelectedText()}>
+      <TextCursorInput size={iconSize} aria-hidden="true" />
     </ToolButton>
   {:else if kind === 'text' && text}
     <Select
-      class="w-30"
+      density={mobile ? 'touch' : 'default'}
+      class="w-30 shrink-0"
       items={FONTS}
       value={text.fontFamily}
       label={m.editor_props_font()}
@@ -493,7 +573,8 @@
       onValueChange={(value) => apply({ fontFamily: value as FontFamily })}
     />
     <ScrubInput
-      class="mx-1 w-13"
+      class={mobile ? 'mx-1 w-20 shrink-0' : 'mx-1 w-13'}
+      size={fieldSize}
       value={text.fontSize}
       label={m.editor_context_font_size()}
       icon={ALargeSmall}
@@ -507,7 +588,7 @@
     />
     <ToolButton
       variant="tool"
-      size="sm"
+      size={buttonSize}
       side="top"
       label={m.editor_props_weight_700()}
       pressed={text.fontWeight >= 600}
@@ -515,11 +596,11 @@
       ariaKeys={`${MOD_ARIA}+B`}
       onclick={() => apply({ fontWeight: text.fontWeight >= 600 ? 400 : 700 })}
     >
-      <Bold size={16} aria-hidden="true" />
+      <Bold size={iconSize} aria-hidden="true" />
     </ToolButton>
     <ToolButton
       variant="tool"
-      size="sm"
+      size={buttonSize}
       side="top"
       label={m.editor_props_italic()}
       kbd={`${MOD_KEY}+I`}
@@ -527,10 +608,10 @@
       pressed={text.italic}
       onclick={() => apply({ italic: !text.italic })}
     >
-      <Italic size={16} aria-hidden="true" />
+      <Italic size={iconSize} aria-hidden="true" />
     </ToolButton>
     {#snippet alignMenu()}
-      <DropdownMenu items={alignItems} label={m.editor_props_align()} side="bottom" align="start" class="min-w-44">
+      <DropdownMenu items={alignItems} label={m.editor_props_align()} side={mobile ? 'top' : 'bottom'} align="start" density={mobile ? 'touch' : 'default'} class="min-w-44">
         {#snippet trigger(props)}
           {@render menuTrigger(props, m.editor_props_align(), alignIcon)}
         {/snippet}
@@ -550,8 +631,8 @@
         oncancel={cancel}
       >
         {#snippet trigger(props)}
-          <button {...props} type="button" aria-label={m.editor_props_text_color()} class={[TRIGGER, 'w-8']} data-testid="context-text-color">
-            <span aria-hidden="true" class="size-4.5 rounded-xs border border-edge/40" style:background={`linear-gradient(${text.color}, ${text.color}), ${CHECKER}`}></span>
+          <button {...props} type="button" aria-label={m.editor_props_text_color()} class={[TRIGGER, swatchWidth]} data-testid="context-text-color">
+            <span aria-hidden="true" class={[SWATCH, 'rounded-xs border border-edge/40']} style:background={`linear-gradient(${text.color}, ${text.color}), ${CHECKER}`}></span>
           </button>
         {/snippet}
       </ColorPicker>
@@ -559,7 +640,7 @@
     {@render hint(m.editor_props_text_color(), textColor)}
   {:else if kind === 'line' && line}
     {#snippet capsMenu()}
-      <DropdownMenu items={capItems} label={m.editor_props_caps()} side="bottom" align="start" class="min-w-44">
+      <DropdownMenu items={capItems} label={m.editor_props_caps()} side={mobile ? 'top' : 'bottom'} align="start" density={mobile ? 'touch' : 'default'} class="min-w-44">
         {#snippet trigger(props)}
           {@render menuTrigger(props, m.editor_props_caps(), ArrowRightLeft)}
         {/snippet}
@@ -568,7 +649,7 @@
     {@render hint(m.editor_props_caps(), capsMenu)}
     {#if line.type === 'connector'}
       {#snippet routeMenu()}
-        <DropdownMenu items={routeItems} label={m.editor_props_route()} side="bottom" align="start" class="min-w-44">
+        <DropdownMenu items={routeItems} label={m.editor_props_route()} side={mobile ? 'top' : 'bottom'} align="start" density={mobile ? 'touch' : 'default'} class="min-w-44">
           {#snippet trigger(props)}
             {@render menuTrigger(props, m.editor_props_route(), routeIcon)}
           {/snippet}
@@ -578,7 +659,8 @@
     {/if}
     {@render strokePicker(line.stroke)}
     <ScrubInput
-      class="mx-1 w-16"
+      class={mobile ? 'mx-1 w-24 shrink-0' : 'mx-1 w-16'}
+      size={fieldSize}
       value={line.strokeWidth}
       label={m.editor_props_stroke_width()}
       icon={RectangleHorizontal}
@@ -595,7 +677,7 @@
       {@const point = vertex}
       <ToolButton
         variant="tool"
-        size="sm"
+        size={buttonSize}
         side="top"
         label={m.editor_point_delete()}
         kbd="Supr"
@@ -603,7 +685,7 @@
         testid="context-delete-point"
         onclick={() => commands.removeVertex(point.id, point.index)}
       >
-        <CircleMinus size={16} aria-hidden="true" />
+        <CircleMinus size={iconSize} aria-hidden="true" />
       </ToolButton>
     {/if}
   {:else if kind === 'image' && image}
@@ -616,10 +698,11 @@
     >
       {m.editor_context_replace_image()}
     </button>
-    <Select class="w-28" items={FITS} value={image.fit} label={m.editor_props_fit()} testid="context-fit" onValueChange={(value) => commit({ fit: value as Fit })} />
+    <Select density={mobile ? 'touch' : 'default'} class="w-28 shrink-0" items={FITS} value={image.fit} label={m.editor_props_fit()} testid="context-fit" onValueChange={(value) => commit({ fit: value as Fit })} />
   {:else if kind === 'frame' && frame}
     <Select
-      class="w-44"
+      density={mobile ? 'touch' : 'default'}
+      class="w-44 shrink-0"
       items={PRESETS}
       value={frame.presetName ?? ''}
       placeholder={m.editor_props_preset_custom()}
@@ -627,32 +710,52 @@
       testid="context-preset"
       onValueChange={(value) => commands.applyFramePreset(value as FramePresetId)}
     />
-    <ToolButton variant="tool" size="sm" side="top" label={m.editor_props_clip()} pressed={frame.clip} onclick={() => commit({ clip: !frame.clip })}>
-      <Crop size={16} aria-hidden="true" />
+    <ToolButton variant="tool" size={buttonSize} side="top" label={m.editor_props_clip()} pressed={frame.clip} onclick={() => commit({ clip: !frame.clip })}>
+      <Crop size={iconSize} aria-hidden="true" />
     </ToolButton>
   {:else if kind === 'group'}
-    <ToolButton variant="tool" size="sm" side="top" label={m.editor_menu_ungroup()} kbd={`${MOD_KEY}+Shift+G`} ariaKeys={`${MOD_ARIA}+Shift+G`} onclick={() => commands.ungroupSelection()}>
-      <Ungroup size={16} aria-hidden="true" />
+    <ToolButton variant="tool" size={buttonSize} side="top" label={m.editor_menu_ungroup()} kbd={`${MOD_KEY}+Shift+G`} ariaKeys={`${MOD_ARIA}+Shift+G`} onclick={() => commands.ungroupSelection()}>
+      <Ungroup size={iconSize} aria-hidden="true" />
     </ToolButton>
   {:else if kind === 'multi'}
     {#snippet arrangeMenu()}
-      <DropdownMenu items={arrangeItems} label={m.editor_arrange_align()} side="bottom" align="start" class="min-w-56">
+      <DropdownMenu items={arrangeItems} label={m.editor_arrange_align()} side={mobile ? 'top' : 'bottom'} align="start" density={mobile ? 'touch' : 'default'} class="min-w-56">
         {#snippet trigger(props)}
           {@render menuTrigger(props, m.editor_arrange_align(), AlignStartVertical)}
         {/snippet}
       </DropdownMenu>
     {/snippet}
     {@render hint(m.editor_arrange_align(), arrangeMenu)}
-    <ToolButton variant="tool" size="sm" side="top" label={m.editor_menu_group()} kbd={`${MOD_KEY}+G`} ariaKeys={`${MOD_ARIA}+G`} onclick={() => commands.groupSelection()}>
-      <Group size={16} aria-hidden="true" />
+    <ToolButton variant="tool" size={buttonSize} side="top" label={m.editor_menu_group()} kbd={`${MOD_KEY}+G`} ariaKeys={`${MOD_ARIA}+G`} onclick={() => commands.groupSelection()}>
+      <Group size={iconSize} aria-hidden="true" />
     </ToolButton>
   {/if}
-  {#if kind !== 'pen'}
-    {#if kind !== 'locked'}
+  {#if modifierKeys.length}
+    {#if kind !== 'create' && kind !== 'locked'}
       {@render separator()}
     {/if}
-    <ToolButton variant="tool" size="sm" side="top" label={m.editor_context_more_label()} tip={m.editor_context_more()} testid="context-more" onclick={more}>
-      <Ellipsis size={16} aria-hidden="true" />
+    {#each modifierKeys as key (key)}
+      <button
+        type="button"
+        aria-pressed={mods[key]}
+        onclick={() => toggleModifier(key)}
+        class={[
+          'inline-flex h-11 shrink-0 cursor-pointer items-center rounded-card px-3 text-ui whitespace-nowrap transition-colors duration-(--dur-fast)',
+          FOCUS,
+          mods[key] ? 'bg-coral font-semibold text-coral-ink' : 'text-ink hover:bg-petrol',
+        ]}
+        data-testid="touch-{key}"
+      >
+        {MODIFIER_LABELS[key]()}
+      </button>
+    {/each}
+  {/if}
+  {#if kind !== 'pen' && kind !== 'create'}
+    {#if kind !== 'locked' || modifierKeys.length}
+      {@render separator()}
+    {/if}
+    <ToolButton variant="tool" size={buttonSize} side="top" label={m.editor_context_more_label()} tip={m.editor_context_more()} testid="context-more" onclick={more}>
+      <Ellipsis size={iconSize} aria-hidden="true" />
     </ToolButton>
   {/if}
 </div>

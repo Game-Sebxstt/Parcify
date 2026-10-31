@@ -17,9 +17,9 @@
     locked?: boolean;
     // 'panel' (redondo, por defecto) para los paneles; 'tool' para la barra flotante y la de zoom (§3.3).
     variant?: 'panel' | 'tool';
-    // 36 px con radius-card (barra flotante), 32 px con radius-control (barra de zoom) o 28 px (cabecera de la línea
-    // de tiempo). Solo con variant 'tool'.
-    size?: 'md' | 'sm' | 'xs';
+    // 44 px con radius-card (barras móviles), 36 px con radius-card (barra flotante), 32 px con radius-control (barra
+    // de zoom) o 28 px (cabecera de la línea de tiempo). Solo con variant 'tool'.
+    size?: 'lg' | 'md' | 'sm' | 'xs';
     side?: 'top' | 'right' | 'bottom' | 'left';
     // Tabindex itinerante de la barra que lo contiene y la marca con la que la barra encuentra sus botones.
     tabindex?: number | undefined;
@@ -50,7 +50,15 @@
   }: Props = $props();
 
   const shape = $derived(
-    variant === 'panel' ? 'size-9 rounded-full' : size === 'md' ? 'size-9 rounded-card' : size === 'sm' ? 'size-8 rounded-control' : 'size-7 rounded-control',
+    variant === 'panel'
+      ? 'size-9 rounded-full'
+      : size === 'lg'
+        ? 'size-11 rounded-card'
+        : size === 'md'
+          ? 'size-9 rounded-card'
+          : size === 'sm'
+            ? 'size-8 rounded-control'
+            : 'size-7 rounded-control',
   );
   const state = $derived(
     variant === 'panel'

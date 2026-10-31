@@ -11,7 +11,15 @@ const nodes = (page: Page) => page.evaluate(() => window.__parcifyTest!.nodes() 
 const toPage = (page: Page, x: number, y: number) => page.evaluate(([px, py]) => window.__parcifyTest!.toPage(px!, py!), [x, y]);
 
 // Piezas del editor que no pueden estar en el DOM mientras se presenta.
-const CHROME = ['[data-testid="left-panel"]', '[data-testid="left-panel-pill"]', '[data-testid="right-panel"]', '[data-testid="right-panel-pill"]', '[role="toolbar"]', '[data-testid="canvas-bars"]'];
+const CHROME = [
+  '[data-testid="left-panel"]',
+  '[data-testid="left-panel-pill"]',
+  '[data-testid="right-panel"]',
+  '[data-testid="right-panel-pill"]',
+  '[role="toolbar"]',
+  '[data-testid="canvas-bars"]',
+  '[data-testid="mobile-top-bar"]',
+];
 const editorChrome = (page: Page) => page.evaluate((selectors) => selectors.filter((selector) => document.querySelector(selector) !== null), CHROME);
 
 async function openEditor(page: Page, projectId: string) {
@@ -176,9 +184,14 @@ test('móvil @touch: deslizar cambia de diapositiva, un toque en el centro muest
   }
   await expect.poll(async () => (await nodes(page)).filter((node) => node.type === 'frame').length).toBe(2);
 
-  await page.getByRole('button', { name: 'Presentar', exact: true }).click();
+  // En el móvil, Presentar está en el menú ⋯ de la barra superior. Chromium no genera el clic de un toque que llega
+  // justo después de un arrastre rápido con el dedo (lo usa para parar el gesto): se espera a que pase.
+  await page.waitForTimeout(500);
+  await page.getByTestId('mobile-menu').tap();
+  await page.getByTestId('mobile-menu-sheet').getByRole('button', { name: 'Presentar', exact: true }).tap();
   const dialog = page.getByRole('dialog', { name: 'Presentación' });
   await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('mobile-menu-sheet')).toHaveCount(0);
   const counter = dialog.getByTestId('present-counter');
   await expect(counter).toHaveText('1 / 2');
 
