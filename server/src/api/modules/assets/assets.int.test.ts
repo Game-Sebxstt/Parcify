@@ -385,10 +385,17 @@ describe(`resolve: una prueba por fila de la tabla (${kind})`, () => {
       data: { organizationId: null, name: 'De Parcify', state: new Uint8Array([0]), schemaVersion: 1 },
     });
     const localAsset = await readyAsset({ ownerId: owner.id, source: 'template', templateId: local.id, organizationId: ws.id });
-    const globalAsset = await readyAsset({ ownerId: owner.id, source: 'template', templateId: global.id });
+    try {
+      const globalAsset = await readyAsset({ ownerId: owner.id, source: 'template', templateId: global.id });
 
-    expect(Object.keys(await resolve(member, [localAsset, globalAsset])).sort()).toEqual([localAsset, globalAsset].sort());
-    expect(Object.keys(await resolve(stranger, [localAsset, globalAsset]))).toEqual([globalAsset]);
+      expect(Object.keys(await resolve(member, [localAsset, globalAsset])).sort()).toEqual([localAsset, globalAsset].sort());
+      expect(Object.keys(await resolve(stranger, [localAsset, globalAsset]))).toEqual([globalAsset]);
+    } finally {
+      // Una plantilla de Parcify la ven todas las cuentas: si se queda, los e2e que usan la misma base dejan de ver un
+      // espacio nuevo sin plantillas.
+      await app.db.asset.deleteMany({ where: { templateId: global.id } });
+      await app.db.template.delete({ where: { id: global.id } });
+    }
   });
 
   it('valida el lote: 1–200 ids', async () => {

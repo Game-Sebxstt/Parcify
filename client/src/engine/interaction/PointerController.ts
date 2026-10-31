@@ -934,6 +934,14 @@ export class PointerController {
       if (this.state === 'idle') this.removeLastPenPoint();
       return true;
     }
+    // Como en Figma, deshacer con una línea en curso quita su último punto en vez de deshacer el cambio anterior del
+    // documento, y seleccionar todo no hace nada: Supr seguiría quitando puntos y no borraría lo seleccionado.
+    const key = input.key.toLowerCase();
+    if (input.ctrl && !input.alt && key === 'z' && !input.shift) {
+      if (this.state === 'idle') this.removeLastPenPoint();
+      return true;
+    }
+    if (input.ctrl && !input.alt && key === 'a') return true;
     return false;
   }
 
@@ -967,7 +975,9 @@ export class PointerController {
     const now = performance.now();
     const last = this.lastPenClick;
     this.lastPenClick = { x: input.x, y: input.y, time: now };
-    if (this.pen && (this.onLastPenPoint(input) || (last && this.isDoubleClick(last, input, now)))) {
+    // Con el dedo, el radio del doble toque (35 px) pasa del del último punto: dos puntos rápidos y cercanos no terminan.
+    const doubleRadius = Math.min(this.profile.doublePx, this.profile.handleHit / 2);
+    if (this.pen && (this.onLastPenPoint(input) || (last && this.isDoubleClick(last, input, now, doubleRadius)))) {
       this.lastPenClick = null;
       this.finishPen();
       return;
@@ -1107,9 +1117,14 @@ export class PointerController {
     }
   }
 
-  private isDoubleClick(last: { x: number; y: number; time: number }, input: PointerInput, now: number): boolean {
-    const { doubleMs, doublePx } = this.profile;
-    return now - last.time <= doubleMs && Math.hypot(input.x - last.x, input.y - last.y) <= doublePx;
+  private isDoubleClick(
+    last: { x: number; y: number; time: number },
+    input: PointerInput,
+    now: number,
+    radius = this.profile.doublePx,
+  ): boolean {
+    const { doubleMs } = this.profile;
+    return now - last.time <= doubleMs && Math.hypot(input.x - last.x, input.y - last.y) <= radius;
   }
 
   // Extremo de conector bajo el puntero: anclado al nodo que haya debajo (sin contar conectores), al nodo con un ancla

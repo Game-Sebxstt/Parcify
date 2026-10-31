@@ -8,6 +8,14 @@ function install(): void {
   installed = true;
   document.addEventListener('pointerdown', (event) => (touching = event.pointerType === 'touch'), { capture: true, passive: true });
   document.addEventListener('keydown', () => (touching = false), { capture: true, passive: true });
+  // En un portátil táctil, mover el ratón después de un toque devuelve el hover sin esperar a un clic.
+  document.addEventListener(
+    'pointermove',
+    (event) => {
+      if (touching && event.pointerType === 'mouse') touching = false;
+    },
+    { capture: true, passive: true },
+  );
 }
 
 // Se llama al montar quien lo consulta, para que los oyentes estén antes del primer toque.

@@ -135,11 +135,12 @@
                 type="button"
                 disabled={creating !== null}
                 aria-busy={creating === template.id || undefined}
-                aria-label={m.templates_use_named({ name: template.name })}
                 onclick={() => void create(template)}
                 class="flex w-full cursor-pointer items-center gap-3 rounded-panel bg-surface-2 p-1.5 pr-3 text-left hover:bg-petrol disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <TemplateThumb assetId={template.previewAssetId} compact class="aspect-[16/10] w-16 shrink-0 rounded-[6px]" />
+                <!-- El nombre accesible sale del contenido, así que contiene el nombre que se ve (WCAG 2.5.3). -->
+                <span class="sr-only">{m.templates_use_named({ name: '' }).trim()}</span>
                 <span class="min-w-0 flex-1 truncate text-sm font-semibold">{template.name}</span>
                 <span aria-hidden="true" class="shrink-0 text-xs text-ink-muted">
                   {creating === template.id ? m.new_project_creating() : m.templates_use()}

@@ -263,6 +263,8 @@ class Session {
     const viewport = typeof window === 'undefined' ? null : window.visualViewport;
     // Solo con algo tapando la parte de abajo de la ventana (el teclado): en escritorio la cámara no se mueve sola.
     if (!viewport || document.activeElement !== this.element || viewport.height >= window.innerHeight - 1) return;
+    // El teclado de iOS lanza varios resize seguidos sin un frame entre medias: se mide con la cámara de ahora.
+    this.position();
     const head = this.offsets()?.head ?? this.textNode.length;
     const caret = this.caretRect(head);
     if (!caret) return;

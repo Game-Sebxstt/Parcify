@@ -2,6 +2,7 @@
   import ChevronUp from '@lucide/svelte/icons/chevron-up';
   import ImagePlus from '@lucide/svelte/icons/image-plus';
   import Lock from '@lucide/svelte/icons/lock';
+  import { mergeProps } from 'bits-ui';
   import type { Tool } from '../../../engine/index.ts';
   import { m } from '../../../paraglide/messages.js';
   import DropdownMenu, { type MenuEntry } from '../../../ui/DropdownMenu.svelte';
@@ -109,6 +110,7 @@
 
   function onClick(event: MouseEvent, props: Record<string, unknown>) {
     call(props.onclick, event);
+    if (disabled) return;
     if (swallowClick) {
       swallowClick = false;
       return;
@@ -122,6 +124,17 @@
     event.preventDefault();
     open = true;
   }
+
+  // Con aria-disabled el chevron sigue enfocable, así que el desplegable no recibe los eventos que lo abren.
+  function guard(handler: unknown) {
+    return (event: Event) => {
+      if (disabled) {
+        event.preventDefault();
+        return;
+      }
+      call(handler, event);
+    };
+  }
 </script>
 
 <div class={['flex shrink-0 snap-start items-center rounded-card', active ? 'bg-coral text-coral-ink' : ''].join(' ')}>
@@ -133,7 +146,7 @@
         aria-label={toolAria(shown)}
         aria-pressed={active}
         aria-keyshortcuts={shown.shortcut}
-        {disabled}
+        aria-disabled={disabled ? 'true' : undefined}
         tabindex={tabindex(stop)}
         data-stop={stop}
         onpointerdown={(event) => onPointerDown(event, props)}
@@ -142,13 +155,15 @@
         onpointercancel={(event) => onPointerEnd(event, props.onpointercancel)}
         oncontextmenu={(event) => event.preventDefault()}
         onclick={(event) => onClick(event, props)}
-        ondblclick={() => onselect(shown.id, true)}
+        ondblclick={() => {
+          if (!disabled) onselect(shown.id, true);
+        }}
         onkeydown={(event) => onKeydown(event, props.onkeydown)}
         class={[
           'relative inline-flex cursor-pointer touch-manipulation items-center justify-center rounded-l-card select-none',
           dock ? 'size-11' : 'h-9 w-8',
           'transition-[color,background-color,scale] duration-120 active:scale-96 motion-reduce:active:scale-100',
-          'disabled:cursor-not-allowed disabled:opacity-40',
+          'aria-disabled:cursor-not-allowed aria-disabled:opacity-40',
           'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
           active ? '' : 'text-ink-muted hover:bg-petrol hover:text-ink',
         ].join(' ')}
@@ -160,26 +175,39 @@
       </button>
     {/snippet}
   </Tooltip>
-  <DropdownMenu bind:open {items} {label} side="top" align="start" sideOffset={8} focusFirst density={dock ? 'touch' : 'default'} class="min-w-58">
-    {#snippet trigger(props)}
-      <button
-        {...props}
-        type="button"
-        aria-label={label}
-        {disabled}
-        tabindex={tabindex(menuStop)}
-        data-stop={menuStop}
-        onkeydown={(event) => onKeydown(event, props.onkeydown)}
-        class={[
-          'inline-flex cursor-pointer items-center justify-center rounded-r-card transition-colors duration-120',
-          dock ? 'h-11 w-11' : 'h-9 w-3.5',
-          'disabled:cursor-not-allowed disabled:opacity-40',
-          'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
-          active ? '' : 'text-ink-muted hover:bg-petrol hover:text-ink',
-        ].join(' ')}
-      >
-        <ChevronUp size={dock ? 16 : 14} aria-hidden="true" />
-      </button>
+  <DropdownMenu bind:open {items} {label} side="top" align="start" sideOffset={8} focusFirst blocking={false} density={dock ? 'touch' : 'default'} class="min-w-58">
+    {#snippet trigger(menuProps)}
+      <Tooltip text={label} side="top">
+        {#snippet children(tipProps)}
+          {@const props = mergeProps(menuProps, tipProps)}
+          <button
+            {...props}
+            type="button"
+            aria-label={label}
+            aria-disabled={disabled ? 'true' : undefined}
+            tabindex={tabindex(menuStop)}
+            data-stop={menuStop}
+            onpointerdown={guard(props.onpointerdown)}
+            onclick={guard(props.onclick)}
+            onkeydown={(event) => {
+              if (disabled) {
+                if (event.key !== 'Tab' && !event.key.startsWith('Arrow')) event.preventDefault();
+                return;
+              }
+              onKeydown(event, props.onkeydown);
+            }}
+            class={[
+              'inline-flex cursor-pointer items-center justify-center rounded-r-card transition-colors duration-120',
+              dock ? 'h-11 w-11' : 'h-9 w-3.5',
+              'aria-disabled:cursor-not-allowed aria-disabled:opacity-40',
+              'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral',
+              active ? '' : 'text-ink-muted hover:bg-petrol hover:text-ink',
+            ].join(' ')}
+          >
+            <ChevronUp size={dock ? 16 : 14} aria-hidden="true" />
+          </button>
+        {/snippet}
+      </Tooltip>
     {/snippet}
   </DropdownMenu>
 </div>

@@ -225,9 +225,9 @@
     {#if !deleted && !entry.pending && !editing}
       <div
         class={[
-          'absolute -top-3 right-0 z-10 flex gap-0.5 rounded-control border border-edge/40 bg-surface-1 p-0.5 opacity-0 shadow-float transition-opacity duration-(--dur-fast)',
-          'group-focus-within:opacity-100 group-hover:opacity-100',
-          'touch:static touch:mt-1 touch:gap-1 touch:border-0 touch:bg-transparent touch:p-0 touch:opacity-100 touch:shadow-none',
+          'pointer-events-none absolute -top-3 right-0 z-10 flex gap-0.5 rounded-control border border-edge/40 bg-surface-1 p-0.5 opacity-0 shadow-float transition-opacity duration-(--dur-fast)',
+          'group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+          'touch:pointer-events-auto touch:static touch:mt-1 touch:gap-1 touch:border-0 touch:bg-transparent touch:p-0 touch:opacity-100 touch:shadow-none',
         ]}
         data-testid="chat-actions"
       >

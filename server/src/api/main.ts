@@ -4,10 +4,13 @@ import { captureError, flushSentry, initSentry } from '../core/sentry.js';
 import { buildApp } from './app.js';
 
 const SHUTDOWN_TIMEOUT_MS = 25_000;
+// En el stack de e2e todo el navegador llega desde 127.0.0.1 y la batería completa pasa de las 300 peticiones por
+// minuto de una sola IP. Los límites propios de cada ruta y los de Better Auth siguen igual.
+const TEST_GLOBAL_RATE_LIMIT = 100_000;
 
 const config = loadConfigOrExit('api');
 await initSentry(config);
-const app = await buildApp(config);
+const app = await buildApp(config, config.nodeEnv === 'test' ? { globalRateLimit: TEST_GLOBAL_RATE_LIMIT } : {});
 
 // Con storage `local` el volumen solo lo tiene la API: las purgas que borran ficheros corren aquí.
 const scheduler =

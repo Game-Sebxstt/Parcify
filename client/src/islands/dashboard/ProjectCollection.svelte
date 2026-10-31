@@ -122,8 +122,12 @@
     const ids = pendingDelete;
     busy = true;
     try {
+      // El diálogo se cierra antes de quitar los proyectos: si la lista queda vacía, el padre desmonta la colección y el
+      // foco ya no tendría adónde volver.
       if (ids.length === 1) {
         await trashProject(ids[0]!);
+        confirmOpen = false;
+        await tick();
         remove(ids);
         showToast({
           message: m.dashboard_trashed({ count: 1 }),
@@ -132,10 +136,11 @@
         });
       } else {
         const result = await batchProjects('delete', ids);
+        confirmOpen = false;
+        await tick();
         remove(result.ok);
         reportBatch(result.ok.length, result.failed, m.dashboard_trashed);
       }
-      confirmOpen = false;
     } catch (error) {
       showToast({ message: messageOf(error), tone: 'error' });
     } finally {

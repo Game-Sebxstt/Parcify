@@ -13,6 +13,8 @@
     ariaKeys?: string | undefined;
     pressed?: boolean;
     disabled?: boolean;
+    // Deshabilitado con aria-disabled: sigue en el recorrido de la barra y enseña su tooltip.
+    focusable?: boolean;
     // Candado en la esquina inferior derecha (herramienta bloqueada, §3.3).
     locked?: boolean;
     // 'panel' (redondo, por defecto) para los paneles; 'tool' para la barra flotante y la de zoom (§3.3).
@@ -37,6 +39,7 @@
     ariaKeys,
     pressed,
     disabled = false,
+    focusable = false,
     locked = false,
     variant = 'panel',
     size = 'md',
@@ -79,15 +82,20 @@
       aria-label={label}
       aria-pressed={pressed}
       aria-keyshortcuts={ariaKeys ?? kbd}
-      {disabled}
+      disabled={disabled && !focusable}
+      aria-disabled={disabled && focusable ? 'true' : undefined}
       {tabindex}
       data-stop={stop}
       data-testid={testid}
-      {onclick}
-      {ondblclick}
+      onclick={() => {
+        if (!disabled) onclick();
+      }}
+      ondblclick={() => {
+        if (!disabled) ondblclick?.();
+      }}
       class={[
         'relative inline-flex shrink-0 cursor-pointer items-center justify-center',
-        'disabled:cursor-not-allowed disabled:opacity-40',
+        'disabled:cursor-not-allowed disabled:opacity-40 aria-disabled:cursor-not-allowed aria-disabled:opacity-40',
         variant === 'tool'
           ? 'transition-[color,background-color,scale] duration-120 active:scale-96 motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coral'
           : 'transition-colors duration-150',

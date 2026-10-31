@@ -17,12 +17,12 @@
   let { count, total, trash, busy, onselectall, onclear, onduplicate, ondelete, onrestore }: Props = $props();
 </script>
 
-<!-- Flota sobre la rejilla mientras hay selección; Escape la vacía desde la lista. Es sticky y no fixed: ocupa su sitio al
-     final de la lista, así que en el móvil, donde mide varias líneas, no tapa la última fila. -->
+<!-- Abajo de la ventana mientras hay selección; Escape la vacía desde la lista. En el móvil es sticky y no fixed: ocupa su
+     sitio al final de la lista, así que, aunque mida varias líneas, no tapa la última fila. -->
 <div
   role="toolbar"
   aria-label={m.dashboard_selection_label()}
-  class="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto mt-4 flex w-full max-w-4xl flex-wrap items-center gap-2 rounded-panel bg-surface-2 py-1.5 pr-1.5 pl-5 shadow-float sm:rounded-full"
+  class="bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex max-sm:sticky max-sm:mt-4 sm:fixed sm:inset-x-6 w-full max-w-4xl sm:w-auto flex-wrap items-center gap-2 rounded-panel bg-surface-2 py-1.5 pr-1.5 pl-5 shadow-float sm:rounded-full"
 >
   <p class="mr-auto text-sm font-semibold tabular" aria-live="polite">{m.dashboard_selection_count({ count })}</p>
   {#if count < total}

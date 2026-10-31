@@ -5,10 +5,18 @@ import type { Attachment } from 'svelte/attachments';
 export function watchTruncation(text: string, onchange: (truncated: boolean) => void): Attachment<HTMLElement> {
   void text;
   return (node) => {
-    const check = () => onchange(node.scrollWidth > node.clientWidth);
+    let live = true;
+    const check = () => {
+      if (live) onchange(node.scrollWidth > node.clientWidth);
+    };
     check();
     const observer = new ResizeObserver(check);
     observer.observe(node);
-    return () => observer.disconnect();
+    // La fuente web cambia el ancho del texto pero no el de la caja, así que el observador no salta.
+    void document.fonts?.ready.then(check);
+    return () => {
+      live = false;
+      observer.disconnect();
+    };
   };
 }

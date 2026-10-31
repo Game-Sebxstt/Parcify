@@ -159,6 +159,7 @@
     pressed={tool === 'frame'}
     locked={lockedTool('frame')}
     disabled={readOnly}
+    focusable
     stop="frame"
     tabindex={tabindex('frame')}
     onclick={() => onselect('frame')}
@@ -203,6 +204,7 @@
     pressed={tool === 'text'}
     locked={lockedTool('text')}
     disabled={readOnly}
+    focusable
     stop="text"
     tabindex={tabindex('text')}
     onclick={() => onselect('text')}

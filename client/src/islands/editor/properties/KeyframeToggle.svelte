@@ -20,7 +20,10 @@
 
   let { context, records, prop, label, testid, tabindex }: Props = $props();
 
-  const ids = $derived(records.filter((record) => animatable(record, prop)).map((record) => record.id));
+  // Los nodos bloqueados no cuentan: el rombo no los toca y no deben dejarlo a medio rellenar.
+  const ids = $derived(
+    records.filter((record) => animatable(record, prop) && !context.engine.core.isLocked(record.id)).map((record) => record.id),
+  );
 
   // Gris sin pista, contorno coral con pista y relleno coral con un keyframe en el cabezal en todos los nodos.
   const marks = $derived.by(() => {

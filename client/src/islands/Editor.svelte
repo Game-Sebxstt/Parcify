@@ -266,7 +266,9 @@
   // Las barras de abajo quedan a 12 px del borde, o 8 px por encima de la línea de tiempo abierta. Con el dedo, 20 px:
   // la zona de toque del asa de la línea de tiempo crece 18 px hacia arriba y las barras no deben taparla.
   const barsBottom = $derived(bottomEdge ? bottomEdge + (inputKind === 'touch' ? 20 : 8) : 12);
-  const panelClearance = $derived(compactLayout && !mobile && !hideUi && barsHeight ? bottomEdge + barsHeight + 8 : 0);
+  const panelClearance = $derived(
+    compactLayout && !mobile && !hideUi && barsHeight ? barsBottom + barsHeight + (bottomEdge ? 0 : -4) : 0,
+  );
 
   // Herramientas de creación: en el móvil, con una activa y sin selección, la barra contextual ofrece sus modificadores.
   const CREATE_TOOLS = new Set<Tool>(['frame', 'rect', 'ellipse', 'triangle', 'diamond', 'star', 'polygon', 'arc', 'line', 'arrow', 'connector', 'text']);
@@ -1007,10 +1009,13 @@
     }
   }
 
-  // Esc con el foco en un panel lateral detiene la vista previa de una animación (en el lienzo la detiene el motor).
+  // Esc detiene la vista previa de una animación desde cualquier sitio (en el lienzo la detiene el motor), salvo cuando
+  // lo usa una capa que se cierra con él: un diálogo, un menú, un popover, una lista o un control con sus propias teclas.
   function stopPreviewFrom(target: EventTarget | null): boolean {
-    if (!engine?.anim.state.get().preview || !(target instanceof Element)) return false;
-    if (!target.closest('[data-testid="left-panel"], [data-testid="right-panel"]')) return false;
+    if (!engine?.anim.state.get().preview) return false;
+    const owner =
+      'input, textarea, [contenteditable], [role="application"], [role="dialog"], [role="menu"], [role="listbox"], [data-floating], [data-own-keys]';
+    if (target instanceof Element && target.closest(owner)) return false;
     engine.anim.preview(null);
     return true;
   }

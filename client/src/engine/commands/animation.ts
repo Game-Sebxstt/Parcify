@@ -422,7 +422,8 @@ export class AnimationCommands {
     let created = 0;
     for (const { nodeId, prop } of targets) {
       const record = this.core.record(nodeId);
-      if (!record || !this.target(nodeId) || refs.some((ref) => ref.nodeId === nodeId && ref.prop === prop)) continue;
+      if (!record || !this.target(nodeId) || this.core.isLocked(nodeId)) continue;
+      if (refs.some((ref) => ref.nodeId === nodeId && ref.prop === prop)) continue;
       const current = this.core.store.animation(nodeId);
       if (keyframeKeyAt(current, prop, at)) continue;
       const tracked = current && Object.keys(current.tracks[prop] ?? {}).length > 0;
@@ -730,7 +731,7 @@ export class AnimationCommands {
     const targets: string[] = [];
     for (const id of new Set(ids)) {
       const current = this.core.store.animation(id);
-      if (!current || !this.target(id)) continue;
+      if (!current || !this.target(id) || this.core.isLocked(id)) continue;
       if (!AnimationSchema.safeParse({ ...current, ...settings }).success) return false;
       targets.push(id);
     }

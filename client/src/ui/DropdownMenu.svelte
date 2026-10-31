@@ -54,6 +54,9 @@
     focusFirst?: boolean;
     // 'touch': entradas y disparador de 44 px de alto, para el dedo aunque el puntero principal sea fino.
     density?: 'default' | 'touch';
+    // false: no bloquea el scroll ni los punteros del resto de la página mientras está abierto ni durante la animación
+    // de salida. Para los menús de herramientas: el clic en el lienzo justo después de elegir una debe llegar.
+    blocking?: boolean;
     onOpenChange?: (open: boolean) => void;
     onInteractOutside?: (event: PointerEvent) => void;
     onCloseAutoFocus?: (event: Event) => void;
@@ -73,6 +76,7 @@
     class: className = '',
     focusFirst = false,
     density = 'default',
+    blocking = true,
     onOpenChange,
     onInteractOutside,
     onCloseAutoFocus,
@@ -215,6 +219,7 @@
       {sticky}
       collisionPadding={8}
       avoidCollisions
+      preventScroll={blocking}
       aria-label={label}
       aria-labelledby={labelledBy}
       data-testid={testid}

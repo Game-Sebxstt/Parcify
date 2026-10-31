@@ -610,7 +610,14 @@ test('Tab recorre el panel izquierdo, el lienzo, la barra de herramientas, la de
       return 'other';
     });
 
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  // El editor enfoca el lienzo al abrir y blur() deja ahí el punto de partida de Tab: se empieza desde el principio
+  // del documento enfocando el body.
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    document.body.tabIndex = -1;
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+  });
   const order: string[] = [];
   for (let i = 0; i < 80 && !order.includes('right'); i++) {
     await page.keyboard.press('Tab');
