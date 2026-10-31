@@ -2,6 +2,7 @@
   import { Popover } from 'bits-ui';
   import type { Snippet } from 'svelte';
   import type { VirtualAnchor } from './anchor.ts';
+  import { touchDensity } from './pointer.svelte.ts';
 
   type Props = {
     open?: boolean;
@@ -60,6 +61,7 @@
       data-testid={testid}
       data-floating=""
       data-own-keys=""
+      data-touch-density={touchDensity()}
       class={[
         'z-(--z-popover) max-h-(--bits-popover-content-available-height) overflow-x-hidden overflow-y-auto scroll-thin rounded-panel border border-edge/40 bg-surface-2 p-3 text-ui text-ink shadow-float outline-none',
         className,

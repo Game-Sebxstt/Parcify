@@ -3,10 +3,11 @@ import { NodeSchema } from '../../shared/document/schema.js';
 import { rect } from '../test-utils.ts';
 import type { NodeRecord } from '../types.ts';
 import { INPUT_PROFILES } from '../interaction/input/profile.ts';
+import { hitHandle } from '../overlay/handles.ts';
 import { normalizeDeg, snapRotation, toDeg, toRad } from './angles.ts';
 import { geometryAABB, localMatrix, paintedAABB, paintPadding, translatedPlacement } from './bounds.ts';
 import { hitRecord } from './hit.ts';
-import { apply, compose, invert, multiply, rotateAround, scaleAround, translation } from './matrix.ts';
+import { apply, compose, invert, multiply, rotateAround, scaleAround, translation, type Point } from './matrix.ts';
 import { nearestCandidate, SnapCandidates, snapBox } from './snapping.ts';
 import { applyPatch, transformPatch } from './transform.ts';
 
@@ -231,5 +232,23 @@ describe('imán de rotación', () => {
     expect(normalizeDeg(-190)).toBe(170);
     expect(Object.is(normalizeDeg(-360), 0)).toBe(true);
     expect(toDeg(toRad(37))).toBeCloseTo(37, 9);
+  });
+});
+
+describe('tiradores con el dedo en una caja pequeña', () => {
+  // Un texto de una línea: 45×30 px en pantalla, con N y S a 15 px del centro (menos que handleDraw).
+  const corners: [Point, Point, Point, Point] = [
+    { x: 100, y: 100 },
+    { x: 145, y: 100 },
+    { x: 145, y: 130 },
+    { x: 100, y: 130 },
+  ];
+  const hit = (x: number, y: number) => hitHandle(corners, x, y, INPUT_PROFILES.touch, { sideEdges: true });
+
+  it('el centro es el cuerpo y cerca del borde manda el tirador', () => {
+    expect(hit(122.5, 115)).toBeNull();
+    expect(hit(122.5, 103)).toMatchObject({ kind: 'n' });
+    expect(hit(122.5, 96)).toMatchObject({ kind: 'n' });
+    expect(hit(143, 115)).toMatchObject({ kind: 'e' });
   });
 });

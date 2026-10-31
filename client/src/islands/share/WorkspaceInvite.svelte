@@ -104,7 +104,7 @@
         bind:value={email}
         invalid={Boolean(error)}
         describedBy="{uid}-hint {uid}-error"
-        class="h-9 min-w-0 flex-1 text-sm sm:max-w-sm"
+        class="h-9 min-w-0 flex-1 text-sm max-sm:basis-full sm:max-w-sm"
       />
       <Select
         items={WORKSPACE_INVITE_ROLES.map((option) => ({ value: option, label: ROLE_LABEL[option]() }))}

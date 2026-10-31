@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createProject, createVerifiedAccount } from './helpers/account.ts';
-import { longPress, pinch, touchDrag, touchThenPinch, twoFingerPan } from './helpers/touch.ts';
+import { solidPng } from './helpers/image.ts';
+import { doubleTap, longPress, pinch, touchDrag, touchThenPinch, twoFingerPan } from './helpers/touch.ts';
 
 type Node = { id: string; type: string; x: number; y: number; w: number; h: number; rotation: number; name?: string; visible: boolean; locked: boolean };
 
@@ -619,5 +620,280 @@ test.describe('@touch hojas del móvil', () => {
     await expect.poll(async () => (await nodes(page))[0]!.name).toBe('Caja');
     await expect(rename).toHaveCount(0);
     await expect(page.getByTestId('layers-sheet')).toBeVisible();
+  });
+});
+
+// Objetivos visibles de `root` por debajo de 44×44 (CA-16.7): sin input ni textarea y sin los rombos de la línea de
+// tiempo (data-touch-exempt). Si `root` tiene scroll, se recorre entero.
+async function smallTargets(root: Locator): Promise<string[]> {
+  const measure = () =>
+    root.evaluate((element) =>
+      [...element.querySelectorAll<HTMLElement>('button, [role=menuitem], [role=menuitemcheckbox], [role=tab], [role=switch]')]
+        .filter((el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && !el.closest('[data-touch-exempt], [aria-hidden="true"]'))
+        .map((el) => ({ el, r: el.getBoundingClientRect() }))
+        .filter(({ r }) => r.width > 2 && r.height > 2 && (r.width < 43.5 || r.height < 43.5))
+        .map(({ el, r }) => `${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 24)}: ${Math.round(r.width)}×${Math.round(r.height)}`),
+    );
+  const found = new Set(await measure());
+  const scrollers = root.locator('.overflow-y-auto');
+  for (const scroller of await scrollers.all()) {
+    if (!(await scroller.isVisible())) continue;
+    const [height, client] = await scroller.evaluate((el) => [el.scrollHeight, el.clientHeight]);
+    for (let top = client / 2; top < height; top += client / 2) {
+      await scroller.evaluate((el, value) => (el.scrollTop = value), top);
+      for (const item of await measure()) found.add(item);
+    }
+    await scroller.evaluate((el) => (el.scrollTop = 0));
+  }
+  return [...found];
+}
+
+const bodyReady = (page: Page) => page.waitForFunction(() => document.body.style.pointerEvents !== 'none');
+
+// Entrada del menú ⋯. Chromium no genera el clic de un toque que llega justo después de otro gesto: se espera antes.
+async function viaMenu(page: Page, entry: string) {
+  await page.waitForTimeout(500);
+  await fromMenu(page, entry);
+}
+
+async function closeSheet(page: Page, testid: string) {
+  const sheet = page.getByTestId(testid);
+  await sheet.getByRole('button', { name: 'Cerrar', exact: true }).first().tap();
+  await expect(sheet).toHaveCount(0);
+  await bodyReady(page);
+}
+
+const nodeOf = async (page: Page, id: string) => (await nodes(page)).find((node) => node.id === id)!;
+const screenCenter = (page: Page, node: Node) => page.evaluate(([x, y]) => window.__parcifyTest!.toPage(x!, y!), [node.x + node.w / 2, node.y + node.h / 2]);
+
+test.describe('@touch recorrido móvil', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  test.beforeEach(() => {
+    test.skip(test.info().project.name !== 'mobile', 'CA-16.6 y CA-16.7 son de la maqueta móvil');
+  });
+
+  test('a 390×844, con el dedo: rectángulo, color, giro, texto, chat, versión, keyframe grabado, Presentar y Exportar (CA-16.6)', async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.addInitScript(() => {
+      Element.prototype.requestFullscreen = () => Promise.reject(new DOMException('Sin permiso', 'NotAllowedError'));
+    });
+    const { canvas, center } = await openEditor(page, 'movil-recorrido');
+    const rect = await mobileRect(page, center);
+
+    // Color desde la hoja de propiedades: un toque en el área del selector.
+    await page.getByTestId('dock-properties').tap();
+    const props = page.getByTestId('properties-sheet');
+    await expect(props).toBeVisible();
+    const fill = async () => ((await nodeOf(page, rect.id)) as unknown as { fill: string }).fill;
+    const before = await fill();
+    await props.getByTestId('props-fill-row-swatch').tap();
+    const picker = page.getByRole('dialog', { name: 'Selector de color' });
+    await expect(picker).toBeVisible();
+    const area = await boxOf(picker.getByRole('slider', { name: 'Saturación y brillo' }));
+    await page.touchscreen.tap(area.x + area.width * 0.8, area.y + area.height * 0.3);
+    await expect.poll(fill).not.toBe(before);
+    await page.keyboard.press('Escape');
+    await expect(picker).toHaveCount(0);
+    await bodyReady(page);
+    await closeSheet(page, 'properties-sheet');
+
+    // Giro con el tirador táctil: llevarlo a la derecha del centro es un cuarto de vuelta.
+    await page.waitForTimeout(500);
+    const handle = await page.evaluate(() => window.__parcifyTest!.overlayModel()?.selection?.rotateHandle ?? null);
+    expect(handle).not.toBeNull();
+    const area0 = await boxOf(canvas);
+    const knob = { x: area0.x + handle!.x, y: area0.y + handle!.y };
+    const c = await screenCenter(page, await nodeOf(page, rect.id));
+    const reach = Math.hypot(knob.x - c.x, knob.y - c.y);
+    await touchDrag(page, knob, { x: c.x + reach, y: c.y });
+    await expect.poll(async () => (await nodeOf(page, rect.id)).rotation).toBeCloseTo(Math.PI / 2, 2);
+
+    // Texto: la T de la barra inferior, un toque en el lienzo y escribir.
+    await page.waitForTimeout(500);
+    await page.getByTestId('dock').getByRole('button', { name: 'Texto (T)' }).tap();
+    await page.touchscreen.tap(center.x - 80, center.y + 20);
+    await expect.poll(() => page.evaluate(() => window.__parcifyTest!.editing())).not.toBeNull();
+    await page.keyboard.type('Hola');
+    await expect.poll(async () => Object.values(await page.evaluate(() => window.__parcifyTest!.texts()))).toEqual(['Hola']);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.evaluate(() => window.__parcifyTest!.editing())).toBeNull();
+    // Se vuelve a seleccionar el rectángulo con un toque: al abrir una hoja, la cámara deja visible la selección.
+    await page.waitForTimeout(500);
+    const onRect = await screenCenter(page, await nodeOf(page, rect.id));
+    await page.touchscreen.tap(onRect.x, onRect.y);
+    await expect.poll(() => selection(page)).toEqual([rect.id]);
+
+    // Chat: enviar un mensaje desde su hoja.
+    await viaMenu(page, 'Chat e IA');
+    const chat = page.getByTestId('conversation-sheet');
+    await expect(chat).toBeVisible();
+    await chat.getByTestId('chat-input').fill('Hola desde el móvil');
+    await chat.getByTestId('chat-send').tap();
+    await expect(chat.getByTestId('chat-bubble').filter({ hasText: 'Hola desde el móvil' })).toBeVisible();
+    await expect(chat.getByTestId('chat-message').first()).not.toHaveAttribute('data-pending', 'sending');
+    await closeSheet(page, 'conversation-sheet');
+
+    // Versión: crearla, verla a pantalla completa y volver a la hoja.
+    await viaMenu(page, 'Versiones');
+    const versions = page.getByTestId('versions-sheet');
+    await expect(versions).toBeVisible();
+    await versions.getByRole('button', { name: 'Crear versión con nombre' }).tap();
+    const named = page.getByRole('dialog', { name: 'Crear versión con nombre' });
+    await named.getByRole('textbox').fill('Recorrido');
+    await named.getByRole('button', { name: 'Crear versión', exact: true }).tap();
+    const row = versions.getByTestId('version-row').filter({ hasText: 'Recorrido' });
+    await expect(row).toHaveCount(1);
+    await bodyReady(page);
+    await page.waitForTimeout(500);
+    await row.getByTestId('version-view').tap();
+    const overlay = page.getByTestId('version-overlay');
+    await expect(overlay).toBeVisible();
+    await expect(page.getByTestId('version-preview')).toHaveAttribute('data-state', 'ready');
+    await page.getByTestId('version-overlay-close').tap();
+    await expect(overlay).toHaveCount(0);
+    await expect(versions).toBeVisible();
+    await closeSheet(page, 'versions-sheet');
+
+    // Línea de tiempo: Grabar y mover el rectángulo crea sus keyframes.
+    await viaMenu(page, 'Línea de tiempo');
+    const timeline = page.getByTestId('timeline-sheet');
+    await expect(timeline).toBeVisible();
+    await timeline.getByTestId('timeline-record').tap();
+    await expect(timeline.getByTestId('timeline')).toHaveAttribute('data-recording', '');
+    await page.waitForTimeout(500);
+    const from = await screenCenter(page, await nodeOf(page, rect.id));
+    expect(from.y).toBeLessThan((await boxOf(timeline)).y);
+    await touchDrag(page, from, { x: from.x + 40, y: from.y });
+    await expect.poll(async () => (await times(page, rect.id, 'offsetX')).length).toBeGreaterThan(0);
+    await closeSheet(page, 'timeline-sheet');
+
+    // Presentar la página (sin marcos) y salir.
+    await viaMenu(page, 'Presentar');
+    await page.getByRole('dialog', { name: 'Esta página no tiene marcos' }).getByRole('button', { name: 'Presentar', exact: true }).tap();
+    const present = page.getByRole('dialog', { name: 'Presentación' });
+    await expect(present).toBeVisible();
+    // Los controles se ocultan solos: si ya no se ven, un toque en el centro los muestra.
+    const controls = present.locator('[data-present-controls]');
+    const stage = await boxOf(present);
+    await expect(async () => {
+      if ((await present.count()) === 0) return;
+      if ((await controls.evaluate((el) => getComputedStyle(el).opacity)) !== '1') {
+        await page.touchscreen.tap(stage.x + stage.width / 2, stage.y + stage.height / 2);
+        await expect(controls).toHaveCSS('opacity', '1', { timeout: 1000 });
+      }
+      await present.getByRole('button', { name: 'Salir de la presentación' }).tap({ timeout: 1000 });
+      await expect(present).toHaveCount(0, { timeout: 1000 });
+    }).toPass({ timeout: 15_000 });
+    await bodyReady(page);
+
+    // Exportar: el diálogo tiene sus botones de 44 px y descarga un PNG.
+    await viaMenu(page, 'Exportar');
+    const exporting = page.getByRole('dialog', { name: 'Exportar imagen' });
+    await expect(exporting).toBeVisible();
+    expect(await smallTargets(exporting)).toEqual([]);
+    const download = page.waitForEvent('download');
+    await exporting.getByRole('button', { name: 'Exportar', exact: true }).tap();
+    expect((await download).suggestedFilename()).toMatch(/\.png$/);
+    await expect(exporting).toHaveCount(0);
+  });
+
+  test('un doble toque en el centro de un texto de una línea vuelve a abrir su edición', async ({ page }) => {
+    const { center } = await openEditor(page, 'movil-texto');
+    const editing = () => page.evaluate(() => window.__parcifyTest!.editing());
+    await page.getByTestId('dock').getByRole('button', { name: 'Texto (T)' }).tap();
+    await page.touchscreen.tap(center.x - 120, center.y - 120);
+    await expect.poll(editing).not.toBeNull();
+    await page.keyboard.type('Uno');
+    await page.keyboard.press('Escape');
+    await expect.poll(editing).toBeNull();
+    const text = (await nodes(page)).find((node) => node.type === 'text')!;
+    // Con 30 px de alto, N y S quedan a 15 px del centro: el centro tiene que ser el cuerpo, no un tirador.
+    await expect.poll(async () => (await nodeOf(page, text.id)).w).toBeGreaterThan(20);
+    const at = await screenCenter(page, await nodeOf(page, text.id));
+    await page.waitForTimeout(400);
+    await doubleTap(page, at);
+    await expect.poll(editing).toBe(text.id);
+    await page.keyboard.press('End');
+    await page.keyboard.type(' dos');
+    await page.keyboard.press('Escape');
+    await expect.poll(async () => (await page.evaluate(() => window.__parcifyTest!.texts()))[text.id]).toBe('Uno dos');
+  });
+
+  test('ningún objetivo de la barra superior, la inferior, la contextual ni las hojas mide menos de 44×44 (CA-16.7)', async ({ page }) => {
+    test.setTimeout(150_000);
+    const { center } = await openEditor(page, 'movil-44');
+    const surfaces: Record<string, string[]> = {};
+    const measure = async (label: string, root: Locator) => {
+      await expect(root).toBeVisible();
+      // Las hojas suben con una transición: se mide en reposo.
+      await page.waitForTimeout(400);
+      surfaces[label] = await smallTargets(root);
+    };
+
+    await measure('barra superior', page.getByTestId('mobile-top-bar'));
+    await measure('barra inferior', page.getByTestId('dock'));
+    await page.getByTestId('dock').getByRole('button', { name: 'Rectángulo (R)' }).tap();
+    await expect(page.getByTestId('context-bar')).toHaveAttribute('data-kind', 'create');
+    await measure('barra contextual con Rectángulo y sin selección', page.getByTestId('context-bar'));
+
+    await touchDrag(page, { x: center.x - 60, y: center.y - 160 }, { x: center.x + 60, y: center.y - 80 });
+    await expect.poll(async () => (await nodes(page)).length).toBe(1);
+    const rect = (await nodes(page))[0]!;
+    await page.waitForTimeout(500);
+    await measure('barra contextual con una forma', page.getByTestId('context-bar'));
+    await measure('barra inferior con selección', page.getByTestId('dock'));
+
+    await page.getByTestId('dock-properties').tap();
+    const props = page.getByTestId('properties-sheet');
+    await measure('Propiedades', props);
+    // Un efecto deja una animación para la biblioteca y pistas para la línea de tiempo.
+    await props.getByTestId('props-anim-presets').getByRole('button', { name: 'Deslizar' }).tap();
+    await expect.poll(() => times(page, rect.id, 'offsetY')).toEqual([0, 500]);
+    await expect.poll(() => page.evaluate(() => window.__parcifyTest!.player()?.preview), { timeout: 10_000 }).toBe(false);
+    await closeSheet(page, 'properties-sheet');
+
+    await page.waitForTimeout(500);
+    await longPress(page, await screenCenter(page, await nodeOf(page, rect.id)), 600);
+    const actions = page.getByTestId('action-sheet');
+    await measure('Acciones', actions);
+    await actions.getByRole('button', { name: 'Cancelar' }).tap();
+    await expect(actions).toHaveCount(0);
+    await bodyReady(page);
+
+    await viaMenu(page, 'Páginas y capas');
+    await measure('Capas', page.getByTestId('layers-sheet'));
+    await closeSheet(page, 'layers-sheet');
+
+    await viaMenu(page, 'Animaciones');
+    const animations = page.getByTestId('animations-sheet');
+    await expect(animations.getByTestId('animation-row')).not.toHaveCount(0);
+    await measure('Animaciones', animations);
+    await closeSheet(page, 'animations-sheet');
+
+    await viaMenu(page, 'Línea de tiempo');
+    const timeline = page.getByTestId('timeline-sheet');
+    await expect(timeline.getByTestId('keyframe').first()).toBeVisible();
+    await measure('Línea de tiempo', timeline);
+    await closeSheet(page, 'timeline-sheet');
+
+    await viaMenu(page, 'Versiones');
+    const versions = page.getByTestId('versions-sheet');
+    await versions.getByRole('button', { name: 'Crear versión con nombre' }).tap();
+    const named = page.getByRole('dialog', { name: 'Crear versión con nombre' });
+    await named.getByRole('textbox').fill('Medida');
+    await named.getByRole('button', { name: 'Crear versión', exact: true }).tap();
+    await expect(versions.getByTestId('version-row')).not.toHaveCount(0);
+    await bodyReady(page);
+    await measure('Versiones', versions);
+    await closeSheet(page, 'versions-sheet');
+
+    await viaMenu(page, 'Galería');
+    const gallery = page.getByTestId('gallery-sheet');
+    await page.getByTestId('gallery-input').setInputFiles({ name: 'cuadro.png', mimeType: 'image/png', buffer: solidPng(200, [30, 160, 90]) });
+    await expect(gallery.getByTestId('gallery-item')).toHaveCount(1, { timeout: 30_000 });
+    await measure('Galería', gallery);
+    await closeSheet(page, 'gallery-sheet');
+
+    expect(surfaces).toEqual(Object.fromEntries(Object.keys(surfaces).map((label) => [label, []])));
   });
 });

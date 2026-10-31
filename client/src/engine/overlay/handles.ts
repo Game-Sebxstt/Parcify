@@ -103,12 +103,15 @@ export function hitHandle(
   }
   const { width, height } = sides(corners);
   const clipped = Math.min(width, height) < 2 * profile.handleHit;
+  // En una caja más baja que dos dibujos de tirador (un texto de una línea con el dedo), el centro queda a menos de
+  // handleDraw de N y S: dentro de la caja, un tirador solo gana si está más cerca que el centro.
+  const toCenter = Math.hypot((corners[0].x + corners[2].x) / 2 - x, (corners[0].y + corners[2].y) / 2 - y);
   let best: { kind: HandleKind; x: number; y: number } | null = null;
   let bestDistance = Infinity;
   for (const handle of handles) {
     if (Math.abs(handle.x - x) > half || Math.abs(handle.y - y) > half) continue;
     const distance = Math.hypot(handle.x - x, handle.y - y);
-    if (clipped && inside && distance > profile.handleDraw) continue;
+    if (clipped && inside && (distance > profile.handleDraw || distance >= toCenter)) continue;
     if (distance < bestDistance) {
       best = handle;
       bestDistance = distance;

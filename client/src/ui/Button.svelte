@@ -10,12 +10,13 @@
     'danger-ghost': 'bg-transparent text-danger hover:bg-surface-2',
   };
 
+  // En una hoja del móvil o en un diálogo con el dedo (`sheet:`), 44 px.
   const SIZES: Record<ButtonSize, string> = {
-    sm: 'h-8 gap-1.5 px-3.5 text-sm',
-    md: 'h-10 gap-2 px-5 text-sm',
+    sm: 'h-8 gap-1.5 px-3.5 text-sm sheet:h-11',
+    md: 'h-10 gap-2 px-5 text-sm sheet:h-11',
   };
 
-  const ICON_SIZES: Record<ButtonSize, string> = { sm: 'size-8', md: 'size-10' };
+  const ICON_SIZES: Record<ButtonSize, string> = { sm: 'size-8 sheet:size-11', md: 'size-10 sheet:size-11' };
 </script>
 
 <script lang="ts">

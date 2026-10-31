@@ -166,7 +166,7 @@
         {#each choices as item (item.kind)}
           <RadioGroup.Item
             value={item.kind}
-            class="group flex min-h-7 min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left outline-none focus-visible:outline-1 focus-visible:outline-coral data-disabled:cursor-not-allowed data-disabled:text-ink-muted"
+            class="group flex min-h-7 min-w-0 cursor-pointer sheet:min-h-11 items-center gap-2 rounded-control px-1 text-left outline-none focus-visible:outline-1 focus-visible:outline-coral data-disabled:cursor-not-allowed data-disabled:text-ink-muted"
           >
             <span
               aria-hidden="true"

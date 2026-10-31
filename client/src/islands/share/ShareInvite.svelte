@@ -54,7 +54,7 @@
         bind:value={email}
         invalid={Boolean(error)}
         describedBy="{uid}-hint {uid}-error"
-        class="h-9 min-w-0 flex-1 text-sm"
+        class="h-9 min-w-0 flex-1 text-sm max-sm:basis-full"
       />
       <Select
         items={SHARE_LINK_ROLES.map((option) => ({ value: option, label: PROJECT_ROLE_LABEL[option]() }))}

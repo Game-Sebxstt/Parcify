@@ -5,6 +5,7 @@
   import { EASINGS, type AnimProp, type Keyframe } from '../../../shared/document/schema.js';
   import ColorPicker from '../../../ui/ColorPicker.svelte';
   import ScrubInput from '../../../ui/ScrubInput.svelte';
+  import { touchDensity } from '../../../ui/pointer.svelte.ts';
   import Select from '../../../ui/Select.svelte';
   import EasingCurve from './EasingCurve.svelte';
   import { fromDisplay, propLabel, stepOf, toDisplay, unitOf } from './model.ts';
@@ -120,6 +121,7 @@
     }
   }}
   class="w-72 rounded-panel border border-edge/40 bg-surface-2 p-3 text-sm text-ink shadow-float"
+  data-touch-density={touchDensity()}
   data-testid="keyframe-editor"
 >
   <h3 id="{uid}-title" class="mb-3 font-semibold">{m.timeline_editor_title({ track: propLabel(prop) })}</h3>
@@ -193,14 +195,14 @@
     </fieldset>
     <div class="flex items-center gap-2">
       {#if !readOnly}
-        <button type="button" onclick={ondelete} class="h-8 cursor-pointer rounded-full px-3 font-semibold text-danger hover:bg-petrol">
+        <button type="button" onclick={ondelete} class="h-8 cursor-pointer rounded-full px-3 font-semibold text-danger hover:bg-petrol sheet:h-11">
           {m.timeline_editor_delete()}
         </button>
       {/if}
       <span class="flex-1"></span>
-      <button type="button" onclick={onclose} class="h-8 cursor-pointer rounded-full px-3 hover:bg-petrol">{m.common_cancel()}</button>
+      <button type="button" onclick={onclose} class="h-8 cursor-pointer rounded-full px-3 hover:bg-petrol sheet:h-11">{m.common_cancel()}</button>
       {#if !readOnly}
-        <button type="submit" class="h-8 cursor-pointer rounded-full bg-coral px-3 font-semibold text-coral-ink hover:bg-coral-hover">{m.common_save()}</button>
+        <button type="submit" class="h-8 cursor-pointer rounded-full bg-coral px-3 font-semibold text-coral-ink hover:bg-coral-hover sheet:h-11">{m.common_save()}</button>
       {/if}
     </div>
   </form>

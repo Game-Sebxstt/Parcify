@@ -92,7 +92,7 @@
     'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control hover:bg-surface-2',
     sheet ? 'size-11' : touch ? 'size-8' : 'size-6',
   ]);
-  const CHEVRON = $derived(sheet ? 'size-11' : 'size-6');
+  const CHEVRON = $derived(sheet ? 'size-11' : touch ? 'size-8' : 'size-6');
   // Ojo y candado aparecen con el puntero encima o con la fila enfocada; una capa oculta o bloqueada los enseña siempre,
   // y sin hover (táctil) también se ven siempre.
   const HOVER_ONLY = 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 touch:opacity-100';
@@ -370,7 +370,7 @@
                 onblur={(event) => {
                   if (renaming === row.id) void finishRename(row.id, event.currentTarget.value);
                 }}
-                class={['min-w-0 flex-1 rounded-[4px] bg-surface-2 px-1.5 text-ink', sheet ? 'h-9 text-sm' : 'h-6']}
+                class={['min-w-0 flex-1 rounded-[4px] bg-surface-2 px-1.5 text-ink', sheet ? 'h-9 text-sm' : touch ? 'h-8' : 'h-6']}
               />
             {:else}
               <span class="min-w-0 flex-1 truncate">{nameOf(row)}</span>

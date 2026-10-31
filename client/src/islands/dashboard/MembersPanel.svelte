@@ -135,7 +135,8 @@
       {#each members as member (member.id)}
         <li class="flex flex-wrap items-center gap-3 rounded-panel bg-surface-1 px-3 py-2.5">
           <Avatar name={member.name} src={avatars[member.userId] ?? null} />
-          <div class="min-w-0 flex-1">
+          <!-- En el móvil, el nombre ocupa la fila y el rol y las acciones bajan a la siguiente. -->
+          <div class="min-w-0 flex-1 max-sm:basis-[calc(100%-3.75rem)]">
             <p class="truncate text-sm font-semibold">
               {member.name}{#if member.userId === meId}<span class="font-normal text-ink-muted"> {m.members_you()}</span>{/if}
             </p>

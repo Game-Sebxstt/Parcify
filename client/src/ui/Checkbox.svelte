@@ -62,6 +62,10 @@
       'transition-colors duration-(--dur-fast) hover:border-ink-muted',
       'data-[state=checked]:border-coral data-[state=checked]:bg-coral data-[state=indeterminate]:border-coral data-[state=indeterminate]:bg-coral',
       'data-disabled:cursor-not-allowed',
+      // En una hoja o un diálogo con el dedo, la zona de toque es de 44×44 (padding) y la casilla de 16 px se queda
+      // en su sitio gracias al margen negativo.
+      'sheet:-m-3.5 sheet:size-11 sheet:border-0 sheet:bg-clip-content sheet:p-3.5 sheet:outline-1 sheet:-outline-offset-[15px] sheet:outline-edge',
+      'sheet:data-[state=checked]:outline-coral sheet:data-[state=indeterminate]:outline-coral',
       disabled && !label ? 'opacity-40' : '',
       label ? '' : className,
     ].join(' ')}
@@ -78,7 +82,7 @@
 
 {#if label}
   <!-- La etiqueta envuelve al botón de la casilla: un clic en el texto la marca y le da su nombre accesible. -->
-  <label class={['inline-flex min-h-6 items-start gap-2 text-sm text-ink', disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer', className]}>
+  <label class={['inline-flex min-h-6 items-start gap-2 text-sm text-ink sheet:min-h-11 sheet:py-3', disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer', className]}>
     <span class="flex h-5 items-center">{@render box()}</span>
     <span class="flex min-w-0 flex-col">
       <span>{label}</span>

@@ -243,13 +243,14 @@
       'shrink-0 cursor-pointer rounded-xs border border-edge/40 disabled:cursor-not-allowed disabled:opacity-40',
       swatchSize === 16 ? 'size-4' : 'size-6',
       // En una hoja del móvil se toca en 44×44 y se ve la muestra de 20 px del centro.
-      'sheet:size-11 sheet:border-transparent sheet:bg-clip-content sheet:p-[11px] sheet:outline-1 sheet:-outline-offset-12 sheet:outline-edge/40',
+      // bg-clip con !important: el `background` en línea de la muestra lo reiniciaría a border-box.
+      'sheet:size-11 sheet:border-transparent sheet:bg-clip-content! sheet:p-[11px] sheet:outline-1 sheet:-outline-offset-12 sheet:outline-edge/40',
     ]}
     style:background={swatchBackground(value)}
   ></button>
 {/snippet}
 
-<Popover bind:open label={m.ui_color_picker()} trigger={trigger ?? swatch} {side} {align} {onOpenChange} class="w-62">
+<Popover bind:open label={m.ui_color_picker()} trigger={trigger ?? swatch} {side} {align} {onOpenChange} class="w-62 sheet:w-72">
   <div class="flex flex-col gap-3">
     <p class="text-2xs font-semibold text-ink">{m.ui_color_solid()}</p>
     <div
@@ -302,7 +303,7 @@
     <div class="flex items-center gap-2">
       <div
         class={[
-          'flex h-6 min-w-0 flex-1 items-center rounded-control border bg-surface-2 text-xs',
+          'flex h-6 min-w-0 flex-1 items-center rounded-control border bg-surface-2 text-xs sheet:h-9',
           'focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-coral',
           hexInvalid ? 'border-danger' : 'border-transparent hover:border-edge/60',
         ]}
@@ -324,7 +325,7 @@
         />
       </div>
       <ScrubInput
-        class="w-13"
+        class="w-13 sheet:w-16"
         value={alphaPercent}
         label={m.ui_color_alpha()}
         unit="%"
@@ -339,23 +340,27 @@
         <button
           type="button"
           aria-label={m.ui_color_eyedropper()}
-          class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-petrol hover:text-ink"
+          class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted hover:bg-petrol hover:text-ink sheet:size-11"
           onclick={() => void pick()}
         >
-          <Pipette size={14} aria-hidden="true" />
+          <Pipette size={14} aria-hidden="true" class="sheet:size-5" />
         </button>
       {/if}
     </div>
     {#if documentColors.length > 0}
       <div class="flex flex-col gap-2 border-t border-edge/25 pt-3">
         <p class="text-2xs font-semibold text-ink-muted">{m.ui_color_document()}</p>
-        <div class="grid grid-cols-8 gap-1.5">
+        <!-- Con el dedo, cada muestra se toca en 44×44 y se ve la de 24 px del centro. -->
+        <div class="grid grid-cols-8 gap-1.5 sheet:grid-cols-6 sheet:gap-0">
           {#each documentColors as color (color)}
             <button
               type="button"
               aria-label={m.ui_color_use({ color: hexDigits(color) })}
               aria-pressed={color.toUpperCase() === current}
-              class="size-5 cursor-pointer rounded-xs border border-edge/40 aria-pressed:outline-1 aria-pressed:outline-offset-1 aria-pressed:outline-coral"
+              class={[
+                'size-5 cursor-pointer rounded-xs border border-edge/40 aria-pressed:outline-1 aria-pressed:outline-offset-1 aria-pressed:outline-coral',
+                'sheet:size-11 sheet:border-transparent sheet:bg-clip-content! sheet:p-2.5 sheet:outline-1 sheet:-outline-offset-10 sheet:outline-edge/40 sheet:aria-pressed:outline-2 sheet:aria-pressed:-outline-offset-10 sheet:aria-pressed:outline-coral',
+              ]}
               style:background={swatchBackground(color)}
               onclick={() => useColor(color)}
             ></button>
